@@ -1,0 +1,101 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Users, ArrowRight } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
+import { Card, CardBody } from '../components/ui/Card';
+import { Avatar } from '../components/ui/Avatar';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { ElderFormDialog } from '../components/ElderFormDialog';
+import { useStore } from '../store/store';
+import { formatRelative } from '../lib/utils';
+
+export function EldersPage() {
+  const elders = useStore((s) => s.elders);
+  const sessions = useStore((s) => s.sessions);
+  const chronicles = useStore((s) => s.chronicles);
+  const logs = useStore((s) => s.logs);
+
+  const [openNew, setOpenNew] = useState(false);
+
+  return (
+    <>
+      <PageHeader
+        title="어르신 관리"
+        description="연대기를 등록해 두면 AI가 그 정보를 바탕으로 대화를 이어갑니다."
+        actions={
+          <Button onClick={() => setOpenNew(true)}>
+            <Plus size={16} /> 새 어르신 등록
+          </Button>
+        }
+      />
+      <div className="flex-1 px-8 py-6 overflow-y-auto">
+        {elders.length === 0 ? (
+          <Card>
+            <CardBody className="text-center py-16">
+              <div className="inline-flex w-14 h-14 rounded-2xl bg-slate-100 items-center justify-center text-slate-400 mb-4">
+                <Users size={26} />
+              </div>
+              <div className="font-semibold mb-1">아직 등록된 어르신이 없어요.</div>
+              <div className="text-sm text-slate-500 mb-5">
+                연대기를 등록하면 AI가 어르신께 맞춤 회상 대화를 건넵니다.
+              </div>
+              <Button onClick={() => setOpenNew(true)}>
+                <Plus size={16} /> 첫 어르신 등록하기
+              </Button>
+            </CardBody>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {elders.map((e) => {
+              const sessCount = sessions.filter((s) => s.elderId === e.id).length;
+              const chrCount = chronicles.filter((c) => c.elderId === e.id).length;
+              const lastLog = logs.find((l) => l.elderId === e.id);
+              return (
+                <Link key={e.id} to={`/caregiver/elders/${e.id}`} className="group">
+                  <Card className="hover:shadow-md hover:border-brand-200 transition group-hover:-translate-y-0.5 duration-150">
+                    <CardBody className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={e.name} color={e.avatarColor} size="xl" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-base text-slate-900">{e.name}</div>
+                          <div className="text-xs text-slate-500">{e.birthYear}년생 · 만 {new Date().getFullYear() - e.birthYear}세</div>
+                        </div>
+                        <ArrowRight
+                          size={16}
+                          className="text-slate-300 group-hover:text-brand-500 transition"
+                        />
+                      </div>
+                      <dl className="space-y-1 text-xs">
+                        {e.hometown ? (
+                          <div className="flex gap-2"><dt className="text-slate-400 w-12 shrink-0">출신지</dt><dd className="text-slate-700">{e.hometown}</dd></div>
+                        ) : null}
+                        {e.job ? (
+                          <div className="flex gap-2"><dt className="text-slate-400 w-12 shrink-0">직업</dt><dd className="text-slate-700 truncate">{e.job}</dd></div>
+                        ) : null}
+                        {e.family ? (
+                          <div className="flex gap-2"><dt className="text-slate-400 w-12 shrink-0">가족</dt><dd className="text-slate-700 truncate">{e.family}</dd></div>
+                        ) : null}
+                      </dl>
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-slate-100">
+                        <Badge tone="brand">세션 {sessCount}</Badge>
+                        <Badge tone="success">연대기 {chrCount}</Badge>
+                        {lastLog ? (
+                          <span className="ml-auto text-[11px] text-slate-400">
+                            최근 대화 {formatRelative(lastLog.startedAt)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </CardBody>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <ElderFormDialog open={openNew} onClose={() => setOpenNew(false)} />
+    </>
+  );
+}

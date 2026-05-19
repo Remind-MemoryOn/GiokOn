@@ -1,0 +1,158 @@
+import { useEffect, useState } from 'react';
+import { Dialog } from './ui/Dialog';
+import { Field, Input, Textarea } from './ui/Input';
+import { Button } from './ui/Button';
+import { useStore } from '../store/store';
+import type { ElderProfile } from '../types';
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  initial?: ElderProfile | null;
+}
+
+const empty = {
+  name: '',
+  birthYear: '' as number | '',
+  hometown: '',
+  job: '',
+  family: '',
+  hobbies: '',
+  guardianName: '',
+  guardianRelation: '',
+};
+
+export function ElderFormDialog({ open, onClose, initial }: Props) {
+  const upsertElder = useStore((s) => s.upsertElder);
+  const toast = useStore((s) => s.toast);
+
+  const [form, setForm] = useState(empty);
+  const [errors, setErrors] = useState<Partial<Record<keyof typeof empty, string>>>({});
+
+  useEffect(() => {
+    if (open) {
+      if (initial) {
+        setForm({
+          name: initial.name,
+          birthYear: initial.birthYear,
+          hometown: initial.hometown || '',
+          job: initial.job || '',
+          family: initial.family || '',
+          hobbies: initial.hobbies || '',
+          guardianName: initial.guardian?.name || '',
+          guardianRelation: initial.guardian?.relation || '',
+        });
+      } else {
+        setForm(empty);
+      }
+      setErrors({});
+    }
+  }, [open, initial]);
+
+  function update<K extends keyof typeof empty>(key: K, value: (typeof empty)[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function submit() {
+    const next: typeof errors = {};
+    if (!form.name.trim()) next.name = '이름을 입력해 주세요.';
+    if (!form.birthYear || Number(form.birthYear) < 1900 || Number(form.birthYear) > 2010) {
+      next.birthYear = '1900 ~ 2010 사이의 연도를 입력해 주세요.';
+    }
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    upsertElder({
+      id: initial?.id,
+      name: form.name.trim(),
+      birthYear: Number(form.birthYear),
+      hometown: form.hometown.trim() || undefined,
+      job: form.job.trim() || undefined,
+      family: form.family.trim() || undefined,
+      hobbies: form.hobbies.trim() || undefined,
+      guardian: form.guardianName.trim()
+        ? {
+            name: form.guardianName.trim(),
+            relation: form.guardianRelation.trim() || '자녀',
+          }
+        : undefined,
+    });
+    toast('success', initial ? '연대기를 수정했어요.' : '새 어르신을 등록했어요.');
+    onClose();
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={initial ? '연대기 수정' : '새 어르신 등록'}
+      description="AI가 이 연대기를 바탕으로 어르신과 대화합니다. 채워질수록 대화가 풍부해져요."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>취소</Button>
+          <Button onClick={submit}>{initial ? '저장' : '등록'}</Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Field label="이름" required error={errors.name}>
+          <Input
+            value={form.name}
+            onChange={(e) => update('name', e.target.value)}
+            placeholder="예: 이순자"
+          />
+        </Field>
+        <Field label="출생연도" required error={errors.birthYear}>
+          <Input
+            type="number"
+            value={form.birthYear}
+            onChange={(e) => update('birthYear', e.target.value === '' ? '' : Number(e.target.value))}
+            placeholder="예: 1945"
+          />
+        </Field>
+        <Field label="출신지">
+          <Input
+            value={form.hometown}
+            onChange={(e) => update('hometown', e.target.value)}
+            placeholder="예: 전북 전주"
+          />
+        </Field>
+        <Field label="직업 이력">
+          <Input
+            value={form.job}
+            onChange={(e) => update('job', e.target.value)}
+            placeholder="예: 식당 운영, 30년"
+          />
+        </Field>
+        <Field label="가족 구성" hint="자녀·손자녀 등">
+          <Textarea
+            value={form.family}
+            onChange={(e) => update('family', e.target.value)}
+            placeholder="예: 딸 둘, 사위 둘, 손자 셋"
+          />
+        </Field>
+        <Field label="취미">
+          <Textarea
+            value={form.hobbies}
+            onChange={(e) => update('hobbies', e.target.value)}
+            placeholder="예: 텃밭 가꾸기, 화투"
+          />
+        </Field>
+        <Field label="보호자 이름" hint="세션 종료 후 자동 리포트가 전달됩니다.">
+          <Input
+            value={form.guardianName}
+            onChange={(e) => update('guardianName', e.target.value)}
+            placeholder="예: 박민준"
+          />
+        </Field>
+        <Field label="관계">
+          <Input
+            value={form.guardianRelation}
+            onChange={(e) => update('guardianRelation', e.target.value)}
+            placeholder="예: 아들 / 딸 / 며느리"
+          />
+        </Field>
+      </div>
+    </Dialog>
+  );
+}
