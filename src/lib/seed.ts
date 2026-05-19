@@ -4,6 +4,7 @@ export function seedIfEmpty() {
   const { elders, upsertElder, upsertSession, upsertChronicle } = useStore.getState();
   if (elders.length > 0) return;
 
+  // 이순자: 캐릭터 미설정 — 어르신이 직접 처음 꾸미기 시나리오용
   const sun = upsertElder({
     name: '이순자',
     birthYear: 1945,
@@ -12,13 +13,7 @@ export function seedIfEmpty() {
     family: '딸 둘, 사위 둘, 손자 셋',
     hobbies: '텃밭 가꾸기, 화투',
     guardian: { name: '박민준', relation: '아들' },
-    appearance: {
-      skin: 'rosy',
-      hair: 'permed_gray',
-      outfit: 'hanbok_pink',
-      accessory: 'flower_pin',
-      background: 'garden',
-    },
+    // appearance 생략 → DEFAULT_APPEARANCE 사용
   });
 
   const bok = upsertElder({

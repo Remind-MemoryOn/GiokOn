@@ -27,6 +27,17 @@ export const DEFAULT_APPEARANCE: CharacterAppearance = {
   background: 'cream',
 };
 
+// 어르신이 캐릭터를 한 번도 꾸미지 않았는지 확인 (전부 기본값과 동일)
+export function isDefaultAppearance(a: CharacterAppearance): boolean {
+  return (
+    a.skin === DEFAULT_APPEARANCE.skin &&
+    a.hair === DEFAULT_APPEARANCE.hair &&
+    a.outfit === DEFAULT_APPEARANCE.outfit &&
+    a.accessory === DEFAULT_APPEARANCE.accessory &&
+    a.background === DEFAULT_APPEARANCE.background
+  );
+}
+
 export interface AppearanceOptionMeta<T extends string> {
   id: T;
   label: string;

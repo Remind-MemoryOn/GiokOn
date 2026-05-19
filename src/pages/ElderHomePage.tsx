@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Play, BookOpen, MessageSquareHeart, Shirt } from 'lucide-react';
+import { Heart, ArrowLeft, Play, BookOpen, MessageSquareHeart, Shirt, Sparkles } from 'lucide-react';
 import { useStore } from '../store/store';
-import { THERAPY_TYPES } from '../types';
+import { THERAPY_TYPES, isDefaultAppearance } from '../types';
 import { cn, formatRelative } from '../lib/utils';
 import { ElderCharacter } from '../components/ElderCharacter';
 
@@ -100,9 +100,10 @@ function ElderHome({ elderId }: { elderId: string }) {
 
   const greeting = greetingByTime();
   const nextSession = eldersSessions[0];
+  const needsDressUp = isDefaultAppearance(elder.appearance);
 
   const [tapAnim, setTapAnim] = useState(false);
-  function petCharacter() {
+  function tapCharacter() {
     setTapAnim(true);
     setTimeout(() => setTapAnim(false), 700);
   }
@@ -117,17 +118,12 @@ function ElderHome({ elderId }: { elderId: string }) {
         <div className="text-elder-sm font-bold text-warm-900">
           {elder.name} 어르신
         </div>
-        <button
-          onClick={() => navigate(`/elder/${elder.id}/dress`)}
-          className="flex items-center gap-2 text-base font-bold text-warm-700 hover:text-warm-900 bg-white border-2 border-warm-300 px-4 py-2 rounded-2xl active:scale-95 transition"
-        >
-          <Shirt size={18} /> 꾸미기
-        </button>
+        <div className="w-20" />
       </header>
 
       <main className="px-6 sm:px-10 py-6 max-w-5xl mx-auto">
         {/* 인사말 */}
-        <div className="text-center mb-4 animate-fade-in-up">
+        <div className="text-center mb-5 animate-fade-in-up">
           <div className="text-base text-warm-600 mb-1">{greeting.label}</div>
           <h1
             className="text-elder-lg sm:text-elder-xl font-bold text-warm-900 leading-tight"
@@ -137,29 +133,70 @@ function ElderHome({ elderId }: { elderId: string }) {
           </h1>
         </div>
 
-        {/* 다마고치 메인 — 캐릭터 큰 카드 */}
-        <button
-          onClick={petCharacter}
-          className="group block w-full mb-5 active:scale-[0.99] transition"
-          aria-label="캐릭터 쓰다듬기"
-        >
-          <div className="relative rounded-3xl overflow-hidden shadow-warm border-4 border-white">
-            <div className={cn('flex items-center justify-center', tapAnim ? 'animate-gentle-bounce' : '')}>
-              <ElderCharacter appearance={elder.appearance} size={360} speaking={tapAnim} />
-            </div>
-            {/* 떠다니는 하트 (탭 시) */}
-            {tapAnim ? (
-              <div className="absolute top-1/3 left-1/2 -translate-x-1/2 text-4xl animate-fade-in-up pointer-events-none">
-                💝
+        {/* 캐릭터가 기본 상태 — 친구 만들기 안내 */}
+        {needsDressUp ? (
+          <button
+            onClick={() => navigate(`/elder/${elder.id}/dress`)}
+            className="group w-full rounded-3xl bg-gradient-to-br from-warm-100 via-rose-100 to-cream-100 shadow-warm border-2 border-warm-300 p-6 sm:p-8 mb-5 transition active:scale-[0.99]"
+          >
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="relative shrink-0">
+                <div className="rounded-3xl overflow-hidden shadow-warm border-4 border-white animate-breathe">
+                  <ElderCharacter appearance={elder.appearance} size={220} speaking={false} />
+                </div>
+                <div className="absolute -top-3 -right-3 text-3xl animate-gentle-bounce">✨</div>
               </div>
-            ) : null}
+              <div className="flex-1 text-center md:text-left">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-warm-500 text-white text-sm font-bold mb-3">
+                  <Sparkles size={14} /> 처음이에요
+                </div>
+                <h2 className="text-elder-lg font-bold text-warm-900 mb-2 leading-snug" style={{ wordBreak: 'keep-all' }}>
+                  먼저 나만의 친구를<br />만들어 볼까요?
+                </h2>
+                <p className="text-elder-sm text-warm-700 mb-5" style={{ wordBreak: 'keep-all' }}>
+                  옷도 입혀주시고, 머리도 골라주세요.
+                </p>
+                <div className="inline-flex items-center gap-3 bg-warm-500 hover:bg-warm-600 text-white px-7 py-4 rounded-2xl text-elder-sm font-bold shadow-warm transition">
+                  <Shirt size={26} />
+                  <span>친구 만들기</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        ) : (
+          // 이미 꾸민 상태 — 큰 캐릭터 + 탭하면 꾸미러 가기
+          <div className="mb-5">
+            <button
+              onClick={tapCharacter}
+              className="group block w-full active:scale-[0.99] transition"
+              aria-label="캐릭터 쓰다듬기"
+            >
+              <div className="relative rounded-3xl overflow-hidden shadow-warm border-4 border-white">
+                <div className={cn('flex items-center justify-center', tapAnim ? 'animate-gentle-bounce' : '')}>
+                  <ElderCharacter appearance={elder.appearance} size={340} speaking={tapAnim} />
+                </div>
+                {tapAnim ? (
+                  <div className="absolute top-1/3 left-1/2 -translate-x-1/2 text-4xl animate-fade-in-up pointer-events-none">
+                    💝
+                  </div>
+                ) : null}
+              </div>
+            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-4">
+              <div className="text-base text-warm-700/70">
+                화면을 누르면 친구가 반겨드려요
+              </div>
+              <button
+                onClick={() => navigate(`/elder/${elder.id}/dress`)}
+                className="inline-flex items-center gap-2 text-base font-bold text-warm-700 hover:text-warm-900 bg-white border-2 border-warm-300 px-5 py-2.5 rounded-2xl active:scale-95 transition"
+              >
+                <Shirt size={18} /> 옷 갈아입히기
+              </button>
+            </div>
           </div>
-          <div className="text-center mt-3 text-base text-warm-700/70">
-            화면을 가볍게 누르면 친구가 반겨드려요
-          </div>
-        </button>
+        )}
 
-        {/* 메인 — 오늘의 대화 카드 */}
+        {/* 메인 — 오늘의 대화 카드 (꾸민 후엔 메인 액션) */}
         {nextSession ? (
           <button
             onClick={() => startSession(nextSession.id)}
@@ -173,7 +210,7 @@ function ElderHome({ elderId }: { elderId: string }) {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-3xl">{THERAPY_TYPES[nextSession.therapyType].emoji}</span>
                   <div className="px-3 py-1 rounded-full bg-white/80 text-warm-800 text-base font-bold">
-                    오늘의 대화
+                    {needsDressUp ? '친구 만든 후 시작' : '오늘의 대화'}
                   </div>
                 </div>
                 <div

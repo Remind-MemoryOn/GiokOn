@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Pencil, Plus, Play, MessageSquareHeart, Trash2, Clock, Shirt,
+  ArrowLeft, Pencil, Plus, Play, MessageSquareHeart, Trash2, Clock,
 } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
@@ -13,7 +13,7 @@ import { ChronicleView } from '../components/ChronicleView';
 import { ElderCharacter } from '../components/ElderCharacter';
 import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
-import { THERAPY_TYPES, type Session } from '../types';
+import { THERAPY_TYPES, isDefaultAppearance, type Session } from '../types';
 
 export function ElderDetailPage() {
   const { elderId = '' } = useParams();
@@ -87,18 +87,16 @@ export function ElderDetailPage() {
         {/* 프로필 요약 카드 */}
         <Card>
           <CardBody className="flex flex-col md:flex-row items-start gap-6">
-            {/* 캐릭터 */}
+            {/* 캐릭터 (요양보호사는 보기만) */}
             <div className="flex flex-col items-center gap-2">
               <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-soft">
                 <ElderCharacter appearance={elder.appearance} size={140} />
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate(`/caregiver/elders/${elder.id}/dress`)}
-              >
-                <Shirt size={13} /> 캐릭터 꾸미기
-              </Button>
+              <div className="text-[11px] text-slate-500 text-center max-w-[140px] leading-relaxed">
+                {isDefaultAppearance(elder.appearance)
+                  ? '아직 꾸미지 않으셨어요. 어르신이 직접 꾸며보실 거예요.'
+                  : '어르신이 직접 꾸민 모습'}
+              </div>
             </div>
 
             <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
