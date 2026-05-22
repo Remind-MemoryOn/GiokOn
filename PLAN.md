@@ -198,6 +198,10 @@
   - admin web API migration
   - deployment/publishing
 
+## 결정 로그
+
+- 2026-05-21: PostgreSQL 운영 서비스는 Supabase로 고정한다. Firebase Auth는 v1 인증 수단으로 유지하고, Supabase는 장기 저장용 PostgreSQL 서비스로 사용한다.
+
 ## 가정 및 기본값
 
 - 사용자는 **단계형 MVP**, **Expo 앱 신설**, **스토어 정식 출시**, **인지활동 보조 포지셔닝**을 선택했다.
