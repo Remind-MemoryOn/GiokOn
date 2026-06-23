@@ -3,30 +3,25 @@
 ## 1. 전체 서비스 구조 개요
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    기억온 (GiEok-On)                      │
-├──────────────────┬──────────────────┬────────────────────┤
-│  모바일 앱        │   관리자 웹        │    백엔드 API       │
-│  (React Native)  │   (React + Vite) │  (Node.js+Express) │
-│                  │                  │                    │
-│ · 어르신 대화 화면 │ · 연대기 입력     │ · 세션 관리         │
-│ · 요양보호사 화면  │ · 세션 로그 조회  │ · AI 파이프라인     │
-│                  │                  │ · 데이터 저장       │
-└──────────────────┴──────────────────┴────────────────────┤
-                                                           │
-           ┌───────────────────────────────────────────────┤
-           │               외부 서비스                       │
-           ├───────────────┬───────────────┬───────────────┤
-           │  GPT-4o       │  Clova Voice  │    Whisper    │
-           │  (대화 생성)   │  (TTS)        │    (STT)      │
-           └───────────────┴───────────────┴───────────────┤
-                                                           │
-           ┌───────────────────────────────────────────────┤
-           │               데이터베이스                       │
-           ├──────────────────────┬────────────────────────┤
-           │  Firebase Realtime   │      PostgreSQL        │
-           │  (세션 실시간 동기화)   │  (연대기·세션 로그 저장) │
-           └──────────────────────┴────────────────────────┘
+┌──────────────────────────┬──────────────────────────┐
+│   관리자 웹 (apps/web)     │   모바일 앱 (apps/mobile)  │
+│   React + Vite           │   Expo / React Native    │
+│   · 요양보호사 로그인       │   · 어르신 대화 화면        │
+│   · 연대기 입력/수정        │   · 음성 입출력            │
+│   · 세션 이력·로그 조회      │                          │
+└────────────┬─────────────┴────────────┬─────────────┘
+             │   공유: packages/core·data·theme        │
+             │   (도메인 로직 · supabase-js · 토큰)      │
+             ▼                          ▼
+┌──────────────────────────────────────────────────────┐
+│                      Supabase                         │
+│  PostgreSQL(RLS) · Auth · Storage · Edge Functions    │
+└────────────┬─────────────────────────────────────────┘
+             │  Edge Functions (AI 파이프라인, 키 보호)
+             ▼
+┌───────────────┬───────────────┬──────────────────────┐
+│  Whisper(STT) │  GPT-4o(LLM)  │   Clova Voice(TTS)    │
+└───────────────┴───────────────┴──────────────────────┘
 ```
 
 ---
@@ -35,7 +30,7 @@
 
 | 사용자 유형 | 설명 | 접근 환경 | 인증 여부 |
 |---|---|---|---|
-| **요양보호사** | 연대기 입력, 세션 시작·종료, 로그 확인 | 모바일 앱 + 관리자 웹 | 필요 (이메일+비밀번호) |
+| **요양보호사** | 연대기 입력, 세션 시작·종료, 로그 확인 | 관리자 웹 | 필요 (이메일+비밀번호) |
 | **어르신** | AI와 음성 대화 진행 | 모바일 앱 (대화 화면) | 불필요 (요양보호사가 세션 시작) |
 | **관리자** | 계정 관리, 전체 현황 확인 (향후) | 관리자 웹 | 필요 (별도 권한) |
 
@@ -63,26 +58,24 @@
 
 ## 4. 화면 목록
 
-### 모바일 앱
+### 모바일 앱 (apps/mobile — 어르신)
 
-| 화면명 | 경로 | 접근 주체 | 주요 기능 |
-|---|---|---|---|
-| 로그인 | `/login` | 요양보호사 | 이메일+비밀번호 로그인 |
-| 어르신 목록 | `/profiles` | 요양보호사 | 등록 어르신 목록, 세션 시작 버튼 |
-| 연대기 입력 | `/profiles/new` | 요양보호사 | 신규 어르신 프로필 등록 |
-| 연대기 수정 | `/profiles/:id/edit` | 요양보호사 | 기존 연대기 수정 |
-| 세션 로그 목록 | `/profiles/:id/logs` | 요양보호사 | 어르신별 세션 이력 |
-| 세션 로그 상세 | `/sessions/:id` | 요양보호사 | 대화 전문·턴 수·발화 시간 |
-| 어르신 대화 화면 | `/session/active` | 어르신 | AI 음성 출력 + 마이크 입력 |
+| 화면명 | 접근 주체 | 주요 기능 |
+|---|---|---|
+| 어르신 홈/선택 | 어르신 | 세션 진입 (요양보호사가 시작) |
+| 어르신 대화 화면 | 어르신 | AI 음성 출력 + 마이크 입력 |
 
-### 관리자 웹
+### 관리자 웹 (apps/web — 요양보호사)
 
 | 화면명 | 경로 | 주요 기능 |
 |---|---|---|
-| 로그인 | `/login` | 요양보호사 웹 로그인 |
+| 로그인 | `/login` | 이메일+비밀번호 로그인 |
 | 대시보드 | `/` | 담당 어르신 현황 요약 |
-| 어르신 관리 | `/profiles` | 목록·등록·수정 |
-| 세션 이력 | `/sessions` | 전체 세션 로그 조회 |
+| 어르신 목록 | `/profiles` | 등록 어르신 목록, 세션 시작 |
+| 연대기 입력 | `/profiles/new` | 신규 어르신 프로필 등록 |
+| 연대기 수정 | `/profiles/:id/edit` | 기존 연대기 수정 |
+| 세션 이력 | `/profiles/:id/logs` | 어르신별 세션 이력 |
+| 세션 로그 상세 | `/sessions/:id` | 대화 전문·턴 수·발화 시간 |
 
 ---
 
@@ -130,7 +123,7 @@
 ### users (요양보호사 계정)
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| `id` | UUID | PK |
+| `id` | UUID | PK (auth.users.id와 1:1) |
 | `email` | STRING | 로그인 이메일 |
 | `name` | STRING | 요양보호사 이름 |
 | `created_at` | TIMESTAMP | 가입일 |
@@ -191,147 +184,76 @@ users (요양보호사)
 
 ## 9. 프로젝트 폴더 구조
 
-### 모바일 앱 (React Native + Expo)
+기억온은 pnpm 모노레포로 구성한다. 웹·모바일은 UI를 공유하지 않고, 도메인 로직·데이터·디자인 토큰만 `packages/*`로 공유한다.
 
 ```
-gieok-on-app/
-├── app/                          # Expo Router 기반 화면
-│   ├── (auth)/
-│   │   └── login.tsx             # 로그인 화면
-│   ├── (tabs)/
-│   │   ├── profiles/
-│   │   │   ├── index.tsx         # 어르신 목록
-│   │   │   ├── new.tsx           # 연대기 입력
-│   │   │   └── [id]/
-│   │   │       ├── edit.tsx      # 연대기 수정
-│   │   │       └── logs.tsx      # 세션 이력
-│   │   └── sessions/
-│   │       └── [id].tsx          # 세션 로그 상세
-│   └── session/
-│       └── active.tsx            # 어르신 대화 화면
-├── components/
-│   ├── common/
-│   │   ├── Button.tsx
-│   │   ├── Input.tsx
-│   │   └── LoadingSpinner.tsx
-│   ├── profile/
-│   │   ├── ProfileCard.tsx       # 어르신 목록 카드
-│   │   └── ChronicleForm.tsx     # 연대기 입력 폼
-│   └── session/
-│       ├── ChatBubble.tsx        # 대화 말풍선
-│       ├── MicButton.tsx         # 마이크 버튼
-│       └── VoiceWave.tsx         # 음성 재생 시각화
-├── hooks/
-│   ├── useSession.ts             # 세션 상태 관리
-│   ├── useTTS.ts                 # TTS 재생 훅
-│   └── useSTT.ts                 # STT 녹음 훅
-├── services/
-│   ├── api.ts                    # Axios 인스턴스 + 기본 설정
-│   ├── sessionService.ts         # 세션 API 호출
-│   └── profileService.ts         # 프로필 API 호출
-├── store/
-│   └── useSessionStore.ts        # Zustand 세션 상태
-├── constants/
-│   └── typography.ts             # 글자 크기 상수 (최소 18pt)
-└── app.json
-```
-
-### 백엔드 (Node.js + Express)
-
-```
-gieok-on-server/
-├── src/
-│   ├── routes/
-│   │   ├── profile.routes.ts     # /profile CRUD
-│   │   └── session.routes.ts     # /session 시작·응답·종료
-│   ├── controllers/
-│   │   ├── profile.controller.ts
-│   │   └── session.controller.ts
-│   ├── services/
-│   │   ├── llm.service.ts        # GPT-4o 호출·프롬프트 관리
-│   │   ├── tts.service.ts        # Clova Voice 호출
-│   │   ├── stt.service.ts        # Whisper / Clova Speech 호출
-│   │   └── session.service.ts    # 세션 비즈니스 로직
-│   ├── models/
-│   │   ├── profile.model.ts      # PostgreSQL 쿼리
-│   │   └── session.model.ts
-│   ├── middlewares/
-│   │   ├── auth.middleware.ts    # Firebase 토큰 검증
-│   │   └── error.middleware.ts
-│   ├── config/
-│   │   ├── firebase.ts           # Firebase Admin SDK 초기화
-│   │   └── db.ts                 # PostgreSQL 연결
-│   └── app.ts                    # Express 앱 진입점
-├── .env                          # API 키 환경변수
-└── package.json
-```
-
-### 관리자 웹 (React + Vite)
-
-```
-gieok-on-web/
-├── src/
-│   ├── pages/
-│   │   ├── Login.tsx
-│   │   ├── Dashboard.tsx
-│   │   ├── Profiles.tsx
-│   │   └── Sessions.tsx
-│   ├── components/
-│   │   ├── ProfileTable.tsx
-│   │   └── SessionLogViewer.tsx
-│   ├── services/
-│   │   └── api.ts                # 앱과 동일한 API 엔드포인트 공유
-│   └── main.tsx
-└── vite.config.ts
+giokon/
+├── apps/
+│   ├── web/                       # 요양보호사 관리 웹 (React + Vite)
+│   │   └── src/
+│   │       ├── pages/             # Dashboard, Elders, ElderDetail, Logs, LogDetail ...
+│   │       ├── components/        # Layout, ChronicleView, *FormDialog, ui/ ...
+│   │       └── App.tsx            # 라우터 + 인증 가드
+│   └── mobile/                    # 어르신 대화 앱 (Expo / React Native)
+│       └── app/
+│           ├── index.tsx          # 어르신 홈/선택
+│           └── session/active.tsx # 어르신 대화 화면 (TTS·STT)
+├── packages/
+│   ├── core/                      # 도메인 타입 · Zustand 스토어 · AIProvider(+목업) · 도메인 규칙
+│   │   ├── types.ts
+│   │   ├── store/
+│   │   └── ai/                    # generateOpener/generateReply/extractChronicle ...
+│   ├── data/                      # supabase-js 클라이언트 · 엔티티 CRUD · Supabase Auth
+│   │   ├── client.ts
+│   │   └── repositories/          # profiles / chronicles / sessions / logs
+│   └── theme/                     # 디자인 토큰 (웹 Tailwind + 모바일 NativeWind 공용)
+├── supabase/
+│   ├── migrations/                # 스키마 · RLS(auth.uid()) · 인덱스 · 트리거
+│   └── functions/                 # Edge Functions (session-respond 등 AI 파이프라인)
+└── docs/
 ```
 
 ---
 
 ## 10. 주요 컴포넌트·모듈 구조
 
-### AI 파이프라인 모듈 (백엔드)
+### AI 파이프라인 모듈 (Edge Function)
 
 ```
-session.routes.ts
-  └── POST /session/respond
+session-respond  (supabase/functions)
+  ├── [STT]   어르신 발화 오디오 → 텍스트 (Whisper / Clova Speech)
+  ├── [LLM]   텍스트 + 연대기 → 다음 질문 JSON (GPT-4o)
+  └── [TTS]   다음 질문 텍스트 → 오디오 URL (Clova Voice → Supabase Storage)
         ↓
-  session.controller.ts
-        ↓
-  session.service.ts
-    ├── stt.service.ts         어르신 발화 오디오 → 텍스트
-    ├── llm.service.ts         텍스트 + 연대기 → 다음 질문 JSON
-    └── tts.service.ts         다음 질문 텍스트 → 오디오 URL
-        ↓
-  클라이언트로 { question, audioUrl, switchTopic } 반환
+  session_logs 기록 + 클라이언트로 { question, audioUrl, switchTopic } 반환
 ```
 
-### 어르신 대화 화면 (앱)
+### 어르신 대화 화면 (apps/mobile)
 
 ```
-active.tsx
-  ├── useSessionStore         세션 ID, 대화 이력 상태
-  ├── useTTS                  오디오 URL 받아 자동 재생
-  ├── useSTT                  마이크 활성화·녹음·업로드
-  ├── VoiceWave               재생 중 시각 피드백
+session/active.tsx
+  ├── core 스토어             세션 ID, 대화 이력 상태 (packages/core)
+  ├── SpeechProvider(모바일)  audio_url 자동 재생 + 마이크 녹음(Expo AV)
   ├── ChatBubble              발화 텍스트 표시
-  └── MicButton               마이크 활성화 버튼 (대형)
+  └── MicButton               마이크 활성화 버튼 (대형, 60px+)
 ```
 
 ---
 
-## 11. 프론트와 백 간 연결 포인트
+## 11. 클라이언트–데이터 연결 포인트
 
-| 기능 | 메서드 | 엔드포인트 | 요청 | 응답 |
-|---|---|---|---|---|
-| 연대기 저장 | POST | `/api/profile` | 연대기 필드 전체 | `{ id, created_at }` |
-| 연대기 조회 | GET | `/api/profile/:id` | — | 연대기 전체 필드 |
-| 세션 시작 | POST | `/api/session/start` | `profile_id` | `{ session_id, question, audioUrl }` |
-| 어르신 응답 처리 | POST | `/api/session/respond` | `session_id`, 오디오 파일 | `{ question, audioUrl, switchTopic }` |
-| 세션 종료 | POST | `/api/session/end` | `session_id` | `{ turn_count, duration }` |
-| 세션 로그 조회 | GET | `/api/session/:id/logs` | — | 대화 전문 배열 |
-| 세션 이력 목록 | GET | `/api/profile/:id/sessions` | — | 세션 메타 목록 |
+CRUD는 supabase-js로 직접, 세션 AI 단계는 Edge Function으로 처리한다.
 
-**인증 헤더:** 모든 요청에 `Authorization: Bearer {firebaseIdToken}` 포함
+| 기능 | 방식 | 대상 | 응답 |
+|---|---|---|---|
+| 연대기 저장/조회 | supabase-js | `profiles` 테이블 (RLS) | 행 데이터 |
+| 연대기 항목 | supabase-js | `chronicle_entries` 테이블 (RLS) | 행 데이터 |
+| 세션 시작 | Edge Function | `session-start` | `{ session_id, question, audioUrl }` |
+| 어르신 응답 처리 | Edge Function | `session-respond` | `{ question, audioUrl, switchTopic }` |
+| 세션 종료 | Edge Function | `session-end` | `{ turn_count, duration }` |
+| 세션 이력/로그 조회 | supabase-js | `sessions` / `session_logs` (RLS) | 행 배열 |
+
+**인증:** supabase-js가 Supabase JWT를 자동 첨부한다. Edge Function은 호출자의 JWT를 검증한다.
 
 ---
 
@@ -339,10 +261,10 @@ active.tsx
 
 | 항목 | 현재 구조 | 확장 시 |
 |---|---|---|
-| 보호자 연동 | 미구현 | `guardians` 테이블 추가, 세션 종료 시 FCM 푸시 알림 발송 |
-| 세션 자동 요약 | 미구현 | `session.service.ts`에 GPT-4o 요약 호출 추가 → `sessions.summary` 컬럼 저장 |
-| 인지자극 모듈 | 미구현 | `session_type` ENUM 컬럼 추가 (`reminiscence` / `cognitive`), 프롬프트 분기 |
+| 보호자 연동 | 미구현 (v2) | `guardians` 테이블 추가, 세션 종료 시 푸시 알림 발송 |
+| 세션 자동 요약 | 미구현 | `session-respond/end` Edge Function에 GPT-4o 요약 추가 → `sessions.summary` 컬럼 저장 |
+| 인지자극 모듈 | 미구현 (v2) | `session_type` ENUM 컬럼 추가 (`reminiscence` / `cognitive`), 프롬프트 분기 |
 | 연대기 자동 축적 | 요양보호사 직접 입력 | 세션 로그 분석 → `profiles` 자동 업데이트 배치 |
 | 기관 어드민 | 미구현 | `organizations` 테이블 추가, `users.org_id` FK 연결 |
-| 다중 STT | Whisper 단일 | `stt.service.ts` 내 Whisper / Clova Speech 전략 패턴으로 교체 |
-| 모니터링 | 없음 | Sentry(에러) + API 응답 시간 로깅 미들웨어 추가 |
+| 다중 STT | Whisper 단일 | Edge Function 내 Whisper / Clova Speech 교체 가능 구조 |
+| 모니터링 | 없음 | Sentry(에러) + Edge Function 로깅 추가 |

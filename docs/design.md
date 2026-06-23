@@ -6,15 +6,15 @@
 |---|---|
 | 서비스명 | 기억온 (GiEok-On) |
 | 설계 기준 | MVP Must 4개 + Should 6개 |
-| 클라이언트 | React Native 모바일 앱 + React 관리자 웹 |
-| 서버 | Node.js + Express REST API |
-| DB | PostgreSQL (장기) + Firebase Realtime DB (세션 실시간) |
-| AI 파이프라인 | Whisper(STT) → GPT-4o(LLM) → Clova Voice(TTS) |
+| 클라이언트 | React 관리자 웹(요양보호사) + React Native 모바일 앱(어르신) — 모노레포 |
+| 서버 | Supabase (supabase-js 직접연동 + AI는 Edge Functions) |
+| DB | Supabase PostgreSQL (RLS: `auth.uid()`) |
+| AI 파이프라인 | Whisper(STT) → GPT-4o(LLM) → Clova Voice(TTS) — Edge Function |
 
 **설계 원칙**
 - 어르신 화면은 조작 최소화. 버튼 1개, 텍스트 18pt 이상
 - AI 파이프라인은 스트리밍 우선. 체감 대기 3초 이하 목표
-- 모든 상태는 서버가 관리. 클라이언트는 표시만 담당
+- 프로필·세션·로그의 source of truth는 Supabase. 클라이언트는 표시·입력 담당
 - 오디오 원본은 STT 완료 즉시 삭제. 텍스트만 저장
 
 ---
@@ -55,8 +55,8 @@
 
 **동작:**
 1. 이메일·비밀번호 입력 → 로그인 버튼 탭
-2. Firebase Authentication 검증
-3. 성공 → Firebase ID 토큰 로컬 저장 → SCR-02 이동
+2. Supabase Auth 검증
+3. 성공 → 세션(JWT) 저장 → SCR-02 이동
 4. 실패 → "이메일 또는 비밀번호가 올바르지 않습니다" 표시
 
 ---
@@ -73,7 +73,7 @@
 
 **동작:**
 - 카드 탭 → SCR-05 (세션 이력)
-- `세션 시작` 탭 → `POST /api/session/start` 호출 → SCR-07 이동
+- `세션 시작` 탭 → `session-start` Edge Function 호출 → SCR-07 이동
 - `+ 새 어르신` 탭 → SCR-03 이동
 
 ---
@@ -98,7 +98,7 @@
 
 **동작:**
 1. 필수 항목 검증 → 미입력 시 해당 필드 빨간 테두리 + 안내 메시지
-2. 저장 버튼 탭 → `POST /api/profile` 호출
+2. 저장 버튼 탭 → `profiles` insert (supabase-js)
 3. 성공 → SCR-02 복귀 + 목록 갱신
 
 ---
@@ -110,8 +110,8 @@
 **주요 요소:** SCR-03과 동일 구조. 저장된 데이터 자동 채워짐.
 
 **동작:**
-1. 화면 진입 시 `GET /api/profile/:id` 호출 → 기존 데이터 폼에 자동 입력
-2. 수정 후 저장 → `PATCH /api/profile/:id` 호출
+1. 화면 진입 시 `profiles` 조회 (supabase-js) → 기존 데이터 폼에 자동 입력
+2. 수정 후 저장 → `profiles` update (supabase-js)
 3. 성공 → SCR-02 복귀
 
 ---
@@ -126,7 +126,7 @@
 - 날짜 내림차순 정렬
 
 **동작:**
-- 화면 진입 시 `GET /api/profile/:id/sessions` 호출
+- 화면 진입 시 `sessions` 조회 (supabase-js)
 - 세션 카드 탭 → SCR-06 이동
 
 ---
@@ -141,7 +141,7 @@
 - 스크롤 가능
 
 **동작:**
-- 화면 진입 시 `GET /api/session/:id/logs` 호출
+- 화면 진입 시 `session_logs` 조회 (supabase-js)
 - AI 발화: 좌측 말풍선 (회색)
 - 어르신 발화: 우측 말풍선 (파란색)
 
@@ -251,21 +251,21 @@ AI 음성 자동 재생
 
 ```
 클라이언트
-  POST /api/session/respond { session_id, audio: File }
+  session-respond Edge Function 호출 { session_id, audio: File }
         ↓
-  [stt.service.ts]
-  audio → Firebase Storage 임시 업로드
+  [STT]
+  audio → Supabase Storage 임시 업로드
          → Whisper API 호출 → transcript 텍스트 반환
-         → Firebase Storage 오디오 즉시 삭제
+         → Supabase Storage 오디오 즉시 삭제
         ↓
-  [llm.service.ts]
+  [LLM]
   system_prompt = buildPrompt(profile, history)
   messages = [...history, { role: "user", content: transcript }]
   GPT-4o streaming 호출
   → JSON 파싱: { question, topic, switch_topic }
         ↓
-  [tts.service.ts]
-  question → Clova Voice API → 오디오 스트림
+  [TTS]
+  question → Clova Voice API → 오디오 스트림 → Supabase Storage
         ↓
 클라이언트
   응답: { question, audioUrl, topic, switch_topic, transcript }
@@ -275,7 +275,7 @@ AI 음성 자동 재생
 
 ```
 [system]
-당신은 회상치료 전문 AI입니다.
+당신은 회상 대화 전문 AI입니다.
 아래 어르신의 연대기를 바탕으로 자연스러운 회상 대화를 이끌어 주세요.
 
 [어르신 정보]
@@ -308,8 +308,8 @@ AI 음성 자동 재생
 세션 상태: idle → active → ended
 
 idle:   세션 시작 전
-active: 세션 진행 중 (Firebase Realtime DB에 실시간 기록)
-ended:  세션 종료 후 (PostgreSQL로 이전, Firebase 데이터 삭제)
+active: 세션 진행 중 (Supabase sessions/session_logs에 기록)
+ended:  세션 종료 후 (status='ended'로 마감)
 ```
 
 ### 5-4. TTS 스트리밍 처리
@@ -330,12 +330,14 @@ GPT-4o 스트리밍 응답 수신
 
 ## 6. API 초안
 
+아래 계약은 **논리적 요청/응답 형태**를 정의한다. 실제 전송은 두 가지로 나뉜다. 프로필·세션 이력·로그 같은 **CRUD는 클라이언트가 supabase-js로 직접** 수행하고(RLS로 소유자 격리), **세션 AI 단계(start/respond/correct/end)는 Edge Functions**가 처리한다.
+
 ### 인증
 
 | 항목 | 내용 |
 |---|---|
-| 방식 | Bearer Token (Firebase ID Token) |
-| 헤더 | `Authorization: Bearer {idToken}` |
+| 방식 | Supabase Auth (JWT) — supabase-js가 자동 첨부 |
+| 헤더 | `Authorization: Bearer {supabase access token}` |
 | 미인증 응답 | `401 Unauthorized` |
 
 ---
@@ -543,10 +545,9 @@ audio: File (wav/mp3, 최대 60초)
 ### PostgreSQL
 
 ```sql
--- 요양보호사 계정 (Firebase UID와 1:1 연결)
+-- 요양보호사 계정 (auth.users와 1:1 연결)
 CREATE TABLE users (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  firebase_uid VARCHAR(128) UNIQUE NOT NULL,
+  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name        VARCHAR(50) NOT NULL,
   email       VARCHAR(255) UNIQUE NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW()
@@ -557,7 +558,7 @@ CREATE TABLE profiles (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name        VARCHAR(50) NOT NULL,
-  birth_year  SMALLINT NOT NULL CHECK (birth_year BETWEEN 1900 AND 2000),
+  birth_year  SMALLINT NOT NULL CHECK (birth_year BETWEEN 1900 AND 2006),
   hometown    VARCHAR(100),
   job         VARCHAR(200),
   family      TEXT,
@@ -598,27 +599,9 @@ CREATE INDEX idx_sessions_status ON sessions(status);
 CREATE INDEX idx_session_logs_session_id ON session_logs(session_id);
 ```
 
-### Firebase Realtime Database (세션 진행 중 임시)
+### 세션 진행 중 상태
 
-```json
-{
-  "active_sessions": {
-    "{session_id}": {
-      "profile_id": "uuid",
-      "user_id": "uuid",
-      "current_topic": "고향",
-      "turn": 2,
-      "last_updated": 1713600000000,
-      "conversation": [
-        { "role": "ai",   "content": "..." },
-        { "role": "user", "content": "..." }
-      ]
-    }
-  }
-}
-```
-
-> 세션 종료 시 `active_sessions/{session_id}` 삭제, PostgreSQL로 이전
+v1에서는 별도 실시간 DB 없이 진행 중 세션도 Supabase의 `sessions`(`status='active'`, `current_topic`, `turn_count`)와 `session_logs`에 직접 기록한다. 세션 종료 시 `sessions.status='ended'`로 마감한다. 실시간 모니터링이 필요해지면 Supabase Realtime을 검토한다.
 
 ---
 
@@ -737,14 +720,14 @@ LLM / TTS / STT 오류 발생
 
 | 항목 | 적용 방식 |
 |---|---|
-| API 인증 | Firebase ID Token 검증 (모든 엔드포인트) |
-| 데이터 접근 제어 | `user_id` 기준 Row-Level 필터링. 타인 데이터 접근 시 403 |
-| API 키 관리 | 서버 `.env`에서만 관리. 클라이언트 미노출 |
-| 오디오 처리 | Firebase Storage 임시 업로드 → STT 완료 즉시 삭제 |
+| API 인증 | Supabase Auth (JWT) 검증. CRUD는 RLS, AI는 Edge Function에서 JWT 검증 |
+| 데이터 접근 제어 | RLS `user_id = auth.uid()` 정책. 타인 데이터는 조회 0건/거부 |
+| API 키 관리 | Edge Function secrets에서만 관리. 클라이언트 미노출 |
+| 오디오 처리 | Supabase Storage 임시 업로드 → STT 완료 즉시 삭제 |
 | HTTPS | 모든 통신 TLS 1.2 이상 강제 |
 | 입력값 검증 | 서버 사이드에서 타입·길이·형식 검증 (클라이언트 검증은 UX 보조 용도) |
 | 로그 보안 | 세션 로그에 오디오 원본 미저장. 텍스트만 보관 |
-| Firebase Rules | 인증된 사용자만 자신의 데이터 접근 가능하도록 Rules 설정 |
+| RLS | 모든 테이블에 `user_id = auth.uid()` 정책으로 소유자만 접근 |
 
 ---
 
@@ -759,9 +742,9 @@ LLM / TTS / STT 오류 발생
 | T-03 | 침묵 10초 후 주제 전환 | 10초 침묵 유지 → 응답 확인 |
 | T-04 | STT 변환 후 텍스트 3초 이내 표시 | 스톱워치 수동 측정 |
 | T-05 | TTS 첫 청크 재생 2초 이내 시작 | 스톱워치 수동 측정 |
-| T-06 | 세션 종료 후 로그 PostgreSQL 저장 | DB 직접 조회 |
+| T-06 | 세션 종료 후 로그 Supabase 저장 | DB 직접 조회 |
 | T-07 | STT 오인식 수정 후 LLM 재요청 | 수정 텍스트 기반 다음 질문 확인 |
-| T-08 | 타인 프로필 접근 시 403 반환 | Postman으로 다른 계정 토큰 사용 |
+| T-08 | 타인 프로필 접근 차단 | 다른 계정 토큰으로 조회 시 RLS로 0건/거부 |
 
 ### 파일럿 전 필수 확인
 
@@ -770,5 +753,5 @@ LLM / TTS / STT 오류 발생
 | P-01 | 노인 발화 STT 인식률 | 일상 발화 5문장 테스트, 3문장 이상 정확 인식 |
 | P-02 | 전체 파이프라인 응답 시간 | STT+LLM+TTS 합산 5초 이내 |
 | P-03 | 연속 5턴 오류 없이 진행 | 내부 시나리오 테스트 3회 이상 |
-| P-04 | Render 서버 웜업 확인 | 파일럿 30분 전 수동 요청으로 활성화 |
+| P-04 | Edge Function 웜업 확인 | 파일럿 30분 전 호출로 활성화 |
 | P-05 | TestFlight 배포 설치 확인 | 파일럿 참가자 기기에 사전 설치 완료 |

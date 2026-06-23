@@ -1,6 +1,6 @@
 # 기억온 (GiEok-On) — 시연용 프로토타입
 
-요양보호사가 어르신의 연대기를 입력하고, AI가 어르신과 1:1 음성 회상치료 대화를 진행하며, 대화에서 새 연대기를 자동으로 축적하는 인지치료 보조 플랫폼의 **시연용 프로토타입**입니다.
+요양보호사가 어르신의 연대기를 입력하고, AI가 어르신과 1:1 음성 회상 대화를 진행하며, 대화에서 새 연대기를 자동으로 축적하는 인지활동 보조 플랫폼의 **시연용 프로토타입**입니다.
 
 ## 실행
 
@@ -18,7 +18,7 @@ npm run dev
 | Must 기능 | 본 서비스 구현 | 프로토타입 구현 |
 |---|---|---|
 | 1. AI 대화 기반 연대기 자동 축적 | GPT-4o가 의미 추출 | 키워드 규칙 기반 추출 (`src/lib/ai.ts`) |
-| 2. AI 회상치료 대화 자동 진행 | GPT-4o JSON 응답 | 연대기·이력 기반 템플릿 응답 |
+| 2. AI 회상 대화 자동 진행 | GPT-4o JSON 응답 | 연대기·이력 기반 템플릿 응답 |
 | 3. 요양보호사 세션 설계 화면 | React + REST API | 단일 페이지 React + localStorage |
 | 4. 대화 세션 기록 자동 저장 | PostgreSQL | localStorage (Zustand persist) |
 
@@ -26,8 +26,8 @@ npm run dev
 |---|---|
 | Clova Voice TTS | 브라우저 `speechSynthesis` (한국어) |
 | Whisper / Clova Speech STT | 브라우저 `SpeechRecognition` (한국어) |
-| Firebase Auth | 단일 사용자 시연 — 인증 생략 |
-| Node.js + Express + PostgreSQL | 없음 (모두 클라이언트 측에서 동작) |
+| Supabase Auth | 단일 사용자 시연 — 인증 생략 |
+| Supabase (직접연동 + Edge Functions) | 없음 (모두 클라이언트 측에서 동작) |
 
 > 핵심 비즈니스 로직(연대기 → 질문 생성, 대화 → 연대기 추출)은 `src/lib/ai.ts` 한 파일에 격리되어 있어, 본 서비스 구축 시 이 파일만 GPT-4o API 호출로 교체하면 됩니다.
 
@@ -85,10 +85,10 @@ src/
 
 | 프로토타입 | 이전 작업 |
 |---|---|
-| `lib/ai.ts` 의 `generateOpener` / `generateReply` / `extractChronicle` | OpenAI `chat.completions` 호출로 교체. `havetodo` 의 시스템 프롬프트 + JSON 응답 포맷 그대로 사용 |
-| `lib/speech.ts` | Clova Voice / Whisper API 호출로 교체. 시그니처는 그대로 유지 가능 |
-| `store/store.ts` (Zustand) | 같은 인터페이스로 Express + PostgreSQL API 호출 어댑터로 교체 |
-| 모든 화면 컴포넌트 | 그대로 유지 (단일 코드베이스로 본 서비스 전환 가능) |
+| `lib/ai.ts` 의 `generateOpener` / `generateReply` / `extractChronicle` | `packages/core`의 `AIProvider`로 이전 → 실연동은 Edge Function의 GPT-4o 호출. 시스템 프롬프트 + JSON 응답 포맷 그대로 사용 |
+| `lib/speech.ts` | `SpeechProvider`로 추상화 → 웹은 Web Speech, 모바일은 Expo AV. 실 STT/TTS는 Edge Function(Whisper/Clova) |
+| `store/store.ts` (Zustand) | `packages/core`로 이전, 영속화를 `packages/data`(supabase-js) 어댑터로 교체 |
+| 모든 화면 컴포넌트 | 로직(core)은 공유, UI는 Figma 토큰 기반 재구성 (웹=`apps/web`, 어르신=`apps/mobile`) |
 
 ## 알려진 제약
 
