@@ -20,7 +20,7 @@
              │  Edge Functions (AI 파이프라인, 키 보호)
              ▼
 ┌───────────────┬───────────────┬──────────────────────┐
-│  Whisper(STT) │  GPT-4o(LLM)  │   Clova Voice(TTS)    │
+│ gpt-4o-transcribe(STT) │ LLM(현행 프런티어) │ Clova Voice(TTS) │
 └───────────────┴───────────────┴──────────────────────┘
 ```
 
@@ -111,7 +111,7 @@
 2. AI 첫 질문 TTS 자동 재생 (버튼 조작 불필요)
 3. 재생 완료 → 마이크 자동 활성화
 4. 어르신 발화 → STT 변환 → 화면에 텍스트 표시
-5. 텍스트 → GPT-4o → 다음 질문 생성
+5. 텍스트 → LLM → 다음 질문 생성
 6. 다음 질문 TTS 재생 → 반복
 7. 침묵 10초 이상 감지 → 힌트 제공 또는 주제 전환
 8. 세션 종료 → `세션을 마쳤어요` 안내 음성 재생
@@ -159,9 +159,14 @@
 |---|---|---|
 | `id` | UUID | PK |
 | `session_id` | UUID | FK → sessions |
+| `profile_id` | UUID | FK → profiles (RLS 격리용) |
+| `user_id` | UUID | FK → users (RLS 격리용) |
 | `role` | ENUM | `ai` / `user` |
 | `content` | TEXT | 발화 텍스트 |
-| `timestamp` | TIMESTAMP | 발화 시각 |
+| `topic` | STRING | 주제 (ai 발화에만 기록) |
+| `audio_url` | TEXT | TTS 결과 오디오 URL (ai 발화) |
+| `audio_expires_at` | TIMESTAMP | 오디오 만료 시각 (24h) |
+| `spoken_at` | TIMESTAMP | 발화 시각 |
 | `duration_ms` | INTEGER | 발화 소요 시간 (STT 측정) |
 
 ---
@@ -221,8 +226,8 @@ giokon/
 
 ```
 session-respond  (supabase/functions)
-  ├── [STT]   어르신 발화 오디오 → 텍스트 (Whisper / Clova Speech)
-  ├── [LLM]   텍스트 + 연대기 → 다음 질문 JSON (GPT-4o)
+  ├── [STT]   어르신 발화 오디오 → 텍스트 (gpt-4o-transcribe / Clova Speech)
+  ├── [LLM]   텍스트 + 연대기 → 다음 질문 JSON (현행 프런티어 · Structured Outputs)
   └── [TTS]   다음 질문 텍스트 → 오디오 URL (Clova Voice → Supabase Storage)
         ↓
   session_logs 기록 + 클라이언트로 { question, audioUrl, switchTopic } 반환
@@ -262,9 +267,9 @@ CRUD는 supabase-js로 직접, 세션 AI 단계는 Edge Function으로 처리한
 | 항목 | 현재 구조 | 확장 시 |
 |---|---|---|
 | 보호자 연동 | 미구현 (v2) | `guardians` 테이블 추가, 세션 종료 시 푸시 알림 발송 |
-| 세션 자동 요약 | 미구현 | `session-respond/end` Edge Function에 GPT-4o 요약 추가 → `sessions.summary` 컬럼 저장 |
+| 세션 자동 요약 | 미구현 | `session-respond/end` Edge Function에 LLM 요약 추가 → `sessions.summary` 컬럼 저장 |
 | 인지자극 모듈 | 미구현 (v2) | `session_type` ENUM 컬럼 추가 (`reminiscence` / `cognitive`), 프롬프트 분기 |
 | 연대기 자동 축적 | 요양보호사 직접 입력 | 세션 로그 분석 → `profiles` 자동 업데이트 배치 |
 | 기관 어드민 | 미구현 | `organizations` 테이블 추가, `users.org_id` FK 연결 |
-| 다중 STT | Whisper 단일 | Edge Function 내 Whisper / Clova Speech 교체 가능 구조 |
+| 다중 STT | gpt-4o-transcribe 단일 | Edge Function 내 gpt-4o-transcribe / Clova Speech 교체 가능 구조 |
 | 모니터링 | 없음 | Sentry(에러) + Edge Function 로깅 추가 |

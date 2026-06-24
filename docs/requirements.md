@@ -153,7 +153,7 @@ MVP 단계에서 별도 관리자 기능은 구현하지 않는다. 아래 항�
 |---|---|---|
 | NF-S01 | 모든 데이터 접근은 Supabase Auth(JWT)와 RLS로 인증·인가되어야 한다 | Must |
 | NF-S02 | 요양보호사는 본인이 등록한 어르신 프로필과 세션만 조회·수정할 수 있어야 한다 | Must |
-| NF-S03 | API 키(GPT-4o, Clova Voice, Clova Speech)는 Edge Function secrets로 관리하고 클라이언트에 노출되지 않아야 한다 | Must |
+| NF-S03 | provider API 키(LLM·Clova Voice·Clova Speech 등)는 Edge Function secrets로 관리하고 클라이언트에 노출되지 않아야 한다 | Must |
 | NF-S04 | 어르신 발화 오디오는 STT 변환 완료 후 즉시 삭제되어야 한다 | Must |
 | NF-S05 | HTTPS 통신만 허용한다 | Must |
 | NF-S06 | 어르신 생애·음성 등 개인정보는 수집 동의(어르신 또는 보호자) 기록을 전제로 처리해야 한다 | Must |
@@ -182,7 +182,7 @@ MVP 단계에서 별도 관리자 기능은 구현하지 않는다. 아래 항�
 | ID | 요구사항 | 우선순위 |
 |---|---|---|
 | NF-M01 | LLM 프롬프트는 코드와 분리된 별도 파일로 관리되어야 한다 | Must |
-| NF-M02 | STT 모듈은 Whisper와 Clova Speech 간 교체가 가능한 구조여야 한다 | Should |
+| NF-M02 | STT 모듈은 gpt-4o-transcribe와 Clova Speech 간 교체가 가능한 구조여야 한다 | Should |
 | NF-M03 | 환경변수는 `.env` 파일로 관리하고 GitHub에 커밋하지 않아야 한다 | Must |
 | NF-M04 | 데이터 액세스·Edge Function 인터페이스는 호출 예시로 문서화되어야 한다 | Should |
 

@@ -52,7 +52,7 @@
    ├─ supabase-js (CRUD) ───────────→ Supabase Postgres (RLS: auth.uid())
    └─ Edge Function 호출 (AI) ──────→ Supabase Edge Functions
                                           ↓
-                                  GPT-4o / Clova Voice / Whisper
+                                  LLM(현행 프런티어) / Clova Voice / gpt-4o-transcribe
                                           ↓
                                   Supabase Postgres / Storage
 ```
@@ -111,7 +111,7 @@ session_logs (id, session_id, profile_id, user_id, role, content, topic, audio_u
 
 **Supabase Storage — 오디오 임시 저장**
 
-STT 처리 전 어르신 발화 오디오를 임시 저장한다. Whisper API에 전송하고 텍스트 변환 완료 후 오디오는 삭제한다. TTS 결과 오디오는 `session_logs.audio_url`로 제공하고 `audio_expires_at`(24시간)으로 추적해 만료 파일을 정리한다.
+STT 처리 전 어르신 발화 오디오를 임시 저장한다. STT(gpt-4o-transcribe) API에 전송하고 텍스트 변환 완료 후 오디오는 삭제한다. TTS 결과 오디오는 `session_logs.audio_url`로 제공하고 `audio_expires_at`(24시간)으로 추적해 만료 파일을 정리한다.
 
 세션 로그(텍스트)는 PostgreSQL에 저장한다. 오디오 원본을 장기 보관하지 않아 개인정보 처리 부담을 최소화한다.
 
@@ -139,10 +139,10 @@ Clova Voice (TTS: 텍스트 → 음성)
 
 | API | 용도 | 과금 기준 | 비고 |
 |---|---|---|---|
-| OpenAI GPT-4o | 회상 대화 생성, 주제 전환 판단 | 토큰당 | 프롬프트 최적화로 비용 통제 |
+| LLM (현행 프런티어, 벤치마크 후 선정) | 회상 대화 생성, 주제 전환 판단 | 토큰당 | 프롬프트 최적화로 비용 통제 |
 | OpenAI gpt-4o-transcribe | 어르신 발화 STT | 오디오 분당 | Whisper-v3 대비 WER↓ |
 | Clova Voice (NAVER) | TTS 음성 출력 | 글자 수당 | 한국어 노인 발화 자연스러움 우선 |
-| Clova Speech (NAVER) | 사투리·노인 발화 STT 보완 | 초당 | Whisper 오인식 보정용 |
+| Clova Speech (NAVER) | 사투리·노인 발화 STT 보완 | 초당 | STT 오인식 보정용 |
 
 provider 키는 **Edge Function secrets**에만 두고 클라이언트에 노출하지 않는다.
 
@@ -220,9 +220,9 @@ Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. sup
 
 | 제약 | 내용 | 대응 |
 |---|---|---|
-| STT 정확도 | 노인 발화(사투리, 어눌함, 짧은 응답)에서 Whisper 오인식 빈발 | Clova Speech 병행. 요양보호사 수동 수정 UI 제공 |
-| LLM 응답 지연 | GPT-4o 평균 응답 1~3초 + TTS 변환 시간 = 체감 대기 3~5초 | 스트리밍 응답 + TTS 청크 분할 재생으로 체감 지연 최소화 |
-| API 비용 | GPT-4o + Clova Voice + STT 세션당 과금 | 프롬프트 토큰 최적화. 파일럿 세션 수 제한(일 5~10회) |
+| STT 정확도 | 노인 발화(사투리, 어눌함, 짧은 응답)에서 STT 오인식 빈발 | Clova Speech 병행. 요양보호사 수동 수정 UI 제공 |
+| LLM 응답 지연 | LLM 평균 응답 1~3초 + TTS 변환 시간 = 체감 대기 3~5초 | 스트리밍 응답 + TTS 청크 분할 재생으로 체감 지연 최소화 |
+| API 비용 | LLM + Clova Voice + STT 세션당 과금 | 프롬프트 토큰 최적화. 파일럿 세션 수 제한(일 5~10회) |
 | Edge Function 콜드스타트 | 첫 호출 시 초기화 지연 가능 | 파일럿 전 웜업 호출. 함수 경량화 |
 | Expo 빌드 제한 | Expo Go에서 일부 네이티브 모듈 미지원 | 오디오 녹음은 Expo AV 사용. 필요 시 EAS Build 전환 |
 | Supabase 무료 티어 | 프로젝트 일시정지·용량 제한 | 파일럿 규모(5~10명) 내에서 충분. 초과 시 Pro 전환 |
@@ -235,7 +235,7 @@ Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. sup
 |---|---|---|
 | LLM | 프런티어 단일 | 다모델 라우팅 / HyperCLOVA X 병행 (사투리·한국어 특화 보완) |
 | 음성 루프 | STT→LLM→TTS 파이프라인 | OpenAI Realtime(speech-to-speech) 전환 |
-| STT | Whisper + Clova Speech | 노인 발화 특화 파인튜닝 모델 도입 |
+| STT | gpt-4o-transcribe + Clova Speech | 노인 발화 특화 파인튜닝 모델 도입 |
 | 실시간 동기화 | v1 미사용 | Supabase Realtime (요양보호사 모니터링 화면) |
 | 보호자 연동 | 미구현 (v2) | 푸시 알림으로 세션 리포트 전달 |
 | 연대기 축적 | 요양보호사 직접 입력 | 세션 로그 기반 AI 자동 연대기 보완 |

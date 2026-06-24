@@ -34,7 +34,7 @@ AI 파이프라인(STT/LLM/TTS)처럼 provider 키 보호가 필요한 작업만
 
 1. 클라이언트가 어르신 발화 오디오와 함께 `session-respond` Edge Function 호출(JWT 포함).
 2. 함수가 JWT 검증 → 세션 소유자 확인.
-3. STT(Whisper) → LLM(GPT-4o) → TTS(Clova) 순차 처리.
+3. STT(gpt-4o-transcribe) → LLM(현행 프런티어, Structured Outputs) → TTS(Clova) 순차 처리.
 4. `session_logs`에 AI 턴 기록, `audio_url` 반환.
 
 ## Apply to Supabase

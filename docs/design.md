@@ -9,7 +9,7 @@
 | 클라이언트 | React 관리자 웹(요양보호사) + React Native 모바일 앱(어르신) — 모노레포 |
 | 서버 | Supabase (supabase-js 직접연동 + AI는 Edge Functions) |
 | DB | Supabase PostgreSQL (RLS: `auth.uid()`) |
-| AI 파이프라인 | Whisper(STT) → GPT-4o(LLM) → Clova Voice(TTS) — Edge Function |
+| AI 파이프라인 | gpt-4o-transcribe(STT) → LLM(현행 프런티어, Structured Outputs) → Clova Voice(TTS) — Edge Function |
 
 **설계 원칙**
 - 어르신 화면은 조작 최소화. 버튼 1개, 텍스트 18pt 이상
@@ -257,14 +257,14 @@ AI 음성 자동 재생
         ↓
   [STT]
   audio → Supabase Storage 임시 업로드
-         → Whisper API 호출 → transcript 텍스트 반환
+         → STT(gpt-4o-transcribe) 호출 → transcript 텍스트 반환
          → Supabase Storage 오디오 즉시 삭제
         ↓
   [LLM]
   system_prompt = buildPrompt(profile, history)
   messages = [...history, { role: "user", content: transcript }]
-  GPT-4o streaming 호출
-  → JSON 파싱: { question, topic, switch_topic }
+  LLM streaming 호출 (현행 프런티어 · Structured Outputs)
+  → JSON: { question, topic, switch_topic }
         ↓
   [TTS]
   question → Clova Voice API → 오디오 스트림 → Supabase Storage
@@ -317,7 +317,7 @@ ended:  세션 종료 후 (status='ended'로 마감)
 ### 5-4. TTS 스트리밍 처리
 
 ```
-GPT-4o 스트리밍 응답 수신
+LLM 스트리밍 응답 수신
     ↓
 문장 단위 감지 (마침표, 물음표, 느낌표)
     ↓
@@ -585,13 +585,17 @@ CREATE TABLE sessions (
 
 -- 세션 대화 전문
 CREATE TABLE session_logs (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id  UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  role        VARCHAR(5) NOT NULL CHECK (role IN ('ai', 'user')),
-  content     TEXT NOT NULL,
-  topic       VARCHAR(20),        -- ai 발화에만 기록
-  timestamp   TIMESTAMPTZ DEFAULT NOW(),
-  duration_ms INTEGER             -- user 발화 길이 (ms)
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id       UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  profile_id       UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role             VARCHAR(5) NOT NULL CHECK (role IN ('ai', 'user')),
+  content          TEXT NOT NULL,
+  topic            VARCHAR(20),        -- ai 발화에만 기록
+  audio_url        TEXT,               -- TTS 결과 오디오 (ai 발화)
+  audio_expires_at TIMESTAMPTZ,        -- 오디오 만료 (24h 후 정리)
+  spoken_at        TIMESTAMPTZ DEFAULT NOW(),
+  duration_ms      INTEGER             -- user 발화 길이 (ms)
 );
 
 -- 인덱스
@@ -664,7 +668,7 @@ v1에서는 별도 실시간 DB 없이 진행 중 세션도 Supabase의 `session
 | 422 | `LLM_PARSE_FAILED` | LLM 응답 형식 오류(Structured Outputs로 사실상 제거) | 재시도 1회 후 안내 |
 | 429 | `RATE_LIMIT_EXCEEDED` | API 호출 한도 초과 | "잠시 후 다시 시도해 주세요" |
 | 500 | `INTERNAL_SERVER_ERROR` | 서버 오류 | "일시적 오류입니다. 잠시 후 다시 시도해 주세요" |
-| 503 | `AI_SERVICE_UNAVAILABLE` | GPT-4o / Clova 불가 | 재시도 1회 → 실패 시 세션 일시 중단 안내 |
+| 503 | `AI_SERVICE_UNAVAILABLE` | LLM / Clova 불가 | 재시도 1회 → 실패 시 세션 일시 중단 안내 |
 
 ### 재시도 정책
 
@@ -739,7 +743,7 @@ LLM / TTS / STT 오류 발생
 
 | ID | 테스트 항목 | 확인 방법 |
 |---|---|---|
-| T-01 | 연대기 저장 후 LLM 첫 질문에 연대기 정보 포함 여부 | GPT-4o 응답 텍스트 수동 확인 |
+| T-01 | 연대기 저장 후 LLM 첫 질문에 연대기 정보 포함 여부 | LLM 응답 텍스트 수동 확인 |
 | T-02 | 동일 주제 3회 연속 반복 방지 | 10턴 세션 진행 후 로그 검토 |
 | T-03 | 침묵 10초 후 주제 전환 | 10초 침묵 유지 → 응답 확인 |
 | T-04 | STT 변환 후 텍스트 3초 이내 표시 | 스톱워치 수동 측정 |
