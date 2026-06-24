@@ -10,5 +10,13 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@giokon/core": "workspace:*",
+    "@supabase/supabase-js": "^2.108.2",
+    "@tanstack/react-query": "^5.101.1"
+  },
+  "peerDependencies": {
+    "react": ">=18"
   }
 }
