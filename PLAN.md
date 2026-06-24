@@ -32,12 +32,14 @@ giokon/
 - AI 파이프라인(LLM/STT/TTS): **Edge Functions**가 provider 키를 보유·호출. 클라이언트는 JWT로 함수 호출 → 함수가 검증·실행·결과 기록.
 - 오디오: **Supabase Storage** 임시 저장(`audio_expires_at` 24h, pg_cron/스케줄 함수로 정리).
 - supabase-js·Supabase Auth는 **웹·RN 양쪽 동작** → `packages/data` 하나로 공유.
+- **상태 관리**: 서버 상태(profiles/sessions/logs)는 **TanStack Query**가 패칭·캐싱(supabase-js queryFn) → source of truth. **Zustand는 UI/클라이언트 상태만**.
+- **키 체계**: Supabase **publishable/secret 키** 사용(레거시 anon/service 키는 2026말 폐기 예정).
 
 ### 1.3 보존 vs 재구성
 | 레이어 | 현재 | 처리 |
 |---|---|---|
 | 도메인 타입 `types.ts` | 풍부(일부 v2) | ✅ `core`로 보존 + DB와 정합화(v1/v2 필드 표기) |
-| 상태 로직 `store/store.ts` | Zustand | ✅ `core`로 보존(영속화는 어댑터로 추상화: web=localStorage, RN=AsyncStorage→Supabase가 SoT) |
+| 상태 로직 `store/store.ts` | Zustand | ✅ `core`로 보존하되 **UI/클라이언트 상태 전용**으로 축소. 서버 상태(profiles/sessions/logs)는 **TanStack Query**가 SoT |
 | AI `lib/ai.ts` | 목업, 교체형 시그니처 | ✅ `core`에 인터페이스+MockProvider로 보존 → 실연동은 Edge Function |
 | `lib/speech.ts` | Web Speech(웹 전용) | ⚠️ 인터페이스 추상화 → web/mobile 각각 구현 |
 | Supabase 스키마 | 5테이블+RLS(app.user_id) | ⚠️ 유지하되 RLS를 `auth.uid()`로 재작성 |
@@ -55,25 +57,26 @@ giokon/
 ### M1. packages/core (도메인·로직, 플랫폼 무관)
 설계: 타입·스토어·AI 인터페이스·도메인 규칙·utils를 web/mobile 공유 가능한 순수 TS로 추출. DOM·RN 의존 제거.
 - T1.1 `types.ts`→`core`; DB 스키마와 정합화(공통: name/birthYear/hometown/job/family/hobbies/memories/guardian). **v2 표기**: appearance·avatarColor(꾸미기), therapyType의 cognitive/music/art.
-- T1.2 Zustand 도메인 스토어→`core`; UI 전용 상태(toast) 분리; **영속화 어댑터 인터페이스**(web/RN/Supabase 교체 가능)로 추상화. (의존: T1.1)
+- T1.2 Zustand는 **UI/클라이언트 상태**(toast·대화 화면 상태 등)만 담당하도록 정리; 서버 데이터는 스토어에서 분리(→`packages/data`의 TanStack Query). (의존: T1.1)
 - T1.3 `AIProvider` 인터페이스 정의 + 기존 `lib/ai.ts`를 `MockAIProvider`로 이전(시그니처 유지: generateOpener/generateReply/extractChronicle/generateGuardianReport). (의존: T1.1)
 - T1.4 순수 도메인 규칙 이전: 연대기 추출 규칙(RULES), 주제전환 로직, 감정/리포트 생성, utils(uid·날짜·아바타색). (의존: T1.1)
 - T1.5 도메인 로직 단위테스트(vitest): 추출 규칙, 주제 3회 반복 방지, 고통 키워드 전환, 리포트 생성. (의존: T1.3, T1.4)
 
 ### M2. packages/data (Supabase 데이터·인증)
-설계: supabase-js 클라이언트(플랫폼별 storage 어댑터), 엔티티 CRUD, Supabase Auth, 생성 DB 타입. core 스토어를 repository로 연결.
-- T2.1 `@supabase/supabase-js` 추가; 클라이언트 팩토리(web=Vite env/localStorage, mobile=Expo env/SecureStore-AsyncStorage). (의존: T0.4)
-- T2.2 스키마→TS 타입 생성; 엔티티별 데이터 액세스 함수(profiles/chronicles/sessions/logs CRUD). (의존: T2.1, M3)
-- T2.3 인증 모듈(signUp/signIn/signOut/session) Supabase Auth; 요양보호사 계정 부트스트랩(가입 트리거로 `users` row). (의존: T2.1, M3)
-- T2.4 core 스토어를 data 레이어에 연결(repository 패턴) — localStorage 영속화를 Supabase(SoT)로 교체. (의존: T1.2, T2.2)
+설계: supabase-js 클라이언트(플랫폼별 storage 어댑터) + **TanStack Query 훅**, Supabase Auth, 생성 DB 타입.
+- T2.1 `@supabase/supabase-js` + `@tanstack/react-query` 추가; 클라이언트 팩토리(web=Vite env/localStorage, mobile=Expo env/SecureStore-AsyncStorage), QueryClient/Provider. (의존: T0.4)
+- T2.2 스키마→TS 타입 생성; 엔티티별 **TanStack Query 훅(useQuery/useMutation, supabase-js queryFn)** 노출(profiles/chronicles/sessions/logs). 변이 후 관련 쿼리 invalidate. (의존: T2.1, M3)
+- T2.3 인증 모듈(signUp/signIn/signOut/**비밀번호 재설정**/session) Supabase Auth; 가입 트리거로 `users` row 부트스트랩. (의존: T2.1, M3)
+- T2.4 화면을 data 레이어(TanStack Query)에 연결 — localStorage 영속화를 Supabase(SoT)로 교체. (의존: T1.2, T2.2)
 
 ### M3. supabase (DB 마이그레이션 재작업 · Edge Functions · Storage)
 설계: RLS를 `auth.uid()`로 재작성, `users`↔`auth.users` 연결, AI Edge Functions, Storage 버킷+만료 정리.
 - T3.1 신규 마이그레이션: `users.id`↔`auth.users(id)`, `firebase_uid` 제거, 가입 시 `users` row 생성 트리거.
 - T3.2 RLS 정책 전부 `app.current_user_id()`→`auth.uid()` 재작성; `app.user_id` 함수 제거. (의존: T3.1)
 - T3.3 세션 오디오용 Storage 버킷 + RLS; `audio_expires_at` 정리(pg_cron 또는 스케줄 Edge Function).
-- T3.4 Edge Function `session-respond`: STT→LLM→TTS 오케스트레이션, AI 턴 `session_logs` 기록, 다음 질문+`audio_url` 반환(키 보호). (의존: T3.2)
+- T3.4 Edge Function `session-respond`: STT→LLM(**Structured Outputs/JSON schema**)→TTS 오케스트레이션, AI 턴 `session_logs` 기록, 다음 질문+`audio_url` 반환(키 보호). (의존: T3.2)
 - T3.5 보조 Edge Functions(session-start/end, chronicle-extract) — 필요 범위만(respond에 통합 가능). (의존: T3.4)
+- T3.6 **Realtime 스파이크**: OpenAI Realtime(gpt-realtime) ephemeral token 발급 Edge Function + 모바일 PoC로 지연·자연스러움·비용을 파이프라인과 실측 비교. (의존: T3.2)
 
 ### M4. packages/theme (디자인 토큰 · Figma 핸드오프)
 설계: 토큰 단일 소스(색/타이포[어르신 스케일]/간격/라운드/elevation) → 웹 Tailwind + 모바일 NativeWind 공급. Figma 변수명과 1:1. 접근성 기본값(텍스트≥18pt, 터치≥60px) 내장.
@@ -89,24 +92,29 @@ giokon/
 - T5.3 요양보호사 화면 데이터 연결(대시보드·어르신 CRUD·연대기 CRUD·로그 조회) → data 레이어. (의존: T2.4)
 - T5.4 Figma 디자인 도착 시 토큰 기반 재스킨(Tailwind). (의존: T4.2)
 - T5.5 보호자 화면은 플래그 뒤로/목업 유지(v2). (의존: T5.3)
-- T5.6 웹 배포(Netlify 우선, `netlify.toml` 존재; 팀이 원하면 Vercel).
+- T5.6 **회원가입·비밀번호 재설정 화면**(Supabase Auth). (의존: T2.3)
+- T5.7 어르신 프로필 생성 시 **개인정보 수집 동의** 기록(어르신/보호자 동의 + 동의일 저장; PIPA 대응). (의존: T5.3)
+- T5.8 **인앱 계정·데이터 삭제** 요청 흐름(스토어 정책 충족). (의존: T5.3)
+- T5.9 웹 배포(Netlify 우선, `netlify.toml` 존재; 팀이 원하면 Vercel).
 
 ### M6. apps/mobile (어르신 대화 Expo 앱)
-설계: 신규 Expo+NativeWind, 어르신 화면, expo-av 녹음/오디오 재생, core/data/Edge Function 연결, 접근성 강제.
+설계: 신규 Expo+NativeWind. **모바일은 "요양보호사 인증 기기, 대화만 어르신이 조작"** — 요양보호사가 모바일에 로그인 → 어르신 선택 → 세션 시작 → 기기 전달. 어르신은 무인증(기기가 요양보호사 세션 보유). core/data/Edge Function 연결, 접근성 강제.
 - T6.1 Expo 스캐폴드(expo-router/내비) + NativeWind + theme 토큰. (의존: T0.4, T4.3)
-- T6.2 어르신 홈/선택 화면(대형 UI). (의존: T6.1)
-- T6.3 대화 화면 상태머신(starting→ai_speaking→mic_ready→listening→processing→ended) — `ConversePage` 로직을 core에서 재사용. (의존: T1.3, T6.1)
-- T6.4 오디오: expo-av 녹음(≤60s, m4a/wav) + `audio_url` 재생; `SpeechProvider` 모바일 구현. (의존: T6.3)
-- T6.5 세션 파이프라인 연결(start/respond/correct/end) + STT 수정 UI + 오류 상태(마이크 거부·네트워크·STT/TTS 실패·세션 복구). (의존: T3.4, T6.4)
-- T6.6 접근성 패스(텍스트≥18pt, 터치≥60px, TTS 자동재생, 고대비). (의존: T6.5)
+- T6.2 모바일 **요양보호사 로그인(세션 지속)** + 어르신 선택 화면(대형 UI). (의존: T2.3, T6.1)
+- T6.3 세션 시작 + **핸드오프 화면**("어르신께 기기를 전달해 주세요"). (의존: T6.2)
+- T6.4 대화 상태머신(ai_speaking→mic_ready→listening→processing→ended) — `ConversePage` 로직을 core에서 재사용. (의존: T1.3, T6.3)
+- T6.5 오디오: expo-av 녹음(≤60s, m4a/wav) + `audio_url` 재생; `SpeechProvider` 모바일 구현(**Realtime 호환 심**). (의존: T6.4)
+- T6.6 세션 파이프라인 연결(start/respond/correct/end) + STT 수정 UI + **자동 종료**(설계 턴 수 도달/침묵 타임아웃; 요양보호사 부재 시 1차 종료 수단) + 오류 상태(마이크 거부·네트워크·STT/TTS 실패·세션 복구). (의존: T3.4, T6.5)
+- T6.7 접근성 패스(텍스트≥18pt, 터치≥60px, TTS 자동재생, 고대비). (의존: T6.6)
 
 ### M7. AI/STT/TTS 실연동 (목업→실연동)
-설계: MockAIProvider→실 provider 교체. 전부 Edge Functions 서버사이드. 프롬프트 설계 + JSON 검증.
-- T7.1 LLM(GPT-4o) in Edge Function: 연대기+이력→`{question, topic, switch_topic}` JSON + 검증/1회 재시도. (의존: T3.4)
-- T7.2 STT(Whisper/OpenAI transcribe) in Edge Function. (의존: T3.4)
-- T7.3 TTS(Clova Voice 기본, OpenAI 대체) → 오디오 Storage 업로드 → `audio_url`. (의존: T3.3, T3.4)
+설계: MockAIProvider→실 provider 교체. 전부 Edge Functions 서버사이드. **모델은 고정하지 않고 현행 프런티어를 벤치마크**. **Structured Outputs** 사용(파싱 실패 자체를 제거).
+- T7.1 LLM(**현행 프런티어 벤치마크**: GPT-5.x/Gemini 3/Claude 등 한국어 품질·지연·비용 비교) in Edge Function: 연대기+이력→**Structured Outputs(JSON schema: {question, topic, switch_topic})**. (의존: T3.4)
+- T7.2 STT: **gpt-4o-transcribe**(Whisper-v3 대비 WER↓) in Edge Function; 사투리·노인 발화는 Clova Speech 보완. (의존: T3.4)
+- T7.3 TTS(Clova Voice 기본, OpenAI/ElevenLabs 대체) → 오디오 Storage 업로드 → `audio_url`. (의존: T3.3, T3.4)
 - T7.4 프롬프트 안전 규칙(동일 주제 3회+ 금지, 고통 키워드 부드러운 전환, 짧은 답변 시 쉬운 질문). (의존: T7.1)
 - T7.5 core `AIProvider`를 env로 mock↔real 전환; dev/테스트는 mock 유지. (의존: T7.1)
+- T7.6 **Realtime 평가**(T3.6 스파이크 결과): 지연·자연스러움·비용·통제 비교 후 v1 대화 백엔드 채택 여부 결정(미채택 시 v2). (의존: T3.6)
 
 ### M8. 퍼블리싱 · 인프라
 설계: 시크릿 관리, CI, EAS 빌드/제출, 스토어 메타데이터, 단계적 롤아웃.
@@ -118,6 +126,7 @@ giokon/
 
 ## 3. 실행 단계 (의존성 순서 마일스톤)
 - **Phase A — 기반**: M0 전체 → M1(core 추출) + M4.1(토큰 정의). 병행 가능: M5.1(현 웹 lint/버그 정리).
+- **Phase A+ — 실음성 수직 슬라이스(리스크 조기 검증)**: 목업이 아닌 **실제** (연대기 1건 → 실 STT → 실 LLM → 실 TTS → 1턴)을 최소 Edge Function + 모바일 PoC로 **실기기 실측**(지연 ≤5s, 노인 한국어 인식률). **Realtime 스파이크(T3.6) 동시 비교.** 핵심 음성 품질·지연 리스크를 UI 완성 전에 검증한다. (의존: M3.1~3.2 일부)
 - **Phase B — 데이터/인증**: M3.1~3.3(마이그레이션·RLS·Storage) → M2(data·auth) → T2.4(스토어 연결).
 - **Phase C — 웹 v1**: M5.2~5.6(인증·데이터 연결·재스킨·배포). [M4.2 웹 토큰 어댑터 선행]
 - **Phase D — 모바일 v1**: M6 전체(Expo·대화·오디오·접근성). [M4.3 모바일 토큰 어댑터 선행]
@@ -146,9 +155,12 @@ giokon/
 ## 6. 결정 로그
 - 2026-05-21: 운영 PostgreSQL은 Supabase로 고정.
 - 2026-06-22: **(1) 웹+모바일 하이브리드 모노레포** 채택(웹=요양보호사, 모바일=어르신). **(2) 백엔드 Supabase 중심 단순화**(supabase-js 직접연동 + Supabase Auth + RLS auth.uid() + AI는 Edge Functions; Firebase·Express 폐기). **(3) Figma 핸드오프 + 디자인 토큰 단일 소스**. **(4) 로직 보존(core)·UI 재구성 전략**. **(5) v1=핵심 루프만, 보호자=v2 유지.**
+- 2026-06-23 (사전 검토 반영): **(A) AI 스택 현행화** — 모델명 고정 해제(현행 프런티어 벤치마크), STT→gpt-4o-transcribe, **Structured Outputs**, Supabase publishable/secret 키. **(B) TanStack Query 도입**(서버상태) + Zustand(UI상태). **(C) 누락 흐름 추가** — 모바일 요양보호사 인증·세션 핸드오프·자동 종료, 회원가입/비밀번호 재설정, 개인정보 수집 동의, 인앱 계정·데이터 삭제. **(D) 개발 순서 조정** — Phase A+ 실음성 수직 슬라이스 + **Realtime 스파이크**(파이프라인 v1, 결과 따라 전환).
 
 ## 7. 가정 / 기본값
-- 워크스페이스=pnpm, 모바일 스타일=NativeWind, 단위테스트=vitest를 기본값으로 가정(팀 합의 시 변경).
+- 워크스페이스=pnpm, 모바일 스타일=NativeWind, 서버상태=TanStack Query, UI상태=Zustand, 단위테스트=vitest를 기본값으로 가정(팀 합의 시 변경).
+- LLM은 단일 모델 고정 대신 **현행 프런티어 벤치마크 후 선정**(한국어 품질·지연·비용). `AIProvider` 추상화로 교체 용이.
+- 어르신 대화 백엔드는 **파이프라인 v1**으로 출발하되 **Realtime(speech-to-speech) 스파이크** 결과에 따라 전환 가능(심을 호환 설계).
 - Apple Developer·Google Play Console 계정은 퍼블리싱 전 준비.
 - v1은 보호자 앱·아바타 꾸미기·음악/미술/인지 치료 미출시(데이터·구조는 호환 유지).
 - AI/STT/TTS는 개발 전 구간 mock으로 진행 가능, 실 provider는 Edge Function에서 후반 연결.

@@ -52,19 +52,19 @@ supabase functions deploy # Edge Functions 배포
 
 ## Environment Variables
 
-클라이언트(웹·모바일)는 공개 가능한 값만 사용한다.
+Supabase **publishable/secret 키 체계**를 사용한다(레거시 anon/service_role 키는 2026말 폐기 예정). 클라이언트(웹·모바일)는 공개 가능한 값만 사용한다.
 
 ```env
 # 클라이언트 (웹: Vite / 모바일: Expo)
 SUPABASE_URL="https://<project-ref>.supabase.co"
-SUPABASE_ANON_KEY="<anon-public-key>"
+SUPABASE_PUBLISHABLE_KEY="<publishable-key>"   # 레거시 anon key 대체
 ```
 
 Edge Functions 전용 비밀값은 Supabase secrets로 관리하고 클라이언트에 노출하지 않는다.
 
 ```env
 # Edge Functions secrets (클라이언트 미노출)
-SUPABASE_SERVICE_ROLE_KEY="<service-role-key>"
+SUPABASE_SECRET_KEY="<secret-key>"             # 레거시 service_role key 대체
 OPENAI_API_KEY="<...>"
 CLOVA_VOICE_KEY="<...>"
 ```

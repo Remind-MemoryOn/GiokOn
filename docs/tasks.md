@@ -21,6 +21,7 @@
 | Phase | 내용 | 포함 모듈 |
 |---|---|---|
 | **A. 기반** | 모노레포 셋업 + 로직 추출 + 토큰 정의 (+ 현 웹 정리) | M0, M1, M4.1, M5.1 |
+| **A+. 실음성 수직 슬라이스** | 실 STT→LLM→TTS 1턴 실기기 실측 + Realtime 스파이크 비교(리스크 조기 검증) | M3.1~3.2 일부, T3.6 |
 | **B. 데이터/인증** | 마이그레이션·RLS·Storage → data·auth → 스토어 연결 | M3.1~3.3, M2 |
 | **C. 웹 v1** | 요양보호사 웹 인증·데이터 연결·재스킨·배포 | M5 |
 | **D. 모바일 v1** | 어르신 Expo 앱·대화·오디오·접근성 | M6 |
@@ -56,10 +57,10 @@
 
 | ID | 작업 | 의존 | 담당 |
 |---|---|---|---|
-| T2.1 | supabase-js 클라이언트 팩토리(웹/모바일 storage 어댑터) | T0.4 | 팀장 |
-| T2.2 | 스키마→TS 타입 + 엔티티 CRUD(profiles/chronicles/sessions/logs) | T2.1, M3 | 팀장 |
-| T2.3 | 인증 모듈(Supabase Auth) + 계정 부트스트랩 트리거 | T2.1, M3 | 팀장 |
-| T2.4 | core 스토어 ↔ data 연결(repository), localStorage→Supabase | T1.2, T2.2 | 팀장 |
+| T2.1 | supabase-js + TanStack Query 팩토리(웹/모바일 storage 어댑터, QueryClient) | T0.4 | 팀장 |
+| T2.2 | 스키마→TS 타입 + TanStack Query 훅(useQuery/useMutation: profiles/chronicles/sessions/logs) | T2.1, M3 | 팀장 |
+| T2.3 | 인증 모듈(Supabase Auth: signUp/signIn/signOut/비번재설정) + 계정 부트스트랩 트리거 | T2.1, M3 | 팀장 |
+| T2.4 | 화면 ↔ data(TanStack Query) 연결, localStorage→Supabase | T1.2, T2.2 | 팀장 |
 
 ### M3 — supabase (Phase B + E)
 
@@ -68,8 +69,9 @@
 | T3.1 | 마이그레이션: `users`↔`auth.users`, `firebase_uid` 제거, 가입 트리거 | — | 팀장 |
 | T3.2 | RLS 전부 `auth.uid()`로 재작성, `app.user_id` 제거 | T3.1 | 팀장 |
 | T3.3 | 오디오 Storage 버킷+RLS, `audio_expires_at` 정리(pg_cron) | — | 팀장 |
-| T3.4 | Edge Function `session-respond` (STT→LLM→TTS, 로그 기록) | T3.2 | 팀장 |
+| T3.4 | Edge Function `session-respond` (STT→LLM[Structured Outputs]→TTS, 로그 기록) | T3.2 | 팀장 |
 | T3.5 | 보조 Edge Functions(session-start/end, chronicle-extract) | T3.4 | 팀장 |
+| T3.6 | Realtime 스파이크: gpt-realtime ephemeral token 발급 함수 + 모바일 PoC 실측 비교 | T3.2 | 팀장 |
 
 ### M4 — packages/theme (Phase A→C/D)
 
@@ -89,28 +91,33 @@
 | T5.3 | 요양보호사 화면 데이터 연결(대시보드·어르신·연대기·로그) | T2.4 | 팀원 B |
 | T5.4 | Figma 토큰 기반 재스킨 | T4.2 | 팀원 B |
 | T5.5 | 보호자 화면 목업 유지/플래그(v2) | T5.3 | 팀원 B |
-| T5.6 | 웹 배포(Netlify/Vercel) | T5.3 | 팀원 B |
+| T5.6 | 회원가입·비밀번호 재설정 화면 | T2.3 | 팀원 B |
+| T5.7 | 프로필 생성 시 개인정보 수집 동의 기록 | T5.3 | 팀원 B |
+| T5.8 | 인앱 계정·데이터 삭제 흐름 | T5.3 | 팀원 B |
+| T5.9 | 웹 배포(Netlify/Vercel) | T5.3 | 팀원 B |
 
 ### M6 — apps/mobile 어르신 (Phase D)
 
 | ID | 작업 | 의존 | 담당 |
 |---|---|---|---|
 | T6.1 | Expo 스캐폴드 + NativeWind + theme 토큰 | T0.4, T4.3 | 팀원 A |
-| T6.2 | 어르신 홈/선택 화면(대형 UI) | T6.1 | 팀원 A |
-| T6.3 | 대화 상태머신(ai_speaking→mic_ready→processing→ended), core 로직 재사용 | T1.3, T6.1 | 팀원 A |
-| T6.4 | 오디오: Expo AV 녹음(≤60s) + `audio_url` 재생, SpeechProvider 모바일 | T6.3 | 팀원 A |
-| T6.5 | 세션 파이프라인 연결(start/respond/correct/end) + STT 수정 UI + 오류 상태 | T3.4, T6.4 | 팀원 A |
-| T6.6 | 접근성 패스(텍스트≥18pt, 터치≥60px, TTS 자동재생, 고대비) | T6.5 | 팀원 A |
+| T6.2 | 모바일 요양보호사 로그인(세션 지속) + 어르신 선택 화면 | T2.3, T6.1 | 팀원 A |
+| T6.3 | 세션 시작 + 핸드오프 화면("어르신께 기기를 전달") | T6.2 | 팀원 A |
+| T6.4 | 대화 상태머신(ai_speaking→mic_ready→processing→ended), core 재사용 | T1.3, T6.3 | 팀원 A |
+| T6.5 | 오디오: Expo AV 녹음(≤60s) + `audio_url` 재생, SpeechProvider(Realtime 호환 심) | T6.4 | 팀원 A |
+| T6.6 | 세션 파이프라인(start/respond/correct/end) + STT 수정 UI + 자동 종료(턴/침묵) + 오류 상태 | T3.4, T6.5 | 팀원 A |
+| T6.7 | 접근성 패스(텍스트≥18pt, 터치≥60px, TTS 자동재생, 고대비) | T6.6 | 팀원 A |
 
 ### M7 — AI/STT/TTS 실연동 (Phase E)
 
 | ID | 작업 | 의존 | 담당 |
 |---|---|---|---|
-| T7.1 | LLM(GPT-4o) Edge Function: JSON 응답 검증/1회 재시도 | T3.4 | 팀장 |
-| T7.2 | STT(Whisper) Edge Function | T3.4 | 팀장 |
-| T7.3 | TTS(Clova Voice 기본/OpenAI 대체) → Storage → `audio_url` | T3.3, T3.4 | 팀장 |
+| T7.1 | LLM(현행 프런티어 벤치마크) Edge Function: Structured Outputs(JSON schema) | T3.4 | 팀장 |
+| T7.2 | STT(gpt-4o-transcribe, Clova Speech 보완) Edge Function | T3.4 | 팀장 |
+| T7.3 | TTS(Clova Voice 기본/OpenAI·ElevenLabs 대체) → Storage → `audio_url` | T3.3, T3.4 | 팀장 |
 | T7.4 | 프롬프트 안전 규칙(주제 3회+ 금지, 고통 키워드 전환, 짧은 답변 힌트) | T7.1 | 팀장 |
 | T7.5 | core `AIProvider` env로 mock↔real 전환 | T7.1 | 팀장 |
+| T7.6 | Realtime 평가(T3.6 결과) → v1 채택 여부 결정 | T3.6 | 팀장 |
 
 ### M8 — 퍼블리싱·인프라 (Phase F)
 

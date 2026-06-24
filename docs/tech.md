@@ -11,9 +11,10 @@
 | DB (장기) | Supabase PostgreSQL | 연대기·세션 로그 정형 저장 | MySQL |
 | 인증 | Supabase Auth | 이메일/비번 로그인 + RLS 연동 간편 | Firebase Auth |
 | AI 오케스트레이션 | Supabase Edge Functions | provider 키 보호. STT→LLM→TTS 서버사이드 처리 | Node/Express |
-| LLM | GPT-4o | 한국어 대화 품질 최상. API 접근 간편 | HyperCLOVA X |
-| TTS | Clova Voice | 한국어 자연스러움. 노인 대상 적합한 발화 속도 | Google TTS |
-| STT | Whisper API | 범용 인식률 우수. 무료 오픈소스 병행 가능 | Clova Speech |
+| LLM | 현행 프런티어(벤치마크 후 선정) | 한국어 품질·지연·비용 비교 후 선정. `AIProvider`로 교체 용이 | GPT-5.x / Gemini 3 / Claude |
+| TTS | Clova Voice | 한국어 자연스러움. 노인 대상 적합한 발화 속도 | OpenAI TTS / ElevenLabs |
+| STT | gpt-4o-transcribe | Whisper-v3 대비 WER↓. 노인·사투리는 Clova Speech 보완 | Whisper / Clova Speech |
+| 상태 관리 | TanStack Query(서버) + Zustand(UI) | 서버상태 캐싱·동기화 / UI상태 분리 | Redux, Jotai |
 | 스타일 | Tailwind CSS (웹) / NativeWind (모바일) | 디자인 토큰을 양 플랫폼이 공유 | StyleSheet |
 | 디자인 | Figma | 핸드오프 → 디자인 토큰 단일 소스 | — |
 | 배포 (웹) | Netlify / Vercel | GitHub 연동 자동 배포. 무료 티어 | — |
@@ -31,9 +32,10 @@
 어르신용 대화 화면을 담당한다. Expo로 빌드 환경 구성을 최소화하고, TestFlight(iOS) / 내부 테스트(Android)로 파일럿을 진행한다.
 
 - 어르신 대화 화면: 글자 크기 최소 18pt, 버튼 최소 60px, 조작 최소화
-- 상태 관리: Zustand (`packages/core` 공유)
+- 상태 관리: 서버 데이터는 TanStack Query, UI 상태는 Zustand (`packages/core`·`packages/data` 공유)
 - 스타일: NativeWind (웹 Tailwind와 동일한 디자인 토큰 사용)
 - 오디오: Expo AV(녹음/재생)
+- 인증: 요양보호사가 모바일 기기에 로그인(세션 지속) 후 어르신에게 전달 — 어르신 화면은 무인증
 
 **관리자 웹 — React + Vite**
 
@@ -122,21 +124,23 @@ STT 처리 전 어르신 발화 오디오를 임시 저장한다. Whisper API에
 ```
 [어르신 발화]
       ↓
-Whisper API (STT: 음성 → 텍스트)
+gpt-4o-transcribe (STT: 음성 → 텍스트)
       ↓
-GPT-4o (LLM: 다음 질문 생성)
+LLM (다음 질문 생성, Structured Outputs)
       ↓
 Clova Voice (TTS: 텍스트 → 음성)
       ↓
 [어르신 청취]
 ```
 
+> v1은 위 STT→LLM→TTS 파이프라인으로 시작하되, **OpenAI Realtime(speech-to-speech, gpt-realtime)** 스파이크로 지연·자연스러움·비용을 비교해 전환 여부를 검토한다(첫 응답 지연이 스티칭 대비 크게 낮음).
+
 **API별 상세**
 
 | API | 용도 | 과금 기준 | 비고 |
 |---|---|---|---|
 | OpenAI GPT-4o | 회상 대화 생성, 주제 전환 판단 | 토큰당 | 프롬프트 최적화로 비용 통제 |
-| OpenAI Whisper | 어르신 발화 STT | 오디오 분당 | 로컬 Whisper 병행 검토 |
+| OpenAI gpt-4o-transcribe | 어르신 발화 STT | 오디오 분당 | Whisper-v3 대비 WER↓ |
 | Clova Voice (NAVER) | TTS 음성 출력 | 글자 수당 | 한국어 노인 발화 자연스러움 우선 |
 | Clova Speech (NAVER) | 사투리·노인 발화 STT 보완 | 초당 | Whisper 오인식 보정용 |
 
@@ -144,7 +148,7 @@ provider 키는 **Edge Function secrets**에만 두고 클라이언트에 노출
 
 **LLM 프롬프트 설계 방향**
 
-시스템 프롬프트에 어르신 연대기 전체를 삽입하고, 회상 대화 진행 원칙(긍정적 기억 우선, 고통 주제 전환, 반복 질문 금지)을 명시한다. 응답 포맷은 JSON으로 고정하여 다음 질문 텍스트와 주제 전환 여부를 분리 파싱한다.
+시스템 프롬프트에 어르신 연대기 전체를 삽입하고, 회상 대화 진행 원칙(긍정적 기억 우선, 고통 주제 전환, 반복 질문 금지)을 명시한다. 응답은 **Structured Outputs(JSON schema)** 로 강제하여 다음 질문 텍스트와 주제 전환 여부를 분리하고, JSON 파싱 실패 자체를 제거한다.
 
 ```json
 {
@@ -204,8 +208,8 @@ iOS·Android를 별도로 개발하면 3인 팀의 리소스가 분산된다. Re
 **Supabase를 선택한 이유**
 Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. supabase-js가 웹·React Native 양쪽에서 동작하므로 데이터 레이어를 하나로 공유할 수 있고, 별도 서버를 운영·배포하지 않아 3인 팀의 부담이 작다. RLS로 데이터 접근 제어를 DB 차원에서 보장한다.
 
-**GPT-4o를 선택한 이유**
-한국어 대화 품질이 현재 상용 LLM 중 가장 높다. API 접근이 간편하고 문서화가 잘 되어 있다. 프롬프트 수준에서 회상 대화 프로토콜을 제어할 수 있어 별도 파인튜닝 없이 적용 가능하다.
+**LLM 선정 방식**
+단일 모델을 고정하지 않고 현행 프런티어(GPT-5.x·Gemini 3·Claude 등)를 한국어 대화 품질·지연·비용 기준으로 벤치마크해 선정한다. `AIProvider` 추상화로 모델 교체가 쉽다. 프롬프트 수준에서 회상 대화 프로토콜을 제어해 별도 파인튜닝 없이 적용한다.
 
 **Clova Voice를 선택한 이유**
 한국어 TTS 중 노인이 듣기에 가장 자연스러운 발화 속도와 억양을 제공한다. Google TTS 대비 한국어 특화 품질이 높고, 발화 속도 조절 API를 지원한다.
@@ -229,7 +233,8 @@ Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. sup
 
 | 항목 | 현재 | 확장 시 |
 |---|---|---|
-| LLM | GPT-4o 단일 | HyperCLOVA X 병행 (사투리·한국어 특화 보완) |
+| LLM | 프런티어 단일 | 다모델 라우팅 / HyperCLOVA X 병행 (사투리·한국어 특화 보완) |
+| 음성 루프 | STT→LLM→TTS 파이프라인 | OpenAI Realtime(speech-to-speech) 전환 |
 | STT | Whisper + Clova Speech | 노인 발화 특화 파인튜닝 모델 도입 |
 | 실시간 동기화 | v1 미사용 | Supabase Realtime (요양보호사 모니터링 화면) |
 | 보호자 연동 | 미구현 (v2) | 푸시 알림으로 세션 리포트 전달 |
