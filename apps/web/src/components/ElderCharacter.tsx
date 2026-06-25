@@ -51,10 +51,7 @@ export function ElderCharacter({
   const [mouthOpen, setMouthOpen] = useState(false);
 
   useEffect(() => {
-    if (!speaking) {
-      setMouthOpen(false);
-      return;
-    }
+    if (!speaking) return;
     let cancelled = false;
     const tick = () => {
       if (cancelled) return;
@@ -66,6 +63,9 @@ export function ElderCharacter({
       window.clearInterval(id);
     };
   }, [speaking]);
+
+  // 말하지 않을 때는 항상 입을 닫은 모습으로 렌더 → effect 내 setState 동기화 불필요
+  const showMouthOpen = speaking && mouthOpen;
 
   const skin = SKIN[appearance.skin];
   const outfit = OUTFIT[appearance.outfit];
@@ -132,7 +132,7 @@ export function ElderCharacter({
           )}
 
           {/* 입 — 말할 때 변화 */}
-          {mouthOpen ? (
+          {showMouthOpen ? (
             <ellipse cx="100" cy="100" rx="6" ry="5" fill="#9c4d4d" />
           ) : (
             <path

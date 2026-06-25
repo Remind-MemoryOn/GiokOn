@@ -133,10 +133,18 @@ function EntryDialog({ open, onClose, elderId, initial }: EntryProps) {
   const [keywords, setKeywords] = useState<string[]>(initial?.keywords || []);
   const [keywordInput, setKeywordInput] = useState('');
   const [errors, setErrors] = useState<{ content?: string }>({});
+  const [wasOpen, setWasOpen] = useState(false);
 
-  // reset when opens
-  if (open && initial && (topic !== initial.topic || content !== initial.content)) {
-    // we trust the initial mount
+  // 열릴 때마다 initial로 초기화 — 편집/신규 전환 시 이전 값 잔존 버그 방지
+  if (open && !wasOpen) {
+    setWasOpen(true);
+    setTopic(initial?.topic || '추억');
+    setContent(initial?.content || '');
+    setKeywords(initial?.keywords || []);
+    setKeywordInput('');
+    setErrors({});
+  } else if (!open && wasOpen) {
+    setWasOpen(false);
   }
 
   function addKeyword(k: string) {

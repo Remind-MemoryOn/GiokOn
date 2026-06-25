@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Heart, Sparkles } from 'lucide-react';
 import { ElderCharacter } from '../components/ElderCharacter';
@@ -45,10 +45,13 @@ export function ElderDressUpPage() {
   );
   const [activeSlot, setActiveSlot] = useState<SlotKey>('outfit');
   const [waveAnim, setWaveAnim] = useState(false);
+  const [syncedElderId, setSyncedElderId] = useState(elder?.id);
 
-  useEffect(() => {
-    if (elder?.appearance) setAppearance(elder.appearance);
-  }, [elder?.id]);
+  // 다른 어르신으로 전환되면 외형 상태 재동기화 — effect 내 setState 회피
+  if (elder && elder.id !== syncedElderId) {
+    setSyncedElderId(elder.id);
+    setAppearance(elder.appearance);
+  }
 
   if (!elder) {
     return (

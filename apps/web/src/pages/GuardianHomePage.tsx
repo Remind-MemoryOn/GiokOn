@@ -28,11 +28,33 @@ export function GuardianHomePage() {
 
   const [tab, setTab] = useState<Tab>('home');
 
+  const elder = guardianAuth
+    ? elders.find((e) => e.id === guardianAuth.elderId)
+    : undefined;
+
+  // Hooks는 조건부 반환보다 먼저 호출해야 한다(rules-of-hooks)
+  const elderLogs = useMemo(
+    () =>
+      elder
+        ? allLogs
+            .filter((l) => l.elderId === elder.id && l.status === 'ended')
+            .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+        : [],
+    [allLogs, elder]
+  );
+  const elderChronicles = useMemo(
+    () =>
+      elder
+        ? allChronicles
+            .filter((c) => c.elderId === elder.id)
+            .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
+        : [],
+    [allChronicles, elder]
+  );
+
   if (!guardianAuth) {
     return <Navigate to="/guardian/login" replace />;
   }
-
-  const elder = elders.find((e) => e.id === guardianAuth.elderId);
   if (!elder) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-violet-50 p-8 text-center">
@@ -45,21 +67,6 @@ export function GuardianHomePage() {
       </div>
     );
   }
-
-  const elderLogs = useMemo(
-    () =>
-      allLogs
-        .filter((l) => l.elderId === elder.id && l.status === 'ended')
-        .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
-    [allLogs, elder.id]
-  );
-  const elderChronicles = useMemo(
-    () =>
-      allChronicles
-        .filter((c) => c.elderId === elder.id)
-        .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
-    [allChronicles, elder.id]
-  );
 
   const latestLog = elderLogs[0];
   const latestReport = latestLog?.guardianReport;

@@ -56,7 +56,9 @@ export function ConversePage() {
   const appendTurn = useStore((s) => s.appendTurn);
   const endConversation = useStore((s) => s.endConversation);
 
-  const [phase, setPhase] = useState<Phase>('starting');
+  const [phase, setPhase] = useState<Phase>(() =>
+    log && log.turns.length > 0 ? 'mic_ready' : 'starting'
+  );
   const [interim, setInterim] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showTextFallback, setShowTextFallback] = useState(!isSttSupported());
@@ -71,16 +73,13 @@ export function ConversePage() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
 
-  // 초기화 — 첫 AI 질문 자동 시작
+  // 초기화 — 첫 AI 질문 자동 시작 (이미 턴이 있으면 초기 phase가 'mic_ready')
   useEffect(() => {
     if (!log || !elder || !session || startedRef.current) return;
-    if (log.turns.length > 0) {
-      startedRef.current = true;
-      setPhase('mic_ready');
-      return;
-    }
     startedRef.current = true;
-    void runOpener();
+    if (log.turns.length === 0) {
+      void runOpener();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [log?.id]);
 
@@ -179,7 +178,7 @@ export function ConversePage() {
   }
 
 
-  const turns = log?.turns || [];
+  const turns = useMemo(() => log?.turns ?? [], [log?.turns]);
   const lastAi = useMemo(() => [...turns].reverse().find((t) => t.speaker === 'AI'), [turns]);
   const lastElderly = useMemo(
     () => [...turns].reverse().find((t) => t.speaker === 'Elderly'),

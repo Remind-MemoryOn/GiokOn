@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Save, Shirt } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
@@ -48,10 +48,13 @@ export function DressUpPage() {
   );
   const [activeSlot, setActiveSlot] = useState<SlotKey>('hair');
   const [preview, setPreview] = useState(true);
+  const [syncedElderId, setSyncedElderId] = useState(elder?.id);
 
-  useEffect(() => {
-    if (elder?.appearance) setAppearance(elder.appearance);
-  }, [elder?.id]);
+  // 다른 어르신으로 전환되면 외형 상태 재동기화 — effect 내 setState 회피
+  if (elder && elder.id !== syncedElderId) {
+    setSyncedElderId(elder.id);
+    setAppearance(elder.appearance);
+  }
 
   if (!elder) {
     return (

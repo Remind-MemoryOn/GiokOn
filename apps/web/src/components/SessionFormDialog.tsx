@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog } from './ui/Dialog';
 import { Field, Input, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
@@ -23,22 +23,19 @@ export function SessionFormDialog({ open, onClose, elderId, initial }: Props) {
   const [note, setNote] = useState('');
   const [duration, setDuration] = useState(10);
   const [errors, setErrors] = useState<{ title?: string }>({});
+  const [wasOpen, setWasOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    if (initial) {
-      setTitle(initial.title);
-      setTherapyType(initial.therapyType);
-      setNote(initial.note || '');
-      setDuration(initial.durationMinutes);
-    } else {
-      setTitle('');
-      setTherapyType('reminiscence');
-      setNote('');
-      setDuration(10);
-    }
+  // 열릴 때마다 initial로 초기화 — effect 내 setState 회피
+  if (open && !wasOpen) {
+    setWasOpen(true);
+    setTitle(initial?.title ?? '');
+    setTherapyType(initial?.therapyType ?? 'reminiscence');
+    setNote(initial?.note ?? '');
+    setDuration(initial?.durationMinutes ?? 10);
     setErrors({});
-  }, [open, initial]);
+  } else if (!open && wasOpen) {
+    setWasOpen(false);
+  }
 
   function submit() {
     if (!title.trim()) {

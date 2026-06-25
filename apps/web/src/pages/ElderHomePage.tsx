@@ -79,6 +79,7 @@ function ElderHome({ elderId }: { elderId: string }) {
   );
 
   const [showMemoryDialog, setShowMemoryDialog] = useState(false);
+  const [tapAnim, setTapAnim] = useState(false);
 
   if (!elder) {
     return (
@@ -102,7 +103,6 @@ function ElderHome({ elderId }: { elderId: string }) {
   const nextSession = eldersSessions[0];
   const needsDressUp = isDefaultAppearance(elder.appearance);
 
-  const [tapAnim, setTapAnim] = useState(false);
   function tapCharacter() {
     setTapAnim(true);
     setTimeout(() => setTapAnim(false), 700);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog } from './ui/Dialog';
 import { Field, Input, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
@@ -28,26 +28,29 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
 
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof typeof empty, string>>>({});
+  const [wasOpen, setWasOpen] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      if (initial) {
-        setForm({
-          name: initial.name,
-          birthYear: initial.birthYear,
-          hometown: initial.hometown || '',
-          job: initial.job || '',
-          family: initial.family || '',
-          hobbies: initial.hobbies || '',
-          guardianName: initial.guardian?.name || '',
-          guardianRelation: initial.guardian?.relation || '',
-        });
-      } else {
-        setForm(empty);
-      }
-      setErrors({});
-    }
-  }, [open, initial]);
+  // 열릴 때마다 initial로 폼 초기화 — effect 내 setState 대신 렌더 단계 동기화
+  if (open && !wasOpen) {
+    setWasOpen(true);
+    setForm(
+      initial
+        ? {
+            name: initial.name,
+            birthYear: initial.birthYear,
+            hometown: initial.hometown || '',
+            job: initial.job || '',
+            family: initial.family || '',
+            hobbies: initial.hobbies || '',
+            guardianName: initial.guardian?.name || '',
+            guardianRelation: initial.guardian?.relation || '',
+          }
+        : empty,
+    );
+    setErrors({});
+  } else if (!open && wasOpen) {
+    setWasOpen(false);
+  }
 
   function update<K extends keyof typeof empty>(key: K, value: (typeof empty)[K]) {
     setForm((f) => ({ ...f, [key]: value }));

@@ -80,13 +80,48 @@ export function cancelSpeak() {
 }
 
 // --- STT ---------------------------------------------------------------
+// Web Speech API(SpeechRecognition)는 TS 기본 DOM lib에 없어 최소 타입을 정의한다.
 
-type AnySpeechRecognition = any;
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: SpeechRecognitionAlternativeLike;
+}
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+interface SpeechRecognitionErrorLike {
+  error?: string;
+}
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((e: SpeechRecognitionErrorLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+interface SpeechWindow extends Window {
+  SpeechRecognition?: SpeechRecognitionCtor;
+  webkitSpeechRecognition?: SpeechRecognitionCtor;
+}
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const w = window as unknown as SpeechWindow;
+  return w.SpeechRecognition || w.webkitSpeechRecognition;
+}
 
 export function isSttSupported(): boolean {
-  if (typeof window === 'undefined') return false;
-  const w = window as any;
-  return !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+  return !!getSpeechRecognitionCtor();
 }
 
 export interface SttHandle {
@@ -102,13 +137,12 @@ export interface SttCallbacks {
 }
 
 export function startStt(cb: SttCallbacks): SttHandle | null {
-  if (!isSttSupported()) {
+  const Rec = getSpeechRecognitionCtor();
+  if (!Rec) {
     cb.onError?.('이 브라우저는 음성 인식을 지원하지 않습니다. (Chrome / Edge 권장)');
     return null;
   }
-  const w = window as any;
-  const Rec = w.SpeechRecognition || w.webkitSpeechRecognition;
-  const rec: AnySpeechRecognition = new Rec();
+  const rec: SpeechRecognitionLike = new Rec();
   rec.lang = 'ko-KR';
   rec.interimResults = true;
   rec.continuous = false;
@@ -116,7 +150,7 @@ export function startStt(cb: SttCallbacks): SttHandle | null {
 
   let finalText = '';
 
-  rec.onresult = (e: any) => {
+  rec.onresult = (e: SpeechRecognitionEventLike) => {
     let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const r = e.results[i];
@@ -125,7 +159,7 @@ export function startStt(cb: SttCallbacks): SttHandle | null {
     }
     if (interim) cb.onPartial?.(finalText + interim);
   };
-  rec.onerror = (e: any) => {
+  rec.onerror = (e: SpeechRecognitionErrorLike) => {
     cb.onError?.(String(e?.error || 'STT 오류'));
   };
   rec.onend = () => {
@@ -142,10 +176,18 @@ export function startStt(cb: SttCallbacks): SttHandle | null {
 
   return {
     stop: () => {
-      try { rec.stop(); } catch {}
+      try {
+        rec.stop();
+      } catch {
+        /* 이미 종료된 경우 무시 */
+      }
     },
     abort: () => {
-      try { rec.abort(); } catch {}
+      try {
+        rec.abort();
+      } catch {
+        /* 이미 종료된 경우 무시 */
+      }
     },
   };
 }
