@@ -22,6 +22,12 @@ importers:
       '@giokon/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@giokon/data':
+        specifier: workspace:*
+        version: link:../../packages/data
+      '@tanstack/react-query':
+        specifier: ^5.101.1
+        version: 5.101.1(react@19.2.7)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
