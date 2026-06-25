@@ -114,6 +114,10 @@ importers:
       react:
         specifier: '>=18'
         version: 19.2.7
+    devDependencies:
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.6(@types/node@24.13.2)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   packages/theme: {}
 
