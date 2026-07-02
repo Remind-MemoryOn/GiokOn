@@ -94,7 +94,7 @@
 | T5.6 | 회원가입·비밀번호 재설정 화면 | T2.3 | 팀원 B |
 | T5.7 | 프로필 생성 시 개인정보 수집 동의 기록 | T5.3 | 팀원 B |
 | T5.8 | 인앱 계정·데이터 삭제 흐름 | T5.3 | 팀원 B |
-| T5.9 | 웹 배포(Netlify/Vercel) | T5.3 | 팀원 B |
+| T5.9 | 웹 배포(Vercel) | T5.3 | 팀원 B |
 
 ### M6 — apps/mobile 어르신 (Phase D)
 
@@ -192,7 +192,7 @@
 
 ### 배포
 - [ ] Supabase 마이그레이션·Edge Functions 배포 확인
-- [ ] 웹(Netlify/Vercel) 배포 확인
+- [ ] 웹(Vercel) 배포 확인
 - [ ] EAS 최신 빌드 시연 기기 설치 완료
 - [ ] Edge Function 웜업 완료(시연 30분 전)
 

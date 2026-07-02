@@ -17,7 +17,7 @@
 | 상태 관리 | TanStack Query(서버) + Zustand(UI) | 서버상태 캐싱·동기화 / UI상태 분리 | Redux, Jotai |
 | 스타일 | Tailwind CSS (웹) / NativeWind (모바일) | 디자인 토큰을 양 플랫폼이 공유 | StyleSheet |
 | 디자인 | Figma | 핸드오프 → 디자인 토큰 단일 소스 | — |
-| 배포 (웹) | Netlify / Vercel | GitHub 연동 자동 배포. 무료 티어 | — |
+| 배포 (웹) | Vercel | GitHub 연동 자동 배포. 무료 티어 | — |
 | 배포 (모바일) | EAS Build / Submit | Expo 공식 빌드·제출 파이프라인 | — |
 | 파일 저장 | Supabase Storage | 세션 오디오 임시 저장 | AWS S3 |
 
@@ -177,7 +177,7 @@ provider 키는 **Edge Function secrets**에만 두고 클라이언트에 노출
 | 영역 | 도구 | 비고 |
 |---|---|---|
 | 데이터·인증·AI | Supabase (관리형) | DB · Auth · Storage · Edge Functions |
-| 관리자 웹 | Netlify / Vercel | GitHub push 시 자동 배포 |
+| 관리자 웹 | Vercel | GitHub push 시 자동 배포 |
 | 모바일 앱 | EAS Build → TestFlight(iOS) / 내부 테스트(Android) | 파일럿 배포 |
 
 앱스토어 정식 출시는 파일럿 검증 이후로 미룬다. 파일럿 기간에는 TestFlight 초대 링크 / Play 내부 테스트로 배포한다.

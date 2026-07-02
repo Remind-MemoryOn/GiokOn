@@ -44,7 +44,7 @@ giokon/
 | 데이터·인증 | Supabase (PostgreSQL · Auth · Storage · Edge Functions) |
 | LLM / STT / TTS | GPT-4o / Whisper / Clova Voice (Edge Functions에서 호출) |
 | 디자인 | Figma 핸드오프 → 디자인 토큰 단일 소스 |
-| 배포 | 웹: Netlify/Vercel · 모바일: EAS Build/Submit |
+| 배포 | 웹: Vercel · 모바일: EAS Build/Submit |
 
 ---
 

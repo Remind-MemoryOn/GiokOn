@@ -6,7 +6,7 @@
 - 백엔드는 **Supabase 중심**으로 단순화: 클라이언트가 supabase-js로 직접 연동, **Supabase Auth + RLS(`auth.uid()`)**, AI/STT/TTS 키 보호는 **Supabase Edge Functions**. Firebase·Express 미사용.
 - 전략은 **"로직 보존, UI 재구성"**: 머리 쓴 도메인 로직(타입·스토어·AI 규칙)은 `packages/core`로 살리고, UI는 **Figma 핸드오프 → 디자인 토큰** 기반으로 새로 입힌다.
 - v1 범위 = **핵심 루프**: 요양보호사 관리 웹 + 어르신 대화 모바일앱. 보호자 화면·아바타 꾸미기·음악/미술/인지 치료는 **v2**.
-- 최종 배포: 웹(Netlify/Vercel) + 모바일(EAS Build/Submit → TestFlight/Play 내부테스트 → 정식 심사).
+- 최종 배포: 웹(Vercel) + 모바일(EAS Build/Submit → TestFlight/Play 내부테스트 → 정식 심사).
 
 ## 1. 타깃 아키텍처
 
@@ -95,7 +95,7 @@ giokon/
 - T5.6 **회원가입·비밀번호 재설정 화면**(Supabase Auth). (의존: T2.3)
 - T5.7 어르신 프로필 생성 시 **개인정보 수집 동의** 기록(어르신/보호자 동의 + 동의일 저장; PIPA 대응). (의존: T5.3)
 - T5.8 **인앱 계정·데이터 삭제** 요청 흐름(스토어 정책 충족). (의존: T5.3)
-- T5.9 웹 배포(Netlify 우선, `netlify.toml` 존재; 팀이 원하면 Vercel).
+- T5.9 웹 배포(Vercel).
 
 ### M6. apps/mobile (어르신 대화 Expo 앱)
 설계: 신규 Expo+NativeWind. **모바일은 "요양보호사 인증 기기, 대화만 어르신이 조작"** — 요양보호사가 모바일에 로그인 → 어르신 선택 → 세션 시작 → 기기 전달. 어르신은 무인증(기기가 요양보호사 세션 보유). core/data/Edge Function 연결, 접근성 강제.
