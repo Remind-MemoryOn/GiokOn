@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Brain, ArrowLeft, LogIn, UserPlus } from 'lucide-react';
 import { signIn, signUp } from '@giokon/data';
 import { Field, Input } from '../components/ui/Input';
@@ -10,9 +10,8 @@ import { useAuth } from '../auth/AuthProvider';
 type Mode = 'signin' | 'signup';
 
 export function CaregiverLoginPage() {
-  const navigate = useNavigate();
   const toast = useStore((s) => s.toast);
-  const { isConfigured } = useAuth();
+  const { isConfigured, session } = useAuth();
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -49,7 +48,7 @@ export function CaregiverLoginPage() {
         }
         toast('success', '가입이 완료되어 로그인되었습니다.');
       }
-      navigate('/caregiver', { replace: true });
+      // 세션이 준비되면 아래 <Navigate>가 자동으로 대시보드로 이동시킨다.
     } catch (err) {
       toast('error', err instanceof Error ? err.message : '인증에 실패했습니다.');
     } finally {
@@ -58,6 +57,9 @@ export function CaregiverLoginPage() {
   }
 
   const isSignup = mode === 'signup';
+
+  // 로그인 상태면 대시보드로 (인증 상태 갱신 시 자동 리다이렉트 — 네비게이션 경합 방지)
+  if (session) return <Navigate to="/caregiver" replace />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream-50 via-warm-100/40 to-warm-200/30 flex flex-col">
