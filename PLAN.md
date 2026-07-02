@@ -156,6 +156,7 @@ giokon/
 - 2026-05-21: 운영 PostgreSQL은 Supabase로 고정.
 - 2026-06-22: **(1) 웹+모바일 하이브리드 모노레포** 채택(웹=요양보호사, 모바일=어르신). **(2) 백엔드 Supabase 중심 단순화**(supabase-js 직접연동 + Supabase Auth + RLS auth.uid() + AI는 Edge Functions; Firebase·Express 폐기). **(3) Figma 핸드오프 + 디자인 토큰 단일 소스**. **(4) 로직 보존(core)·UI 재구성 전략**. **(5) v1=핵심 루프만, 보호자=v2 유지.**
 - 2026-06-23 (사전 검토 반영): **(A) AI 스택 현행화** — 모델명 고정 해제(현행 프런티어 벤치마크), STT→gpt-4o-transcribe, **Structured Outputs**, Supabase publishable/secret 키. **(B) TanStack Query 도입**(서버상태) + Zustand(UI상태). **(C) 누락 흐름 추가** — 모바일 요양보호사 인증·세션 핸드오프·자동 종료, 회원가입/비밀번호 재설정, 개인정보 수집 동의, 인앱 계정·데이터 삭제. **(D) 개발 순서 조정** — Phase A+ 실음성 수직 슬라이스 + **Realtime 스파이크**(파이프라인 v1, 결과 따라 전환).
+- 2026-07-02: **(1) 디자인은 외부 협력** — 웹·앱 모두 UI 디자인(비주얼·Figma·디자인 토큰·재스킨)은 외부에서 진행. 내부 개발은 기능·로직·데이터·인증에 집중하며, 디자인 작업은 별도 요청 시에만 착수. **(2) 개발은 main 브랜치에 직접 커밋.**
 
 ## 7. 가정 / 기본값
 - 워크스페이스=pnpm, 모바일 스타일=NativeWind, 서버상태=TanStack Query, UI상태=Zustand, 단위테스트=vitest를 기본값으로 가정(팀 합의 시 변경).
@@ -164,3 +165,10 @@ giokon/
 - Apple Developer·Google Play Console 계정은 퍼블리싱 전 준비.
 - v1은 보호자 앱·아바타 꾸미기·음악/미술/인지 치료 미출시(데이터·구조는 호환 유지).
 - AI/STT/TTS는 개발 전 구간 mock으로 진행 가능, 실 provider는 Edge Function에서 후반 연결.
+
+## 8. 진행 현황 (2026-07-02 기준)
+- ✅ **Phase A (기반)**: 모노레포(M0) · `packages/core`(M1, 단위테스트 7) · `packages/theme` 토큰 정의(M4.1) · 현 웹 lint/버그 정리(M5.1) 완료.
+- ✅ **Phase B (데이터/인증)**: `auth.uid()` RLS 마이그레이션(M3.1·3.2)을 **라이브 프로젝트(Supabase `GiokOn`)에 적용·검증 완료** — 5개 테이블·RLS·정책(auth.uid ×18)·가입 트리거(`public.users` 자동 생성)까지 라이브 확인. `packages/data`(M2: supabase-js + TanStack Query 훅 · Supabase Auth · DB↔도메인 매퍼, 단위테스트 12).
+- ✅ **웹 인증 (M5.2)**: 목업 로그인 → Supabase Auth + 라우트 가드 교체. 회원가입/로그인 실동작 검증(랜덤 자격증명 실패, 가입 시 `public.users` 생성 확인).
+- 🔜 **다음**: T2.4 화면 ↔ 실 Supabase 데이터 연결 — 어르신(profiles) CRUD 수직 슬라이스부터 → 연대기 → (세션·대화는 AI 파이프라인과 함께).
+- 배포: 웹=Vercel · 모바일=EAS. **디자인(웹·앱)은 외부 협력**이라 내부 작업 범위에서 제외(별도 요청 시 착수).
