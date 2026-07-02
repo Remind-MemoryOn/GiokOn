@@ -1,11 +1,13 @@
+# 기억온 웹 배포 설정 — 사이트 "Base directory"를 apps/web 으로 둔 경우용.
+# (권장: Base를 저장소 루트로 두고 루트 netlify.toml 사용)
+# pnpm은 이 위치에서도 상위의 pnpm-workspace.yaml을 찾아 워크스페이스를 설치합니다.
 [build]
-  command = "npm run build"
+  command = "pnpm install --frozen-lockfile && pnpm --filter @giokon/web build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
 
-# SPA fallback — React Router가 모든 경로 처리
 [[redirects]]
   from = "/*"
   to = "/index.html"
