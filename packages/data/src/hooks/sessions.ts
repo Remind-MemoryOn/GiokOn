@@ -9,6 +9,25 @@ import { getGiokonClient } from '../client'
 import { queryKeys } from '../query'
 import type { SessionLogRow, SessionRow } from '../database.types'
 
+export interface SessionCounts {
+  total: number
+  byProfile: Record<string, number>
+}
+
+/** 사용자 전체 세션 카운트(대시보드·목록 카드용, RLS로 본인 것만). */
+export function useSessionCounts(): UseQueryResult<SessionCounts> {
+  return useQuery({
+    queryKey: queryKeys.sessionCounts,
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient().from('sessions').select('profile_id')
+      if (error) throw new Error(error.message)
+      const byProfile: Record<string, number> = {}
+      for (const r of data) byProfile[r.profile_id] = (byProfile[r.profile_id] ?? 0) + 1
+      return { total: data.length, byProfile }
+    },
+  })
+}
+
 /** 어르신별 세션 이력(최신 시작순). */
 export function useSessions(profileId: string | undefined): UseQueryResult<SessionRow[]> {
   return useQuery({

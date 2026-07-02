@@ -11,6 +11,7 @@ import { ElderFormDialog } from '../components/ElderFormDialog';
 import { SessionFormDialog } from '../components/SessionFormDialog';
 import { ChronicleView } from '../components/ChronicleView';
 import { ElderCharacter } from '../components/ElderCharacter';
+import { useProfile, useDeleteProfile, toElderProfile } from '@giokon/data';
 import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
 import { THERAPY_TYPES, isDefaultAppearance, type Session } from '../types';
@@ -19,8 +20,8 @@ export function ElderDetailPage() {
   const { elderId = '' } = useParams();
   const navigate = useNavigate();
 
-  const elders = useStore((s) => s.elders);
-  const elder = useMemo(() => elders.find((e) => e.id === elderId), [elders, elderId]);
+  const elderQuery = useProfile(elderId);
+  const elder = elderQuery.data ? toElderProfile(elderQuery.data) : undefined;
   const allSessions = useStore((s) => s.sessions);
   const sessions = useMemo(
     () =>
@@ -39,12 +40,25 @@ export function ElderDetailPage() {
   );
   const startConversation = useStore((s) => s.startConversation);
   const deleteSession = useStore((s) => s.deleteSession);
-  const deleteElder = useStore((s) => s.deleteElder);
+  const deleteProfile = useDeleteProfile();
   const toast = useStore((s) => s.toast);
 
   const [openEdit, setOpenEdit] = useState(false);
   const [openSession, setOpenSession] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
+
+  if (elderQuery.isLoading) {
+    return (
+      <div className="p-8">
+        <Button variant="ghost" onClick={() => navigate('/caregiver/elders')}>
+          <ArrowLeft size={14} /> 어르신 목록으로
+        </Button>
+        <Card className="mt-4">
+          <CardBody className="py-16 text-center text-slate-500">불러오는 중…</CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   if (!elder) {
     return (
@@ -260,9 +274,14 @@ export function ElderDetailPage() {
           <button
             onClick={() => {
               if (confirm(`'${elder.name}' 어르신과 모든 데이터를 삭제할까요?`)) {
-                deleteElder(elder.id);
-                toast('info', '어르신 데이터를 삭제했습니다.');
-                navigate('/caregiver/elders');
+                deleteProfile.mutate(elder.id, {
+                  onSuccess: () => {
+                    toast('info', '어르신 데이터를 삭제했습니다.');
+                    navigate('/caregiver/elders');
+                  },
+                  onError: (err) =>
+                    toast('error', err instanceof Error ? err.message : '삭제에 실패했습니다.'),
+                });
               }
             }}
             className="text-xs text-slate-400 hover:text-red-500 transition"

@@ -1,11 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Sparkles, User, Pencil, Trash2, X } from 'lucide-react';
+import {
+  useChronicles,
+  useCreateChronicle,
+  useUpdateChronicle,
+  useDeleteChronicle,
+  toChronicleEntry,
+  toChronicleInsert,
+  toChronicleUpdate,
+  type ChronicleWriteInput,
+} from '@giokon/data';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Dialog } from './ui/Dialog';
 import { Field, Input, Textarea } from './ui/Input';
 import { useStore } from '../store/store';
+import { useAuth } from '../auth/AuthProvider';
 import { formatRelative } from '../lib/utils';
 import type { ChronicleEntry } from '../types';
 
@@ -16,15 +27,9 @@ interface Props {
 const TOPIC_SUGGESTIONS = ['고향', '가족', '직업', '취미', '학창 시절', '음식', '추억'];
 
 export function ChronicleView({ elderId }: Props) {
-  const allChronicles = useStore((s) => s.chronicles);
-  const entries = useMemo(
-    () =>
-      allChronicles
-        .filter((c) => c.elderId === elderId)
-        .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
-    [allChronicles, elderId]
-  );
-  const deleteChronicle = useStore((s) => s.deleteChronicle);
+  const chroniclesQuery = useChronicles(elderId);
+  const entries = (chroniclesQuery.data ?? []).map(toChronicleEntry);
+  const deleteChronicle = useDeleteChronicle();
   const toast = useStore((s) => s.toast);
 
   const [editing, setEditing] = useState<ChronicleEntry | null>(null);
@@ -54,7 +59,11 @@ export function ChronicleView({ elderId }: Props) {
         </Button>
       </div>
       <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
-        {entries.length === 0 ? (
+        {chroniclesQuery.isLoading ? (
+          <div className="px-5 py-10 text-center text-sm text-slate-500">불러오는 중…</div>
+        ) : chroniclesQuery.isError ? (
+          <div className="px-5 py-10 text-center text-sm text-red-500">연대기를 불러오지 못했습니다.</div>
+        ) : entries.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-slate-500">
             아직 연대기가 없습니다. 첫 항목을 추가하거나, AI와 대화를 시작해 보세요.
           </div>
@@ -79,10 +88,12 @@ export function ChronicleView({ elderId }: Props) {
                     <Pencil size={13} />
                   </button>
                   <button
-                    onClick={() => {
-                      deleteChronicle(e.id);
-                      toast('info', '연대기 항목을 삭제했습니다.');
-                    }}
+                    onClick={() =>
+                      deleteChronicle.mutate(
+                        { id: e.id, profileId: elderId },
+                        { onSuccess: () => toast('info', '연대기 항목을 삭제했습니다.') },
+                      )
+                    }
                     className="text-slate-400 hover:text-red-500 p-1 rounded"
                   >
                     <Trash2 size={13} />
@@ -125,8 +136,12 @@ interface EntryProps {
 }
 
 function EntryDialog({ open, onClose, elderId, initial }: EntryProps) {
-  const upsertChronicle = useStore((s) => s.upsertChronicle);
   const toast = useStore((s) => s.toast);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const createChronicle = useCreateChronicle();
+  const updateChronicle = useUpdateChronicle();
+  const saving = createChronicle.isPending || updateChronicle.isPending;
 
   const [topic, setTopic] = useState<string>(initial?.topic || '추억');
   const [content, setContent] = useState(initial?.content || '');
@@ -135,7 +150,7 @@ function EntryDialog({ open, onClose, elderId, initial }: EntryProps) {
   const [errors, setErrors] = useState<{ content?: string }>({});
   const [wasOpen, setWasOpen] = useState(false);
 
-  // 열릴 때마다 initial로 초기화 — 편집/신규 전환 시 이전 값 잔존 버그 방지
+  // 다이얼로그가 열릴 때마다 initial로 초기화 — 편집/신규 전환 시 이전 값 잔존 버그 방지
   if (open && !wasOpen) {
     setWasOpen(true);
     setTopic(initial?.topic || '추억');
@@ -154,21 +169,34 @@ function EntryDialog({ open, onClose, elderId, initial }: EntryProps) {
     setKeywordInput('');
   }
 
-  function submit() {
+  async function submit() {
     if (!content.trim()) {
       setErrors({ content: '내용을 입력해 주세요.' });
       return;
     }
-    upsertChronicle({
-      id: initial?.id,
+    if (!userId) {
+      toast('error', '로그인이 필요합니다.');
+      return;
+    }
+    const input: ChronicleWriteInput = {
       elderId,
       topic,
       content: content.trim(),
       keywords,
-      source: initial?.source || 'Caregiver',
-    });
-    toast('success', initial ? '연대기를 수정했어요.' : '연대기에 추가했어요.');
-    onClose();
+      source: initial?.source ?? 'Caregiver',
+    };
+    try {
+      if (initial) {
+        await updateChronicle.mutateAsync({ id: initial.id, patch: toChronicleUpdate(input) });
+        toast('success', '연대기를 수정했어요.');
+      } else {
+        await createChronicle.mutateAsync(toChronicleInsert(input, userId));
+        toast('success', '연대기에 추가했어요.');
+      }
+      onClose();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : '저장에 실패했습니다.');
+    }
   }
 
   return (
@@ -179,7 +207,7 @@ function EntryDialog({ open, onClose, elderId, initial }: EntryProps) {
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>취소</Button>
-          <Button onClick={submit}>저장</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? '저장 중...' : '저장'}</Button>
         </>
       }
       size="md"

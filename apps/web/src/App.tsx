@@ -15,7 +15,6 @@ import { ElderDressUpPage } from './pages/ElderDressUpPage';
 import { ConversePage } from './pages/ConversePage';
 import { GuardianLoginPage } from './pages/GuardianLoginPage';
 import { GuardianHomePage } from './pages/GuardianHomePage';
-import { seedIfEmpty } from './lib/seed';
 import { primeVoices } from './lib/speech';
 import { useAuth } from './auth/AuthProvider';
 
@@ -28,7 +27,6 @@ function CaregiverGuard({ children }: { children: React.ReactNode }) {
 
 function App() {
   useEffect(() => {
-    seedIfEmpty();
     void primeVoices();
   }, []);
 

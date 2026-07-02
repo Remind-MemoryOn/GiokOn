@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Users, FileText, BookOpenCheck, Sparkles, MessageSquareHeart, ArrowRight } from 'lucide-react';
+import { useProfiles, useSessionCounts, useChronicleCounts, toElderProfile } from '@giokon/data';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
@@ -9,19 +10,19 @@ import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
 
 export function DashboardPage() {
-  const elders = useStore((s) => s.elders);
-  const sessions = useStore((s) => s.sessions);
-  const chronicles = useStore((s) => s.chronicles);
-  const logs = useStore((s) => s.logs);
+  const profilesQuery = useProfiles();
+  const sessionCounts = useSessionCounts();
+  const chronicleCounts = useChronicleCounts();
+  const logs = useStore((s) => s.logs); // 최근 대화는 Phase E(세션/AI) 배선 전까지 store
 
-  const aiChronicles = chronicles.filter((c) => c.source === 'AI').length;
+  const elders = (profilesQuery.data ?? []).map(toElderProfile);
   const recentLogs = logs.slice(0, 5);
 
   const stats = [
     { label: '등록 어르신', value: elders.length, icon: Users, tone: 'text-brand-600 bg-brand-50' },
-    { label: '준비된 세션', value: sessions.length, icon: BookOpenCheck, tone: 'text-sky-600 bg-sky-50' },
-    { label: '연대기 항목', value: chronicles.length, icon: FileText, tone: 'text-emerald-600 bg-emerald-50' },
-    { label: 'AI 자동 축적', value: aiChronicles, icon: Sparkles, tone: 'text-purple-600 bg-purple-50' },
+    { label: '준비된 세션', value: sessionCounts.data?.total ?? 0, icon: BookOpenCheck, tone: 'text-sky-600 bg-sky-50' },
+    { label: '연대기 항목', value: chronicleCounts.data?.total ?? 0, icon: FileText, tone: 'text-emerald-600 bg-emerald-50' },
+    { label: 'AI 자동 축적', value: chronicleCounts.data?.aiTotal ?? 0, icon: Sparkles, tone: 'text-purple-600 bg-purple-50' },
   ];
 
   return (
@@ -72,36 +73,42 @@ export function DashboardPage() {
               </Link>
             </div>
             <div className="divide-y divide-slate-100">
-              {elders.slice(0, 4).map((e) => {
-                const sessCount = sessions.filter((s) => s.elderId === e.id).length;
-                const chrCount = chronicles.filter((c) => c.elderId === e.id).length;
-                return (
-                  <Link
-                    key={e.id}
-                    to={`/caregiver/elders/${e.id}`}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition group"
-                  >
-                    <Avatar name={e.name} color={e.avatarColor} size="lg" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="font-semibold text-slate-900">{e.name}</div>
-                        <span className="text-xs text-slate-500">{e.birthYear}년생</span>
+              {elders.length === 0 ? (
+                <div className="px-5 py-10 text-center text-sm text-slate-500">
+                  아직 등록된 어르신이 없습니다.
+                </div>
+              ) : (
+                elders.slice(0, 4).map((e) => {
+                  const sessCount = sessionCounts.data?.byProfile[e.id] ?? 0;
+                  const chrCount = chronicleCounts.data?.byProfile[e.id] ?? 0;
+                  return (
+                    <Link
+                      key={e.id}
+                      to={`/caregiver/elders/${e.id}`}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition group"
+                    >
+                      <Avatar name={e.name} color={e.avatarColor} size="lg" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-slate-900">{e.name}</div>
+                          <span className="text-xs text-slate-500">{e.birthYear}년생</span>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5 truncate">
+                          {e.hometown ? `${e.hometown} · ` : ''}{e.job || '직업 정보 없음'}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <Badge tone="brand">세션 {sessCount}</Badge>
+                          <Badge tone="success">연대기 {chrCount}</Badge>
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5 truncate">
-                        {e.hometown ? `${e.hometown} · ` : ''}{e.job || '직업 정보 없음'}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <Badge tone="brand">세션 {sessCount}</Badge>
-                        <Badge tone="success">연대기 {chrCount}</Badge>
-                      </div>
-                    </div>
-                    <ArrowRight
-                      size={16}
-                      className="text-slate-300 group-hover:text-slate-600 transition"
-                    />
-                  </Link>
-                );
-              })}
+                      <ArrowRight
+                        size={16}
+                        className="text-slate-300 group-hover:text-slate-600 transition"
+                      />
+                    </Link>
+                  );
+                })
+              )}
             </div>
           </Card>
 

@@ -14,6 +14,32 @@ import type { ChronicleRow, TablesInsert, TablesUpdate } from '../database.types
 export type ChronicleInsert = TablesInsert<'chronicle_entries'>
 export type ChronicleUpdate = TablesUpdate<'chronicle_entries'>
 
+export interface ChronicleCounts {
+  total: number
+  aiTotal: number
+  byProfile: Record<string, number>
+}
+
+/** 사용자 전체 연대기 카운트(대시보드·목록 카드용, RLS로 본인 것만). */
+export function useChronicleCounts(): UseQueryResult<ChronicleCounts> {
+  return useQuery({
+    queryKey: queryKeys.chronicleCounts,
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient()
+        .from('chronicle_entries')
+        .select('profile_id, source')
+      if (error) throw new Error(error.message)
+      const byProfile: Record<string, number> = {}
+      let aiTotal = 0
+      for (const r of data) {
+        byProfile[r.profile_id] = (byProfile[r.profile_id] ?? 0) + 1
+        if (r.source === 'ai') aiTotal += 1
+      }
+      return { total: data.length, aiTotal, byProfile }
+    },
+  })
+}
+
 /** 어르신별 연대기 항목(최신 기록순). */
 export function useChronicles(profileId: string | undefined): UseQueryResult<ChronicleRow[]> {
   return useQuery({
@@ -46,6 +72,7 @@ export function useCreateChronicle(): UseMutationResult<ChronicleRow, Error, Chr
     },
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: queryKeys.chronicles(row.profile_id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.chronicleCounts })
     },
   })
 }
@@ -70,6 +97,7 @@ export function useUpdateChronicle(): UseMutationResult<
     },
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: queryKeys.chronicles(row.profile_id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.chronicleCounts })
     },
   })
 }
@@ -89,6 +117,7 @@ export function useDeleteChronicle(): UseMutationResult<
     },
     onSuccess: (_id, { profileId }) => {
       void qc.invalidateQueries({ queryKey: queryKeys.chronicles(profileId) })
+      void qc.invalidateQueries({ queryKey: queryKeys.chronicleCounts })
     },
   })
 }

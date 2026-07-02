@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Users, ArrowRight } from 'lucide-react';
+import { useProfiles, useSessionCounts, useChronicleCounts, toElderProfile } from '@giokon/data';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
@@ -11,10 +12,11 @@ import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
 
 export function EldersPage() {
-  const elders = useStore((s) => s.elders);
-  const sessions = useStore((s) => s.sessions);
-  const chronicles = useStore((s) => s.chronicles);
-  const logs = useStore((s) => s.logs);
+  const profilesQuery = useProfiles();
+  const sessionCounts = useSessionCounts();
+  const chronicleCounts = useChronicleCounts();
+  const logs = useStore((s) => s.logs); // 대화 이력은 Phase E(세션/AI) 배선 전까지 store
+  const elders = (profilesQuery.data ?? []).map(toElderProfile);
 
   const [openNew, setOpenNew] = useState(false);
 
@@ -30,7 +32,17 @@ export function EldersPage() {
         }
       />
       <div className="flex-1 px-8 py-6 overflow-y-auto">
-        {elders.length === 0 ? (
+        {profilesQuery.isLoading ? (
+          <Card>
+            <CardBody className="py-16 text-center text-sm text-slate-500">불러오는 중…</CardBody>
+          </Card>
+        ) : profilesQuery.isError ? (
+          <Card>
+            <CardBody className="py-16 text-center text-sm text-red-500">
+              어르신 목록을 불러오지 못했습니다.
+            </CardBody>
+          </Card>
+        ) : elders.length === 0 ? (
           <Card>
             <CardBody className="text-center py-16">
               <div className="inline-flex w-14 h-14 rounded-2xl bg-slate-100 items-center justify-center text-slate-400 mb-4">
@@ -48,8 +60,8 @@ export function EldersPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {elders.map((e) => {
-              const sessCount = sessions.filter((s) => s.elderId === e.id).length;
-              const chrCount = chronicles.filter((c) => c.elderId === e.id).length;
+              const sessCount = sessionCounts.data?.byProfile[e.id] ?? 0;
+              const chrCount = chronicleCounts.data?.byProfile[e.id] ?? 0;
               const lastLog = logs.find((l) => l.elderId === e.id);
               return (
                 <Link key={e.id} to={`/caregiver/elders/${e.id}`} className="group">

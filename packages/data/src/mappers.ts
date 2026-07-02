@@ -17,7 +17,14 @@ import {
   type Guardian,
   type Speaker,
 } from '@giokon/core'
-import type { ChronicleRow, ProfileRow, SessionLogRow, SessionRow } from './database.types'
+import type {
+  ChronicleRow,
+  ProfileRow,
+  SessionLogRow,
+  SessionRow,
+  TablesInsert,
+  TablesUpdate,
+} from './database.types'
 
 export function toElderProfile(row: ProfileRow): ElderProfile {
   const guardian: Guardian | undefined = row.guardian_name
@@ -83,5 +90,83 @@ export function toConversationLog(session: SessionRow, logs: SessionLogRow[]): C
     startedAt: session.started_at,
     endedAt: session.ended_at ?? undefined,
     chronicleEntriesAdded: [],
+  }
+}
+
+// ── 도메인/폼 입력 → DB 쓰기 페이로드 ────────────────────────────────────
+
+/** 어르신 등록/수정 입력(꾸미기 필드 제외 — v1 스키마에 없음). */
+export interface ElderWriteInput {
+  name: string
+  birthYear: number
+  hometown?: string
+  job?: string
+  family?: string
+  hobbies?: string
+  guardian?: Guardian
+}
+
+export function toProfileInsert(input: ElderWriteInput, userId: string): TablesInsert<'profiles'> {
+  return {
+    user_id: userId,
+    name: input.name,
+    birth_year: input.birthYear,
+    hometown: input.hometown ?? null,
+    job: input.job ?? null,
+    family: input.family ?? null,
+    hobbies: input.hobbies ?? null,
+    guardian_name: input.guardian?.name ?? null,
+    guardian_relation: input.guardian?.relation ?? null,
+  }
+}
+
+export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'> {
+  return {
+    name: input.name,
+    birth_year: input.birthYear,
+    hometown: input.hometown ?? null,
+    job: input.job ?? null,
+    family: input.family ?? null,
+    hobbies: input.hobbies ?? null,
+    guardian_name: input.guardian?.name ?? null,
+    guardian_relation: input.guardian?.relation ?? null,
+  }
+}
+
+/** 연대기 항목 입력. */
+export interface ChronicleWriteInput {
+  elderId: string
+  topic: string
+  content: string
+  keywords: string[]
+  source: ChronicleSource
+}
+
+function fromChronicleSource(source: ChronicleSource): ChronicleRow['source'] {
+  return source === 'AI' ? 'ai' : 'caregiver'
+}
+
+export function toChronicleInsert(
+  input: ChronicleWriteInput,
+  userId: string,
+): TablesInsert<'chronicle_entries'> {
+  return {
+    user_id: userId,
+    profile_id: input.elderId,
+    topic: input.topic,
+    content: input.content,
+    keywords: input.keywords,
+    source: fromChronicleSource(input.source),
+  }
+}
+
+export function toChronicleUpdate(
+  input: Omit<ChronicleWriteInput, 'elderId'>,
+): TablesUpdate<'chronicle_entries'> {
+  return {
+    topic: input.topic,
+    content: input.content,
+    keywords: input.keywords,
+    source: fromChronicleSource(input.source),
   }
 }

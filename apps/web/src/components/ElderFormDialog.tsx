@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { Dialog } from './ui/Dialog';
 import { Field, Input, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
+import {
+  useCreateProfile,
+  useUpdateProfile,
+  toProfileInsert,
+  toProfileUpdate,
+  type ElderWriteInput,
+} from '@giokon/data';
 import { useStore } from '../store/store';
+import { useAuth } from '../auth/AuthProvider';
 import type { ElderProfile } from '../types';
 
 interface Props {
@@ -23,8 +31,12 @@ const empty = {
 };
 
 export function ElderFormDialog({ open, onClose, initial }: Props) {
-  const upsertElder = useStore((s) => s.upsertElder);
   const toast = useStore((s) => s.toast);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const createProfile = useCreateProfile();
+  const updateProfile = useUpdateProfile();
+  const saving = createProfile.isPending || updateProfile.isPending;
 
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof typeof empty, string>>>({});
@@ -56,7 +68,7 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function submit() {
+  async function submit() {
     const next: typeof errors = {};
     if (!form.name.trim()) next.name = '이름을 입력해 주세요.';
     if (!form.birthYear || Number(form.birthYear) < 1900 || Number(form.birthYear) > 2010) {
@@ -65,8 +77,12 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    upsertElder({
-      id: initial?.id,
+    if (!userId) {
+      toast('error', '로그인이 필요합니다.');
+      return;
+    }
+
+    const input: ElderWriteInput = {
       name: form.name.trim(),
       birthYear: Number(form.birthYear),
       hometown: form.hometown.trim() || undefined,
@@ -74,14 +90,22 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
       family: form.family.trim() || undefined,
       hobbies: form.hobbies.trim() || undefined,
       guardian: form.guardianName.trim()
-        ? {
-            name: form.guardianName.trim(),
-            relation: form.guardianRelation.trim() || '자녀',
-          }
+        ? { name: form.guardianName.trim(), relation: form.guardianRelation.trim() || '자녀' }
         : undefined,
-    });
-    toast('success', initial ? '연대기를 수정했어요.' : '새 어르신을 등록했어요.');
-    onClose();
+    };
+
+    try {
+      if (initial) {
+        await updateProfile.mutateAsync({ id: initial.id, patch: toProfileUpdate(input) });
+        toast('success', '연대기를 수정했어요.');
+      } else {
+        await createProfile.mutateAsync(toProfileInsert(input, userId));
+        toast('success', '새 어르신을 등록했어요.');
+      }
+      onClose();
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : '저장에 실패했습니다.');
+    }
   }
 
   return (
@@ -93,7 +117,9 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>취소</Button>
-          <Button onClick={submit}>{initial ? '저장' : '등록'}</Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving ? '저장 중...' : initial ? '저장' : '등록'}
+          </Button>
         </>
       }
     >
