@@ -65,11 +65,6 @@ interface State {
   getLog: (logId: string) => ConversationLog | undefined;
   logsByElder: (elderId: string) => ConversationLog[];
 
-  // session — 캐어기버 단순 로그인 (시연용)
-  caregiverName: string | null;
-  login: (name: string) => void;
-  logout: () => void;
-
   // guardian — 보호자 로그인 (시연용)
   guardianAuth: { elderId: string; guardianName: string } | null;
   guardianLogin: (elderId: string, guardianName: string) => void;
@@ -269,10 +264,6 @@ export const useStore = create<State>()(
           .logs.filter((l) => l.elderId === elderId)
           .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
 
-      caregiverName: null,
-      login: (name) => set({ caregiverName: name.trim() || '요양보호사' }),
-      logout: () => set({ caregiverName: null }),
-
       guardianAuth: null,
       guardianLogin: (elderId, guardianName) =>
         set({ guardianAuth: { elderId, guardianName: guardianName.trim() || '보호자' } }),
@@ -285,7 +276,6 @@ export const useStore = create<State>()(
         sessions: s.sessions,
         chronicles: s.chronicles,
         logs: s.logs,
-        caregiverName: s.caregiverName,
         guardianAuth: s.guardianAuth,
       }),
     }

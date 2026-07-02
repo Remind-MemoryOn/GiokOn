@@ -11,6 +11,9 @@ import type {
 } from '@supabase/supabase-js'
 import { getGiokonClient } from './client'
 
+// 화면(apps/web 등)에서 세션·사용자 타입을 쓸 수 있도록 재노출.
+export type { AuthChangeEvent, Session, Subscription, User } from '@supabase/supabase-js'
+
 export interface SignUpParams {
   email: string
   password: string

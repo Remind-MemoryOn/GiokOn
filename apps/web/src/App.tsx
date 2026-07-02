@@ -17,11 +17,12 @@ import { GuardianLoginPage } from './pages/GuardianLoginPage';
 import { GuardianHomePage } from './pages/GuardianHomePage';
 import { seedIfEmpty } from './lib/seed';
 import { primeVoices } from './lib/speech';
-import { useStore } from './store/store';
+import { useAuth } from './auth/AuthProvider';
 
 function CaregiverGuard({ children }: { children: React.ReactNode }) {
-  const caregiverName = useStore((s) => s.caregiverName);
-  if (!caregiverName) return <Navigate to="/caregiver/login" replace />;
+  const { session, loading } = useAuth();
+  if (loading) return null; // 세션 조회 중 — 깜빡임 방지
+  if (!session) return <Navigate to="/caregiver/login" replace />;
   return <>{children}</>;
 }
 

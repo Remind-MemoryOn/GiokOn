@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Brain, Home, Users, FileText, LogOut, Heart } from 'lucide-react';
+import { signOut } from '@giokon/data';
 import { cn } from '../lib/utils';
-import { useStore } from '../store/store';
+import { useAuth } from '../auth/AuthProvider';
 
 const NAV = [
   { to: '/caregiver',        label: '대시보드',    icon: Home, end: true },
@@ -10,9 +11,21 @@ const NAV = [
 ];
 
 export function CaregiverLayout() {
-  const caregiverName = useStore((s) => s.caregiverName);
-  const logout = useStore((s) => s.logout);
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  const name = (user?.user_metadata?.name as string | undefined)?.trim();
+  const displayName = name || user?.email || '요양보호사';
+  const avatarText = name ? name.slice(-2) : displayName.slice(0, 2).toUpperCase();
+
+  async function handleLogout() {
+    try {
+      await signOut();
+    } catch {
+      /* 로그아웃 실패해도 화면은 이동 */
+    }
+    navigate('/', { replace: true });
+  }
 
   return (
     <div className="min-h-full flex">
@@ -32,10 +45,10 @@ export function CaregiverLayout() {
         <div className="px-5 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold">
-              {caregiverName ? caregiverName.slice(-2) : '?'}
+              {avatarText}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{caregiverName || '게스트'}</div>
+              <div className="text-sm font-semibold truncate">{displayName}</div>
               <div className="text-[11px] text-slate-500">요양보호사</div>
             </div>
           </div>
@@ -70,10 +83,7 @@ export function CaregiverLayout() {
             <Heart size={16} /> 어르신 화면 미리보기
           </button>
           <button
-            onClick={() => {
-              logout();
-              navigate('/', { replace: true });
-            }}
+            onClick={handleLogout}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"
           >
             <LogOut size={16} /> 로그아웃
