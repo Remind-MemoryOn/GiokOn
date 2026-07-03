@@ -3,7 +3,11 @@
 // ⚠️ 임시 수기 작성본. Supabase 프로젝트 연결 후
 //   `supabase gen types typescript --local > database.types.ts`
 // 로 자동 생성본으로 교체한다. 스키마 출처: supabase/migrations/*.
-// (20260521131723_initial_schema + 20260624090000_supabase_auth_rls)
+// (20260521131723_initial_schema + 20260624090000_supabase_auth_rls
+//  + 20260703120000_organizations_rbac)
+//
+// 참고: org_id 는 NOT NULL 이지만 INSERT 시 스탬프 트리거(app.stamp_org_id)가
+// 자동 채우므로 Insert 타입에서는 선택(optional)으로 둔다.
 
 export type Json =
   | string
@@ -16,11 +20,34 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      organizations: {
+        Row: {
+          id: string
+          name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           id: string
           name: string
           email: string
+          org_id: string
+          role: Database['public']['Enums']['org_role']
           created_at: string
           updated_at: string
         }
@@ -28,6 +55,8 @@ export type Database = {
           id: string
           name: string
           email: string
+          org_id?: string
+          role?: Database['public']['Enums']['org_role']
           created_at?: string
           updated_at?: string
         }
@@ -35,6 +64,8 @@ export type Database = {
           id?: string
           name?: string
           email?: string
+          org_id?: string
+          role?: Database['public']['Enums']['org_role']
           created_at?: string
           updated_at?: string
         }
@@ -44,6 +75,7 @@ export type Database = {
         Row: {
           id: string
           user_id: string
+          org_id: string
           name: string
           birth_year: number
           hometown: string | null
@@ -59,6 +91,7 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
+          org_id?: string
           name: string
           birth_year: number
           hometown?: string | null
@@ -74,6 +107,7 @@ export type Database = {
         Update: {
           id?: string
           user_id?: string
+          org_id?: string
           name?: string
           birth_year?: number
           hometown?: string | null
@@ -93,6 +127,7 @@ export type Database = {
           id: string
           profile_id: string
           user_id: string
+          org_id: string
           topic: string
           content: string
           keywords: string[]
@@ -104,6 +139,7 @@ export type Database = {
           id?: string
           profile_id: string
           user_id: string
+          org_id?: string
           topic: string
           content: string
           keywords?: string[]
@@ -115,6 +151,7 @@ export type Database = {
           id?: string
           profile_id?: string
           user_id?: string
+          org_id?: string
           topic?: string
           content?: string
           keywords?: string[]
@@ -129,6 +166,7 @@ export type Database = {
           id: string
           profile_id: string
           user_id: string
+          org_id: string
           status: Database['public']['Enums']['session_status']
           turn_count: number
           duration_seconds: number | null
@@ -141,6 +179,7 @@ export type Database = {
           id?: string
           profile_id: string
           user_id: string
+          org_id?: string
           status?: Database['public']['Enums']['session_status']
           turn_count?: number
           duration_seconds?: number | null
@@ -153,6 +192,7 @@ export type Database = {
           id?: string
           profile_id?: string
           user_id?: string
+          org_id?: string
           status?: Database['public']['Enums']['session_status']
           turn_count?: number
           duration_seconds?: number | null
@@ -169,6 +209,7 @@ export type Database = {
           session_id: string
           profile_id: string
           user_id: string
+          org_id: string
           turn_index: number
           role: Database['public']['Enums']['session_log_role']
           content: string
@@ -187,6 +228,7 @@ export type Database = {
           session_id: string
           profile_id: string
           user_id: string
+          org_id?: string
           turn_index: number
           role: Database['public']['Enums']['session_log_role']
           content: string
@@ -205,6 +247,7 @@ export type Database = {
           session_id?: string
           profile_id?: string
           user_id?: string
+          org_id?: string
           turn_index?: number
           role?: Database['public']['Enums']['session_log_role']
           content?: string
@@ -227,6 +270,7 @@ export type Database = {
       chronicle_source: 'caregiver' | 'ai'
       session_status: 'active' | 'ended'
       session_log_role: 'ai' | 'user'
+      org_role: 'org_admin' | 'caregiver' | 'guardian'
     }
     CompositeTypes: { [_ in never]: never }
   }
@@ -244,7 +288,9 @@ export type TablesUpdate<T extends keyof PublicSchema['Tables']> =
 export type Enums<T extends keyof PublicSchema['Enums']> =
   PublicSchema['Enums'][T]
 
+export type OrganizationRow = Tables<'organizations'>
 export type UserRow = Tables<'users'>
+export type OrgRole = Enums<'org_role'>
 export type ProfileRow = Tables<'profiles'>
 export type ChronicleRow = Tables<'chronicle_entries'>
 export type SessionRow = Tables<'sessions'>

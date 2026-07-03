@@ -12,6 +12,7 @@ import type { ChronicleRow, ProfileRow, SessionLogRow, SessionRow } from './data
 const profileRow: ProfileRow = {
   id: 'p1',
   user_id: 'u1',
+  org_id: 'o1',
   name: '이순자',
   birth_year: 1945,
   hometown: '전북 전주',
@@ -77,6 +78,7 @@ describe('toChronicleEntry', () => {
     id: 'c1',
     profile_id: 'p1',
     user_id: 'u1',
+    org_id: 'o1',
     topic: '직업',
     content: '전주에서 식당을 했다',
     keywords: ['전주', '식당'],
@@ -108,6 +110,7 @@ describe('toConversationTurn', () => {
     session_id: 's1',
     profile_id: 'p1',
     user_id: 'u1',
+    org_id: 'o1',
     turn_index: 1,
     role: 'ai',
     content: '고향이 어디세요?',
@@ -144,6 +147,7 @@ describe('toConversationLog', () => {
     id: 's1',
     profile_id: 'p1',
     user_id: 'u1',
+    org_id: 'o1',
     status: 'ended',
     turn_count: 2,
     duration_seconds: 120,
@@ -154,13 +158,13 @@ describe('toConversationLog', () => {
   }
   const logs: SessionLogRow[] = [
     {
-      id: 'l1', session_id: 's1', profile_id: 'p1', user_id: 'u1', turn_index: 1,
+      id: 'l1', session_id: 's1', profile_id: 'p1', user_id: 'u1', org_id: 'o1', turn_index: 1,
       role: 'ai', content: '안녕하세요', original_content: null, topic: '인사',
       switch_topic: null, audio_url: null, audio_expires_at: null, duration_ms: null,
       spoken_at: '2026-01-04T00:00:01Z', created_at: '2026-01-04T00:00:01Z', updated_at: '2026-01-04T00:00:01Z',
     },
     {
-      id: 'l2', session_id: 's1', profile_id: 'p1', user_id: 'u1', turn_index: 2,
+      id: 'l2', session_id: 's1', profile_id: 'p1', user_id: 'u1', org_id: 'o1', turn_index: 2,
       role: 'user', content: '네 안녕하세요', original_content: null, topic: null,
       switch_topic: null, audio_url: null, audio_expires_at: null, duration_ms: 1500,
       spoken_at: '2026-01-04T00:00:05Z', created_at: '2026-01-04T00:00:05Z', updated_at: '2026-01-04T00:00:05Z',
