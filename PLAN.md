@@ -238,7 +238,8 @@ giokon/
   - **M9.1** `consents`(민감정보 별도동의·국외이전·대리동의+의사능력·철회 이력, 삭제 불가).
   - **T10.4/M13.3** RLS·RBAC·격리 **회귀 테스트 + 로컬/CI 러너**.
 - 🆕 **M12 AI 안전 (완료)**: `packages/core/safety.ts` — 위기 감지(자살·응급·학대→사람 에스컬레이션)·출력 가드레일(의학·유해 차단)·투명성 고지. 단위테스트 13.
-- 🆕 **CI (완료)**: GitHub Actions `ci.yml` — quality(typecheck/lint/test/build)·rls-regression(실 PG)·security-audit(SCA). (T8.2·T10.6·T13.3)
+- 🆕 **M9 컴플라이언스 백엔드 토대 (완료)**: `core/consent`(동의 카탈로그 SoT·온보딩/세션 게이팅)·`core/subject-rights`(이동권 산출물·삭제 계획)·`data` 훅(consents/org)·`consents.user_id` 보존 SET NULL 마이그레이션·`docs/compliance.md` ROPA/보관파기/삭제절차. **M9.6 비의료 락다운**: 카피 정정 + `check:copy` CI 게이트. 단위테스트 +15.
+- 🆕 **CI (완료)**: GitHub Actions `ci.yml` — quality(typecheck/lint/**check:copy**/test/build)·rls-regression(실 PG)·security-audit(SCA). (T8.2·T10.6·T13.3·M9.6)
 - ⏳ **차단(사용자 필요) — M10.1 데이터 국내화**: 서울 리전(ap-northeast-2) 신규 프로젝트 생성 + 마이그레이션 5종 적용 + 앱 재배선 + 도쿄 폐기. (컨테이너 egress가 `*.supabase.co` 차단 → 대시보드/CLI로 사용자 적용 필요.)
 - 🔜 **다음 후보(라이브 DB 불필요)**: M9.3 처리방침·약관·파기정책 문서 · M13 접근성(KWCAG) · **M15 Claude Design 프론트**(디자인 방향 사용자 확인 후 착수 권장).
 - 배포: 웹=Vercel · 모바일=EAS. **디자인(웹·앱)은 외부 협력** + **Claude Design 비교 트랙**(M15).
