@@ -42,7 +42,7 @@ giokon/
 | 모바일 앱 | Expo (React Native) + NativeWind |
 | 공유 로직/상태 | TypeScript + Zustand (`packages/core`) |
 | 데이터·인증 | Supabase (PostgreSQL · Auth · Storage · Edge Functions) |
-| LLM / STT / TTS | GPT-4o / Whisper / Clova Voice (Edge Functions에서 호출) |
+| LLM / STT / TTS | 현행 프런티어 LLM / gpt-4o-transcribe / Clova Voice (Edge Functions에서 호출) |
 | 디자인 | Figma 핸드오프 → 디자인 토큰 단일 소스 |
 | 배포 | 웹: Vercel · 모바일: EAS Build/Submit |
 
@@ -71,6 +71,20 @@ npm run dev      # http://localhost:5173 (Chrome/Edge 권장 — 음성 기능)
 ```
 
 환경변수(예정): 클라이언트는 `SUPABASE_URL` + `SUPABASE_ANON_KEY`, Edge Functions는 `SUPABASE_SERVICE_ROLE_KEY` 및 provider 키(OpenAI/Clova)를 secrets로 관리한다. 실제 키는 커밋하지 않는다.
+
+---
+
+## 엔터프라이즈·컴플라이언스 (2026-07-03 목표 상향)
+
+출시 즉시 상용 서비스 + 깐깐한 정부심사 통과·초과를 목표로, **데이터 국내 보관(Supabase 서울 리전)** · 엔터프라이즈 보안(암호화·조직 RBAC·감사로그·침투테스트) · 개인정보(민감정보 별도동의·대리동의) · **비의료 포지셔닝** · AI 안전(위기 에스컬레이션·투명성) · **KWCAG 접근성** · 멀티테넌시(기관 단위)를 신규 트랙 **M9–M15**(PLAN §2′)로 추진한다. 웹·앱 프론트는 외부 협력 업체와 별개로 **Claude Design**으로도 직접 구현해 비교한다.
+
+| 문서 | 내용 |
+|---|---|
+| [`docs/compliance.md`](./docs/compliance.md) | 개인정보(PIPA)·동의·대리동의·SaMD 비의료·PIA/CPO |
+| [`docs/security.md`](./docs/security.md) | 안전성확보조치·암호화·RBAC·감사로그·pentest·ISMS-P |
+| [`docs/infrastructure.md`](./docs/infrastructure.md) | 리전·풀링·부하·백업/DR·SLO·비용 |
+| [`docs/ai-safety.md`](./docs/ai-safety.md) | 위기 에스컬레이션·가드레일·투명성(AI기본법) |
+| [`docs/accessibility.md`](./docs/accessibility.md) | KWCAG 2.2·인증·자동/수동 테스트 |
 
 ---
 

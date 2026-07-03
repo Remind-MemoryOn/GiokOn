@@ -1,5 +1,7 @@
 # structure.md
 
+> 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 멀티테넌시 — `organizations` + `users.org_id` + 역할(RBAC: org_admin/caregiver/(guardian)), 전 테이블 조직 단위 격리. 상세: PLAN §2′ M14 · `docs/security.md`.
+
 ## 1. 전체 서비스 구조 개요
 
 ```

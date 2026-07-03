@@ -1,5 +1,7 @@
 # tech.md
 
+> 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 리전=**서울(ap-northeast-2)**, 보안스택·암호화·관측성·커넥션 풀링·부하/DR은 `docs/security.md`·`docs/infrastructure.md`. 멀티테넌시(organizations/RBAC)는 PLAN §2′ M14.
+
 ## 1. 기술 스택 개요
 
 | 영역 | 선택 기술 | 선택 이유 | 대안 |

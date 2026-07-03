@@ -1,5 +1,7 @@
 # Database Setup
 
+> 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 스키마 상향 — `organizations`/`consents`/`audit_log` + **조직 RBAC**(전 테이블 RLS를 조직+역할 기준으로 확장), 리전=**서울(ap-northeast-2)**, 보관/파기 정책. 상세: PLAN §2′(M9·M10·M14) · `docs/security.md` · `docs/compliance.md`.
+
 ## Direction
 
 기억온 v1 데이터베이스는 Supabase PostgreSQL을 사용한다. 인증은 **Supabase Auth**를 사용하며, 데이터 접근은 클라이언트(웹·모바일)가 supabase-js로 직접 연동하고 **RLS(`auth.uid()`)** 로 소유자별로 격리한다. Supabase는 DB·Auth·Storage·Edge Functions를 통합 제공한다.

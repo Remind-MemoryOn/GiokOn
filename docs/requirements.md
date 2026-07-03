@@ -1,5 +1,7 @@
 # requirements.md
 
+> 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 신규 비기능 요건 — 데이터 국내보관·암호화·감사로그·조직 RBAC·민감정보 별도동의·대리동의·AI 안전·KWCAG 접근성. 상세·근거: PLAN §2′(M9–M15) · `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.
+
 ## 1. 문서 목적
 
 이 문서는 기억온(GiEok-On) MVP 개발에서 반드시 충족해야 하는 기능·비기능 요구사항을 정의한다. 개발 범위가 과도하게 확장되지 않도록 Must / Should / Could 우선순위를 명시하며, 팀원 간 개발 기준과 발표 시연 요건의 공통 기준으로 활용한다.
