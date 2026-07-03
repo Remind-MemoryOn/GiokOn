@@ -3,6 +3,7 @@
 //   - 도메인 타입 (types)
 //   - 순수 유틸 (utils)
 //   - AI 도메인 규칙 + AIProvider/MockAIProvider (ai)
+//   - AI 안전(위기 감지·에스컬레이션·출력 가드레일·투명성) (safety)
 //   - 음성 입출력 계약 SpeechProvider (speech)
 //
 // Zustand UI 스토어와 데이터 레이어(TanStack Query)는 각각
@@ -11,4 +12,5 @@
 export * from './types'
 export * from './utils'
 export * from './ai'
+export * from './safety'
 export * from './speech'
