@@ -1,0 +1,41 @@
+# security.md — 보안·데이터 인프라 (엔터프라이즈급)
+
+> 목표: 「개인정보 안전성 확보조치 기준」 전 항목 충족 + 저장/전송 암호화·최소권한 RBAC·감사로그·
+> 취약점관리·침투테스트. ISMS-P(자율·B2G 가점)·CSAP(공공조달) 로드맵. 관련: PLAN §2′ M10·M14,
+> `docs/compliance.md`, `docs/infrastructure.md`.
+
+## 1. 데이터 국내화 (M10.1)
+- **Supabase 서울(ap-northeast-2) 신규 프로젝트**로 이전(도쿄 `GiokOn` 폐기). 스키마·RLS·데이터 이전 → 앱 재배선(`packages/data` env) → 도쿄 폐기.
+- 국외로 나가는 provider(LLM/STT/TTS)는 국외이전 동의·처리방침·위수탁계약으로 관리.
+
+## 2. 「안전성 확보조치 기준」 매핑 (규모 무관 의무)
+- **암호화**: 비밀번호·고유식별정보 저장 암호화(Supabase Auth 기본) + **민감정보(건강·음성) 저장 암호화**(pgcrypto/앱레벨 또는 KMS 봉투암호화) + 전송 TLS 강제.
+- **접근통제**: 취급자 **업무상 최소권한 차등 부여**(RBAC), 인증·접근권한 관리. → **RLS(조직+역할) 는 이 요건의 좋은 출발점**(§3).
+- **접속기록(audit)**: 접속일시·처리내역 저장·정기점검. 원칙 1년 이상; **5만명 이상 정보주체 또는 민감·고유식별정보 처리 시 2년 이상** → 보수적으로 **2년**. → `audit_log` 테이블/트리거(§4).
+- **인증 강화**: MFA(옵션), 세션 만료·비밀번호 정책.
+- 출처: [안전성 확보조치 기준(국가법령정보센터)](https://www.law.go.kr/admRulLsInfoP.do?chrClsCd=010202&admRulSeq=2100000229672)
+
+## 3. RLS · RBAC 강화 (M10.3 · M14)
+- 전 테이블 RLS를 **"본인 + 같은 조직(역할 범위)"** 로 확장(멀티테넌시): `organizations`, `users.org_id`, 역할(`org_admin`/`caregiver`/`guardian`).
+  - 예: 요양보호사=본인 담당 어르신, 기관관리자=소속 조직 전체, 보호자=동의된 대상만.
+- **service key 격리**(클라이언트 미노출), Edge Function은 호출자 JWT 검증 후 처리.
+- **pgTAP RLS 회귀 테스트**: 타 조직·타 사용자·타 역할 접근이 0건임을 자동 검증(CI 게이트).
+
+## 4. 감사로그 (audit_log)
+- 스키마(예): `id, actor_id, org_id, action, entity, entity_id, ip, user_agent, at`. 민감 리소스 접근/변경/삭제·동의·삭제요청 기록.
+- 2년 보관, 변조 방지(append-only), 정기 점검 리포트.
+
+## 5. 시크릿·키 관리 (M10.4)
+- Supabase secrets / GitHub Secrets / (옵션) Vault. provider 키 서버사이드 전용, 키 로테이션, 최소권한 토큰. `.env` 커밋 금지(세션훅으로 주입).
+
+## 6. 취약점·사고 대응 (M10.5)
+- CI: 의존성 스캔(SCA), SAST, **secret-scan**. 정기 **침투테스트**(외부 1회+주기), 취약점 관리·패치 SLA.
+- 보안사고 대응(IR) 플레이북(탐지·격리·통지·복구), 개인정보 유출 통지 절차(법정 기한).
+
+## 7. 인증 로드맵 (M10.6) — 심사는 외부
+- **ISMS/ISMS-P**: 의무대상(매출 100억/이용자 100만 등)은 통상 미해당이나 **B2G 신뢰·가점**으로 자율 취득 로드맵.
+- **CSAP**: 공공 클라우드 조달 시 필수 — 국내 리전·물리요건 전제.
+- 출처: [ISMS-P 대상(KISA)](https://isms.kisa.or.kr/main/ispims/target/)
+
+## 8. 검증
+- 민감 컬럼 암호화·`audit_log` 적재 확인, RLS/RBAC pgTAP 회귀 0건, SCA/SAST/secret-scan CI 통과, 침투테스트 리포트, 키/시크릿 노출 스캔 0.
