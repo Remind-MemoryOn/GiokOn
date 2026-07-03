@@ -4,7 +4,8 @@
 //   `supabase gen types typescript --local > database.types.ts`
 // 로 자동 생성본으로 교체한다. 스키마 출처: supabase/migrations/*.
 // (20260521131723_initial_schema + 20260624090000_supabase_auth_rls
-//  + 20260703120000_organizations_rbac)
+//  + 20260703120000_organizations_rbac + 20260703130000_audit_log
+//  + 20260703140000_consents)
 //
 // 참고: org_id 는 NOT NULL 이지만 INSERT 시 스탬프 트리거(app.stamp_org_id)가
 // 자동 채우므로 Insert 타입에서는 선택(optional)으로 둔다.
@@ -263,6 +264,105 @@ export type Database = {
         }
         Relationships: []
       }
+      consents: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string
+          profile_id: string | null
+          consent_type: Database['public']['Enums']['consent_type']
+          granted: boolean
+          version: string
+          subject_type: Database['public']['Enums']['consent_subject_type']
+          guardian_name: string | null
+          guardian_relation: string | null
+          capacity: Database['public']['Enums']['consent_capacity']
+          basis: string | null
+          voice_record_url: string | null
+          granted_at: string
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          user_id: string
+          profile_id?: string | null
+          consent_type: Database['public']['Enums']['consent_type']
+          granted: boolean
+          version: string
+          subject_type?: Database['public']['Enums']['consent_subject_type']
+          guardian_name?: string | null
+          guardian_relation?: string | null
+          capacity?: Database['public']['Enums']['consent_capacity']
+          basis?: string | null
+          voice_record_url?: string | null
+          granted_at?: string
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string
+          profile_id?: string | null
+          consent_type?: Database['public']['Enums']['consent_type']
+          granted?: boolean
+          version?: string
+          subject_type?: Database['public']['Enums']['consent_subject_type']
+          guardian_name?: string | null
+          guardian_relation?: string | null
+          capacity?: Database['public']['Enums']['consent_capacity']
+          basis?: string | null
+          voice_record_url?: string | null
+          granted_at?: string
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          id: number
+          occurred_at: string
+          actor_id: string | null
+          org_id: string | null
+          action: string
+          table_name: string | null
+          record_id: string | null
+          ip: string | null
+          user_agent: string | null
+          detail: Json | null
+        }
+        Insert: {
+          id?: never
+          occurred_at?: string
+          actor_id?: string | null
+          org_id?: string | null
+          action: string
+          table_name?: string | null
+          record_id?: string | null
+          ip?: string | null
+          user_agent?: string | null
+          detail?: Json | null
+        }
+        Update: {
+          id?: never
+          occurred_at?: string
+          actor_id?: string | null
+          org_id?: string | null
+          action?: string
+          table_name?: string | null
+          record_id?: string | null
+          ip?: string | null
+          user_agent?: string | null
+          detail?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: { [_ in never]: never }
@@ -271,6 +371,14 @@ export type Database = {
       session_status: 'active' | 'ended'
       session_log_role: 'ai' | 'user'
       org_role: 'org_admin' | 'caregiver' | 'guardian'
+      consent_type:
+        | 'privacy_required'
+        | 'sensitive_health_voice'
+        | 'cross_border_transfer'
+        | 'ai_processing'
+        | 'marketing_optional'
+      consent_subject_type: 'self' | 'guardian' | 'legal_representative'
+      consent_capacity: 'capable' | 'limited' | 'incapable' | 'unknown'
     }
     CompositeTypes: { [_ in never]: never }
   }
@@ -295,3 +403,8 @@ export type ProfileRow = Tables<'profiles'>
 export type ChronicleRow = Tables<'chronicle_entries'>
 export type SessionRow = Tables<'sessions'>
 export type SessionLogRow = Tables<'session_logs'>
+export type ConsentRow = Tables<'consents'>
+export type ConsentType = Enums<'consent_type'>
+export type ConsentSubjectType = Enums<'consent_subject_type'>
+export type ConsentCapacity = Enums<'consent_capacity'>
+export type AuditLogRow = Tables<'audit_log'>
