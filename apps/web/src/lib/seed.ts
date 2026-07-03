@@ -52,7 +52,7 @@ export function seedIfEmpty() {
 
   // 이순자 — 세션 2개 (회상 + 음악)
   upsertSession({
-    title: '오늘의 회상치료',
+    title: '오늘의 회상 대화',
     therapyType: 'reminiscence',
     note: '편안한 분위기에서 천천히 진행',
     durationMinutes: 10,

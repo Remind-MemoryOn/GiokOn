@@ -1,7 +1,7 @@
 name: CI
 
 # 품질·보안 게이트 (T8.2 · T10.6 · T13.3):
-#   quality        — typecheck / lint / test / build
+#   quality        — typecheck / lint / 비의료 카피 린트 / test / build
 #   rls-regression — 테넌트 격리·RBAC·동의·감사 불변식(실 PostgreSQL)
 #   security-audit — 의존성 취약점 스캔(SCA)
 # 접근성(axe)·SAST(CodeQL)·E2E(Playwright)는 해당 트랙 착수 시 잡을 추가한다.
@@ -25,11 +25,13 @@ jobs:
           version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r typecheck
       - run: pnpm -r lint
+      - name: 비의료 포지셔닝 카피 린트 (M9.6)
+        run: pnpm check:copy
       - run: pnpm -r test
       - run: pnpm -r build
 
@@ -79,7 +81,7 @@ jobs:
           version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: 의존성 취약점 스캔 (SCA)

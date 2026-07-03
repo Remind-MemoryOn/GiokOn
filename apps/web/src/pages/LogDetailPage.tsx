@@ -68,10 +68,10 @@ export function LogDetailPage() {
         }
       />
       <div className="flex-1 px-8 py-6 overflow-y-auto space-y-6">
-        {/* 치료 종류 표시 */}
+        {/* 활동 종류 표시 */}
         {session ? (
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500">치료 종류:</span>
+            <span className="text-slate-500">활동 종류:</span>
             <span className="inline-flex items-center gap-1.5 font-semibold text-slate-900">
               {THERAPY_TYPES[session.therapyType].emoji} {THERAPY_TYPES[session.therapyType].label}
             </span>

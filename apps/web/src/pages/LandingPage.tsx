@@ -11,7 +11,7 @@ export function LandingPage() {
           </div>
           <div>
             <div className="text-xl font-bold tracking-tight text-slate-900">기억온</div>
-            <div className="text-xs text-warm-700">GiokOn · 회상치료 AI</div>
+            <div className="text-xs text-warm-700">GiokOn · 회상 대화 AI</div>
           </div>
         </div>
         <span className="text-xs text-warm-700 bg-white/70 px-3 py-1.5 rounded-full border border-warm-200">
@@ -54,7 +54,7 @@ export function LandingPage() {
                 </div>
               </div>
               <p className="text-sm text-slate-600 leading-relaxed mb-5" style={{ wordBreak: 'keep-all' }}>
-                담당 어르신을 직접 선택하고, 치료 세션을 시작합니다. 캐릭터 꾸미기·대화 기록·보호자 리포트까지 모두 관리할 수 있어요.
+                담당 어르신을 직접 선택하고, 활동 세션을 시작합니다. 캐릭터 꾸미기·대화 기록·보호자 리포트까지 모두 관리할 수 있어요.
               </p>
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-sky-700 group-hover:gap-2.5 transition-all">
                 로그인하고 시작하기 <ArrowRight size={15} />

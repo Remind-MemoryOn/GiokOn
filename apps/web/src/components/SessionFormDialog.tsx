@@ -56,7 +56,7 @@ export function SessionFormDialog({ open, onClose, elderId, initial }: Props) {
 
   function suggestTitle(t: TherapyType) {
     const map: Record<TherapyType, string> = {
-      reminiscence: '오늘의 회상치료',
+      reminiscence: '오늘의 회상 대화',
       cognitive:    '오늘의 인지자극',
       music:        '옛 노래 한 곡',
       art:          '풍경 떠올리기',
@@ -68,8 +68,8 @@ export function SessionFormDialog({ open, onClose, elderId, initial }: Props) {
     <Dialog
       open={open}
       onClose={onClose}
-      title={initial ? '세션 수정' : '새 치료 세션 만들기'}
-      description="치료 종류만 정해 주세요. 대화 주제는 어르신의 연대기를 보고 AI가 알아서 골라 진행합니다."
+      title={initial ? '세션 수정' : '새 활동 세션 만들기'}
+      description="활동 종류만 정해 주세요. 대화 주제는 어르신의 연대기를 보고 AI가 알아서 골라 진행합니다."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>취소</Button>
@@ -79,7 +79,7 @@ export function SessionFormDialog({ open, onClose, elderId, initial }: Props) {
       size="lg"
     >
       <div className="space-y-5">
-        <Field label="치료 종류" required>
+        <Field label="활동 종류" required>
           <div className="grid grid-cols-2 gap-3">
             {(Object.values(THERAPY_TYPES)).map((t) => (
               <button
@@ -111,7 +111,7 @@ export function SessionFormDialog({ open, onClose, elderId, initial }: Props) {
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="예: 오늘의 회상치료"
+            placeholder="예: 오늘의 회상 대화"
           />
         </Field>
 
