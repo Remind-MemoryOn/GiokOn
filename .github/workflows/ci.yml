@@ -1,0 +1,88 @@
+name: CI
+
+# 품질·보안 게이트 (T8.2 · T10.6 · T13.3):
+#   quality        — typecheck / lint / test / build
+#   rls-regression — 테넌트 격리·RBAC·동의·감사 불변식(실 PostgreSQL)
+#   security-audit — 의존성 취약점 스캔(SCA)
+# 접근성(axe)·SAST(CodeQL)·E2E(Playwright)는 해당 트랙 착수 시 잡을 추가한다.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r lint
+      - run: pnpm -r test
+      - run: pnpm -r build
+
+  rls-regression:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Supabase 심 적용
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/_supabase_shims.sql
+      - name: 마이그레이션 순차 적용
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "── applying $f"
+            psql -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: 테스트 롤 권한 부여
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/_grants.sql
+      - name: RLS·RBAC·격리 회귀 테스트
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_regression.sql
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 의존성 취약점 스캔 (SCA)
+        run: pnpm audit --audit-level high
+        # 초기에는 정보성으로 두고, 트리아지 정착 후 게이트로 승격한다.
+        continue-on-error: true
