@@ -5,7 +5,7 @@
 // 로 자동 생성본으로 교체한다. 스키마 출처: supabase/migrations/*.
 // (20260521131723_initial_schema + 20260624090000_supabase_auth_rls
 //  + 20260703120000_organizations_rbac + 20260703130000_audit_log
-//  + 20260703140000_consents)
+//  + 20260703140000_consents + 20260703150000_consent_retention)
 //
 // 참고: org_id 는 NOT NULL 이지만 INSERT 시 스탬프 트리거(app.stamp_org_id)가
 // 자동 채우므로 Insert 타입에서는 선택(optional)으로 둔다.
@@ -268,7 +268,7 @@ export type Database = {
         Row: {
           id: string
           org_id: string
-          user_id: string
+          user_id: string | null
           profile_id: string | null
           consent_type: Database['public']['Enums']['consent_type']
           granted: boolean
@@ -306,7 +306,7 @@ export type Database = {
         Update: {
           id?: string
           org_id?: string
-          user_id?: string
+          user_id?: string | null
           profile_id?: string | null
           consent_type?: Database['public']['Enums']['consent_type']
           granted?: boolean

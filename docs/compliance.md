@@ -51,10 +51,39 @@
 - **Google Play**(Health apps): **Health apps declaration form** + 프라이버시 정책. **2026.1 Medical Device 라벨링** — 비의료면 앱 설명에 **"not a medical device… does not diagnose, treat, cure, or prevent"** 면책 명시 + **AI 생성 콘텐츠 정책**.
 - 출처: [Apple 심사지침](https://developer.apple.com/app-store/review/guidelines/) · [Play Health Content](https://support.google.com/googleplay/android-developer/answer/16679511)
 
-## 5. 구현 매핑
-- **`consents` 테이블**: `id, user_id/subject, profile_id(어르신), org_id, type(sensitive|overseas|marketing|tos|privacy), version, granted, method(click|voice), evidence_url(녹취), consenter(self|guardian_legal|guardian_family), capacity_note, granted_at, revoked_at`.
-- **화면**: 온보딩·프로필 생성 동의(별도 체크박스), 설정 내 동의 관리·철회, 정보주체 권리(열람/정정/삭제/다운로드), 처리방침·약관 노출.
-- **거버넌스**: ROPA, 보관/파기 스케줄(pg_cron), 위수탁 목록(수탁사·처리위치·항목).
+## 5. 구현 현황 (2026-07-03)
+- **`consents` 테이블(구현 완료)** — `supabase/migrations/20260703140000_consents.sql`:
+  `id, org_id, user_id(수집자·삭제 시 SET NULL 익명화), profile_id(어르신),
+  consent_type(privacy_required|sensitive_health_voice|cross_border_transfer|ai_processing|marketing_optional),
+  granted, version, subject_type(self|guardian|legal_representative), guardian_name/relation,
+  capacity(capable|limited|incapable|unknown), basis, voice_record_url(녹취), granted_at, revoked_at`.
+  RLS=본인+기관관리자, **삭제 불가(철회=revoked_at)**. 대리동의 시 대리인 필수 제약.
+- **동의 카탈로그(SoT)** — `@giokon/core/consent`: 어떤 동의가 필수/민감/국외이전인지·온보딩/세션 게이팅(`canStartElderSession`).
+- **정보주체 권리** — `@giokon/core/subject-rights`: 이동권 산출물(`buildSubjectDataExport`)·삭제 계획(`buildAccountDeletionPlan`/`buildElderDeletionPlan`). 데이터 훅 `@giokon/data`(useConsents/useRecordConsent/useRevokeConsent).
+- **화면(후속·Claude Design 트랙)**: 온보딩·프로필 동의(별도 체크박스), 설정 내 동의 관리·철회, 정보주체 권리 UI, 처리방침·약관 노출.
+
+### 5.1 처리목록(ROPA) · 보관·파기 매트릭스
+| 데이터 | 분류 | 목적 | 처리자·위치 | 보관·파기 |
+|---|---|---|---|---|
+| 요양보호사 계정(users) | 일반 | 서비스 운영·인증 | Supabase 서울 | 탈퇴 시 파기(재귀속·보존 처리 후) |
+| 어르신 프로필·연대기(profiles/chronicle_entries) | 일반(민감 인접) | 개인화 회상 대화 | Supabase 서울 | 기관 귀속·목적 종료/요청 시 파기 |
+| 음성 원본(Storage) | **민감** | STT 입력 | Supabase 서울 → STT 처리자 | 즉시/보관기간(N일) 후 자동 파기 |
+| 대화 로그(session_logs) | **민감 인접** | 세션 기록·요양보호사 확인 | Supabase 서울 | 보관기간 후 자동 파기(pg_cron) |
+| 동의 이력(consents) | 증빙 | 동의·철회 입증 | Supabase 서울 | 보존(계정 삭제 시 익명화) |
+| 접속·처리기록(audit_log) | 보안 | 안전성 확보조치 | Supabase 서울 | **최소 2년** 보존 후 파기 |
+| AI 처리(LLM/STT/TTS) | 민감 포함 | 대화 생성·음성 변환 | **국외 처리자 포함** | 무보관 계약·국외이전 동의 |
+
+### 5.2 계정 삭제 처리 절차(멀티테넌시·보존 정합)
+> 단순 `DELETE users`는 프로필→연대기→동의까지 cascade 파기된다. 기관 귀속·증빙 보존을
+> 위해 **재귀속 우선** 절차를 따른다(코드: `buildAccountDeletionPlan`).
+1. 소속 어르신 데이터(profiles 및 하위)를 **기관 관리자에게 재귀속**(파기 아님).
+2. 동의 이력은 보존, `user_id`만 SET NULL로 **익명화**(증빙 유지).
+3. 음성 원본 등 민감정보 파기, 감사로그는 **2년 보존**.
+4. 위 처리 후 계정 식별정보(auth/public.users) 파기.
+
+> **알려진 정합 강화(v1.x)**: 현재 데이터 4테이블의 `user_id`는 초기 스키마상
+> `ON DELETE CASCADE`이므로 위 1·2단계는 **애플리케이션 절차(재귀속)로 보장**한다.
+> 향후 `user_id`를 `SET NULL`(+ 조직 기준 복합키)로 전환해 DB 레벨에서도 강제할 예정.
 
 ## 6. 검증
 - 동의 플로우 E2E(민감·국외이전·대리 각 경로), 처리방침/약관 노출, 삭제/열람/이동 권리 동작.
