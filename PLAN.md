@@ -231,5 +231,14 @@ giokon/
 - ✅ **Phase A (기반)**: 모노레포(M0) · `packages/core`(M1, 단위테스트 7) · `packages/theme` 토큰 정의(M4.1) · 현 웹 lint/버그 정리(M5.1) 완료.
 - ✅ **Phase B (데이터/인증)**: `auth.uid()` RLS 마이그레이션(M3.1·3.2)을 **라이브 프로젝트(Supabase `GiokOn`)에 적용·검증 완료** — 5개 테이블·RLS·정책(auth.uid ×18)·가입 트리거(`public.users` 자동 생성)까지 라이브 확인. `packages/data`(M2: supabase-js + TanStack Query 훅 · Supabase Auth · DB↔도메인 매퍼, 단위테스트 12).
 - ✅ **웹 인증 (M5.2)**: 목업 로그인 → Supabase Auth + 라우트 가드 교체. 회원가입/로그인 실동작 검증(랜덤 자격증명 실패, 가입 시 `public.users` 생성 확인).
-- 🔜 **다음**: T2.4 화면 ↔ 실 Supabase 데이터 연결 — 어르신(profiles) CRUD 수직 슬라이스부터 → 연대기 → (세션·대화는 AI 파이프라인과 함께).
-- 배포: 웹=Vercel · 모바일=EAS. **디자인(웹·앱)은 외부 협력**이라 내부 작업 범위에서 제외(별도 요청 시 착수).
+- ✅ **T2.4(A) 슬라이스**: 어르신(profiles)·연대기(chronicles) CRUD를 Supabase에 연결(세션·대화는 Phase E/M로 이연).
+- 🆕 **Phase G/H DB 기반 (작성·실검증 완료, 서울 적용 대기)**: 마이그레이션 3종 작성 + **로컬 PostgreSQL 16으로 전체 순차 적용·기능 검증 통과**.
+  - **M14.1·M10.4** `organizations`·RBAC(org_admin/caregiver/guardian)·org_id 비정규화·가입 시 기관 자동생성·백필·**조직 단위 RLS**(타 기관 접근 0건, 역할 범위 검증).
+  - **M10.3** `audit_log`(처리기록 트리거 5테이블·2년 보관·기관관리자 열람·pg_cron 파기).
+  - **M9.1** `consents`(민감정보 별도동의·국외이전·대리동의+의사능력·철회 이력, 삭제 불가).
+  - **T10.4/M13.3** RLS·RBAC·격리 **회귀 테스트 + 로컬/CI 러너**.
+- 🆕 **M12 AI 안전 (완료)**: `packages/core/safety.ts` — 위기 감지(자살·응급·학대→사람 에스컬레이션)·출력 가드레일(의학·유해 차단)·투명성 고지. 단위테스트 13.
+- 🆕 **CI (완료)**: GitHub Actions `ci.yml` — quality(typecheck/lint/test/build)·rls-regression(실 PG)·security-audit(SCA). (T8.2·T10.6·T13.3)
+- ⏳ **차단(사용자 필요) — M10.1 데이터 국내화**: 서울 리전(ap-northeast-2) 신규 프로젝트 생성 + 마이그레이션 5종 적용 + 앱 재배선 + 도쿄 폐기. (컨테이너 egress가 `*.supabase.co` 차단 → 대시보드/CLI로 사용자 적용 필요.)
+- 🔜 **다음 후보(라이브 DB 불필요)**: M9.3 처리방침·약관·파기정책 문서 · M13 접근성(KWCAG) · **M15 Claude Design 프론트**(디자인 방향 사용자 확인 후 착수 권장).
+- 배포: 웹=Vercel · 모바일=EAS. **디자인(웹·앱)은 외부 협력** + **Claude Design 비교 트랙**(M15).
