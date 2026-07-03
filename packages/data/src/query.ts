@@ -28,4 +28,8 @@ export const queryKeys = {
   sessionLogs: (sessionId: string) => ['session_logs', sessionId] as const,
   chronicleCounts: ['chronicle_counts'] as const,
   sessionCounts: ['session_counts'] as const,
+  currentUser: ['users', 'me'] as const,
+  organization: ['organization'] as const,
+  orgMembers: ['org_members'] as const,
+  consents: (profileId: string) => ['consents', profileId] as const,
 }

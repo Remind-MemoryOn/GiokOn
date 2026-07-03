@@ -4,7 +4,7 @@
 //   - client    : supabase-js 클라이언트 팩토리 + 전역 레지스트리(initGiokonData)
 //   - auth      : Supabase Auth (signUp/signIn/signOut/비밀번호 재설정/session)
 //   - query     : TanStack Query 클라이언트 + 쿼리 키 팩토리
-//   - hooks/*   : 엔티티별 TanStack Query 훅 (profiles/chronicles/sessions/logs)
+//   - hooks/*   : 엔티티별 TanStack Query 훅 (profiles/chronicles/sessions/logs/organizations/consents)
 //   - mappers   : DB row ↔ @giokon/core 도메인 타입 변환
 //   - database.types : DB 타입(추후 `supabase gen types`로 교체)
 //
@@ -22,3 +22,5 @@ export * from './mappers'
 export * from './hooks/profiles'
 export * from './hooks/chronicles'
 export * from './hooks/sessions'
+export * from './hooks/organizations'
+export * from './hooks/consents'
