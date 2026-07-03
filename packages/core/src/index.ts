@@ -4,6 +4,7 @@
 //   - 순수 유틸 (utils)
 //   - AI 도메인 규칙 + AIProvider/MockAIProvider (ai)
 //   - AI 안전(위기 감지·에스컬레이션·출력 가드레일·투명성) (safety)
+//   - 안전 가드 통합 대화 오케스트레이션 (conversation)
 //   - 동의 카탈로그(필수/민감/국외이전·온보딩 게이팅) (consent)
 //   - 정보주체 권리(이동권 산출물·삭제 계획) (subject-rights)
 //   - 음성 입출력 계약 SpeechProvider (speech)
@@ -15,6 +16,7 @@ export * from './types'
 export * from './utils'
 export * from './ai'
 export * from './safety'
+export * from './conversation'
 export * from './consent'
 export * from './subject-rights'
 export * from './speech'
