@@ -240,6 +240,8 @@ giokon/
 - 🆕 **M12 노인 특화 대화 안전 설계 (전면 완성, 2026-07-11)**: 발화를 8가지 상황(위기 3분류·고통·중단·거부·혼란·애도·침묵·일반)으로 분류, **근거 기반 대응**(생명 우선·validation·교정 금지·자기결정·비의료·상태 신호 기반 진행 — 고정 카운터 폐지). `core/{safety,ai,conversation}.ts` 재설계 + **실 LLM 시스템 프롬프트·Structured Outputs 스키마**(`core/prompt.ts`, 3중 방어 OR 결합) + **`safety_events` 영속화**(기관 공유 RLS·확인 이력·삭제 불가) + 웹 대화 화면 배선(알림 배너·AI 고지·마무리 권고). 상세: `docs/ai-safety.md`. 테스트 114(세션 시뮬레이션 8종 포함)·RLS 회귀 통과.
 - 🆕 **M9 컴플라이언스 백엔드 토대 (완료)**: `core/consent`(동의 카탈로그 SoT·온보딩/세션 게이팅)·`core/subject-rights`(이동권 산출물·삭제 계획)·`data` 훅(consents/org)·`consents.user_id` 보존 SET NULL 마이그레이션·`docs/compliance.md` ROPA/보관파기/삭제절차. **M9.6 비의료 락다운**: 카피 정정 + `check:copy` CI 게이트. 단위테스트 +15.
 - 🆕 **CI (완료)**: GitHub Actions `ci.yml` — quality(typecheck/lint/**check:copy**/test/build)·rls-regression(실 PG)·security-audit(SCA). (T8.2·T10.6·T13.3·M9.6)
-- ⏳ **차단(사용자 필요) — M10.1 데이터 국내화**: 서울 리전(ap-northeast-2) 신규 프로젝트 생성 + 마이그레이션 5종 적용 + 앱 재배선 + 도쿄 폐기. (컨테이너 egress가 `*.supabase.co` 차단 → 대시보드/CLI로 사용자 적용 필요.)
+- 🆕 **웹 대시보드 개발 완료(2026-07-11)**: 연동 외 전 기능 — 동의 수집·게이팅(대리동의·의사능력·위험고지), 안전 알림 대시보드·확인 처리·어르신별 이력, 기관 관리(/caregiver/org), 설정·정보주체 권리(/caregiver/settings — 데이터 다운로드·삭제 절차 안내), 처리방침·약관 초안(/privacy·/terms), 비밀번호 재설정, AI 생성물 표시, 접근성 기본기. **Supabase 연동 시 코드 변경 없이 동작**(미연동 데모는 안내·우회). Playwright 라우트 스모크 통과.
+- ⏳ **차단(사용자 필요) — M10.1 데이터 국내화**: 서울 리전(ap-northeast-2) 신규 프로젝트 생성 + 마이그레이션 7종 적용 + 앱 재배선 + 도쿄 폐기. 가이드: `docs/runbooks/seoul-region-migration.md`. (컨테이너 egress가 `*.supabase.co` 차단 → 대시보드/CLI로 사용자 적용 필요.)
+- 🔜 **모바일 앱**: 타 인원이 Figma 디자인만 진행(코드 없음). 사용자가 Figma 프로젝트 공유 후 앱 개발 착수 예정(Expo).
 - 🔜 **다음 후보(라이브 DB 불필요)**: M9.3 처리방침·약관·파기정책 문서 · M13 접근성(KWCAG) · **M15 Claude Design 프론트**(디자인 방향 사용자 확인 후 착수 권장).
 - 배포: 웹=Vercel · 모바일=EAS. **디자인(웹·앱)은 외부 협력** + **Claude Design 비교 트랙**(M15).
