@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Users, FileText, BookOpenCheck, Sparkles, MessageSquareHeart, ArrowRight } from 'lucide-react';
 import { useProfiles, useSessionCounts, useChronicleCounts, toElderProfile } from '@giokon/data';
 import { PageHeader } from '../components/PageHeader';
+import { SafetyAlertsBanner } from '../components/SafetyAlertsBanner';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
@@ -32,6 +33,9 @@ export function DashboardPage() {
         description="기억온은 요양보호사가 설계한 세션을 AI가 어르신과 대화로 진행하고, 그 대화에서 새로운 연대기를 스스로 모아갑니다."
       />
       <div className="flex-1 px-8 py-6 space-y-6 overflow-y-auto">
+        {/* 미확인 안전 알림 — 최우선 정보 (M12) */}
+        <SafetyAlertsBanner profiles={profilesQuery.data ?? []} />
+
         {/* 시연 안내 */}
         <div className="rounded-2xl bg-gradient-to-r from-brand-50 via-amber-50 to-rose-50 border border-brand-100 px-5 py-4 flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg bg-brand-500 text-white flex items-center justify-center shrink-0">

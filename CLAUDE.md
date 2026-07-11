@@ -40,9 +40,20 @@
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-07-03)
-- Phase A 완료 · Phase B(DB/Auth) 라이브 검증 완료 · M5.2(웹 Auth) 완료 · T2.4(어르신·연대기 CRUD→Supabase) 착수.
+## 현재 위치 (2026-07-11)
+- Phase A 완료 · Phase B(DB/Auth) 라이브 검증 완료 · M5.2(웹 Auth) 완료 · T2.4(A) 완료.
 - **2026-07-03 목표 상향** → 엔터프라이즈·정부심사 기준 전면 재계획(PLAN §2′ M9–M15 · §3 Phase G–L).
-  실행 순서: 데이터 주권·보안(서울 리전·암호화·감사·RBAC) → 컴플라이언스 → AI안전 → 접근성 →
-  스케일 → Claude Design 프론트 → 실 AI → 퍼블리싱.
+- **Phase G/H DB 기반 완료(로컬 PG16 검증)**: 마이그레이션 7종(organizations/RBAC·audit_log·
+  consents·consent_retention·safety_events) + RLS 회귀 테스트 + CI(quality·rls-regression·SCA·
+  비의료 카피 린트). **M12 노인 특화 대화 안전 설계 전면 완성**(8상황 분류·3중 방어·프롬프트·
+  세션 시뮬레이션 — `docs/ai-safety.md`).
+- **웹 대시보드 개발 완료(2026-07-11)**: 동의 수집·게이팅(대리동의·의사능력), 안전 알림
+  대시보드·확인 처리, 기관 관리, 설정(비밀번호·데이터 다운로드·삭제 안내), 처리방침·약관 초안,
+  비밀번호 재설정, AI 투명성 표시. **Supabase 서버·API는 미연동** — 연동은 사용자가 외부에서
+  진행(`docs/runbooks/seoul-region-migration.md`), 연동 시 코드 변경 없이 동작.
+- ⏳ **차단(사용자)**: M10.1 서울 리전 프로젝트 생성 + 마이그레이션 적용 + env 재배선.
+- **모바일 앱(중요)**: 타 인원이 **Figma로 디자인만** 진행한 상태(코드 없음, `apps/mobile`은
+  placeholder). **웹 완료 후 사용자가 Figma 프로젝트 내용을 공유하면 그 디자인 기반으로 앱 개발
+  착수** 예정(Expo). Figma 공유 전에는 앱 코드 작업을 시작하지 않는다.
 - 참고: 프로토타입 도메인 ↔ v1 스키마 불일치(아바타 꾸미기·치료세션 템플릿은 v1 스키마 없음 → 매퍼 기본값).
+  세션·대화 이력은 아직 Zustand 스토어(Phase E에서 DB 배선).

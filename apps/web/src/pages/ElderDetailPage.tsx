@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Pencil, Plus, Play, MessageSquareHeart, Trash2, Clock,
+  ArrowLeft, Pencil, Plus, Play, MessageSquareHeart, Trash2, Clock, Siren,
 } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
@@ -11,7 +11,14 @@ import { ElderFormDialog } from '../components/ElderFormDialog';
 import { SessionFormDialog } from '../components/SessionFormDialog';
 import { ChronicleView } from '../components/ChronicleView';
 import { ElderCharacter } from '../components/ElderCharacter';
-import { useProfile, useDeleteProfile, toElderProfile } from '@giokon/data';
+import { ConsentStatusCard } from '../components/ConsentStatusCard';
+import { ConsentDialog } from '../components/ConsentDialog';
+import { activeConsentTypes } from '../lib/consents';
+import { canStartElderSession } from '@giokon/core';
+import {
+  useProfile, useDeleteProfile, useConsents, useSafetyEvents, toElderProfile,
+} from '@giokon/data';
+import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
 import { THERAPY_TYPES, isDefaultAppearance, type Session } from '../types';
@@ -42,10 +49,20 @@ export function ElderDetailPage() {
   const deleteSession = useStore((s) => s.deleteSession);
   const deleteProfile = useDeleteProfile();
   const toast = useStore((s) => s.toast);
+  const { isConfigured } = useAuth();
+
+  // 세션 시작 게이팅용 동의 상태(ConsentStatusCard와 쿼리 캐시 공유).
+  const consentsQuery = useConsents(isConfigured ? elderId : undefined);
+  const activeConsents = useMemo(
+    () => activeConsentTypes(consentsQuery.data),
+    [consentsQuery.data]
+  );
+  const safetyEventsQuery = useSafetyEvents(isConfigured ? elderId : undefined);
 
   const [openEdit, setOpenEdit] = useState(false);
   const [openSession, setOpenSession] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
+  const [openConsentGate, setOpenConsentGate] = useState(false);
 
   if (elderQuery.isLoading) {
     return (
@@ -76,6 +93,13 @@ export function ElderDetailPage() {
   }
 
   function startSession(s: Session) {
+    // 동의 게이팅: 필수 동의(민감정보·국외이전·AI 고지) 미확보 시 세션을 시작하지
+    // 않는다. Supabase 미연동(데모)에서는 확인이 불가하므로 게이팅을 건너뛴다.
+    if (isConfigured && !canStartElderSession(activeConsents)) {
+      toast('info', '세션 시작 전에 필수 동의가 필요합니다.');
+      setOpenConsentGate(true);
+      return;
+    }
     const log = startConversation(s.id, elder!.id);
     toast('success', '어르신 화면으로 전환합니다. 기기를 어르신께 전달해 주세요.');
     navigate(`/elder/converse/${log.id}`);
@@ -141,6 +165,9 @@ export function ElderDetailPage() {
             </div>
           </CardBody>
         </Card>
+
+        {/* 동의 관리 (M9) */}
+        <ConsentStatusCard elderId={elderId} elderName={elder.name} />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {/* 세션 영역 */}
@@ -270,6 +297,43 @@ export function ElderDetailPage() {
           </div>
         </Card>
 
+        {/* 안전 이벤트 이력 (M12) — 발생한 적이 있을 때만 노출 */}
+        {isConfigured && safetyEventsQuery.data && safetyEventsQuery.data.length > 0 ? (
+          <Card>
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Siren size={16} className="text-red-500" /> 안전 이벤트 이력
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                대화 중 감지된 위기·관찰 신호입니다. 키워드 기반 안전장치이며 의학적 판단이 아닙니다.
+              </p>
+            </div>
+            <div className="divide-y divide-slate-100 max-h-[320px] overflow-y-auto">
+              {safetyEventsQuery.data.map((ev) => (
+                <div key={ev.id} className="px-5 py-3.5 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge tone={ev.level === 'crisis' ? 'warning' : 'info'}>
+                      {ev.level === 'crisis' ? '위기' : '관찰'}
+                    </Badge>
+                    <span className="text-xs text-slate-400">{formatRelative(ev.created_at)}</span>
+                    {ev.acknowledged_at ? (
+                      <Badge tone="success">확인됨</Badge>
+                    ) : (
+                      <Badge tone="warning">미확인</Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                    {ev.caregiver_alert}
+                  </div>
+                  {ev.excerpt ? (
+                    <div className="text-xs text-slate-400 mt-1">발화: “{ev.excerpt}”</div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
         <div className="pt-2">
           <button
             onClick={() => {
@@ -297,6 +361,14 @@ export function ElderDetailPage() {
         onClose={() => setOpenSession(false)}
         elderId={elder.id}
         initial={editSession}
+      />
+      {/* 세션 시작 게이팅에서 열리는 동의 다이얼로그 */}
+      <ConsentDialog
+        open={openConsentGate}
+        onClose={() => setOpenConsentGate(false)}
+        elderId={elder.id}
+        elderName={elder.name}
+        granted={activeConsents}
       />
     </>
   );

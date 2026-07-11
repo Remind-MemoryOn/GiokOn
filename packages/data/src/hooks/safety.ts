@@ -35,9 +35,12 @@ export function useSafetyEvents(profileId: string | undefined): UseQueryResult<S
 }
 
 /** 기관의 미확인 안전 이벤트(대시보드 알림용). 위기 대응 관점에서 짧은 주기로 갱신. */
-export function useUnacknowledgedSafetyEvents(): UseQueryResult<SafetyEventRow[]> {
+export function useUnacknowledgedSafetyEvents(
+  options?: { enabled?: boolean },
+): UseQueryResult<SafetyEventRow[]> {
   return useQuery({
     queryKey: queryKeys.unacknowledgedSafetyEvents,
+    enabled: options?.enabled ?? true,
     refetchInterval: 15_000,
     queryFn: async () => {
       const { data, error } = await getGiokonClient()

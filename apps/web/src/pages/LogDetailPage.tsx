@@ -78,6 +78,8 @@ export function LogDetailPage() {
             {session.note ? (
               <span className="text-slate-400">· {session.note}</span>
             ) : null}
+            {/* 생성물 표시 — AI기본법 투명성 */}
+            <Badge tone="info" className="ml-auto">AI 질문·요약은 AI가 생성한 내용입니다</Badge>
           </div>
         ) : null}
 

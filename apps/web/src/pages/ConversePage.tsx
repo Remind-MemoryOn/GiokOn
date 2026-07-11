@@ -3,6 +3,8 @@ import { useNavigate, useParams, type NavigateFunction } from 'react-router-dom'
 import { Mic, Square, Volume2, Sparkles, X, RotateCcw, Send, Pencil } from 'lucide-react';
 import { useStore } from '../store/store';
 import { AI_DISCLOSURE, openConversation, respondToUserTurn } from '../lib/ai';
+import { useCurrentUser, useRecordSafetyEvent } from '@giokon/data';
+import { useAuth } from '../auth/AuthProvider';
 import {
   cancelSpeak,
   isSttSupported,
@@ -55,6 +57,11 @@ export function ConversePage() {
   );
   const appendTurn = useStore((s) => s.appendTurn);
   const endConversation = useStore((s) => s.endConversation);
+
+  // 안전 이벤트 영속화(M12) — Supabase 연동 시에만 기록(미연동 데모는 배너만).
+  const { isConfigured } = useAuth();
+  const currentUser = useCurrentUser();
+  const recordSafetyEvent = useRecordSafetyEvent();
 
   const [phase, setPhase] = useState<Phase>(() =>
     log && log.turns.length > 0 ? 'mic_ready' : 'starting'
@@ -131,6 +138,18 @@ export function ConversePage() {
     // 위기·관찰 알림은 요양보호사가 보도록 상단에 유지한다(어르신 흐름은 방해 없음).
     if (guarded.caregiverAlert && guarded.event) {
       setSafetyAlert({ level: guarded.event.level, message: guarded.caregiverAlert });
+      // 연동 시 DB에 영속화 — 대시보드 미확인 알림으로 도달한다. 실패해도 대화는 계속.
+      if (isConfigured && currentUser.data?.id) {
+        recordSafetyEvent.mutate({
+          user_id: currentUser.data.id,
+          profile_id: log.elderId,
+          level: guarded.event.level,
+          categories: guarded.event.categories,
+          matched_terms: guarded.event.matchedTerms,
+          excerpt: guarded.event.excerpt,
+          caregiver_alert: guarded.event.caregiverAlert,
+        });
+      }
     }
 
     appendTurn(log.id, 'AI', guarded.response.question, guarded.response.topic);

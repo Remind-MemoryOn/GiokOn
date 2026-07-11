@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Brain, ArrowLeft, LogIn, UserPlus } from 'lucide-react';
-import { signIn, signUp } from '@giokon/data';
+import { sendPasswordReset, signIn, signUp } from '@giokon/data';
 import { Field, Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useStore } from '../store/store';
@@ -18,6 +18,23 @@ export function CaregiverLoginPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  async function forgotPassword() {
+    if (!isConfigured) {
+      toast('error', 'Supabase가 설정되지 않았습니다. apps/web/.env를 확인해 주세요.');
+      return;
+    }
+    if (!email.trim()) {
+      toast('error', '가입하신 이메일을 먼저 입력해 주세요.');
+      return;
+    }
+    try {
+      await sendPasswordReset(email.trim(), `${window.location.origin}/caregiver/reset`);
+      toast('success', '재설정 메일을 보냈어요. 메일함을 확인해 주세요.');
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : '메일 발송에 실패했습니다.');
+    }
+  }
 
   async function submit() {
     if (!isConfigured) {
@@ -140,6 +157,23 @@ export function CaregiverLoginPage() {
             >
               {isSignup ? '로그인' : '회원가입'}
             </button>
+            {!isSignup ? (
+              <>
+                <span className="mx-2 text-slate-300">·</span>
+                <button
+                  type="button"
+                  onClick={forgotPassword}
+                  className="font-semibold text-slate-500 hover:text-slate-800"
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          <div className="mt-6 text-[11px] text-center text-slate-400 space-x-3">
+            <Link to="/privacy" className="hover:text-slate-600">개인정보 처리방침</Link>
+            <Link to="/terms" className="hover:text-slate-600">이용약관</Link>
           </div>
         </div>
       </main>

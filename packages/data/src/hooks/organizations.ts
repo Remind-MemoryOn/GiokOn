@@ -64,6 +64,27 @@ export function useOrgMembers(): UseQueryResult<UserRow[]> {
   })
 }
 
+/** 내 표시 이름 수정(users.name — RLS로 본인만). */
+export function useUpdateMyName(): UseMutationResult<UserRow, Error, { id: string; name: string }> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, name }) => {
+      const { data, error } = await getGiokonClient()
+        .from('users')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw new Error(error.message)
+      return data
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.currentUser })
+      void qc.invalidateQueries({ queryKey: queryKeys.orgMembers })
+    },
+  })
+}
+
 /** 기관 정보 수정(org_admin만 — RLS로 강제). */
 export function useUpdateOrganization(): UseMutationResult<
   OrganizationRow,

@@ -4,11 +4,15 @@ import { CaregiverLayout } from './components/Layout';
 import { ToastShelf } from './components/ui/Toast';
 import { LandingPage } from './pages/LandingPage';
 import { CaregiverLoginPage } from './pages/CaregiverLoginPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EldersPage } from './pages/EldersPage';
 import { ElderDetailPage } from './pages/ElderDetailPage';
 import { LogsPage } from './pages/LogsPage';
 import { LogDetailPage } from './pages/LogDetailPage';
+import { OrgPage } from './pages/OrgPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages';
 import { DressUpPage } from './pages/DressUpPage';
 import { ElderHomePage } from './pages/ElderHomePage';
 import { ElderDressUpPage } from './pages/ElderDressUpPage';
@@ -35,6 +39,9 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/caregiver/login" element={<CaregiverLoginPage />} />
+        <Route path="/caregiver/reset" element={<ResetPasswordPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         {/* 요양보호사 영역 */}
         <Route
@@ -51,6 +58,8 @@ function App() {
           <Route path="elders/:elderId/dress" element={<DressUpPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="logs/:logId" element={<LogDetailPage />} />
+          <Route path="org" element={<OrgPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* 어르신 영역 — 요양보호사가 시작시킨 후 진입 */}

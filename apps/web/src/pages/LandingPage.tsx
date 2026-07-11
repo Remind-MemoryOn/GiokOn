@@ -96,6 +96,18 @@ export function LandingPage() {
           <div className="text-center mt-10 text-xs text-warm-700/70">
             실제 시연은 태블릿(아이패드·갤탭) 가로 모드를 권장합니다.
           </div>
+
+          {/* 비의료 면책 + 법적 문서 (컴플라이언스 상시 노출) */}
+          <footer className="mt-8 pt-6 border-t border-warm-200/60 text-center space-y-2">
+            <p className="text-[11px] text-slate-500 leading-relaxed" style={{ wordBreak: 'keep-all' }}>
+              기억온은 의료기기가 아니며, 질병의 판정·의학적 소견 제공을 목적으로 하지 않는
+              <strong> 인지활동 보조 서비스</strong>입니다. 대화는 AI가 진행하며 화면에 표시됩니다.
+            </p>
+            <div className="text-[11px] text-slate-400 space-x-3">
+              <Link to="/privacy" className="hover:text-slate-600 underline underline-offset-2">개인정보 처리방침</Link>
+              <Link to="/terms" className="hover:text-slate-600 underline underline-offset-2">이용약관</Link>
+            </div>
+          </footer>
         </div>
       </main>
     </div>

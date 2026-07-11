@@ -16,6 +16,21 @@ import type { ConsentRow, TablesInsert } from '../database.types'
 
 export type ConsentInsert = TablesInsert<'consents'>
 
+/** 내가 기록한 동의 전체(정보주체 권리 — 데이터 내보내기용). RLS로 본인+기관 범위. */
+export function useMyConsents(): UseQueryResult<ConsentRow[]> {
+  return useQuery({
+    queryKey: queryKeys.myConsents,
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient()
+        .from('consents')
+        .select('*')
+        .order('granted_at', { ascending: false })
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+}
+
 /** 특정 어르신의 동의 이력(최신순). */
 export function useConsents(profileId: string | undefined): UseQueryResult<ConsentRow[]> {
   return useQuery({

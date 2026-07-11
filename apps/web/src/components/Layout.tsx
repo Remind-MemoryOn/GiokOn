@@ -1,13 +1,15 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Brain, Home, Users, FileText, LogOut, Heart } from 'lucide-react';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Brain, Home, Users, FileText, LogOut, Heart, Building2, Settings } from 'lucide-react';
 import { signOut } from '@giokon/data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../auth/AuthProvider';
 
 const NAV = [
-  { to: '/caregiver',        label: '대시보드',    icon: Home, end: true },
-  { to: '/caregiver/elders', label: '어르신 관리', icon: Users },
-  { to: '/caregiver/logs',   label: '세션 기록',   icon: FileText },
+  { to: '/caregiver',          label: '대시보드',    icon: Home, end: true },
+  { to: '/caregiver/elders',   label: '어르신 관리', icon: Users },
+  { to: '/caregiver/logs',     label: '세션 기록',   icon: FileText },
+  { to: '/caregiver/org',      label: '기관 관리',   icon: Building2 },
+  { to: '/caregiver/settings', label: '설정',        icon: Settings },
 ];
 
 export function CaregiverLayout() {
@@ -29,6 +31,13 @@ export function CaregiverLayout() {
 
   return (
     <div className="min-h-full flex">
+      {/* 접근성: 키보드 사용자를 위한 본문 바로가기 (KWCAG) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-warm-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg"
+      >
+        본문으로 바로가기
+      </a>
       <aside className="w-60 shrink-0 border-r border-slate-200 bg-white flex flex-col">
         <div className="px-5 py-5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -88,9 +97,13 @@ export function CaregiverLayout() {
           >
             <LogOut size={16} /> 로그아웃
           </button>
+          <div className="px-3 pt-1 text-[10px] text-slate-400 space-x-2">
+            <Link to="/privacy" className="hover:text-slate-600">처리방침</Link>
+            <Link to="/terms" className="hover:text-slate-600">약관</Link>
+          </div>
         </div>
       </aside>
-      <main className="flex-1 min-w-0 flex flex-col">
+      <main id="main-content" className="flex-1 min-w-0 flex flex-col">
         <Outlet />
       </main>
     </div>
