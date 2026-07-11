@@ -3,7 +3,7 @@
 > **목적**: 데이터 국내보관을 위해 도쿄(ap-northeast-1) `GiokOn` → **서울(ap-northeast-2)**
 > 신규 프로젝트로 이전한다. 컨테이너는 `*.supabase.co` egress가 차단돼 Claude가 직접
 > 적용할 수 없으므로, **대시보드/CLI로 사용자가 이 체크리스트를 따라 적용**한다.
-> 마이그레이션 6종은 로컬 PostgreSQL 16으로 전체 적용·기능검증을 마친 상태다.
+> 마이그레이션 7종은 로컬 PostgreSQL 16으로 전체 적용·기능검증을 마친 상태다.
 
 적용 순서: **① 프로젝트 생성 → ② 마이그레이션 → ③ Auth 설정 → ④ 검증 → ⑤ 앱 재배선 → ⑥ 도쿄 폐기**.
 
@@ -28,7 +28,7 @@
 ## 2. 마이그레이션 적용 (순서 엄수)
 > 실 Supabase에는 `auth.users`·`auth.uid()`·`authenticated` 롤이 이미 존재하므로
 > **로컬 테스트용 심(`supabase/tests/_supabase_shims.sql`)은 적용하지 않는다.**
-> 아래 6개 파일을 **번호 순서대로** 각각 끝까지 실행한다.
+> 아래 7개 파일을 **번호 순서대로** 각각 끝까지 실행한다.
 
 | 순서 | 파일 | 내용 |
 |---|---|---|
@@ -38,6 +38,7 @@
 | 4 | `supabase/migrations/20260703130000_audit_log.sql` | 감사로그·처리기록 트리거·2년 보관 |
 | 5 | `supabase/migrations/20260703140000_consents.sql` | 동의(민감·국외이전·대리동의) |
 | 6 | `supabase/migrations/20260703150000_consent_retention.sql` | 동의 증빙 보존(user_id SET NULL) |
+| 7 | `supabase/migrations/20260711100000_safety_events.sql` | 안전 이벤트(위기 에스컬레이션 영속화) |
 
 **방법 A — Supabase CLI(권장, 자동 순서):**
 ```bash
@@ -68,7 +69,7 @@ select tablename, rowsecurity
 from pg_tables where schemaname = 'public'
 order by tablename;
 -- 기대: users, profiles, chronicle_entries, sessions, session_logs,
---       organizations, consents, audit_log 모두 rowsecurity = true
+--       organizations, consents, audit_log, safety_events 모두 rowsecurity = true
 ```
 
 **4-2. 정책·트리거·함수·enum**
