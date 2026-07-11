@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { ElderCharacter } from '../components/ElderCharacter';
+import { Avatar } from '../components/ui/Avatar';
 import { useStore } from '../store/store';
 import {
   EMOTION_META,
@@ -192,8 +192,8 @@ function HomeTab({
       {/* 인사 + 캐릭터 */}
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-r from-violet-100 via-rose-100 to-cream-100 px-6 py-5 flex items-center gap-5">
-          <div className="rounded-2xl overflow-hidden shadow-soft border-2 border-white shrink-0">
-            <ElderCharacter appearance={elder.appearance} size={110} />
+          <div className="shrink-0">
+            <Avatar name={elder.name} color={elder.avatarColor} size="xl" />
           </div>
           <div className="flex-1">
             <div className="text-sm text-violet-700">오늘의 {calling}</div>
@@ -441,8 +441,8 @@ function ProfileTab({
       {/* 기본 정보 */}
       <Card>
         <div className="p-5 flex items-start gap-5">
-          <div className="rounded-2xl overflow-hidden shadow-soft border border-slate-200 shrink-0">
-            <ElderCharacter appearance={elder.appearance} size={120} />
+          <div className="shrink-0">
+            <Avatar name={elder.name} color={elder.avatarColor} size="xl" />
           </div>
           <div className="flex-1 grid grid-cols-2 gap-3 text-sm">
             <div>

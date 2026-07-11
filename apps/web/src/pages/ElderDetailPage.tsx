@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Pencil, Plus, Play, MessageSquareHeart, Trash2, Clock, Siren,
+  ArrowLeft, Pencil, Plus, Smartphone, MessageSquareHeart, Trash2, Clock, Siren,
 } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
@@ -10,18 +10,14 @@ import { Button } from '../components/ui/Button';
 import { ElderFormDialog } from '../components/ElderFormDialog';
 import { SessionFormDialog } from '../components/SessionFormDialog';
 import { ChronicleView } from '../components/ChronicleView';
-import { ElderCharacter } from '../components/ElderCharacter';
 import { ConsentStatusCard } from '../components/ConsentStatusCard';
-import { ConsentDialog } from '../components/ConsentDialog';
-import { activeConsentTypes } from '../lib/consents';
-import { canStartElderSession } from '@giokon/core';
 import {
-  useProfile, useDeleteProfile, useConsents, useSafetyEvents, toElderProfile,
+  useProfile, useDeleteProfile, useSafetyEvents, toElderProfile,
 } from '@giokon/data';
 import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
-import { THERAPY_TYPES, isDefaultAppearance, type Session } from '../types';
+import { THERAPY_TYPES, type Session } from '../types';
 
 export function ElderDetailPage() {
   const { elderId = '' } = useParams();
@@ -45,24 +41,16 @@ export function ElderDetailPage() {
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
     [allLogs, elderId]
   );
-  const startConversation = useStore((s) => s.startConversation);
   const deleteSession = useStore((s) => s.deleteSession);
   const deleteProfile = useDeleteProfile();
   const toast = useStore((s) => s.toast);
   const { isConfigured } = useAuth();
 
-  // 세션 시작 게이팅용 동의 상태(ConsentStatusCard와 쿼리 캐시 공유).
-  const consentsQuery = useConsents(isConfigured ? elderId : undefined);
-  const activeConsents = useMemo(
-    () => activeConsentTypes(consentsQuery.data),
-    [consentsQuery.data]
-  );
   const safetyEventsQuery = useSafetyEvents(isConfigured ? elderId : undefined);
 
   const [openEdit, setOpenEdit] = useState(false);
   const [openSession, setOpenSession] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
-  const [openConsentGate, setOpenConsentGate] = useState(false);
 
   if (elderQuery.isLoading) {
     return (
@@ -92,19 +80,6 @@ export function ElderDetailPage() {
     );
   }
 
-  function startSession(s: Session) {
-    // 동의 게이팅: 필수 동의(민감정보·국외이전·AI 고지) 미확보 시 세션을 시작하지
-    // 않는다. Supabase 미연동(데모)에서는 확인이 불가하므로 게이팅을 건너뛴다.
-    if (isConfigured && !canStartElderSession(activeConsents)) {
-      toast('info', '세션 시작 전에 필수 동의가 필요합니다.');
-      setOpenConsentGate(true);
-      return;
-    }
-    const log = startConversation(s.id, elder!.id);
-    toast('success', '어르신 화면으로 전환합니다. 기기를 어르신께 전달해 주세요.');
-    navigate(`/elder/converse/${log.id}`);
-  }
-
   return (
     <>
       <PageHeader
@@ -125,18 +100,6 @@ export function ElderDetailPage() {
         {/* 프로필 요약 카드 */}
         <Card>
           <CardBody className="flex flex-col md:flex-row items-start gap-6">
-            {/* 캐릭터 (요양보호사는 보기만) */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-soft">
-                <ElderCharacter appearance={elder.appearance} size={140} />
-              </div>
-              <div className="text-[11px] text-slate-500 text-center max-w-[140px] leading-relaxed">
-                {isDefaultAppearance(elder.appearance)
-                  ? '아직 꾸미지 않으셨어요. 어르신이 직접 꾸며보실 거예요.'
-                  : '어르신이 직접 꾸민 모습'}
-              </div>
-            </div>
-
             <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-xs text-slate-400 mb-0.5">출신지</div>
@@ -174,9 +137,9 @@ export function ElderDetailPage() {
           <Card>
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="font-semibold">회상 세션</h3>
+                <h3 className="font-semibold">회상 세션 설계</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  설계한 세션을 시작하면 AI가 어르신과 대화를 진행합니다.
+                  설계한 세션은 어르신 앱에서 진행됩니다. 대화 기록은 여기서 확인해요.
                 </p>
               </div>
               <Button
@@ -216,9 +179,9 @@ export function ElderDetailPage() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <Button size="sm" onClick={() => startSession(s)}>
-                          <Play size={13} /> 시작
-                        </Button>
+                        <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                          <Smartphone size={12} /> 앱에서 진행
+                        </span>
                         <div className="flex opacity-0 group-hover:opacity-100 transition">
                           <button
                             onClick={() => {
@@ -361,14 +324,6 @@ export function ElderDetailPage() {
         onClose={() => setOpenSession(false)}
         elderId={elder.id}
         initial={editSession}
-      />
-      {/* 세션 시작 게이팅에서 열리는 동의 다이얼로그 */}
-      <ConsentDialog
-        open={openConsentGate}
-        onClose={() => setOpenConsentGate(false)}
-        elderId={elder.id}
-        elderName={elder.name}
-        granted={activeConsents}
       />
     </>
   );

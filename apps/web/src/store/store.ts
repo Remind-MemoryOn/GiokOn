@@ -3,13 +3,10 @@ import { persist } from 'zustand/middleware';
 import type {
   ChronicleEntry,
   ConversationLog,
-  ConversationTurn,
   ElderProfile,
   Session,
-  Speaker,
 } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
-import { buildChronicleEntry, extractChronicle, generateGuardianReport } from '../lib/ai';
 import { nowIso, pickAvatarColor, uid } from '../lib/utils';
 
 interface ToastItem {
@@ -53,15 +50,8 @@ interface State {
   deleteChronicle: (id: string) => void;
   chroniclesByElder: (elderId: string) => ChronicleEntry[];
 
-  // conversation
-  startConversation: (sessionId: string, elderId: string) => ConversationLog;
-  appendTurn: (
-    logId: string,
-    speaker: Speaker,
-    text: string,
-    topic?: string
-  ) => { turn: ConversationTurn; addedChronicle?: ChronicleEntry };
-  endConversation: (logId: string) => ConversationLog | undefined;
+  // conversation logs — 실제 대화는 앱에서 진행되어 DB로 저장된다(Phase E에서 DB 배선).
+  // 웹은 조회만 담당한다. 대화 생성/append/종료 로직은 앱(모바일)의 몫.
   getLog: (logId: string) => ConversationLog | undefined;
   logsByElder: (elderId: string) => ConversationLog[];
 
@@ -186,78 +176,6 @@ export const useStore = create<State>()(
           .chronicles.filter((c) => c.elderId === elderId)
           .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
 
-      startConversation: (sessionId, elderId) => {
-        const session = get().sessions.find((s) => s.id === sessionId);
-        const created: ConversationLog = {
-          id: uid('log_'),
-          sessionId,
-          elderId,
-          therapyType: session?.therapyType || 'reminiscence',
-          turns: [],
-          status: 'active',
-          startedAt: nowIso(),
-          chronicleEntriesAdded: [],
-        };
-        set((s) => ({ logs: [created, ...s.logs], activeLogId: created.id }));
-        return created;
-      },
-      appendTurn: (logId, speaker, text, topic) => {
-        const log = get().logs.find((l) => l.id === logId);
-        if (!log) throw new Error('log not found');
-
-        const turn: ConversationTurn = {
-          id: uid('trn_'),
-          speaker,
-          text,
-          timestamp: nowIso(),
-          topic,
-        };
-
-        let addedChronicle: ChronicleEntry | undefined;
-        if (speaker === 'Elderly') {
-          const extracted = extractChronicle(text);
-          if (extracted) {
-            addedChronicle = buildChronicleEntry(log.elderId, extracted);
-            turn.extractedKeywords = extracted.keywords;
-          }
-        }
-
-        set((s) => ({
-          logs: s.logs.map((l) =>
-            l.id === logId
-              ? {
-                  ...l,
-                  turns: [...l.turns, turn],
-                  chronicleEntriesAdded: addedChronicle
-                    ? [...l.chronicleEntriesAdded, addedChronicle.id]
-                    : l.chronicleEntriesAdded,
-                }
-              : l
-          ),
-          chronicles: addedChronicle ? [addedChronicle, ...s.chronicles] : s.chronicles,
-        }));
-
-        return { turn, addedChronicle };
-      },
-      endConversation: (logId) => {
-        const log = get().logs.find((l) => l.id === logId);
-        if (!log) return undefined;
-        const elder = get().elders.find((e) => e.id === log.elderId);
-        const report = elder
-          ? generateGuardianReport(elder, log.turns, log.chronicleEntriesAdded.length)
-          : undefined;
-        const updated: ConversationLog = {
-          ...log,
-          status: 'ended',
-          endedAt: nowIso(),
-          guardianReport: report,
-        };
-        set((s) => ({
-          logs: s.logs.map((l) => (l.id === logId ? updated : l)),
-          activeLogId: s.activeLogId === logId ? null : s.activeLogId,
-        }));
-        return updated;
-      },
       getLog: (logId) => get().logs.find((l) => l.id === logId),
       logsByElder: (elderId) =>
         get()

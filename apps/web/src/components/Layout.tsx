@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Brain, Home, Users, FileText, LogOut, Heart, Building2, Settings } from 'lucide-react';
+import { Brain, Home, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
 import { signOut } from '@giokon/data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../auth/AuthProvider';
@@ -85,12 +85,6 @@ export function CaregiverLayout() {
         </nav>
 
         <div className="p-3 border-t border-slate-100 space-y-2">
-          <button
-            onClick={() => navigate('/elder')}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-warm-700 bg-warm-50 hover:bg-warm-100 transition"
-          >
-            <Heart size={16} /> 어르신 화면 미리보기
-          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"
