@@ -4,8 +4,10 @@
 인지활동 보조 플랫폼. 상세 계획은 `PLAN.md`, 스펙은 `docs/`.
 
 ## 구조 (pnpm 모노레포)
-- `apps/web` (@giokon/web): 요양보호사 관리 웹 (React 19 + Vite + Tailwind)
-- `apps/mobile`: 어르신 대화 앱 (Expo, placeholder)
+- `apps/web` (@giokon/web): **요양보호사·보호자 전용** 관리 웹 (React 19 + Vite + Tailwind).
+  어르신 음성 대화(TTS/STT)는 웹에 없음 — 앱 담당. (2026-07-11 웹에서 앱 콘텐츠 전부 제거)
+- `apps/mobile`: **어르신 대화 앱 (Expo) — 아직 미개발(placeholder, 코드 없음)**.
+  Figma 디자인 공유 후 착수. TTS/STT·실제 음성 대화는 전적으로 이 앱의 몫.
 - `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
@@ -52,8 +54,11 @@
   비밀번호 재설정, AI 투명성 표시. **Supabase 서버·API는 미연동** — 연동은 사용자가 외부에서
   진행(`docs/runbooks/seoul-region-migration.md`), 연동 시 코드 변경 없이 동작.
 - ⏳ **차단(사용자)**: M10.1 서울 리전 프로젝트 생성 + 마이그레이션 적용 + env 재배선.
+- **아키텍처 확정(2026-07-11)**: 웹=요양보호사·보호자(관리·조회), 앱=어르신 음성 대화(TTS/STT).
+  웹에 프로토타입으로 있던 어르신 대화/홈/꾸미기·아바타·브라우저 음성은 **전부 제거**함.
 - **모바일 앱(중요)**: 타 인원이 **Figma로 디자인만** 진행한 상태(코드 없음, `apps/mobile`은
-  placeholder). **웹 완료 후 사용자가 Figma 프로젝트 내용을 공유하면 그 디자인 기반으로 앱 개발
-  착수** 예정(Expo). Figma 공유 전에는 앱 코드 작업을 시작하지 않는다.
+  placeholder). 사용자가 **Figma 프로젝트를 공유하면 그 디자인에서 코드 추출 → 백엔드·프론트
+  개발 계획 수립 → Expo 앱 개발 착수** 예정. Figma 공유 전에는 앱 코드 작업을 시작하지 않는다.
+  Figma 코드 추출에는 **Figma MCP 연결 + 파일 URL(node-id 포함) + 파일 읽기 권한**이 필요.
 - 참고: 프로토타입 도메인 ↔ v1 스키마 불일치(아바타 꾸미기·치료세션 템플릿은 v1 스키마 없음 → 매퍼 기본값).
   세션·대화 이력은 아직 Zustand 스토어(Phase E에서 DB 배선).
