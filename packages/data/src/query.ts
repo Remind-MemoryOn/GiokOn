@@ -32,4 +32,6 @@ export const queryKeys = {
   organization: ['organization'] as const,
   orgMembers: ['org_members'] as const,
   consents: (profileId: string) => ['consents', profileId] as const,
+  safetyEvents: (profileId: string) => ['safety_events', profileId] as const,
+  unacknowledgedSafetyEvents: ['safety_events', 'unacknowledged'] as const,
 }

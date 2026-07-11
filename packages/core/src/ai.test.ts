@@ -32,12 +32,19 @@ const session: Session = {
   updatedAt: '',
 }
 
+let turnSeq = 0
 const aiTurn = (topic: string): ConversationTurn => ({
-  id: 't' + Math.random(),
+  id: 't' + ++turnSeq,
   speaker: 'AI',
   text: '...',
   timestamp: '',
   topic,
+})
+const elderTurn = (text: string): ConversationTurn => ({
+  id: 't' + ++turnSeq,
+  speaker: 'Elderly',
+  text,
+  timestamp: '',
 })
 
 describe('generateOpener', () => {
@@ -48,23 +55,136 @@ describe('generateOpener', () => {
   })
 })
 
-describe('generateReply', () => {
-  it('고통/부정 키워드가 감지되면 주제를 전환한다', () => {
+describe('generateReply — 애도·상실 (회피 금지)', () => {
+  it('상실 언급에 강제 전환하지 않고 공감 + 선택권을 준다', () => {
     const res = generateReply(elder, session, [aiTurn('가족')], '남편이 먼저 돌아가셨어요')
+    expect(res.switchTopic).toBe(false) // 회피·강제 전환 금지
+    expect(res.topic).toBe('가족')
+    expect(res.question).toContain('그리우시지요')
+    expect(res.question).toContain('다른 이야기를 해도 괜찮아요') // 어르신이 선택
+  })
+
+  it('애도가 3회 이상 이어지면 부드럽게 따뜻한 주제로 옮긴다', () => {
+    const history = [
+      aiTurn('가족'),
+      elderTurn('남편이 먼저 돌아가셨어'),
+      aiTurn('가족'),
+      elderTurn('영감이 너무 그리워'),
+      aiTurn('가족'),
+    ]
+    const res = generateReply(elder, session, history, '보고 싶어서 눈물만 나')
+    expect(res.switchTopic).toBe(true)
+    expect(res.topic).not.toBe('가족')
+    expect(res.question).toContain('고마워요') // 이야기를 존중하고 나서 이동
+  })
+})
+
+describe('generateReply — 위기·중단·거부·혼란', () => {
+  it('위기 발화에는 안전 응답(주제=안전)', () => {
+    const res = generateReply(elder, session, [aiTurn('가족')], '이제 그만 죽고 싶어')
+    expect(res.topic).toBe('안전')
+    expect(res.question).toContain('선생님을 불러드릴게요')
+  })
+
+  it('중단 요청은 즉시 존중하고 따뜻하게 마무리한다', () => {
+    const res = generateReply(elder, session, [aiTurn('고향')], '오늘은 그만하고 싶어')
+    expect(res.topic).toBe('마무리')
+    expect(res.question).toContain('고마워요')
+  })
+
+  it('거부 1회에는 사과하고 물러난다(질문 강요 없음)', () => {
+    const res = generateReply(elder, session, [aiTurn('고향')], '왜 자꾸 물어')
+    expect(res.switchTopic).toBe(false)
+    expect(res.question).toContain('미안해요')
+  })
+
+  it('거부가 반복되면 마무리한다', () => {
+    const history = [aiTurn('고향'), elderTurn('듣기 싫어'), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '그만 물어봐')
+    expect(res.topic).toBe('마무리')
+  })
+
+  it('지남력 혼란에는 교정 없이 재소개(AI 고지)와 안심을 준다', () => {
+    const res = generateReply(elder, session, [aiTurn('고향')], '누구세요? 여기가 어디야?')
+    expect(res.question).toContain('인공지능 친구')
+    expect(res.question).toContain('안전한 곳')
+  })
+})
+
+describe('generateReply — 침묵 (단계적 대응)', () => {
+  it('첫 침묵에는 같은 주제로 부드럽게 다시 청한다', () => {
+    const res = generateReply(elder, session, [aiTurn('고향')], '')
+    expect(res.switchTopic).toBe(false)
+    expect(res.question).toContain('천천히')
+  })
+
+  it('침묵이 이어지면 더 쉬운 다른 주제로', () => {
+    const history = [aiTurn('고향'), elderTurn(''), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '')
     expect(res.switchTopic).toBe(true)
   })
 
-  it('동일 주제가 연속되면 주제를 전환한다', () => {
-    const history = [aiTurn('고향'), aiTurn('고향')]
-    const res = generateReply(elder, session, history, '동네 사람들이 참 좋았어요')
+  it('침묵이 3회면 휴식을 제안한다', () => {
+    const history = [aiTurn('고향'), elderTurn(''), aiTurn('고향'), elderTurn(''), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '')
+    expect(res.topic).toBe('마무리')
+  })
+})
+
+describe('generateReply — 관여도 기반 진행 (고정 카운터 없음)', () => {
+  it('풍부한 이야기에는 같은 주제로 계속 이어간다', () => {
+    const history = [aiTurn('고향'), elderTurn('그때 동네 사람들이 다 모여 잔치를 했었지'), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '그러다가 밤이 되면 다 같이 노래를 불렀었어')
+    expect(res.switchTopic).toBe(false)
+    expect(res.topic).toBe('고향')
+  })
+
+  it('저관여 1회에는 같은 주제를 더 쉽게(스캐폴딩)', () => {
+    const history = [aiTurn('고향'), elderTurn('전주에서 오래 살았지'), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '글쎄')
+    expect(res.switchTopic).toBe(false)
+    expect(res.topic).toBe('고향')
+    expect(res.question).toContain('천천히')
+  })
+
+  it('저관여가 이어지면 다른 쉬운 주제로 전환한다', () => {
+    const history = [aiTurn('고향'), elderTurn('몰라'), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '글쎄')
     expect(res.switchTopic).toBe(true)
     expect(res.topic).not.toBe('고향')
   })
 
-  it('일반 답변에는 같은 주제로 후속 질문한다', () => {
-    const res = generateReply(elder, session, [aiTurn('고향')], '거기서 오래 살았지요')
-    expect(res.switchTopic).toBe(false)
-    expect(res.topic).toBe('고향')
+  it('어르신이 먼저 꺼낸 주제를 따라간다(어르신 주도)', () => {
+    const history = [aiTurn('고향'), elderTurn('동네가 참 좋았지'), aiTurn('고향')]
+    const res = generateReply(elder, session, history, '그때 학교 친구들이 참 많이 도와줬어 다들')
+    expect(res.switchTopic).toBe(true)
+    expect(res.topic).toBe('학창 시절')
+  })
+
+  it('질문 풀이 소진되면 다리 문장과 함께 주제를 옮긴다(기계적 반복 금지)', () => {
+    // 고향 주제로 opener + followup 3개를 모두 소진한 상태(연속 AI 4턴).
+    const history = [
+      aiTurn('고향'), elderTurn('국밥집을 했었지'),
+      aiTurn('고향'), elderTurn('사람들이 정이 많았어'),
+      aiTurn('고향'), elderTurn('시장 골목이 그리워'),
+      aiTurn('고향'),
+    ]
+    const res = generateReply(elder, session, history, '봄이면 꽃이 참 예뻤지')
+    expect(res.switchTopic).toBe(true)
+    expect(res.topic).not.toBe('고향')
+  })
+
+  it('힘들어했던 주제로는 되돌아가지 않는다', () => {
+    // 가족 주제에서 애도 반응 → 이후 저관여 연속 전환 시 가족 제외.
+    const history = [
+      aiTurn('가족'), elderTurn('남편이 먼저 갔어'),
+      aiTurn('고향'), elderTurn('몰라'),
+      aiTurn('고향'),
+    ]
+    const res = generateReply(elder, session, history, '글쎄')
+    expect(res.switchTopic).toBe(true)
+    expect(res.topic).not.toBe('가족')
+    expect(res.topic).not.toBe('고향')
   })
 })
 
@@ -78,6 +198,10 @@ describe('extractChronicle', () => {
 
   it('너무 짧은 발화는 추출하지 않는다', () => {
     expect(extractChronicle('네')).toBeNull()
+  })
+
+  it('위기 발화는 연대기(추억)로 축적하지 않는다', () => {
+    expect(extractChronicle('아들놈이 자꾸 때려서 무서워')).toBeNull()
   })
 })
 

@@ -13,6 +13,7 @@ set client_min_messages = warning;
 -- ── 0) 깨끗한 상태 보장(재실행 가능) ──────────────────────────────────────
 -- security definer 함수/트리거가 RLS 를 우회하므로 superuser 로 정리한다.
 delete from public.audit_log;
+delete from public.safety_events;
 delete from public.consents;
 delete from public.session_logs;
 delete from public.sessions;
@@ -128,6 +129,48 @@ begin
     blocked := true;
   end;
   assert blocked, '대리동의(subject_type<>self)는 대리인 이름이 없으면 차단되어야 함';
+end $$;
+reset role;
+
+-- ── 5.5) 안전 이벤트: 기관 내 공유 조회·타 기관 차단·삭제 불가 ─────────────
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';  -- 요양보호사 C(기관 A)
+do $$
+declare
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  insert into public.safety_events (user_id, profile_id, level, categories, matched_terms, excerpt, caregiver_alert)
+    values ('33333333-3333-3333-3333-333333333333', pid, 'crisis', '{self_harm}', '{죽고싶}', '이제 그만 죽고 싶어', '🚨 자살·자해 위기 신호 — 즉시 확인 ☎109');
+end $$;
+
+-- 같은 기관 관리자 A: 조회 가능(교대 대비 기관 공유).
+set test.uid = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+  assert (select count(*) from public.safety_events) = 1,
+    '같은 기관 구성원은 안전 이벤트를 조회할 수 있어야 함';
+end $$;
+
+-- 관리자 A 가 확인(acknowledge) 처리.
+update public.safety_events
+  set acknowledged_at = now(), acknowledged_by = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+  assert (select count(*) from public.safety_events where acknowledged_at is not null) = 1,
+    '기관 구성원이 안전 이벤트를 확인 처리할 수 있어야 함';
+end $$;
+
+-- 다른 기관 B: 조회 0건.
+set test.uid = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  assert (select count(*) from public.safety_events) = 0,
+    '다른 기관의 안전 이벤트는 절대 보이면 안 됨';
+end $$;
+
+-- 삭제 불가(deny by default).
+set test.uid = '11111111-1111-1111-1111-111111111111';
+delete from public.safety_events;
+do $$ begin
+  assert (select count(*) from public.safety_events) = 1,
+    '안전 이벤트는 임의 삭제할 수 없어야 함';
 end $$;
 reset role;
 

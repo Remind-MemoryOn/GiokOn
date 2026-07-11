@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, type NavigateFunction } from 'react-router-dom';
 import { Mic, Square, Volume2, Sparkles, X, RotateCcw, Send, Pencil } from 'lucide-react';
 import { useStore } from '../store/store';
-import { generateOpener, generateReply } from '../lib/ai';
+import { AI_DISCLOSURE, openConversation, respondToUserTurn } from '../lib/ai';
 import {
   cancelSpeak,
   isSttSupported,
@@ -68,6 +68,8 @@ export function ConversePage() {
     topics: [],
   });
   const [needsTtsUnlock, setNeedsTtsUnlock] = useState(false);
+  // 위기·관찰 알림(요양보호사용). 어르신 화면 흐름은 방해하지 않고 상단에 표시.
+  const [safetyAlert, setSafetyAlert] = useState<{ level: 'watch' | 'crisis'; message: string } | null>(null);
 
   const sttRef = useRef<SttHandle | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -93,9 +95,9 @@ export function ConversePage() {
     if (!log || !elder || !session) return;
     setPhase('starting');
     await primeVoices();
-    const ai = generateOpener(elder, session, chronicle);
-    appendTurn(log.id, 'AI', ai.question, ai.topic);
-    await playAi(ai.question);
+    const guarded = openConversation(elder, session, chronicle);
+    appendTurn(log.id, 'AI', guarded.response.question, guarded.response.topic);
+    await playAi(guarded.response.question);
     setPhase('mic_ready');
   }
 
@@ -124,9 +126,21 @@ export function ConversePage() {
 
     setPhase('processing');
     const freshLog = useStore.getState().logs.find((l) => l.id === log.id);
-    const ai = generateReply(elder, session, freshLog?.turns || [], text);
-    appendTurn(log.id, 'AI', ai.question, ai.topic);
-    void playAi(ai.question).then(() => {
+    const guarded = respondToUserTurn(elder, session, freshLog?.turns || [], text);
+
+    // 위기·관찰 알림은 요양보호사가 보도록 상단에 유지한다(어르신 흐름은 방해 없음).
+    if (guarded.caregiverAlert && guarded.event) {
+      setSafetyAlert({ level: guarded.event.level, message: guarded.caregiverAlert });
+    }
+
+    appendTurn(log.id, 'AI', guarded.response.question, guarded.response.topic);
+    void playAi(guarded.response.question).then(() => {
+      // 위기·중단 요청·반복 거부·긴 침묵 → 안전 응답을 들려준 뒤 따뜻하게 마무리한다.
+      if (guarded.session.recommendation === 'end_session') {
+        if (log) endConversation(log.id);
+        setPhase('ended');
+        return;
+      }
       setPhase('mic_ready');
     });
   }
@@ -231,6 +245,8 @@ export function ConversePage() {
               {elder.name} 어르신
             </div>
             <div className="text-base text-warm-600">{session.title}</div>
+            {/* AI 이용 사전 고지(AI기본법 투명성) */}
+            <div className="text-xs text-warm-500 mt-0.5">{AI_DISCLOSURE}</div>
           </div>
         </div>
         <button
@@ -242,6 +258,31 @@ export function ConversePage() {
           <span>종료</span>
         </button>
       </header>
+
+      {/* 위기·관찰 알림 — 요양보호사용(기기를 확인하는 보호자·직원에게 노출) */}
+      {safetyAlert ? (
+        <div className="px-6 sm:px-10 pt-4" role="alert" aria-live="assertive">
+          <div
+            className={cn(
+              'rounded-2xl px-5 py-4 flex items-start gap-3 text-base shadow-soft border-2',
+              safetyAlert.level === 'crisis'
+                ? 'bg-red-50 border-red-300 text-red-900'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+            )}
+          >
+            <span className="font-bold shrink-0">
+              {safetyAlert.level === 'crisis' ? '요양보호사 확인 필요' : '살펴봐 주세요'}
+            </span>
+            <span className="leading-relaxed">{safetyAlert.message}</span>
+            <button
+              onClick={() => setSafetyAlert(null)}
+              className="ml-auto shrink-0 font-semibold underline underline-offset-2"
+            >
+              확인했어요
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* 자동 축적 안내 — 어르신에겐 보이지 않지만 시연 시 효과 */}
       {autoSummary.count > 0 ? (

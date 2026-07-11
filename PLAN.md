@@ -237,7 +237,7 @@ giokon/
   - **M10.3** `audit_log`(처리기록 트리거 5테이블·2년 보관·기관관리자 열람·pg_cron 파기).
   - **M9.1** `consents`(민감정보 별도동의·국외이전·대리동의+의사능력·철회 이력, 삭제 불가).
   - **T10.4/M13.3** RLS·RBAC·격리 **회귀 테스트 + 로컬/CI 러너**.
-- 🆕 **M12 AI 안전 (완료)**: `packages/core/safety.ts` — 위기 감지(자살·응급·학대→사람 에스컬레이션)·출력 가드레일(의학·유해 차단)·투명성 고지. 단위테스트 13.
+- 🆕 **M12 노인 특화 대화 안전 설계 (전면 완성, 2026-07-11)**: 발화를 8가지 상황(위기 3분류·고통·중단·거부·혼란·애도·침묵·일반)으로 분류, **근거 기반 대응**(생명 우선·validation·교정 금지·자기결정·비의료·상태 신호 기반 진행 — 고정 카운터 폐지). `core/{safety,ai,conversation}.ts` 재설계 + **실 LLM 시스템 프롬프트·Structured Outputs 스키마**(`core/prompt.ts`, 3중 방어 OR 결합) + **`safety_events` 영속화**(기관 공유 RLS·확인 이력·삭제 불가) + 웹 대화 화면 배선(알림 배너·AI 고지·마무리 권고). 상세: `docs/ai-safety.md`. 테스트 114(세션 시뮬레이션 8종 포함)·RLS 회귀 통과.
 - 🆕 **M9 컴플라이언스 백엔드 토대 (완료)**: `core/consent`(동의 카탈로그 SoT·온보딩/세션 게이팅)·`core/subject-rights`(이동권 산출물·삭제 계획)·`data` 훅(consents/org)·`consents.user_id` 보존 SET NULL 마이그레이션·`docs/compliance.md` ROPA/보관파기/삭제절차. **M9.6 비의료 락다운**: 카피 정정 + `check:copy` CI 게이트. 단위테스트 +15.
 - 🆕 **CI (완료)**: GitHub Actions `ci.yml` — quality(typecheck/lint/**check:copy**/test/build)·rls-regression(실 PG)·security-audit(SCA). (T8.2·T10.6·T13.3·M9.6)
 - ⏳ **차단(사용자 필요) — M10.1 데이터 국내화**: 서울 리전(ap-northeast-2) 신규 프로젝트 생성 + 마이그레이션 5종 적용 + 앱 재배선 + 도쿄 폐기. (컨테이너 egress가 `*.supabase.co` 차단 → 대시보드/CLI로 사용자 적용 필요.)

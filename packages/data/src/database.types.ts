@@ -5,7 +5,8 @@
 // 로 자동 생성본으로 교체한다. 스키마 출처: supabase/migrations/*.
 // (20260521131723_initial_schema + 20260624090000_supabase_auth_rls
 //  + 20260703120000_organizations_rbac + 20260703130000_audit_log
-//  + 20260703140000_consents + 20260703150000_consent_retention)
+//  + 20260703140000_consents + 20260703150000_consent_retention
+//  + 20260711100000_safety_events)
 //
 // 참고: org_id 는 NOT NULL 이지만 INSERT 시 스탬프 트리거(app.stamp_org_id)가
 // 자동 채우므로 Insert 타입에서는 선택(optional)으로 둔다.
@@ -324,6 +325,57 @@ export type Database = {
         }
         Relationships: []
       }
+      safety_events: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string | null
+          profile_id: string
+          session_id: string | null
+          level: Database['public']['Enums']['safety_event_level']
+          categories: string[]
+          matched_terms: string[]
+          excerpt: string | null
+          caregiver_alert: string
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          user_id?: string | null
+          profile_id: string
+          session_id?: string | null
+          level: Database['public']['Enums']['safety_event_level']
+          categories?: string[]
+          matched_terms?: string[]
+          excerpt?: string | null
+          caregiver_alert: string
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string | null
+          profile_id?: string
+          session_id?: string | null
+          level?: Database['public']['Enums']['safety_event_level']
+          categories?: string[]
+          matched_terms?: string[]
+          excerpt?: string | null
+          caregiver_alert?: string
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           id: number
@@ -379,6 +431,7 @@ export type Database = {
         | 'marketing_optional'
       consent_subject_type: 'self' | 'guardian' | 'legal_representative'
       consent_capacity: 'capable' | 'limited' | 'incapable' | 'unknown'
+      safety_event_level: 'watch' | 'crisis'
     }
     CompositeTypes: { [_ in never]: never }
   }
@@ -408,3 +461,5 @@ export type ConsentType = Enums<'consent_type'>
 export type ConsentSubjectType = Enums<'consent_subject_type'>
 export type ConsentCapacity = Enums<'consent_capacity'>
 export type AuditLogRow = Tables<'audit_log'>
+export type SafetyEventRow = Tables<'safety_events'>
+export type SafetyEventLevel = Enums<'safety_event_level'>

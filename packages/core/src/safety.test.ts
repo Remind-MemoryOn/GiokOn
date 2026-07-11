@@ -2,85 +2,196 @@ import { describe, expect, it } from 'vitest'
 import {
   AI_DISCLOSURE,
   AI_GENERATED_LABEL,
-  assessRisk,
+  assessEngagement,
+  assessUtterance,
+  buildCaregiverAlert,
+  normalizeUtterance,
   screenAiUtterance,
 } from './safety'
 
-describe('assessRisk — 위기 감지', () => {
-  it('자살 표현은 crisis + 사람 에스컬레이션', () => {
-    const r = assessRisk('이제 그만 죽고 싶어')
-    expect(r.level).toBe('crisis')
-    expect(r.categories).toContain('self_harm')
-    expect(r.escalate).toBe(true)
-    expect(r.safeReply).toBeTruthy()
-    expect(r.caregiverAlert).toContain('109')
+describe('normalizeUtterance — STT 변이 흡수', () => {
+  it('공백·문장부호를 제거한다', () => {
+    expect(normalizeUtterance('죽고  싶다...')).toBe('죽고싶다')
+    expect(normalizeUtterance('숨이 안 쉬어져요!')).toBe('숨이안쉬어져요')
+  })
+})
+
+describe('assessUtterance — 위기(자살·자해)', () => {
+  it.each([
+    '이제 그만 죽고 싶어',
+    '죽고싶어', // 띄어쓰기 변이
+    '자살하고 싶다는 생각이 들어',
+    '영감 따라 가고 싶어', // 사별 후 수동적 소망
+    '내가 없어야 자식들이 편하지', // 수동적 자살 사고(짐 인식)
+    '약을 한꺼번에 먹어버릴까 싶어',
+    '살고 싶지가 않아',
+  ])('"%s" → crisis(self_harm) + 에스컬레이션', (text) => {
+    const a = assessUtterance(text)
+    expect(a.situation).toBe('crisis')
+    expect(a.crisisCategories).toContain('self_harm')
+    expect(a.escalate).toBe(true)
   })
 
-  it('띄어쓰기 변이("죽고싶어")도 감지', () => {
-    expect(assessRisk('죽고싶어').level).toBe('crisis')
+  it('부정 문맥("생각은 안 해요")도 위기로 유지 — 판단은 사람이 한다', () => {
+    expect(assessUtterance('죽고 싶다는 생각은 안 해요').situation).toBe('crisis')
+  })
+})
+
+describe('assessUtterance — 위기(응급·학대)', () => {
+  it.each([
+    '숨이 안 쉬어져요',
+    '가슴이 조여와',
+    '말이 잘 안 나오고 한쪽 팔이 안 움직여', // 뇌졸중 신호
+    '넘어져서 못 일어나겠어',
+    '구급차 좀 불러줘',
+  ])('"%s" → crisis(medical_emergency)', (text) => {
+    const a = assessUtterance(text)
+    expect(a.situation).toBe('crisis')
+    expect(a.crisisCategories).toContain('medical_emergency')
   })
 
-  it('응급(호흡곤란)은 crisis + 119 안내', () => {
-    const r = assessRisk('숨이 안 쉬어져요')
-    expect(r.level).toBe('crisis')
-    expect(r.categories).toContain('medical_emergency')
-    expect(r.caregiverAlert).toContain('119')
+  it.each([
+    '아들이 자꾸 때려',
+    '밥을 안 줘서 하루 종일 굶었어',
+    '통장을 뺏어 갔어',
+    '방에 가둬 놓고 못 나가게 해',
+  ])('"%s" → crisis(abuse)', (text) => {
+    const a = assessUtterance(text)
+    expect(a.situation).toBe('crisis')
+    expect(a.crisisCategories).toContain('abuse')
   })
 
-  it('학대 의심은 crisis + 노인보호전문기관 안내', () => {
-    const r = assessRisk('아들이 자꾸 때려요')
-    expect(r.level).toBe('crisis')
-    expect(r.categories).toContain('abuse')
-    expect(r.caregiverAlert).toContain('1577-1389')
+  it('복합 위기(자살+응급)는 self_harm을 우선 분류한다', () => {
+    const a = assessUtterance('가슴이 조여오고, 이제 그만 죽고 싶어')
+    expect(a.crisisCategories[0]).toBe('self_harm')
+  })
+})
+
+describe('assessUtterance — 오탐 방지(일상 발화)', () => {
+  it.each([
+    '아침에 죽 한 그릇 맛있게 먹었어', // 죽(porridge)
+    '어제 예방주사 맞았어', // 주사 맞다
+    '옛날에 전주에서 식당을 했지',
+    '병원에 정기검진 다녀왔어', // 병원 언급만으로 전환하지 않는다
+    '우리 손주가 유치원에서 상을 받았대',
+  ])('"%s" → normal (위기·전환 아님)', (text) => {
+    const a = assessUtterance(text)
+    expect(a.situation).toBe('normal')
+    expect(a.escalate).toBe(false)
   })
 
-  it('급성 정서 고통은 watch(에스컬레이션 아님, 지지 응답)', () => {
-    const r = assessRisk('너무 무서워서 견딜 수가 없어')
-    expect(r.level).toBe('watch')
-    expect(r.escalate).toBe(false)
-    expect(r.safeReply).toBeTruthy()
+  it('"보고 싶어 죽겠네"는 관용구 — 위기가 아니라 그리움(grief)', () => {
+    const a = assessUtterance('영감이 보고 싶어 죽겠네')
+    expect(a.situation).toBe('grief')
+    expect(a.escalate).toBe(false)
+  })
+})
+
+describe('assessUtterance — 애도·고통·중단·거부·혼란', () => {
+  it('상실·그리움은 grief(회피·에스컬레이션 아님)', () => {
+    const a = assessUtterance('남편이 먼저 돌아가셨어요')
+    expect(a.situation).toBe('grief')
+    expect(a.risk).toBe('grief')
+    expect(a.escalate).toBe(false)
   })
 
-  it('심각도 우선순위: 자살+응급 동시 → self_harm 안내 우선', () => {
-    const r = assessRisk('가슴이 너무 아파서 죽고 싶어')
-    expect(r.level).toBe('crisis')
-    expect(r.categories[0]).toBe('self_harm')
-    expect(r.safeReply).toBe(assessRisk('죽고 싶어').safeReply)
+  it('외로움도 grief로 받는다', () => {
+    expect(assessUtterance('요즘은 너무 외로워').situation).toBe('grief')
   })
 
-  it('안전한 일상 대화는 none (오탐 없음)', () => {
-    expect(assessRisk('오늘 아침에 죽 한 그릇 맛있게 먹었어').level).toBe('none')
-    expect(assessRisk('그 말이 맞아요, 참 좋았지').level).toBe('none')
-    expect(assessRisk('전주에서 식당을 오래 했지').level).toBe('none')
+  it('짐 인식 표현은 distress(watch) — 노인 자살 선행 신호 관찰', () => {
+    const a = assessUtterance('자식들한테 짐만 되는 것 같아')
+    expect(a.situation).toBe('distress')
+    expect(a.risk).toBe('watch')
   })
 
-  it('빈 문자열은 none', () => {
-    const r = assessRisk('')
-    expect(r.level).toBe('none')
-    expect(r.matchedTerms).toEqual([])
+  it('중단 요청은 rest_request — 즉시 존중', () => {
+    expect(assessUtterance('오늘은 그만하고 싶어').situation).toBe('rest_request')
+    expect(assessUtterance('피곤해').situation).toBe('rest_request')
+  })
+
+  it('고통+중단 복합 → 중단 존중 + 고통 신호 보존(보호자 알림 유지)', () => {
+    const a = assessUtterance('너무 힘들어서 그만하고 싶어')
+    expect(a.situation).toBe('rest_request')
+    expect(a.hasDistressSignal).toBe(true)
+    expect(a.risk).toBe('watch')
+    expect(buildCaregiverAlert(a)).toBeTruthy()
+  })
+
+  it('거부·짜증은 refusal', () => {
+    expect(assessUtterance('듣기 싫어').situation).toBe('refusal')
+    expect(assessUtterance('왜 자꾸 물어').situation).toBe('refusal')
+  })
+
+  it('지남력 혼란은 confusion', () => {
+    expect(assessUtterance('여기가 어디야?').situation).toBe('confusion')
+    expect(assessUtterance('누구세요?').situation).toBe('confusion')
+  })
+
+  it('빈 발화는 silence', () => {
+    expect(assessUtterance('   ').situation).toBe('silence')
+  })
+})
+
+describe('buildCaregiverAlert', () => {
+  it('자살 위기 → 109 안내 포함', () => {
+    expect(buildCaregiverAlert(assessUtterance('죽고 싶어'))).toContain('109')
+  })
+  it('응급 → 119 안내 포함', () => {
+    expect(buildCaregiverAlert(assessUtterance('숨이 안 쉬어져'))).toContain('119')
+  })
+  it('학대 → 1577-1389 안내 포함', () => {
+    expect(buildCaregiverAlert(assessUtterance('아들이 자꾸 때려'))).toContain('1577-1389')
+  })
+  it('일반·애도는 알림 없음', () => {
+    expect(buildCaregiverAlert(assessUtterance('고향 생각이 나'))).toBeNull()
+    expect(buildCaregiverAlert(assessUtterance('영감이 그리워'))).toBeNull()
+  })
+})
+
+describe('assessEngagement — 관여도', () => {
+  it('빈 발화는 silent', () => {
+    expect(assessEngagement('')).toBe('silent')
+  })
+  it('단답·맞장구는 low', () => {
+    expect(assessEngagement('네')).toBe('low')
+    expect(assessEngagement('글쎄요')).toBe('low')
+    expect(assessEngagement('몰라요')).toBe('low')
+    expect(assessEngagement('기억이 안 나')).toBe('low')
+  })
+  it('서사 표지가 있으면 rich', () => {
+    expect(assessEngagement('그때 동네 사람들이 다 모여서 잔치를 했었지')).toBe('rich')
+    expect(assessEngagement('옛날에 시장에서 국수 팔았어')).toBe('rich')
+  })
+  it('긴 이야기는 rich', () => {
+    expect(assessEngagement('전주 시장에서 삼십 년 동안 국밥집을 하면서 애들 셋을 다 키웠어')).toBe('rich')
+  })
+  it('보통 답변은 normal', () => {
+    expect(assessEngagement('국수를 팔았어')).toBe('normal')
   })
 })
 
 describe('screenAiUtterance — 출력 가드레일', () => {
-  it('의학적 진단 단정은 차단 + 대체 발화', () => {
+  it('의학적 진단 단정 차단', () => {
     const s = screenAiUtterance('어르신은 치매입니다. 병원 가지 마세요.')
     expect(s.allowed).toBe(false)
     expect(s.safeAlternative).toBeTruthy()
-    expect(s.reason).toMatch(/의학|비의료/)
   })
-
-  it('약 복용 지시는 차단', () => {
+  it('약 지시 차단', () => {
     expect(screenAiUtterance('그 약을 끊으세요').allowed).toBe(false)
   })
-
-  it('유해·부적절 표현은 차단', () => {
-    expect(screenAiUtterance('그것도 모르다니 바보 같네요').allowed).toBe(false)
+  it('교정·직면("아까 말씀하셨잖아요") 차단 — validation 원칙', () => {
+    expect(screenAiUtterance('아까 말씀하셨잖아요, 기억 안 나세요?').allowed).toBe(false)
   })
-
-  it('정상적인 회상 질문은 통과', () => {
-    const s = screenAiUtterance('어르신, 전주에서 제일 기억에 남는 게 뭐예요?')
-    expect(s.allowed).toBe(true)
-    expect(s.reason).toBeUndefined()
+  it('기억 시험 차단', () => {
+    expect(screenAiUtterance('따님 성함 기억 안 나세요?').allowed).toBe(false)
+  })
+  it('유해·모욕 차단', () => {
+    expect(screenAiUtterance('그것도 몰라요? 답답하시네').allowed).toBe(false)
+  })
+  it('정상 회상 질문·공감은 통과', () => {
+    expect(screenAiUtterance('어르신, 전주에서 제일 기억에 남는 게 뭐예요?').allowed).toBe(true)
+    expect(screenAiUtterance('많이 그리우시지요. 그런 마음이 드는 게 당연해요.').allowed).toBe(true)
   })
 })
 
