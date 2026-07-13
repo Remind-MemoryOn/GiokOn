@@ -20,5 +20,10 @@
   "devDependencies": {
     "prettier": "^3.4.2",
     "typescript": "~6.0.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "react-native-reanimated": "3.17.4"
+    }
   }
 }

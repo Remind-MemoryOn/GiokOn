@@ -37,6 +37,27 @@ export const palette = {
   },
 } as const
 
+// ── Figma 앱 디자인에서 추출·확정한 토큰 (파일 nLfWkg2H7dFfDH1pehcH5I, 2026-07-13) ──
+// 어르신 대화 앱(Expo)의 단일 소스. 값은 Figma 디자인 컨텍스트에서 직접 추출했다
+// (raw hex — 이 파일은 Figma Variables를 거의 쓰지 않아 fill 값을 그대로 정합).
+export const figma = {
+  color: {
+    accent: '#e9822b', // 브랜드 주황(버튼·워드마크·강조)
+    accentPressed: '#c86f22',
+    cardTint: '#fdf8f2', // 카드 배경 rgba(233,130,43,0.07) 불투명 근사
+    aiCard: '#fdf3ea', // 대화 AI 질문 카드 배경
+    surface: '#ffffff',
+    textPrimary: '#1a1a1a',
+    textSecondary: '#7b7c7c',
+    border: '#cccdce',
+    positive: '#3fa34d', // 감정/관찰 긍정 표시
+    danger: '#d8503c', // 위기 배너
+  },
+  radius: { card: 10, button: 10, input: 10, pill: 999 },
+  // 화면 표준 폭(디자인 프레임 393px 기준). 모바일은 반응형이지만 카드 여백 근거로 사용.
+  frameWidth: 393,
+} as const
+
 export const fontFamily = {
   sans: ['"Pretendard"', '"Apple SD Gothic Neo"', '"Noto Sans KR"', 'system-ui', 'sans-serif'],
 } as const
@@ -135,3 +156,4 @@ export const tailwindExtend = {
 export type Palette = typeof palette
 export type Tokens = typeof tokens
 export type TailwindExtend = typeof tailwindExtend
+export type FigmaTokens = typeof figma

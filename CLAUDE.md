@@ -6,8 +6,9 @@
 ## 구조 (pnpm 모노레포)
 - `apps/web` (@giokon/web): **요양보호사·보호자 전용** 관리 웹 (React 19 + Vite + Tailwind).
   어르신 음성 대화(TTS/STT)는 웹에 없음 — 앱 담당. (2026-07-11 웹에서 앱 콘텐츠 전부 제거)
-- `apps/mobile`: **어르신 대화 앱 (Expo) — 아직 미개발(placeholder, 코드 없음)**.
-  Figma 디자인 공유 후 착수. TTS/STT·실제 음성 대화는 전적으로 이 앱의 몫.
+- `apps/mobile` (@giokon/mobile): **어르신 대화 앱 (Expo SDK 53 + expo-router + NativeWind 4)**.
+  Figma 19화면 추출→구현 완료(2026-07-13). 요양보호사가 조작하는 세션 실행 도구.
+  백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규. TTS=expo-speech, STT는 실연동 전 모의.
 - `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
@@ -62,9 +63,11 @@
   - 비의료 락다운: 분석은 "효능/향상" 주장 금지, **관찰 지표**(참여도·응답률·발화량·주제 반응·관심 변화)로. 내부 명칭 "인지치료" 무방, 노출 카피는 "인지활동"(CI 린트 강제).
   - Figma 앱 디자인 확보: 파일 `nLfWkg2H7dFfDH1pehcH5I`(19화면). 상세 트랙: PLAN §2′ M16–M18.
   - (2026-07-11) 웹에 있던 어르신 대화/꾸미기·아바타·브라우저 음성 프로토타입은 **제거 완료**.
-- **모바일 앱(중요)**: 타 인원이 **Figma로 디자인만** 진행한 상태(코드 없음, `apps/mobile`은
-  placeholder). 사용자가 **Figma 프로젝트를 공유하면 그 디자인에서 코드 추출 → 백엔드·프론트
-  개발 계획 수립 → Expo 앱 개발 착수** 예정. Figma 공유 전에는 앱 코드 작업을 시작하지 않는다.
-  Figma 코드 추출에는 **Figma MCP 연결 + 파일 URL(node-id 포함) + 파일 읽기 권한**이 필요.
+- **모바일 앱(중요)**: **Figma 19화면 추출→Expo 앱 1차 구현 완료(2026-07-13)**. 파일
+  `nLfWkg2H7dFfDH1pehcH5I`에서 토큰·구조·스크린샷 추출 → `apps/mobile`(Expo SDK 53·expo-router·
+  NativeWind 4)로 19화면 + 컴플라이언스 화면(동의·AI고지·위기배너) 구현. 백엔드는 웹과 공용
+  (core/data 재사용). 절차·상세: `docs/runbooks/figma-app-extraction.md`, `apps/mobile/README.md`.
+  검증: typecheck·lint·test·web build·check:copy + Metro iOS 번들(1146모듈) 통과. 실기 확인·실
+  STT/TTS/LLM·Supabase 연동은 사용자 몫(미설정 시 목업 동작). 추가 화면·재작업은 이 앱 위에서 진행.
 - 참고: 프로토타입 도메인 ↔ v1 스키마 불일치(아바타 꾸미기·치료세션 템플릿은 v1 스키마 없음 → 매퍼 기본값).
   세션·대화 이력은 아직 Zustand 스토어(Phase E에서 DB 배선).

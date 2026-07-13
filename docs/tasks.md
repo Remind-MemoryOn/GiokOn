@@ -266,9 +266,9 @@
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
-| T-APP1 | Expo 스캐폴드 + `packages/theme` NativeWind 토큰(Figma Variables 추출) | Figma | ⏳ Figma 대기 |
-| T-APP2 | 화면 구현: 스플래쉬·로그인 / 환자 목록·등록·프로필 / 대화 시작 전·대화·수정·저장 / 기록·분석 | T-APP1 | ⏳ |
-| T-APP3 | 컴플라이언스 화면 **추가**(동의 게이팅·AI 이용 고지·위기 안내 배너 — Figma 미포함분) | T-APP2 | ⏳ |
+| T-APP1 | Expo 스캐폴드 + `packages/theme` NativeWind 토큰(Figma 추출) | Figma | ✅ (2026-07-13) Expo SDK 53·expo-router·NativeWind 4, theme `figma` 토큰 추가 |
+| T-APP2 | 화면 구현: 스플래쉬·로그인 / 환자 목록·등록·프로필 / 대화 시작 전·대화·수정·저장 / 기록·분석 | T-APP1 | ✅ (2026-07-13) 19화면 구현, core/data 재사용, Metro 번들 검증 |
+| T-APP3 | 컴플라이언스 화면 **추가**(동의 게이팅·AI 이용 고지·위기 안내 배너 — Figma 미포함분) | T-APP2 | ✅ (2026-07-13) `consent/[id]`·AI 고지 배너·위기 배너(core escalate) |
 
 ---
 

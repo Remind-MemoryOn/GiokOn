@@ -1,0 +1,187 @@
+// 어르신 상세 — Figma 3화면(프로필 / 세션 기록 / 종합 분석)을 탭으로 통합.
+import { useState } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { canStartElderSession, initial } from '@giokon/core';
+import { DetailHeader } from '../../src/components/AppHeader';
+import { Button, Card, InfoRow, SectionTitle, StatTile, TopicBar } from '../../src/components/ui';
+import { useApp } from '../../src/store/appStore';
+import { ageOf, ELDER_GENDER } from '../../src/lib/mockData';
+import { elderParticipation, elderTopicShares, elderObservationSummary } from '../../src/lib/analytics';
+import { C } from '../../src/theme';
+
+type Tab = 'profile' | 'sessions' | 'analysis';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'analysis', label: '종합 분석' },
+  { key: 'sessions', label: '세션 기록' },
+  { key: 'profile', label: '프로필' },
+];
+
+export default function ElderDetail() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const elder = useApp((s) => (id ? s.getElder(id) : undefined));
+  const chronicles = useApp((s) => (id ? s.chroniclesByElder(id) : []));
+  const sessions = useApp((s) => (id ? s.sessionsByElder(id) : []));
+  const logs = useApp((s) => (id ? s.logsByElder(id) : []));
+  const consents = useApp((s) => (id ? s.elderConsents(id) : []));
+  const [tab, setTab] = useState<Tab>('profile');
+
+  if (!elder || !id) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <View className="px-5">
+          <DetailHeader title="어르신 상세" />
+        </View>
+        <Text className="text-center text-muted mt-16">어르신을 찾을 수 없어요.</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const gender = ELDER_GENDER[elder.id];
+  const startTalk = () => {
+    if (canStartElderSession(consents)) router.push(`/session/start?id=${elder.id}`);
+    else router.push(`/consent/${elder.id}`);
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <View className="px-5">
+        <DetailHeader title="어르신 상세" rightIcon="share-outline" onRight={() => {}} />
+      </View>
+
+      {/* 프로필 요약 */}
+      <View className="px-5 flex-row items-center pb-3">
+        <View
+          className="w-16 h-16 rounded-full items-center justify-center"
+          style={{ backgroundColor: elder.avatarColor }}
+        >
+          <Text className="text-[20px] font-bold text-white">{initial(elder.name)}</Text>
+        </View>
+        <View className="ml-4">
+          <Text className="text-[20px] font-semibold text-ink">{elder.name} 어르신</Text>
+          <Text className="text-[15px] text-muted mt-0.5">
+            {ageOf(elder.birthYear)}세{gender ? ` l ${gender}` : ''}
+          </Text>
+        </View>
+      </View>
+
+      {/* 탭 */}
+      <View className="flex-row px-5 border-b border-line/60">
+        {TABS.map((t) => (
+          <Pressable key={t.key} onPress={() => setTab(t.key)} className="flex-1 items-center py-3">
+            <Text className={`text-[15px] ${tab === t.key ? 'text-accent font-semibold' : 'text-muted'}`}>
+              {t.label}
+            </Text>
+            {tab === t.key ? <View className="h-0.5 w-16 bg-accent mt-2 rounded-full" /> : null}
+          </Pressable>
+        ))}
+      </View>
+
+      <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingVertical: 16, paddingBottom: 96 }}>
+        {tab === 'profile' && (
+          <View>
+            <InfoRow label="출생연도" value={`${elder.birthYear}년`} />
+            {elder.hometown ? <InfoRow label="출신지" value={elder.hometown} /> : null}
+            {elder.family ? <InfoRow label="가족 구성" value={elder.family} /> : null}
+            {elder.job ? <InfoRow label="직업 이력" value={elder.job} /> : null}
+            {elder.hobbies ? <InfoRow label="취미" value={elder.hobbies} /> : null}
+
+            <View className="flex-row items-center justify-between mt-6 mb-2">
+              <SectionTitle>주요 기억 ({chronicles.length})</SectionTitle>
+              <Pressable onPress={() => router.push(`/chronicle/${elder.id}`)} className="active:opacity-60">
+                <Text className="text-[14px] text-accent">연대기 수정</Text>
+              </Pressable>
+            </View>
+            {chronicles.map((c) => (
+              <Card key={c.id} className="mb-2">
+                <Text className="text-[13px] text-accent mb-1">{c.topic}</Text>
+                <Text className="text-[15px] text-ink leading-[22px]">{c.content}</Text>
+              </Card>
+            ))}
+          </View>
+        )}
+
+        {tab === 'sessions' && (
+          <View>
+            {sessions.length === 0 ? (
+              <Text className="text-center text-muted mt-10">아직 세션 기록이 없어요.</Text>
+            ) : (
+              sessions.map((s) => {
+                const log = logs.find((l) => l.sessionId === s.id);
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => log && router.push(`/log/${log.id}`)}
+                    className="flex-row items-center justify-between py-4 border-b border-line/60 active:opacity-70"
+                  >
+                    <View className="flex-1 pr-3">
+                      <Text className="text-[16px] font-medium text-ink">{s.title}</Text>
+                      <Text className="text-[13px] text-muted mt-1">
+                        {s.createdAt.slice(0, 10).replace(/-/g, '. ')}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Text className="text-[14px] text-muted mr-2">{s.durationMinutes}분</Text>
+                      {log ? <Ionicons name="chevron-forward" size={18} color={C.textSecondary} /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {tab === 'analysis' && <AnalysisTab elderId={elder.id} />}
+      </ScrollView>
+
+      {tab === 'profile' && (
+        <View className="absolute left-0 right-0 bottom-0 px-5 pt-3 pb-5 bg-white border-t border-line/60">
+          <Button label="대화 시작하기" icon="chatbubble-ellipses-outline" onPress={startTalk} />
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function AnalysisTab({ elderId }: { elderId: string }) {
+  const elder = useApp((s) => s.getElder(elderId));
+  const part = elderParticipation(elderId);
+  const topics = elderTopicShares(elderId);
+  if (!elder) return null;
+
+  return (
+    <View>
+      <SectionTitle>종합 대화 참여도</SectionTitle>
+      <Card className="flex-row bg-card mb-6">
+        <StatTile icon="time-outline" value={`${part.avgMinutes}분`} label="평균 대화 시간" />
+        <StatTile icon="chatbubbles-outline" value={`${part.totalSessions}회`} label="총 대화 횟수" />
+        <StatTile icon="pulse-outline" value={`${part.avgResponseRate}%`} label="평균 응답률" />
+      </Card>
+
+      <SectionTitle>종합 관심 주제 TOP 5</SectionTitle>
+      <View className="mb-6">
+        {topics.map((t) => (
+          <TopicBar key={t.label} label={t.label} percent={t.percent} />
+        ))}
+      </View>
+
+      <Card className="mb-6">
+        <View className="flex-row items-center mb-2">
+          <Ionicons name="sparkles-outline" size={18} color={C.accent} />
+          <Text className="text-[15px] font-semibold text-ink ml-2">AI 종합 의견</Text>
+        </View>
+        <Text className="text-[15px] text-ink leading-[23px]">{elderObservationSummary(elder)}</Text>
+      </Card>
+
+      <Button
+        label="관찰 지표 자세히 보기"
+        variant="outline"
+        icon="bar-chart-outline"
+        onPress={() => router.push(`/observations?scope=elder&id=${elderId}`)}
+      />
+    </View>
+  );
+}
