@@ -224,6 +224,54 @@
 
 ---
 
+## 3-3. 앱·웹 아키텍처 확정 트랙 (M16~M18) — 2026-07-12
+
+> 확정 구조: 앱(Expo)=요양보호사 세션 실행(환자는 대화만) → 종료 시 AI 요약·분석 →
+> Supabase Realtime → 웹 관리·분석 허브(조회·세션설계·보호자 커밋·AI 에이전트) →
+> 보호자 웹(커밋된 것만). 백엔드는 앱·웹 공용. 상세: `PLAN.md` §2′ M16–M18.
+
+### 선행 — 세션 영속화 + Realtime (Phase E 갭 해소)
+
+| ID | 작업 | 의존 | 상태 |
+|---|---|---|---|
+| T-E1 | 세션 설계 CRUD 훅(`useCreateSession`/`useUpdateSession`/`useDeleteSession`) — 웹 세션 설계를 store→Supabase | T10.1 | 🔜 |
+| T-E2 | 세션 런타임 쓰기(start/append-turn/end) 경로 — 앱→Edge Function(provider 보호), 로그 DB 적재 | T16.2 | 🔜 |
+| T-E3 | 웹 Realtime 구독 훅(sessions·session_logs·session_analyses) — 앱 종료 시 대시보드 실시간 반영 | T-E1 | 🔜 |
+
+### M16 — 대화 분석·요약 파이프라인 → `core/analysis`
+
+| ID | 작업 | 의존 | 상태 |
+|---|---|---|---|
+| T16.1 | `session_analyses` 마이그레이션(요약·주제반응·관찰지표·추천주제, RLS 조직범위·감사) | T14.1 | 🔜 |
+| T16.2 | 분석 엔진 `core/analysis`(관찰 지표·주제 호응/저조·추천) + Structured Outputs 스키마 | — | ✅ mock 완료 |
+| T16.3 | 주제 추천 `recommendNextTopics`(연대기+과거 분석 기반) — 앱·웹 공용 | T16.2 | ✅ mock 완료 |
+| T16.4 | Edge Function `analyze-session`(대화 종료 트리거) + 웹/앱 분석 화면 데이터 공급 | T16.1, 실AI | ⏳ |
+
+### M17 — 보호자 공유 커밋 → `docs/compliance.md`
+
+| ID | 작업 | 의존 | 상태 |
+|---|---|---|---|
+| T17.1 | `profile_guardians`(환자↔보호자·동의 근거) + `guardian_shares`(커밋: 대상·유형·승인자·시점·철회) 마이그레이션 + RLS(보호자는 커밋된 것만) | T14.1, T9.1 | 🔜 |
+| T17.2 | 웹 커밋 UI: 기록·요약·분석에서 선택→미리보기→커밋/철회 + 감사로그 | T17.1 | 🔜 |
+| T17.3 | 보호자 대시보드 재정비(커밋 데이터만, 보호자=Supabase Auth role=guardian) | T17.2 | 🔜 |
+
+### M18 — AI 에이전트(웹) → 요양보호사 보조
+
+| ID | 작업 | 의존 | 상태 |
+|---|---|---|---|
+| T18.1 | 도구화: 세션 생성/수정·주제 추천·커밋 실행을 서버 검증 포함 tool로 노출 | T16, T17 | ⏳ |
+| T18.2 | 웹 에이전트: v1 버튼식(요약·추천·커밋 보조) → v1.5 대화형(자연어→실행 전 사람 확인) | T18.1 | ⏳ |
+
+### 앱(Expo) 프론트 — Figma 19화면
+
+| ID | 작업 | 의존 | 상태 |
+|---|---|---|---|
+| T-APP1 | Expo 스캐폴드 + `packages/theme` NativeWind 토큰(Figma Variables 추출) | Figma | ⏳ Figma 대기 |
+| T-APP2 | 화면 구현: 스플래쉬·로그인 / 환자 목록·등록·프로필 / 대화 시작 전·대화·수정·저장 / 기록·분석 | T-APP1 | ⏳ |
+| T-APP3 | 컴플라이언스 화면 **추가**(동의 게이팅·AI 이용 고지·위기 안내 배너 — Figma 미포함분) | T-APP2 | ⏳ |
+
+---
+
 ## 4. 우선순위
 
 | 우선순위 | 작업 그룹 | Phase |
