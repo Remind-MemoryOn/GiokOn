@@ -61,6 +61,7 @@
 - **동의 카탈로그(SoT)** — `@giokon/core/consent`: 어떤 동의가 필수/민감/국외이전인지·온보딩/세션 게이팅(`canStartElderSession`).
 - **정보주체 권리** — `@giokon/core/subject-rights`: 이동권 산출물(`buildSubjectDataExport`)·삭제 계획(`buildAccountDeletionPlan`/`buildElderDeletionPlan`). 데이터 훅 `@giokon/data`(useConsents/useRecordConsent/useRevokeConsent).
 - **화면(후속·Claude Design 트랙)**: 온보딩·프로필 동의(별도 체크박스), 설정 내 동의 관리·철회, 정보주체 권리 UI, 처리방침·약관 노출.
+- **웹 1차 MVP 추가 가드(2026-07-13 인터뷰 반영, Phase W)**: ⓐ **요양일지(`care_journals`)=민감정보 취급** — 건강 관련 내용 포함 가능하므로 민감정보 동의 범위에 포섭, 사진 원본은 private Storage + 보관·파기 정책, guardian 직접 접근 불가. ⓑ **보호자 데이터 노출은 공개 커밋(`guardian_shares`) 경유만** — 요양보호사의 명시적 선별·승인(철회 가능·감사 기록), 연결은 초대 코드+승인 게이트. ⓒ **AI 에이전트는 도구 실행 전 사람 확인 필수**, 보호자 대상 설명은 커밋된 데이터만 근거·관찰 지표 언어(진단·효능 표현 금지).
 
 ### 5.1 처리목록(ROPA) · 보관·파기 매트릭스
 | 데이터 | 분류 | 목적 | 처리자·위치 | 보관·파기 |

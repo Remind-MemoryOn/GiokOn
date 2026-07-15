@@ -19,6 +19,17 @@
 - `chronicle_entries`: 요양보호사 입력 및 AI 추출 연대기 항목.
 - `sessions`: 세션 메타데이터와 진행 상태.
 - `session_logs`: AI/어르신 발화 전문, STT 수정 이력, TTS 오디오 URL.
+- `organizations` / `consents` / `audit_log` / `safety_events`: 기관(테넌트)·동의·감사·위기 이벤트 — 적용 완료(마이그레이션 7종, PLAN §2′ M9·M10·M12·M14).
+
+웹 1차 MVP 신규(2026-07-13 인터뷰 반영 — Phase W, 계획 확정·마이그레이션 예정):
+
+- `session_analyses`: 세션 종료 시 AI 분석 결과(`core/analysis` SessionAnalysis JSON·버전). RLS 조직 범위(**guardian 제외**). 앱이 insert.
+- `care_journals`: 요양일지(내용·source[photo/voice/typed/ai_draft]·사진 경로·draft/final). **민감정보 취급**(동의·보관파기). guardian 직접 접근 불가.
+- `profile_guardians`: 어르신↔보호자 연결(status pending/approved/revoked·승인자).
+- `guardian_invites`: 어르신별 1회성·72h 만료 초대 코드(QR=코드 URL).
+- `guardian_shares`: 공개 커밋(항목 유형[일지/분석/세션요약/리포트]·승인자·시점·**철회**). **보호자는 승인된 연결+미철회 행만 SELECT**.
+- Storage 버킷 `journal-photos`(private): 일지 사진 원본. RLS·보관 정책 적용.
+- ⚠️ RLS 가드(필수 선행, T17.0): `safety_events` SELECT에 guardian 역할 배제 — 보호자 기관 합류 시 위기 발췌 노출 차단.
 
 ## Access Model
 
@@ -75,7 +86,7 @@ CLOVA_VOICE_KEY="<...>"
 
 ## Notes
 
-- v1에서는 별도 실시간 동기화 DB를 쓰지 않는다. 실시간 모니터링이 필요해지면 Supabase Realtime을 검토한다.
+- 실시간 동기화: 웹 1차 MVP(Phase W)부터 **Supabase Realtime 구독**을 사용한다 — `sessions`·`session_analyses`·`guardian_shares` 변경을 웹 대시보드/분석/보호자 화면에 실시간 반영(T-E3). 별도 실시간 DB는 두지 않는다.
 - 어르신 출생연도는 입력 검증 기준에 맞춰 `1900..2006`으로 제한한다.
 - TTS 결과 오디오는 `session_logs.audio_url`과 `audio_expires_at`으로 추적한다. 24시간 만료 파일 삭제는 `pg_cron` 또는 스케줄 Edge Function으로 구현한다.
 - API 응답의 `timestamp` 필드는 DB의 `session_logs.spoken_at`에서 매핑한다.
