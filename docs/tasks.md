@@ -231,6 +231,7 @@
 > Supabase Realtime → 웹 관리·분석 허브(조회·세션설계·요양일지·보호자 커밋·AI 에이전트) →
 > 보호자 웹(커밋된 것만). 백엔드는 앱·웹 공용. 상세: `PLAN.md` §2′ M16–M19 · "웹 1차 MVP 재정의".
 > 🗣️ 2026-07-13 현직자 인터뷰 반영: M17 확장(T17.0·T17.4)·M18 개정(보호자 설명)·**M19 신설(요양일지)**·Phase W 실행 순서. 입력: `docs/interview-findings.md`.
+> 🔐 2026-07-16 인증 개편(계획): 소셜 로그인 3종(구글·카카오·네이버)·이메일 로그인 제거·온보딩 회원가입·보호자 어르신 연결(가입+로그인 후) — T17.4 개정·**T17.5~T17.7 신설**. 코드 미변경(계획만).
 
 ### 선행 — 세션 영속화 + Realtime (Phase E 갭 해소)
 
@@ -258,7 +259,10 @@
 | T17.1 | `profile_guardians`(연결·pending/approved/revoked·승인자) + `guardian_invites`(**어르신별 1회성·72h 초대 코드**, QR=코드 URL) 마이그레이션 + RLS·감사 | T14.1, T9.1 | 🔜 |
 | T17.2 | **공개 체크리스트(SCR-W08)**: `guardian_shares`(유형[일지/분석/세션요약/리포트]·철회) + 일일 체크리스트 UI(체크→미리보기→공개) + RLS(보호자=승인 연결+미철회만) + 감사 | T17.0, T17.1 | 🔜 |
 | T17.3 | **보호자 대시보드 재작성(SCR-W09)**: 커밋 데이터 타임라인만. 시연용 GuardianLogin/Home **삭제**, 보호자=Supabase Auth(role=guardian)+GuardianGuard | T17.2 | 🔜 |
-| T17.4 | **가입·라우팅 개편**: `handle_new_user` 초대 코드 분기(기관 guardian 합류·새 기관 생성 안 함·코드 소진) + 통합 로그인·역할 자동 라우팅 + 랜딩 재작성(SCR-W05, 소개+로그인 CTA) | T17.1 | 🔜 |
+| T17.4 | **가입·라우팅 개편(2026-07-16)**: `handle_new_user` 최소 row 재작업(org_admin 강제 폐지)·`users.org_id` NULL 허용+`phone`·`onboarded_at` + 통합 로그인·**온보딩 게이트**·역할 자동 라우팅 + 랜딩 재작성(SCR-W05, 소개+소셜 로그인 CTA) | T17.1 | 🔜 |
+| T17.5 | **소셜 로그인·이메일 로그인 제거**: `auth.ts` 이메일 4함수 제거→`signInWithProvider(google/kakao)`, **네이버=커스텀 Edge Function `naver-auth`**(비네이티브). `/caregiver/reset`·비번찾기·설정 비번변경 삭제. 소셜 3버튼 UI(SCR-W05) | T17.4 | 🔜 |
+| T17.6 | **온보딩 회원가입(SCR-W12)**: `/onboarding` 폼(이름·전화·역할·기관명/초대코드·동의) + `app.complete_onboarding` RPC + `AuthProvider` users(role·org_id·onboarded_at) 노출·`useCurrentUser()` | T17.4, T17.5 | 🔜 |
+| T17.7 | **보호자 어르신 연결(재사용)**: `redeem_guardian_invite(p_code)` RPC(72h·1회성→pending) — 온보딩 코드 입력 + 보호자 대시보드 "**어르신 연결**"(SCR-W10 확장) 공용 | T17.1, T17.6 | 🔜 |
 
 ### M18 — AI 에이전트(웹) → 요양보호사 보조 + 보호자 설명
 
@@ -280,7 +284,7 @@
 
 | 순서 | 내용 | 태스크 |
 |---|---|---|
-| W1 | 인증·접근통제(보안 필수) | T17.0 → T17.4 → T17.1 |
+| W1 | 인증·접근통제(보안 필수) | T17.0 → T17.4 → **T17.5·T17.6(소셜/온보딩)** → T17.1 → T17.7 |
 | W2 | 세션 영속화 + Realtime (+ LogsPage/LogDetail store 잔존 제거) | T-E1 → T-E3 (T-E2는 실AI) |
 | W3 | 분석 저장·페이지 | T16.1 → T16.4 |
 | W4 | 요양일지 | T19.1 → T19.2 → T19.4 |

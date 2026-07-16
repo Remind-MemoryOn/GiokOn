@@ -34,6 +34,8 @@
   STT = gpt-4o-transcribe(Clova Speech 보완), TTS = Clova Voice, **Structured Outputs**.
   실연동은 Supabase Edge Functions(서버사이드 키 보호).
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
+  **로그인 = 소셜 3종(구글·카카오·네이버) — 이메일 로그인 제거 예정, 회원가입 = OAuth 후 온보딩(기본정보 입력)**
+  (구글·카카오=네이티브, 네이버=커스텀 Edge Function `naver-auth`). 계획: PLAN §2′ M17.4~17.7·Phase W1.
 - 배포: 웹 = Vercel, 모바일 = EAS.
 
 ## Supabase
@@ -53,6 +55,9 @@
   (PLAN §2′ "웹 1차 MVP 재정의"·§3 Phase W·tasks §3-3). 위임 결정 4건 확정(이메일+승인 게이트·
   초대 코드+QR·LLM 비전·작업 지향 에이전트). 입력: `docs/interview-findings.md`(반영 완료 표기).
   **다음 개발 = Phase W1(인증·접근통제)**.
+- 🔐 **인증 개편 계획 반영(2026-07-16, 코드 미변경)**: 로그인=소셜 3종(구글·카카오·네이버)·**이메일 로그인 제거**·
+  **온보딩 회원가입(기본정보 입력)**·**보호자 어르신 연결(가입+로그인 후, 초대 코드+QR+승인 재사용 RPC)**.
+  M17.4 개정·M17.5~17.7 신설(PLAN §2′)·SCR-W05/W12(design)·F-32~34·NF-W2(requirements)·T17.5~7(tasks). 구현은 Phase W1.
 - **2026-07-03 목표 상향** → 엔터프라이즈·정부심사 기준 전면 재계획(PLAN §2′ M9–M15 · §3 Phase G–L).
 - **Phase G/H DB 기반 완료(로컬 PG16 검증)**: 마이그레이션 7종(organizations/RBAC·audit_log·
   consents·consent_retention·safety_events) + RLS 회귀 테스트 + CI(quality·rls-regression·SCA·

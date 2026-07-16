@@ -31,6 +31,14 @@
 - Storage 버킷 `journal-photos`(private): 일지 사진 원본. RLS·보관 정책 적용.
 - ⚠️ RLS 가드(필수 선행, T17.0): `safety_events` SELECT에 guardian 역할 배제 — 보호자 기관 합류 시 위기 발췌 노출 차단.
 
+인증 개편 신규/변경(2026-07-16 — 소셜 로그인·회원가입·연결, 계획 확정·마이그레이션 예정):
+
+- `users`(변경): `org_id` **NOT NULL → NULL 허용**(미온보딩·미연결 보호자), `phone text`·`onboarded_at timestamptz` 컬럼 추가.
+- `handle_new_user`(재작업): 기관 자동생성·org_admin 강제 제거 → `(id, name, email)` **최소 insert(org_id NULL)**. 온보딩 완료 전까지 데이터 미노출.
+- `app.complete_onboarding(p_name, p_phone, p_role, p_org_name, p_invite_code)`(신규 RPC, SECURITY DEFINER): caregiver→기관 생성+role=org_admin / guardian→role=guardian, 코드 유효 시 기관 합류+`profile_guardians`(pending)+코드 소진. org 생성·역할·전화·코드 소진을 **원자적**으로.
+- `redeem_guardian_invite(p_code)`(신규 RPC): 로그인 후 보호자 어르신 연결(72h·1회성 검증→`profile_guardians` pending). 온보딩 코드 입력·보호자 대시보드 "어르신 연결" 공용.
+- Edge Function `naver-auth`(신규): **네이버=Supabase 비네이티브** → OAuth 콜백→프로필→Supabase Admin 사용자 매핑·세션. 구글·카카오는 네이티브 `signInWithOAuth`. 네이버 client secret 등 비밀값=서버(secrets) 보관.
+
 ## Access Model
 
 대부분의 요청은 클라이언트가 **supabase-js로 직접** 수행한다. 인증된 사용자의 JWT가 자동 첨부되고, RLS가 각 행의 소유자(`user_id = auth.uid()`)를 검증한다.
@@ -80,6 +88,8 @@ Edge Functions 전용 비밀값은 Supabase secrets로 관리하고 클라이언
 SUPABASE_SECRET_KEY="<secret-key>"             # 레거시 service_role key 대체
 OPENAI_API_KEY="<...>"
 CLOVA_VOICE_KEY="<...>"
+NAVER_CLIENT_ID="<...>"                         # 소셜 로그인(네이버, 커스텀 naver-auth)
+NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 ```
 
 실제 값은 커밋하지 않는다.
