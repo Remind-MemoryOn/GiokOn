@@ -35,4 +35,17 @@ export const queryKeys = {
   myConsents: ['consents', 'mine'] as const,
   safetyEvents: (profileId: string) => ['safety_events', profileId] as const,
   unacknowledgedSafetyEvents: ['safety_events', 'unacknowledged'] as const,
+  // 웹 1차 MVP(Phase W) — 세션·보호자 연결·분석·요양일지·공개 커밋
+  recentSessions: ['sessions', 'recent'] as const,
+  guardianInvites: (profileId: string) => ['guardian_invites', profileId] as const,
+  guardianLinks: (profileId: string) => ['profile_guardians', profileId] as const,
+  orgGuardianLinks: ['profile_guardians', 'org'] as const,
+  myGuardianLinks: ['profile_guardians', 'mine'] as const,
+  orgGuardianUsers: ['users', 'org_guardians'] as const,
+  sessionAnalyses: (profileId: string) => ['session_analyses', profileId] as const,
+  orgSessionAnalyses: ['session_analyses', 'org'] as const,
+  careJournals: (profileId: string) => ['care_journals', profileId] as const,
+  orgCareJournals: ['care_journals', 'org'] as const,
+  guardianShares: (profileId: string) => ['guardian_shares', profileId] as const,
+  myShares: ['guardian_shares', 'mine'] as const,
 }

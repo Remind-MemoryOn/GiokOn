@@ -1,16 +1,17 @@
-// 설정 (M9.4 정보주체 권리 포함) — 계정 정보·비밀번호 변경·내 데이터 다운로드(이동권)·
+// 설정 (M9.4 정보주체 권리 포함) — 계정 정보·내 데이터 다운로드(이동권)·
 // 계정 삭제 절차 안내·법적 문서 링크.
 //
+// 인증 개편(T17.5): 로그인=소셜 3종(구글·카카오·네이버)이라 비밀번호가 없다 —
+// 비밀번호 변경 섹션 제거, 연결된 소셜 계정 안내로 대체.
 // 데이터 다운로드는 @giokon/core의 buildSubjectDataExport로 이식 가능한 JSON을 만든다.
 // 계정 삭제는 기관 재귀속·증빙 보존이 필요한 서버사이드 절차(buildAccountDeletionPlan)
 // 라 실행 버튼 대신 절차를 투명하게 안내한다(Edge Function 연동 후 셀프서비스 전환).
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { KeyRound, Download, UserX, Save, FileText, ShieldCheck } from 'lucide-react';
+import { Download, UserX, Save, FileText, ShieldCheck } from 'lucide-react';
 import { buildAccountDeletionPlan, buildSubjectDataExport } from '@giokon/core';
 import {
-  updatePassword,
   useCurrentUser,
   useMyConsents,
   useOrganization,
@@ -44,9 +45,6 @@ export function SettingsPage() {
   // 사용자가 입력하기 전까지는 서버 값을 그대로 보여준다(effect-setState 회피).
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const name = nameDraft ?? currentUser.data?.name ?? '';
-  const [newPassword, setNewPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
 
   if (!isConfigured) {
     return (
@@ -80,28 +78,6 @@ export function SettingsPage() {
         onError: (err) => toast('error', err instanceof Error ? err.message : '변경 실패'),
       }
     );
-  }
-
-  async function changePassword() {
-    if (newPassword.length < 8) {
-      toast('error', '비밀번호는 8자 이상으로 해주세요.');
-      return;
-    }
-    if (newPassword !== passwordConfirm) {
-      toast('error', '비밀번호 확인이 일치하지 않습니다.');
-      return;
-    }
-    setChangingPassword(true);
-    try {
-      await updatePassword(newPassword);
-      setNewPassword('');
-      setPasswordConfirm('');
-      toast('success', '비밀번호를 변경했습니다.');
-    } catch (err) {
-      toast('error', err instanceof Error ? err.message : '비밀번호 변경 실패');
-    } finally {
-      setChangingPassword(false);
-    }
   }
 
   function downloadMyData() {
@@ -148,10 +124,14 @@ export function SettingsPage() {
                 </Button>
               </div>
             </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="text-xs text-slate-400 mb-0.5">이메일</div>
                 <div className="text-slate-800 truncate">{user?.email ?? '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 mb-0.5">전화번호</div>
+                <div className="text-slate-800 truncate">{currentUser.data?.phone ?? '—'}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-400 mb-0.5">역할</div>
@@ -164,37 +144,10 @@ export function SettingsPage() {
                 <div className="text-slate-800 truncate">{orgQuery.data?.name ?? '—'}</div>
               </div>
             </div>
-          </CardBody>
-        </Card>
-
-        {/* 비밀번호 변경 */}
-        <Card>
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h3 className="font-semibold flex items-center gap-2">
-              <KeyRound size={16} className="text-warm-600" /> 비밀번호 변경
-            </h3>
-          </div>
-          <CardBody className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
-            <Field label="새 비밀번호" hint="8자 이상">
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-            <Field label="새 비밀번호 확인">
-              <Input
-                type="password"
-                value={passwordConfirm}
-                onChange={(e) => setPasswordConfirm(e.target.value)}
-                autoComplete="new-password"
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Button onClick={changePassword} disabled={changingPassword}>
-                {changingPassword ? '변경 중...' : '비밀번호 변경'}
-              </Button>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500" style={{ wordBreak: 'keep-all' }}>
+              로그인은 소셜 계정(구글·카카오·네이버)으로 이루어지며, 기억온은
+              비밀번호를 저장하지 않습니다. 비밀번호 관리(변경·분실)는 각 소셜 계정에서
+              해주세요.
             </div>
           </CardBody>
         </Card>

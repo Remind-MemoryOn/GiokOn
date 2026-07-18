@@ -13,12 +13,13 @@ const NAV = [
 ];
 
 export function CaregiverLayout() {
-  const { user } = useAuth();
+  const { user, userRow } = useAuth();
   const navigate = useNavigate();
 
-  const name = (user?.user_metadata?.name as string | undefined)?.trim();
+  const name = (userRow?.name ?? (user?.user_metadata?.name as string | undefined))?.trim();
   const displayName = name || user?.email || '요양보호사';
   const avatarText = name ? name.slice(-2) : displayName.slice(0, 2).toUpperCase();
+  const roleLabel = userRow?.role === 'org_admin' ? '기관 관리자' : '요양보호사';
 
   async function handleLogout() {
     try {
@@ -58,7 +59,7 @@ export function CaregiverLayout() {
             </div>
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">{displayName}</div>
-              <div className="text-[11px] text-slate-500">요양보호사</div>
+              <div className="text-[11px] text-slate-500">{roleLabel}</div>
             </div>
           </div>
         </div>

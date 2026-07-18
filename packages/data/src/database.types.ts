@@ -6,7 +6,11 @@
 // (20260521131723_initial_schema + 20260624090000_supabase_auth_rls
 //  + 20260703120000_organizations_rbac + 20260703130000_audit_log
 //  + 20260703140000_consents + 20260703150000_consent_retention
-//  + 20260711100000_safety_events)
+//  + 20260711100000_safety_events + 20260718100000_safety_events_guardian_rls
+//  + 20260718110000_auth_onboarding + 20260718120000_guardian_links
+//  + 20260718125000_realtime_publication
+//  + 20260718130000_session_analyses + 20260718140000_care_journals
+//  + 20260718150000_guardian_shares)
 //
 // 참고: org_id 는 NOT NULL 이지만 INSERT 시 스탬프 트리거(app.stamp_org_id)가
 // 자동 채우므로 Insert 타입에서는 선택(optional)으로 둔다.
@@ -47,27 +51,33 @@ export type Database = {
         Row: {
           id: string
           name: string
-          email: string
-          org_id: string
+          email: string | null
+          org_id: string | null
           role: Database['public']['Enums']['org_role']
+          phone: string | null
+          onboarded_at: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id: string
           name: string
-          email: string
-          org_id?: string
+          email?: string | null
+          org_id?: string | null
           role?: Database['public']['Enums']['org_role']
+          phone?: string | null
+          onboarded_at?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           name?: string
-          email?: string
-          org_id?: string
+          email?: string | null
+          org_id?: string | null
           role?: Database['public']['Enums']['org_role']
+          phone?: string | null
+          onboarded_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -415,9 +425,231 @@ export type Database = {
         }
         Relationships: []
       }
+      guardian_invites: {
+        Row: {
+          id: string
+          org_id: string
+          profile_id: string
+          code: string
+          created_by: string | null
+          expires_at: string
+          used_by: string | null
+          used_at: string | null
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          profile_id: string
+          code?: string
+          created_by?: string | null
+          expires_at?: string
+          used_by?: string | null
+          used_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          profile_id?: string
+          code?: string
+          created_by?: string | null
+          expires_at?: string
+          used_by?: string | null
+          used_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profile_guardians: {
+        Row: {
+          id: string
+          org_id: string
+          profile_id: string
+          guardian_user_id: string
+          status: Database['public']['Enums']['guardian_link_status']
+          invited_via: string | null
+          approved_by: string | null
+          approved_at: string | null
+          revoked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          profile_id: string
+          guardian_user_id: string
+          status?: Database['public']['Enums']['guardian_link_status']
+          invited_via?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          profile_id?: string
+          guardian_user_id?: string
+          status?: Database['public']['Enums']['guardian_link_status']
+          invited_via?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          revoked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      session_analyses: {
+        Row: {
+          id: string
+          org_id: string
+          session_id: string
+          profile_id: string
+          user_id: string | null
+          analysis: Json
+          version: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          session_id: string
+          profile_id: string
+          user_id?: string | null
+          analysis: Json
+          version: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          session_id?: string
+          profile_id?: string
+          user_id?: string | null
+          analysis?: Json
+          version?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      care_journals: {
+        Row: {
+          id: string
+          org_id: string
+          profile_id: string
+          author_id: string | null
+          journal_date: string
+          content: string
+          source: Database['public']['Enums']['journal_source']
+          photo_path: string | null
+          status: Database['public']['Enums']['journal_status']
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          profile_id: string
+          author_id?: string | null
+          journal_date?: string
+          content: string
+          source?: Database['public']['Enums']['journal_source']
+          photo_path?: string | null
+          status?: Database['public']['Enums']['journal_status']
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          profile_id?: string
+          author_id?: string | null
+          journal_date?: string
+          content?: string
+          source?: Database['public']['Enums']['journal_source']
+          photo_path?: string | null
+          status?: Database['public']['Enums']['journal_status']
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guardian_shares: {
+        Row: {
+          id: string
+          org_id: string
+          profile_id: string
+          item_type: Database['public']['Enums']['share_item_type']
+          item_id: string
+          note: string | null
+          shared_by: string | null
+          shared_at: string
+          revoked_at: string | null
+          revoked_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          profile_id: string
+          item_type: Database['public']['Enums']['share_item_type']
+          item_id: string
+          note?: string | null
+          shared_by?: string | null
+          shared_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          profile_id?: string
+          item_type?: Database['public']['Enums']['share_item_type']
+          item_id?: string
+          note?: string | null
+          shared_by?: string | null
+          shared_at?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
-    Functions: { [_ in never]: never }
+    Functions: {
+      complete_onboarding: {
+        Args: {
+          p_name: string
+          p_phone: string
+          p_role: string
+          p_org_name?: string | null
+          p_invite_code?: string | null
+        }
+        Returns: Database['public']['Tables']['users']['Row']
+      }
+      redeem_guardian_invite: {
+        Args: { p_code: string }
+        Returns: Database['public']['Tables']['profile_guardians']['Row']
+      }
+    }
     Enums: {
       chronicle_source: 'caregiver' | 'ai'
       session_status: 'active' | 'ended'
@@ -432,6 +664,10 @@ export type Database = {
       consent_subject_type: 'self' | 'guardian' | 'legal_representative'
       consent_capacity: 'capable' | 'limited' | 'incapable' | 'unknown'
       safety_event_level: 'watch' | 'crisis'
+      guardian_link_status: 'pending' | 'approved' | 'revoked'
+      journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
+      journal_status: 'draft' | 'final'
+      share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report'
     }
     CompositeTypes: { [_ in never]: never }
   }
@@ -463,3 +699,12 @@ export type ConsentCapacity = Enums<'consent_capacity'>
 export type AuditLogRow = Tables<'audit_log'>
 export type SafetyEventRow = Tables<'safety_events'>
 export type SafetyEventLevel = Enums<'safety_event_level'>
+export type GuardianInviteRow = Tables<'guardian_invites'>
+export type ProfileGuardianRow = Tables<'profile_guardians'>
+export type GuardianLinkStatus = Enums<'guardian_link_status'>
+export type SessionAnalysisRow = Tables<'session_analyses'>
+export type CareJournalRow = Tables<'care_journals'>
+export type JournalSource = Enums<'journal_source'>
+export type JournalStatus = Enums<'journal_status'>
+export type GuardianShareRow = Tables<'guardian_shares'>
+export type ShareItemType = Enums<'share_item_type'>

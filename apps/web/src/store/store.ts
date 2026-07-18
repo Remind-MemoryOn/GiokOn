@@ -54,11 +54,6 @@ interface State {
   // 웹은 조회만 담당한다. 대화 생성/append/종료 로직은 앱(모바일)의 몫.
   getLog: (logId: string) => ConversationLog | undefined;
   logsByElder: (elderId: string) => ConversationLog[];
-
-  // guardian — 보호자 로그인 (시연용)
-  guardianAuth: { elderId: string; guardianName: string } | null;
-  guardianLogin: (elderId: string, guardianName: string) => void;
-  guardianLogout: () => void;
 }
 
 export const useStore = create<State>()(
@@ -181,11 +176,6 @@ export const useStore = create<State>()(
         get()
           .logs.filter((l) => l.elderId === elderId)
           .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
-
-      guardianAuth: null,
-      guardianLogin: (elderId, guardianName) =>
-        set({ guardianAuth: { elderId, guardianName: guardianName.trim() || '보호자' } }),
-      guardianLogout: () => set({ guardianAuth: null }),
     }),
     {
       name: 'gieok-on-prototype-v3',
@@ -194,7 +184,6 @@ export const useStore = create<State>()(
         sessions: s.sessions,
         chronicles: s.chronicles,
         logs: s.logs,
-        guardianAuth: s.guardianAuth,
       }),
     }
   )

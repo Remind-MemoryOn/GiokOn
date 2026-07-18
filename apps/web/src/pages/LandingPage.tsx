@@ -41,7 +41,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* 요양보호사 */}
             <Link
-              to="/caregiver/login"
+              to="/login"
               className="group bg-white rounded-3xl border border-slate-200 hover:border-warm-300 hover:shadow-warm transition p-7 sm:p-8"
             >
               <div className="flex items-center gap-3 mb-4">
@@ -57,13 +57,13 @@ export function LandingPage() {
                 담당 어르신을 직접 선택하고, 활동 세션을 시작합니다. 캐릭터 꾸미기·대화 기록·보호자 리포트까지 모두 관리할 수 있어요.
               </p>
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-sky-700 group-hover:gap-2.5 transition-all">
-                로그인하고 시작하기 <ArrowRight size={15} />
+                소셜 계정으로 시작하기 <ArrowRight size={15} />
               </span>
             </Link>
 
             {/* 보호자 */}
             <Link
-              to="/guardian/login"
+              to="/login"
               className="group bg-gradient-to-br from-violet-50 to-rose-50 rounded-3xl border border-violet-200 hover:border-violet-300 hover:shadow-warm transition p-7 sm:p-8"
             >
               <div className="flex items-center gap-3 mb-4">
@@ -76,10 +76,11 @@ export function LandingPage() {
                 </div>
               </div>
               <p className="text-sm text-slate-700 leading-relaxed mb-5" style={{ wordBreak: 'keep-all' }}>
-                오늘 부모님께서 어떤 이야기를 하셨는지, 어떤 기분이셨는지 확인하고 통화·방문 시 참고할 수 있는 대화 가이드를 받으세요.
+                요양보호사가 공개한 부모님의 오늘 소식을 확인하세요. 요양보호사에게 받은
+                초대 코드(QR)로 어르신과 연결됩니다.
               </p>
               <span className="inline-flex items-center gap-1.5 text-sm font-bold text-violet-700 group-hover:gap-2.5 transition-all">
-                보호자로 로그인 <ArrowRight size={15} />
+                소셜 계정으로 시작하기 <ArrowRight size={15} />
               </span>
             </Link>
           </div>

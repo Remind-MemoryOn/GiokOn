@@ -11,6 +11,7 @@ import { ElderFormDialog } from '../components/ElderFormDialog';
 import { SessionFormDialog } from '../components/SessionFormDialog';
 import { ChronicleView } from '../components/ChronicleView';
 import { ConsentStatusCard } from '../components/ConsentStatusCard';
+import { GuardianAccessCard } from '../components/GuardianAccessCard';
 import {
   useProfile, useDeleteProfile, useSafetyEvents, toElderProfile,
 } from '@giokon/data';
@@ -131,6 +132,9 @@ export function ElderDetailPage() {
 
         {/* 동의 관리 (M9) */}
         <ConsentStatusCard elderId={elderId} elderName={elder.name} />
+
+        {/* 보호자 연결 — 초대 코드·승인 관리 (SCR-W10) */}
+        <GuardianAccessCard elderId={elderId} elderName={elder.name} />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
           {/* 세션 영역 */}

@@ -11,6 +11,9 @@ const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 /** .env에 Supabase URL·publishable 키가 모두 설정됐는지. */
 export const isSupabaseConfigured = Boolean(url && publishableKey);
 
+/** Supabase 프로젝트 URL(네이버 커스텀 로그인 Edge Function 경로 구성에 사용). */
+export const supabaseUrl: string | undefined = url;
+
 /** 앱 전역 QueryClient (서버 상태 SoT). Supabase 설정 여부와 무관하게 제공. */
 export const queryClient = createGiokonQueryClient();
 
