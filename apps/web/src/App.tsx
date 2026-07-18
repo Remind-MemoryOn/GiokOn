@@ -11,6 +11,7 @@ import { ElderDetailPage } from './pages/ElderDetailPage';
 import { LogsPage } from './pages/LogsPage';
 import { LogDetailPage } from './pages/LogDetailPage';
 import { AnalysisPage } from './pages/AnalysisPage';
+import { CareJournalPage } from './pages/CareJournalPage';
 import { OrgPage } from './pages/OrgPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages';
@@ -69,6 +70,7 @@ function App() {
           <Route path="logs" element={<LogsPage />} />
           <Route path="logs/:logId" element={<LogDetailPage />} />
           <Route path="analysis" element={<AnalysisPage />} />
+          <Route path="journal" element={<CareJournalPage />} />
           <Route path="org" element={<OrgPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

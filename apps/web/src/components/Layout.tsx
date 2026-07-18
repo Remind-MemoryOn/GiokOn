@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Brain, ChartColumn, Home, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
+import { Brain, ChartColumn, Home, NotebookPen, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
 import { signOut, useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../auth/AuthProvider';
@@ -11,6 +11,7 @@ const NAV = [
   { to: '/caregiver/elders',   label: '어르신 관리', icon: Users },
   { to: '/caregiver/logs',     label: '세션 기록',   icon: FileText },
   { to: '/caregiver/analysis', label: '분석',        icon: ChartColumn },
+  { to: '/caregiver/journal',  label: '요양일지',    icon: NotebookPen },
   { to: '/caregiver/org',      label: '기관 관리',   icon: Building2 },
   { to: '/caregiver/settings', label: '설정',        icon: Settings },
 ];

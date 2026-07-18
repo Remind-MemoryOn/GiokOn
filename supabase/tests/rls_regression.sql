@@ -446,6 +446,65 @@ do $$ begin
     '세션 분석은 임의 삭제할 수 없어야 함';
 end $$;
 
+-- ── 5.9) 요양일지: 기관 공유·guardian 배제·final 삭제 불가(T19.1) ──────────
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';  -- 요양보호사 C
+do $$
+declare
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  insert into public.care_journals (author_id, profile_id, content, source, status)
+    values ('33333333-3333-3333-3333-333333333333', pid, '점심 잘 드시고 산책도 하셨어요.', 'typed', 'final');
+  insert into public.care_journals (author_id, profile_id, content, source, status)
+    values ('33333333-3333-3333-3333-333333333333', pid, '초안 메모', 'ai_draft', 'draft');
+end $$;
+
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- 같은 기관 관리자 A
+do $$ begin
+  assert (select count(*) from public.care_journals) = 2,
+    '같은 기관 돌봄 구성원은 요양일지를 조회할 수 있어야 함';
+end $$;
+
+set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인됨)
+do $$ begin
+  assert (select count(*) from public.care_journals) = 0,
+    'guardian 은 요양일지를 직접 볼 수 없어야 함(공개 커밋 경유만)';
+end $$;
+
+-- guardian 의 일지 작성 시도: 차단.
+do $$
+declare
+  pid uuid;
+  blocked boolean := false;
+begin
+  select id into pid from public.profiles where name = 'C어르신';
+  begin
+    insert into public.care_journals (author_id, profile_id, content)
+      values ('55555555-5555-5555-5555-555555555555', pid, '보호자 작성 시도');
+  exception when insufficient_privilege or check_violation or not_null_violation then
+    blocked := true;
+  end;
+  assert blocked, 'guardian 의 요양일지 작성은 차단되어야 함';
+end $$;
+
+set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
+do $$ begin
+  assert (select count(*) from public.care_journals) = 0,
+    '다른 기관의 요양일지는 보이면 안 됨';
+end $$;
+
+-- 확정(final) 일지는 삭제 불가, 초안(draft)은 작성자만 삭제 가능.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+delete from public.care_journals where status = 'final';
+delete from public.care_journals where status = 'draft';
+reset role;
+do $$ begin
+  assert (select count(*) from public.care_journals where status = 'final') = 1,
+    '확정(final) 일지는 삭제할 수 없어야 함';
+  assert (select count(*) from public.care_journals where status = 'draft') = 0,
+    '작성자는 본인 초안을 삭제할 수 있어야 함';
+end $$;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,
