@@ -1,23 +1,31 @@
 import { Link } from 'react-router-dom';
 import { Users, FileText, BookOpenCheck, Sparkles, MessageSquareHeart, ArrowRight } from 'lucide-react';
-import { useProfiles, useSessionCounts, useChronicleCounts, toElderProfile } from '@giokon/data';
+import {
+  useProfiles,
+  useSessionCounts,
+  useChronicleCounts,
+  useRecentSessions,
+  toElderProfile,
+} from '@giokon/data';
 import { PageHeader } from '../components/PageHeader';
 import { SafetyAlertsBanner } from '../components/SafetyAlertsBanner';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { useStore } from '../store/store';
+import { useAuth } from '../auth/AuthProvider';
 import { formatRelative } from '../lib/utils';
 
 export function DashboardPage() {
+  const { isConfigured } = useAuth();
   const profilesQuery = useProfiles();
   const sessionCounts = useSessionCounts();
   const chronicleCounts = useChronicleCounts();
-  const logs = useStore((s) => s.logs); // 최근 대화는 Phase E(세션/AI) 배선 전까지 store
+  // 최근 대화 = 앱이 DB에 기록한 세션(T-E1) — Realtime 으로 실시간 갱신(T-E3).
+  const recentSessions = useRecentSessions({ limit: 5, enabled: isConfigured });
 
   const elders = (profilesQuery.data ?? []).map(toElderProfile);
-  const recentLogs = logs.slice(0, 5);
+  const recentLogs = recentSessions.data ?? [];
 
   const stats = [
     { label: '등록 어르신', value: elders.length, icon: Users, tone: 'text-brand-600 bg-brand-50' },
@@ -127,26 +135,28 @@ export function DashboardPage() {
             <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
               {recentLogs.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm text-slate-500">
-                  아직 진행한 세션이 없습니다.
+                  {isConfigured
+                    ? '아직 진행한 세션이 없습니다.'
+                    : 'Supabase 연동 후 앱 대화 기록이 표시됩니다.'}
                 </div>
               ) : (
-                recentLogs.map((l) => {
-                  const elder = elders.find((e) => e.id === l.elderId);
+                recentLogs.map((s) => {
+                  const elder = elders.find((e) => e.id === s.profile_id);
                   return (
                     <Link
-                      key={l.id}
-                      to={`/caregiver/logs/${l.id}`}
+                      key={s.id}
+                      to={`/caregiver/logs/${s.id}`}
                       className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition"
                     >
                       <Avatar name={elder?.name || '?'} color={elder?.avatarColor} size="sm" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{elder?.name || '알 수 없음'}</div>
                         <div className="text-xs text-slate-500">
-                          {formatRelative(l.startedAt)} · {l.turns.length}턴
+                          {formatRelative(s.started_at)} · {s.turn_count}턴
                         </div>
                       </div>
-                      <Badge tone={l.status === 'ended' ? 'neutral' : 'success'}>
-                        {l.status === 'ended' ? '종료' : '진행 중'}
+                      <Badge tone={s.status === 'ended' ? 'neutral' : 'success'}>
+                        {s.status === 'ended' ? '종료' : '진행 중'}
                       </Badge>
                     </Link>
                   );

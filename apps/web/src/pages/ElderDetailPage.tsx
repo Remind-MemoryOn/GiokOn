@@ -13,7 +13,7 @@ import { ChronicleView } from '../components/ChronicleView';
 import { ConsentStatusCard } from '../components/ConsentStatusCard';
 import { GuardianAccessCard } from '../components/GuardianAccessCard';
 import {
-  useProfile, useDeleteProfile, useSafetyEvents, toElderProfile,
+  useProfile, useDeleteProfile, useSafetyEvents, useSessions, toElderProfile,
 } from '@giokon/data';
 import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
@@ -34,20 +34,14 @@ export function ElderDetailPage() {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [allSessions, elderId]
   );
-  const allLogs = useStore((s) => s.logs);
-  const logs = useMemo(
-    () =>
-      allLogs
-        .filter((l) => l.elderId === elderId)
-        .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
-    [allLogs, elderId]
-  );
   const deleteSession = useStore((s) => s.deleteSession);
   const deleteProfile = useDeleteProfile();
   const toast = useStore((s) => s.toast);
   const { isConfigured } = useAuth();
 
   const safetyEventsQuery = useSafetyEvents(isConfigured ? elderId : undefined);
+  // 대화 이력 = 앱이 DB에 기록한 세션(T-E1) — Realtime 으로 실시간 갱신(T-E3).
+  const dbSessionsQuery = useSessions(isConfigured ? elderId : undefined);
 
   const [openEdit, setOpenEdit] = useState(false);
   const [openSession, setOpenSession] = useState(false);
@@ -219,47 +213,47 @@ export function ElderDetailPage() {
           <ChronicleView elderId={elder.id} />
         </div>
 
-        {/* 세션 이력 */}
+        {/* 세션 이력 — 앱이 DB에 기록한 대화(T-E1), Realtime 반영(T-E3) */}
         <Card>
           <div className="px-5 py-4 border-b border-slate-100">
             <h3 className="font-semibold flex items-center gap-2">
               <MessageSquareHeart size={16} className="text-brand-500" /> 대화 이력
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              종료된 세션의 대화 전문을 확인하고, 자동 축적된 연대기를 살펴볼 수 있어요.
+              앱에서 진행된 세션이 종료되면 이곳에 실시간으로 나타납니다.
             </p>
           </div>
           <div className="divide-y divide-slate-100">
-            {logs.length === 0 ? (
+            {!isConfigured ? (
+              <div className="px-5 py-10 text-center text-sm text-slate-500">
+                Supabase 연동 후 앱 대화 기록이 표시됩니다.
+              </div>
+            ) : dbSessionsQuery.isLoading ? (
+              <div className="px-5 py-10 text-center text-sm text-slate-500">불러오는 중...</div>
+            ) : (dbSessionsQuery.data ?? []).length === 0 ? (
               <div className="px-5 py-10 text-center text-sm text-slate-500">
                 아직 진행한 대화가 없습니다.
               </div>
             ) : (
-              logs.map((l) => {
-                const ses = sessions.find((s) => s.id === l.sessionId);
-                return (
-                  <Link
-                    key={l.id}
-                    to={`/caregiver/logs/${l.id}`}
-                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {ses?.title || '(삭제된 세션)'}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        {formatRelative(l.startedAt)} · {l.turns.length}턴
-                        {l.chronicleEntriesAdded.length > 0
-                          ? ` · 연대기 +${l.chronicleEntriesAdded.length}`
-                          : ''}
-                      </div>
+              (dbSessionsQuery.data ?? []).map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/caregiver/logs/${s.id}`}
+                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50 transition"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      회상 대화{s.current_topic ? ` · ${s.current_topic}` : ''}
                     </div>
-                    <Badge tone={l.status === 'ended' ? 'neutral' : 'success'}>
-                      {l.status === 'ended' ? '종료' : '진행 중'}
-                    </Badge>
-                  </Link>
-                );
-              })
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {formatRelative(s.started_at)} · {s.turn_count}턴
+                    </div>
+                  </div>
+                  <Badge tone={s.status === 'ended' ? 'neutral' : 'success'}>
+                    {s.status === 'ended' ? '종료' : '진행 중'}
+                  </Badge>
+                </Link>
+              ))
             )}
           </div>
         </Card>

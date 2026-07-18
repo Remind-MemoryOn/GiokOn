@@ -1,21 +1,29 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Users, ArrowRight } from 'lucide-react';
-import { useProfiles, useSessionCounts, useChronicleCounts, toElderProfile } from '@giokon/data';
+import {
+  useProfiles,
+  useSessionCounts,
+  useChronicleCounts,
+  useRecentSessions,
+  toElderProfile,
+} from '@giokon/data';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ElderFormDialog } from '../components/ElderFormDialog';
-import { useStore } from '../store/store';
+import { useAuth } from '../auth/AuthProvider';
 import { formatRelative } from '../lib/utils';
 
 export function EldersPage() {
+  const { isConfigured } = useAuth();
   const profilesQuery = useProfiles();
   const sessionCounts = useSessionCounts();
   const chronicleCounts = useChronicleCounts();
-  const logs = useStore((s) => s.logs); // 대화 이력은 Phase E(세션/AI) 배선 전까지 store
+  // 최근 대화 시각 표시용 — 앱이 DB에 기록한 세션(T-E1).
+  const recentSessions = useRecentSessions({ limit: 100, enabled: isConfigured });
   const elders = (profilesQuery.data ?? []).map(toElderProfile);
 
   const [openNew, setOpenNew] = useState(false);
@@ -62,7 +70,7 @@ export function EldersPage() {
             {elders.map((e) => {
               const sessCount = sessionCounts.data?.byProfile[e.id] ?? 0;
               const chrCount = chronicleCounts.data?.byProfile[e.id] ?? 0;
-              const lastLog = logs.find((l) => l.elderId === e.id);
+              const lastSession = (recentSessions.data ?? []).find((s) => s.profile_id === e.id);
               return (
                 <Link key={e.id} to={`/caregiver/elders/${e.id}`} className="group">
                   <Card className="hover:shadow-md hover:border-brand-200 transition group-hover:-translate-y-0.5 duration-150">
@@ -92,9 +100,9 @@ export function EldersPage() {
                       <div className="flex items-center gap-1.5 pt-1 border-t border-slate-100">
                         <Badge tone="brand">세션 {sessCount}</Badge>
                         <Badge tone="success">연대기 {chrCount}</Badge>
-                        {lastLog ? (
+                        {lastSession ? (
                           <span className="ml-auto text-[11px] text-slate-400">
-                            최근 대화 {formatRelative(lastLog.startedAt)}
+                            최근 대화 {formatRelative(lastSession.started_at)}
                           </span>
                         ) : null}
                       </div>

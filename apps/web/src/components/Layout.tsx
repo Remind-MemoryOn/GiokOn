@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Brain, Home, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
-import { signOut } from '@giokon/data';
+import { signOut, useGiokonRealtime } from '@giokon/data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -13,8 +13,11 @@ const NAV = [
 ];
 
 export function CaregiverLayout() {
-  const { user, userRow } = useAuth();
+  const { user, userRow, isConfigured } = useAuth();
   const navigate = useNavigate();
+
+  // 앱 대화 종료 → sessions/분석/공개 변경을 실시간 반영(T-E3, 폴링 대체).
+  useGiokonRealtime({ enabled: isConfigured });
 
   const name = (userRow?.name ?? (user?.user_metadata?.name as string | undefined))?.trim();
   const displayName = name || user?.email || '요양보호사';

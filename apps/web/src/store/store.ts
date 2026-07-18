@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   ChronicleEntry,
-  ConversationLog,
   ElderProfile,
   Session,
 } from '../types';
@@ -19,8 +18,6 @@ interface State {
   elders: ElderProfile[];
   sessions: Session[];
   chronicles: ChronicleEntry[];
-  logs: ConversationLog[];
-  activeLogId: string | null;
   toasts: ToastItem[];
 
   // toast
@@ -50,10 +47,7 @@ interface State {
   deleteChronicle: (id: string) => void;
   chroniclesByElder: (elderId: string) => ChronicleEntry[];
 
-  // conversation logs — 실제 대화는 앱에서 진행되어 DB로 저장된다(Phase E에서 DB 배선).
-  // 웹은 조회만 담당한다. 대화 생성/append/종료 로직은 앱(모바일)의 몫.
-  getLog: (logId: string) => ConversationLog | undefined;
-  logsByElder: (elderId: string) => ConversationLog[];
+  // 대화 기록은 DB(sessions/session_logs)가 SoT — Phase W2 에서 store 제거.
 }
 
 export const useStore = create<State>()(
@@ -62,8 +56,6 @@ export const useStore = create<State>()(
       elders: [],
       sessions: [],
       chronicles: [],
-      logs: [],
-      activeLogId: null,
       toasts: [],
 
       toast: (kind, message) => {
@@ -104,7 +96,6 @@ export const useStore = create<State>()(
           elders: s.elders.filter((e) => e.id !== id),
           sessions: s.sessions.filter((x) => x.elderId !== id),
           chronicles: s.chronicles.filter((x) => x.elderId !== id),
-          logs: s.logs.filter((x) => x.elderId !== id),
         })),
       getElder: (id) => get().elders.find((e) => e.id === id),
 
@@ -171,11 +162,6 @@ export const useStore = create<State>()(
           .chronicles.filter((c) => c.elderId === elderId)
           .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
 
-      getLog: (logId) => get().logs.find((l) => l.id === logId),
-      logsByElder: (elderId) =>
-        get()
-          .logs.filter((l) => l.elderId === elderId)
-          .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
     }),
     {
       name: 'gieok-on-prototype-v3',
@@ -183,7 +169,6 @@ export const useStore = create<State>()(
         elders: s.elders,
         sessions: s.sessions,
         chronicles: s.chronicles,
-        logs: s.logs,
       }),
     }
   )
