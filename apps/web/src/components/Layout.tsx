@@ -1,13 +1,16 @@
+import { useCallback } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Brain, Home, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
-import { signOut, useGiokonRealtime } from '@giokon/data';
+import { Brain, ChartColumn, Home, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
+import { signOut, useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../auth/AuthProvider';
+import { useStore } from '../store/store';
 
 const NAV = [
   { to: '/caregiver',          label: '대시보드',    icon: Home, end: true },
   { to: '/caregiver/elders',   label: '어르신 관리', icon: Users },
   { to: '/caregiver/logs',     label: '세션 기록',   icon: FileText },
+  { to: '/caregiver/analysis', label: '분석',        icon: ChartColumn },
   { to: '/caregiver/org',      label: '기관 관리',   icon: Building2 },
   { to: '/caregiver/settings', label: '설정',        icon: Settings },
 ];
@@ -15,9 +18,19 @@ const NAV = [
 export function CaregiverLayout() {
   const { user, userRow, isConfigured } = useAuth();
   const navigate = useNavigate();
+  const toast = useStore((s) => s.toast);
 
   // 앱 대화 종료 → sessions/분석/공개 변경을 실시간 반영(T-E3, 폴링 대체).
-  useGiokonRealtime({ enabled: isConfigured });
+  // 새 분석 도착은 인앱 알림으로 표시(F-27).
+  const onRealtimeEvent = useCallback(
+    (event: RealtimeEvent) => {
+      if (event.table === 'session_analyses' && event.eventType === 'INSERT') {
+        toast('info', '새 세션 분석이 도착했어요 — 분석 페이지에서 확인하세요.');
+      }
+    },
+    [toast],
+  );
+  useGiokonRealtime({ enabled: isConfigured, onEvent: onRealtimeEvent });
 
   const name = (userRow?.name ?? (user?.user_metadata?.name as string | undefined))?.trim();
   const displayName = name || user?.email || '요양보호사';

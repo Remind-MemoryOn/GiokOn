@@ -7,13 +7,16 @@
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import {
+  parseSessionAnalysis,
   useProfile,
   useSession,
+  useSessionAnalysisBySession,
   useSessionLogs,
   toConversationTurn,
   toElderProfile,
 } from '@giokon/data';
 import { PageHeader } from '../components/PageHeader';
+import { AnalysisSummary } from '../components/AnalysisSummary';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
@@ -29,6 +32,7 @@ export function LogDetailPage() {
 
   const sessionQuery = useSession(isConfigured ? logId : undefined);
   const logsQuery = useSessionLogs(isConfigured ? logId : undefined);
+  const analysisQuery = useSessionAnalysisBySession(isConfigured ? logId : undefined);
   const session = sessionQuery.data ?? null;
   const profileQuery = useProfile(session?.profile_id);
   const elder = profileQuery.data ? toElderProfile(profileQuery.data) : undefined;
@@ -99,6 +103,26 @@ export function LogDetailPage() {
           <SummaryCard label="상태" value={session.status === 'ended' ? '종료' : '진행 중'} />
           <SummaryCard label="시작" value={formatKoreanDateTime(session.started_at)} small />
         </section>
+
+        {/* 세션 자동 분석 (T16.4 — 관찰 지표) */}
+        {analysisQuery.data ? (
+          (() => {
+            const parsed = parseSessionAnalysis(analysisQuery.data);
+            return parsed ? (
+              <Card>
+                <div className="px-5 py-4 border-b border-slate-100">
+                  <h3 className="font-semibold">세션 자동 분석</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    대화 종료 시 자동 산출된 관찰 지표입니다.
+                  </p>
+                </div>
+                <CardBody>
+                  <AnalysisSummary analysis={parsed} />
+                </CardBody>
+              </Card>
+            ) : null;
+          })()
+        ) : null}
 
         {/* 대화 전문 */}
         <Card>

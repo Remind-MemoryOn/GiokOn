@@ -398,6 +398,54 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 5.8) 세션 분석: 기관 공유·guardian 배제·타 기관 차단(T16.1) ────────────
+-- 요양보호사 C 가 세션 + 분석 기록 → 같은 기관 A 조회 가능 / 보호자 H 는
+-- 연결 승인된 어르신이라도 직접 조회 불가(공개 커밋 경유만) / 기관 B 0건.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+  sid uuid;
+begin
+  insert into public.sessions (user_id, profile_id, status, turn_count, ended_at)
+    values ('33333333-3333-3333-3333-333333333333', pid, 'ended', 6, now())
+    returning id into sid;
+  insert into public.session_analyses (user_id, session_id, profile_id, analysis, version)
+    values (
+      '33333333-3333-3333-3333-333333333333', sid, pid,
+      '{"summary":"고향 이야기에 호응이 좋으셨어요.","topicsEngaged":["고향"],"metrics":{"responseRate":0.8}}'::jsonb,
+      'v1.0'
+    );
+end $$;
+
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- 같은 기관 관리자 A
+do $$ begin
+  assert (select count(*) from public.session_analyses) = 1,
+    '같은 기관 돌봄 구성원은 세션 분석을 조회할 수 있어야 함';
+end $$;
+
+set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인됨)
+do $$ begin
+  assert (select count(*) from public.session_analyses) = 0,
+    'guardian 은 연결 승인 후에도 분석을 직접 볼 수 없어야 함(커밋 경유만)';
+end $$;
+
+set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
+do $$ begin
+  assert (select count(*) from public.session_analyses) = 0,
+    '다른 기관의 세션 분석은 보이면 안 됨';
+end $$;
+
+-- 삭제 불가(deny by default).
+set test.uid = '33333333-3333-3333-3333-333333333333';
+delete from public.session_analyses;
+reset role;
+do $$ begin
+  assert (select count(*) from public.session_analyses) = 1,
+    '세션 분석은 임의 삭제할 수 없어야 함';
+end $$;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,
