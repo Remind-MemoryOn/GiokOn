@@ -7,21 +7,26 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Brain, HeartHandshake, Hourglass, LogOut, Plus } from 'lucide-react';
+import { Brain, HeartHandshake, Hourglass, LogOut, Newspaper, NotebookPen, Plus } from 'lucide-react';
 import {
+  parseSessionAnalysis,
   signOut,
   toElderProfile,
+  useGiokonRealtime,
   useMyGuardianLinks,
+  useMySharedContent,
   useProfiles,
   useRedeemGuardianInvite,
 } from '@giokon/data';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
+import { AnalysisSummary } from '../components/AnalysisSummary';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Avatar } from '../components/ui/Avatar';
 import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
+import { formatKoreanDateTime } from '../lib/utils';
 
 export function GuardianDashboardPage() {
   const { userRow, isConfigured } = useAuth();
@@ -30,8 +35,12 @@ export function GuardianDashboardPage() {
 
   const links = useMyGuardianLinks({ enabled: isConfigured });
   const profiles = useProfiles(); // RLS: 승인된 연결 어르신만 반환된다.
+  const shared = useMySharedContent({ enabled: isConfigured });
   const redeem = useRedeemGuardianInvite();
   const [code, setCode] = useState('');
+
+  // 공개/철회가 즉시 반영되도록 실시간 구독(T-E3).
+  useGiokonRealtime({ enabled: isConfigured, tables: ['guardian_shares'] });
 
   const approved = (links.data ?? []).filter((l) => l.status === 'approved');
   const pending = (links.data ?? []).filter((l) => l.status === 'pending');
@@ -157,6 +166,73 @@ export function GuardianDashboardPage() {
                     승인 대기 중인 연결 {pending.length}건 — 요양보호사 승인 후 표시됩니다.
                   </div>
                 ) : null}
+              </CardBody>
+            </Card>
+
+            {/* 공개된 소식 타임라인 (SCR-W09 — 커밋된 데이터만, RLS 강제) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Newspaper size={17} className="text-violet-600" /> 공개된 소식
+                </CardTitle>
+                <CardDescription>
+                  요양보호사가 공개한 일지와 대화 관찰 요약입니다. 실시간으로 갱신돼요.
+                </CardDescription>
+              </CardHeader>
+              <CardBody>
+                {shared.isLoading ? (
+                  <div className="text-sm text-slate-500 py-4 text-center">불러오는 중...</div>
+                ) : (shared.data?.shares.length ?? 0) === 0 ? (
+                  <div className="text-sm text-slate-500 py-6 text-center" style={{ wordBreak: 'keep-all' }}>
+                    아직 공개된 소식이 없어요. 요양보호사가 공개하면 이곳에 나타납니다.
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {(shared.data?.shares ?? []).map((s) => {
+                      const elder = elderById.get(s.profile_id);
+                      if (s.item_type === 'journal') {
+                        const journal = shared.data?.journals.find((j) => j.id === s.item_id);
+                        if (!journal) return null;
+                        return (
+                          <li key={s.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <NotebookPen size={14} className="text-warm-600" />
+                              <span className="text-sm font-semibold text-slate-900">
+                                {elder?.name ?? '어르신'} · {journal.journal_date} 요양일지
+                              </span>
+                              <span className="ml-auto text-[11px] text-slate-400">
+                                {formatKoreanDateTime(s.shared_at)} 공개
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" style={{ wordBreak: 'keep-all' }}>
+                              {journal.content}
+                            </p>
+                          </li>
+                        );
+                      }
+                      if (s.item_type === 'analysis') {
+                        const analysis = shared.data?.analyses.find((a) => a.id === s.item_id);
+                        const parsed = analysis ? parseSessionAnalysis(analysis) : null;
+                        if (!parsed) return null;
+                        return (
+                          <li key={s.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Brain size={14} className="text-violet-600" />
+                              <span className="text-sm font-semibold text-slate-900">
+                                {elder?.name ?? '어르신'} · 대화 관찰 요약
+                              </span>
+                              <span className="ml-auto text-[11px] text-slate-400">
+                                {formatKoreanDateTime(s.shared_at)} 공개
+                              </span>
+                            </div>
+                            <AnalysisSummary analysis={parsed} compact />
+                          </li>
+                        );
+                      }
+                      return null;
+                    })}
+                  </ul>
+                )}
               </CardBody>
             </Card>
 

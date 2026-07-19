@@ -505,6 +505,89 @@ do $$ begin
     '작성자는 본인 초안을 삭제할 수 있어야 함';
 end $$;
 
+-- ── 5.10) 공개 커밋: 보호자는 승인된 연결 + 미철회 커밋만(T17.2) ───────────
+-- C 가 final 일지·분석을 공개 → 연결 승인된 H 만 열람. 철회 시 즉시 차단.
+-- 연결 없는 보호자 G(같은 기관)·타 기관 B 는 0건.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  jid uuid := (select id from public.care_journals where status = 'final' limit 1);
+  aid uuid := (select id from public.session_analyses limit 1);
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  insert into public.guardian_shares (shared_by, profile_id, item_type, item_id)
+    values ('33333333-3333-3333-3333-333333333333', pid, 'journal', jid);
+  insert into public.guardian_shares (shared_by, profile_id, item_type, item_id)
+    values ('33333333-3333-3333-3333-333333333333', pid, 'analysis', aid);
+end $$;
+
+-- 보호자 H(연결 승인): 공개 커밋 + 공개된 원본을 볼 수 있다.
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$ begin
+  assert (select count(*) from public.guardian_shares) = 2,
+    '보호자는 승인된 연결의 공개 커밋을 볼 수 있어야 함(기대 2)';
+  assert (select count(*) from public.care_journals) = 1,
+    '보호자는 공개된 일지 원본을 볼 수 있어야 함(기대 1)';
+  assert (select count(*) from public.session_analyses) = 1,
+    '보호자는 공개된 분석 원본을 볼 수 있어야 함(기대 1)';
+end $$;
+
+-- 연결 없는 보호자 G(같은 기관): 0건.
+set test.uid = '44444444-4444-4444-4444-444444444444';
+do $$ begin
+  assert (select count(*) from public.guardian_shares) = 0,
+    '연결되지 않은 보호자는 공개 커밋을 볼 수 없어야 함';
+  assert (select count(*) from public.care_journals) = 0,
+    '연결되지 않은 보호자는 일지를 볼 수 없어야 함';
+end $$;
+
+-- 타 기관 B: 0건.
+set test.uid = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  assert (select count(*) from public.guardian_shares) = 0,
+    '다른 기관은 공개 커밋을 볼 수 없어야 함';
+end $$;
+
+-- 보호자의 공개 시도(커밋 생성): 차단.
+do $$
+declare
+  pid uuid;
+  jid uuid;
+  blocked boolean := false;
+begin
+  select id into pid from public.profiles where name = 'C어르신';
+  select id into jid from public.care_journals where status = 'final' limit 1;
+  set role authenticated;
+  perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
+  begin
+    insert into public.guardian_shares (shared_by, profile_id, item_type, item_id)
+      values ('55555555-5555-5555-5555-555555555555', pid, 'journal', jid);
+  exception when insufficient_privilege or check_violation then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '보호자는 공개 커밋을 만들 수 없어야 함';
+end $$;
+
+-- 철회 → 보호자 화면에서 즉시 사라진다(커밋·원본 모두).
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.guardian_shares
+  set revoked_at = now(), revoked_by = '33333333-3333-3333-3333-333333333333'
+  where item_type = 'journal';
+
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$ begin
+  assert (select count(*) from public.guardian_shares where item_type = 'journal') = 0,
+    '철회된 공개는 보호자에게 보이면 안 됨';
+  assert (select count(*) from public.care_journals) = 0,
+    '철회 즉시 일지 원본 접근도 차단되어야 함';
+  assert (select count(*) from public.session_analyses) = 1,
+    '철회되지 않은 분석 공개는 유지되어야 함';
+end $$;
+reset role;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,
