@@ -5,6 +5,7 @@ import { signOut, useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
 import { cn } from '../lib/utils';
 import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
+import { AgentPanel } from './AgentPanel';
 
 const NAV = [
   { to: '/caregiver',          label: '대시보드',    icon: Home, end: true },
@@ -119,6 +120,9 @@ export function CaregiverLayout() {
       <main id="main-content" className="flex-1 min-w-0 flex flex-col">
         <Outlet />
       </main>
+
+      {/* AI 에이전트 패널 (SCR-W11 — 일지 초안·공개 대행, 실행 전 사람 확인) */}
+      <AgentPanel role="caregiver" />
     </div>
   );
 }

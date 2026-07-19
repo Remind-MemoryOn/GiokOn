@@ -20,6 +20,7 @@ import {
 } from '@giokon/data';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { AnalysisSummary } from '../components/AnalysisSummary';
+import { AgentPanel } from '../components/AgentPanel';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -268,6 +269,9 @@ export function GuardianDashboardPage() {
           <Link to="/terms" className="hover:text-slate-600">이용약관</Link>
         </footer>
       </main>
+
+      {/* 보호자 설명 에이전트 (SCR-W11 — 커밋된 데이터만 근거, 관찰 지표 언어) */}
+      <AgentPanel role="guardian" />
     </div>
   );
 }
