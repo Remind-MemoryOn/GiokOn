@@ -231,54 +231,58 @@
 > Supabase Realtime → 웹 관리·분석 허브(조회·세션설계·요양일지·보호자 커밋·AI 에이전트) →
 > 보호자 웹(커밋된 것만). 백엔드는 앱·웹 공용. 상세: `PLAN.md` §2′ M16–M19 · "웹 1차 MVP 재정의".
 > 🗣️ 2026-07-13 현직자 인터뷰 반영: M17 확장(T17.0·T17.4)·M18 개정(보호자 설명)·**M19 신설(요양일지)**·Phase W 실행 순서. 입력: `docs/interview-findings.md`.
-> 🔐 2026-07-16 인증 개편(계획): 소셜 로그인 3종(구글·카카오·네이버)·이메일 로그인 제거·온보딩 회원가입·보호자 어르신 연결(가입+로그인 후) — T17.4 개정·**T17.5~T17.7 신설**. 코드 미변경(계획만).
+> 🔐 2026-07-16 인증 개편(계획): 소셜 로그인 3종(구글·카카오·네이버)·이메일 로그인 제거·온보딩 회원가입·보호자 어르신 연결(가입+로그인 후) — T17.4 개정·**T17.5~T17.7 신설**.
+> ✅ **2026-07-19 웹 1차 MVP 구현 완료(Phase W1~W6)**: 인증·접근통제(W1) → 세션 DB+Realtime(W2) →
+> 분석 페이지(W3) → 요양일지(W4) → 공개 체크리스트·보호자 타임라인(W5) → AI 에이전트 mock(W6).
+> 검증: typecheck·lint·test(core 135+data 12)·build·check:copy·RLS 회귀(로컬 PG16)·라우트 스모크
+> 17/17(`apps/web/scripts/route-smoke.mjs`). 잔여=실 AI·서울 리전 연동(사용자 외부 작업, 절단선 참조).
 
 ### 선행 — 세션 영속화 + Realtime (Phase E 갭 해소)
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
-| T-E1 | 세션 설계 CRUD 훅(`useCreateSession`/`useUpdateSession`/`useDeleteSession`) — 웹 세션 설계를 store→Supabase | T10.1 | 🔜 |
-| T-E2 | 세션 런타임 쓰기(start/append-turn/end) 경로 — 앱→Edge Function(provider 보호), 로그 DB 적재 | T16.2 | 🔜 |
-| T-E3 | 웹 Realtime 구독 훅(sessions·session_logs·session_analyses) — 앱 종료 시 대시보드 실시간 반영 | T-E1 | 🔜 |
+| T-E1 | 세션 설계 CRUD 훅(`useCreateSession`/`useUpdateSession`/`useDeleteSession`) — 웹 세션 설계를 store→Supabase | T10.1 | ✅ (2026-07-19 웹 MVP) |
+| T-E2 | 세션 런타임 쓰기(start/append-turn/end) 경로 — 앱→Edge Function(provider 보호), 로그 DB 적재 | T16.2 | ⏳ 실AI |
+| T-E3 | 웹 Realtime 구독 훅(sessions·session_logs·session_analyses) — 앱 종료 시 대시보드 실시간 반영 | T-E1 | ✅ (2026-07-19 웹 MVP) |
 
 ### M16 — 대화 분석·요약 파이프라인 → `core/analysis`
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
-| T16.1 | `session_analyses` 마이그레이션(`core/analysis` SessionAnalysis JSON·버전, RLS 조직범위 **guardian 제외**·감사) — 앱이 종료 시 insert | T14.1 | 🔜 |
+| T16.1 | `session_analyses` 마이그레이션(`core/analysis` SessionAnalysis JSON·버전, RLS 조직범위 **guardian 제외**·감사) — 앱이 종료 시 insert | T14.1 | ✅ (2026-07-19 웹 MVP) |
 | T16.2 | 분석 엔진 `core/analysis`(관찰 지표·주제 호응/저조·추천) + Structured Outputs 스키마 | — | ✅ mock 완료 |
 | T16.3 | 주제 추천 `recommendNextTopics`(연대기+과거 분석 기반) — 앱·웹 공용 | T16.2 | ✅ mock 완료 |
-| T16.4 | **웹 분석 페이지(SCR-W07)**: 개인/전체(관찰 지표) + Realtime 실시간 반영·새 분석 배지 | T16.1, T-E3 | 🔜 |
+| T16.4 | **웹 분석 페이지(SCR-W07)**: 개인/전체(관찰 지표) + Realtime 실시간 반영·새 분석 배지 | T16.1, T-E3 | ✅ (2026-07-19 웹 MVP) |
 | T16.5 | Edge Function `analyze-session`(대화 종료 트리거, mock→실 전환) | T16.1, 실AI | ⏳ |
 
 ### M17 — 보호자 연결·공개 커밋 → `docs/compliance.md`
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
-| T17.0 | **보안 RLS 가드(필수 선행)**: `safety_events_select_org`에 guardian 배제(`current_org_role() <> 'guardian'`) — 보호자 기관 합류 시 위기 발췌 열람 차단 | T14.1 | 🔜 |
-| T17.1 | `profile_guardians`(연결·pending/approved/revoked·승인자) + `guardian_invites`(**어르신별 1회성·72h 초대 코드**, QR=코드 URL) 마이그레이션 + RLS·감사 | T14.1, T9.1 | 🔜 |
-| T17.2 | **공개 체크리스트(SCR-W08)**: `guardian_shares`(유형[일지/분석/세션요약/리포트]·철회) + 일일 체크리스트 UI(체크→미리보기→공개) + RLS(보호자=승인 연결+미철회만) + 감사 | T17.0, T17.1 | 🔜 |
-| T17.3 | **보호자 대시보드 재작성(SCR-W09)**: 커밋 데이터 타임라인만. 시연용 GuardianLogin/Home **삭제**, 보호자=Supabase Auth(role=guardian)+GuardianGuard | T17.2 | 🔜 |
-| T17.4 | **가입·라우팅 개편(2026-07-16)**: `handle_new_user` 최소 row 재작업(org_admin 강제 폐지)·`users.org_id` NULL 허용+`phone`·`onboarded_at` + 통합 로그인·**온보딩 게이트**·역할 자동 라우팅 + 랜딩 재작성(SCR-W05, 소개+소셜 로그인 CTA) | T17.1 | 🔜 |
-| T17.5 | **소셜 로그인·이메일 로그인 제거**: `auth.ts` 이메일 4함수 제거→`signInWithProvider(google/kakao)`, **네이버=커스텀 Edge Function `naver-auth`**(비네이티브). `/caregiver/reset`·비번찾기·설정 비번변경 삭제. 소셜 3버튼 UI(SCR-W05) | T17.4 | 🔜 |
-| T17.6 | **온보딩 회원가입(SCR-W12)**: `/onboarding` 폼(이름·전화·역할·기관명/초대코드·동의) + `app.complete_onboarding` RPC + `AuthProvider` users(role·org_id·onboarded_at) 노출·`useCurrentUser()` | T17.4, T17.5 | 🔜 |
-| T17.7 | **보호자 어르신 연결(재사용)**: `redeem_guardian_invite(p_code)` RPC(72h·1회성→pending) — 온보딩 코드 입력 + 보호자 대시보드 "**어르신 연결**"(SCR-W10 확장) 공용 | T17.1, T17.6 | 🔜 |
+| T17.0 | **보안 RLS 가드(필수 선행)**: `safety_events_select_org`에 guardian 배제(`current_org_role() <> 'guardian'`) — 보호자 기관 합류 시 위기 발췌 열람 차단 | T14.1 | ✅ (2026-07-19 웹 MVP) |
+| T17.1 | `profile_guardians`(연결·pending/approved/revoked·승인자) + `guardian_invites`(**어르신별 1회성·72h 초대 코드**, QR=코드 URL) 마이그레이션 + RLS·감사 | T14.1, T9.1 | ✅ (2026-07-19 웹 MVP) |
+| T17.2 | **공개 체크리스트(SCR-W08)**: `guardian_shares`(유형[일지/분석/세션요약/리포트]·철회) + 일일 체크리스트 UI(체크→미리보기→공개) + RLS(보호자=승인 연결+미철회만) + 감사 | T17.0, T17.1 | ✅ (2026-07-19 웹 MVP) |
+| T17.3 | **보호자 대시보드 재작성(SCR-W09)**: 커밋 데이터 타임라인만. 시연용 GuardianLogin/Home **삭제**, 보호자=Supabase Auth(role=guardian)+GuardianGuard | T17.2 | ✅ (2026-07-19 웹 MVP) |
+| T17.4 | **가입·라우팅 개편(2026-07-16)**: `handle_new_user` 최소 row 재작업(org_admin 강제 폐지)·`users.org_id` NULL 허용+`phone`·`onboarded_at` + 통합 로그인·**온보딩 게이트**·역할 자동 라우팅 + 랜딩 재작성(SCR-W05, 소개+소셜 로그인 CTA) | T17.1 | ✅ (2026-07-19 웹 MVP) |
+| T17.5 | **소셜 로그인·이메일 로그인 제거**: `auth.ts` 이메일 4함수 제거→`signInWithProvider(google/kakao)`, **네이버=커스텀 Edge Function `naver-auth`**(비네이티브). `/caregiver/reset`·비번찾기·설정 비번변경 삭제. 소셜 3버튼 UI(SCR-W05) | T17.4 | ✅ (2026-07-19 웹 MVP) |
+| T17.6 | **온보딩 회원가입(SCR-W12)**: `/onboarding` 폼(이름·전화·역할·기관명/초대코드·동의) + `app.complete_onboarding` RPC + `AuthProvider` users(role·org_id·onboarded_at) 노출·`useCurrentUser()` | T17.4, T17.5 | ✅ (2026-07-19 웹 MVP) |
+| T17.7 | **보호자 어르신 연결(재사용)**: `redeem_guardian_invite(p_code)` RPC(72h·1회성→pending) — 온보딩 코드 입력 + 보호자 대시보드 "**어르신 연결**"(SCR-W10 확장) 공용 | T17.1, T17.6 | ✅ (2026-07-19 웹 MVP) |
 
 ### M18 — AI 에이전트(웹) → 요양보호사 보조 + 보호자 설명
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
-| T18.1 | 도구화 3종: **일지 초안**(M19)·**공개 실행**(M17.2 대행)·**데이터 설명**(보호자용) — 서버 검증 + **실행 전 사람 확인 게이트** | T16, T17, T19 | 🔜 |
-| T18.2 | 작업 지향 대화 에이전트(SCR-W11): 요양보호사=초안·공개 대행·요약 / 보호자=**커밋 데이터만 근거** 설명(관찰 지표 언어·진단 표현 금지). MVP=mock, 실 LLM 무변경 전환 | T18.1 | 🔜 |
+| T18.1 | 도구화 3종: **일지 초안**(M19)·**공개 실행**(M17.2 대행)·**데이터 설명**(보호자용) — 서버 검증 + **실행 전 사람 확인 게이트** | T16, T17, T19 | ✅ (2026-07-19 웹 MVP) |
+| T18.2 | 작업 지향 대화 에이전트(SCR-W11): 요양보호사=초안·공개 대행·요약 / 보호자=**커밋 데이터만 근거** 설명(관찰 지표 언어·진단 표현 금지). MVP=mock, 실 LLM 무변경 전환 | T18.1 | ✅ (2026-07-19 웹 MVP) |
 
 ### M19 — 요양일지 (현직자 1순위 요청, 2026-07-13 신설) → `PLAN.md` §2′ M19
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
-| T19.1 | `care_journals` 마이그레이션(내용·source[photo/voice/typed/ai_draft]·사진 경로·draft/final) + Storage `journal-photos`(private) + RLS 조직 패턴(guardian 직접 접근 불가) + **민감정보 취급**(동의·보관파기)·감사 | T14.1 | 🔜 |
-| T19.2 | 작성 UI(SCR-W06): 사진 업로드 / 타이핑 / 음성 입력 3경로 + AI 초안 → **요양보호사 확인 후 저장** | T19.1 | 🔜 |
+| T19.1 | `care_journals` 마이그레이션(내용·source[photo/voice/typed/ai_draft]·사진 경로·draft/final) + Storage `journal-photos`(private) + RLS 조직 패턴(guardian 직접 접근 불가) + **민감정보 취급**(동의·보관파기)·감사 | T14.1 | ✅ (2026-07-19 웹 MVP) |
+| T19.2 | 작성 UI(SCR-W06): 사진 업로드 / 타이핑 / 음성 입력 3경로 + AI 초안 → **요양보호사 확인 후 저장** | T19.1 | ✅ (2026-07-19 웹 MVP) |
 | T19.3 | 실 AI 파이프라인: 사진→LLM 비전·음성→STT Edge Function(그 전 mock) | T19.1, 실AI | ⏳ |
-| T19.4 | 일지 → 공개 체크리스트(M17.2) 항목 연동 | T19.2, T17.2 | 🔜 |
+| T19.4 | 일지 → 공개 체크리스트(M17.2) 항목 연동 | T19.2, T17.2 | ✅ (2026-07-19 웹 MVP) |
 
 ### 웹 1차 MVP 실행 순서 (Phase W)
 
