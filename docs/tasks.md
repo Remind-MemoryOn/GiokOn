@@ -241,6 +241,12 @@
 > 코어+파생 9테이블 RLS 배정 기반 재작성(같은 기관 격리 유지), `claim_elder_by_code`/
 > `link_guardian_by_elder_code`(구 1회성 redeem 대체). QR·`/join`·qrcode.react 제거. 마이그레이션
 > `20260722100000`, 회귀 §5.7 재작성·§5.7b(연속성) 신설, 라우트 스모크 16/16.
+> 🔑 **2026-07-22 후속(적대적 리뷰·기관 합류 승인형)**: 마이그레이션 `20260722110000`(enum
+> `pending`)·`20260722120000`. (1) 코드 회전 결정성 버그 → 서버 `rotate_elder_code` RPC·잔여 QR
+> 카피 정리. (2) **요양보호사 기관 합류 승인형**: 온보딩에서 어르신 코드로 기존 기관 합류 요청
+> (`status='pending'`)·`approve_caregiver_assignment`(활성 담당/admin 승인·자가승인 3중 차단)·
+> claim 활성멤버 가드·pending 배너/승인 UI. §5.7b 실제 온보딩→승인 경로 재작성·§5.7c(회전) 신설.
+> 전 게이트 재통과.
 
 ### 선행 — 세션 영속화 + Realtime (Phase E 갭 해소)
 
@@ -270,7 +276,7 @@
 | T17.3 | **보호자 대시보드 재작성(SCR-W09)**: 커밋 데이터 타임라인만. 시연용 GuardianLogin/Home **삭제**, 보호자=Supabase Auth(role=guardian)+GuardianGuard | T17.2 | ✅ (2026-07-19 웹 MVP) |
 | T17.4 | **가입·라우팅 개편(2026-07-16)**: `handle_new_user` 최소 row 재작업(org_admin 강제 폐지)·`users.org_id` NULL 허용+`phone`·`onboarded_at` + 통합 로그인·**온보딩 게이트**·역할 자동 라우팅 + 랜딩 재작성(SCR-W05, 소개+소셜 로그인 CTA) | T17.1 | ✅ (2026-07-19 웹 MVP) |
 | T17.5 | **소셜 로그인·이메일 로그인 제거**: `auth.ts` 이메일 4함수 제거→`signInWithProvider(google/kakao)`, **네이버=커스텀 Edge Function `naver-auth`**(비네이티브). `/caregiver/reset`·비번찾기·설정 비번변경 삭제. 소셜 3버튼 UI(SCR-W05) | T17.4 | ✅ (2026-07-19 웹 MVP) |
-| T17.6 | **온보딩 회원가입(SCR-W12)**: `/onboarding` 폼(이름·전화·역할·기관명/초대코드·동의) + `app.complete_onboarding` RPC + `AuthProvider` users(role·org_id·onboarded_at) 노출·`useCurrentUser()` | T17.4, T17.5 | ✅ (2026-07-19 웹 MVP) |
+| T17.6 | **온보딩 회원가입(SCR-W12)**: `/onboarding` 폼(이름·전화·역할·기관명 또는 어르신 코드[합류]·동의) + `app.complete_onboarding` RPC + `AuthProvider` users(role·org_id·onboarded_at) 노출·`useCurrentUser()` | T17.4, T17.5 | ✅ (2026-07-19 웹 MVP · 07-22 합류 승인형) |
 | T17.7 | **보호자 어르신 연결(재사용)**: `redeem_guardian_invite(p_code)` RPC(72h·1회성→pending) — 온보딩 코드 입력 + 보호자 대시보드 "**어르신 연결**"(SCR-W10 확장) 공용 | T17.1, T17.6 | ✅ (2026-07-19 웹 MVP) |
 
 ### M18 — AI 에이전트(웹) → 요양보호사 보조 + 보호자 설명
