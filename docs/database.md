@@ -57,6 +57,7 @@
 - `approve_caregiver_assignment(p_id)`(RPC): 그 어르신의 **활성 담당** 또는 **org_admin** 이 pending → active. **본인 자가승인 불가**.
 - **자가승인 3중 차단**: (a) UPDATE 정책 강화(본인 행은 'removed' 로만), (b) approve RPC 본인 배제, (c) claim 가드(활성 담당/admin 만). + 본인 배정 self-select 정책(승인 대기 상태 확인용).
 - `rotate_elder_code(p_profile_id)`(RPC): 코드 회전(서버 생성·매번 상이·배정/admin 게이트). 클라이언트 코드 생성 제거. profile_id 불변 → 보호자 연결 유지.
+- **코드 생성 강화(`20260722130000`)**: `app.generate_invite_code()` 를 **암호학적 난수**(`gen_random_bytes`, pgcrypto CSPRNG — 예측 가능한 `random()` 대체) + **혼동문자 전면 제외 30자 알파벳**(`0/1/I/L/O/U` 제외) + **10자**로 개선. 승인 게이트와 함께 추측/열거 저항. 기존 8자 코드는 유효(check 6~32), 신규 발급·회전분부터 10자.
 
 ## Access Model
 

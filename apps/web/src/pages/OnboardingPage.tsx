@@ -244,7 +244,7 @@ export function OnboardingPage() {
                     <Input
                       value={elderCode}
                       onChange={(e) => setElderCode(e.target.value.toUpperCase())}
-                      placeholder="예: AB12CD34"
+                      placeholder="예: K7M2Q9RXTV"
                       className="font-mono tracking-widest"
                     />
                   </Field>
@@ -258,7 +258,7 @@ export function OnboardingPage() {
                 <Input
                   value={elderCode}
                   onChange={(e) => setElderCode(e.target.value.toUpperCase())}
-                  placeholder="예: AB12CD34"
+                  placeholder="예: K7M2Q9RXTV"
                   className="font-mono tracking-widest"
                 />
               </Field>

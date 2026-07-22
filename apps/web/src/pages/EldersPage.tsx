@@ -93,7 +93,7 @@ export function EldersPage() {
                   value={claimCode}
                   onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && submitClaim()}
-                  placeholder="예: AB12CD34"
+                  placeholder="예: K7M2Q9RXTV"
                   className="font-mono tracking-widest w-40"
                 />
                 <Button onClick={submitClaim} disabled={claim.isPending} className="shrink-0">

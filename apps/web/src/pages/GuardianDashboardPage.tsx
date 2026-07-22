@@ -253,7 +253,7 @@ export function GuardianDashboardPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && connect()}
-                  placeholder="예: AB12CD34"
+                  placeholder="예: K7M2Q9RXTV"
                   className="font-mono tracking-widest"
                 />
                 <Button onClick={connect} disabled={linkMutation.isPending} className="shrink-0">

@@ -525,6 +525,15 @@ begin
   assert blocked, '보호자는 어르신 코드를 회전할 수 없어야 함';
 end $$;
 
+-- 코드 생성 형식(CSPRNG·혼동문자 없는 30자 알파벳·10자) 검증.
+do $$
+declare v text := app.generate_invite_code();
+begin
+  assert char_length(v) = 10, '생성 코드는 10자여야 함';
+  assert v ~ '^[23456789ABCDEFGHJKMNPQRSTVWXYZ]+$',
+    '생성 코드는 혼동문자(0/1/I/L/O/U) 없는 30자 알파벳만 사용해야 함';
+end $$;
+
 -- ── 5.8) 세션 분석: 기관 공유·guardian 배제·타 기관 차단(T16.1) ────────────
 -- 요양보호사 C 가 세션 + 분석 기록 → 같은 기관 A 조회 가능 / 보호자 H 는
 -- 연결 승인된 어르신이라도 직접 조회 불가(공개 커밋 경유만) / 기관 B 0건.
