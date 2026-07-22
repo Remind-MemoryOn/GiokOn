@@ -3,18 +3,18 @@
 // 소셜 로그인(OAuth) 직후 기본정보를 입력받아 계정을 확정한다:
 //   이름(소셜 프리필)·전화번호·역할(요양보호사/보호자)
 //   요양보호사 → 소속 기관명(신규 기관 생성 + 기관 관리자)
-//   보호자     → 초대 코드(선택 — 없으면 나중에 "어르신 연결"에서 입력 가능)
+//   보호자     → 어르신 코드(선택 — 없으면 나중에 "어르신 연결"에서 입력 가능)
 // 개인정보 수집·이용 동의(필수) 포함. 완료 전에는 데이터 화면 접근 불가(가드).
 // 처리는 complete_onboarding RPC(원자적) — 성공 시 역할에 따라 자동 이동.
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Brain, HeartHandshake, LogOut, UserCheck } from 'lucide-react';
 import { completeOnboarding, signOut } from '@giokon/data';
 import { Field, Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../auth/AuthProvider';
-import { clearInviteCode, popInviteCode, routeForUser } from '../auth/routes';
+import { routeForUser } from '../auth/routes';
 import { useStore } from '../store/store';
 import { cn } from '../lib/utils';
 
@@ -26,15 +26,13 @@ export function OnboardingPage() {
   const navigate = useNavigate();
 
   const metaName = (user?.user_metadata?.name as string | undefined)?.trim();
-  // QR(/join/:code) 스태시 코드 프리필 — 있으면 보호자 프리셋.
-  const stashedCode = useMemo(() => popInviteCode(), []);
   // 사용자가 입력하기 전까지는 소셜 프로필 이름을 그대로 보여준다(effect-setState 회피).
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const name = nameDraft ?? metaName ?? '';
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<Role>(stashedCode ? 'guardian' : 'caregiver');
+  const [role, setRole] = useState<Role>('caregiver');
   const [orgName, setOrgName] = useState('');
-  const [inviteCode, setInviteCode] = useState(stashedCode ?? '');
+  const [elderCode, setElderCode] = useState('');
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [socialAgreed, setSocialAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -69,9 +67,8 @@ export function OnboardingPage() {
         phone: phone.trim(),
         role,
         orgName: role === 'caregiver' ? orgName.trim() : undefined,
-        inviteCode: role === 'guardian' && inviteCode.trim() ? inviteCode.trim() : undefined,
+        elderCode: role === 'guardian' && elderCode.trim() ? elderCode.trim() : undefined,
       });
-      clearInviteCode();
       const row = await refreshUserRow();
       toast('success', '가입이 완료되었습니다. 환영합니다!');
       navigate(routeForUser(row), { replace: true });
@@ -159,7 +156,7 @@ export function OnboardingPage() {
                     <HeartHandshake size={16} className="text-violet-600" /> 보호자
                   </div>
                   <div className="text-xs text-slate-500 mt-1" style={{ wordBreak: 'keep-all' }}>
-                    공개된 부모님 소식을 확인해요. 초대 코드로 연결합니다.
+                    공개된 부모님 소식을 확인해요. 어르신 코드로 연결합니다.
                   </div>
                 </button>
               </div>
@@ -194,12 +191,12 @@ export function OnboardingPage() {
               </Field>
             ) : (
               <Field
-                label="초대 코드 (선택)"
-                hint="요양보호사에게 받은 코드를 입력하면 어르신 연결 요청까지 함께 진행됩니다. 나중에 입력해도 돼요."
+                label="어르신 코드 (선택)"
+                hint="요양보호사에게 받은 어르신 코드를 입력하면 연결 요청까지 함께 진행됩니다. 나중에 '어르신 연결'에서 입력해도 돼요."
               >
                 <Input
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  value={elderCode}
+                  onChange={(e) => setElderCode(e.target.value.toUpperCase())}
                   placeholder="예: AB12CD34"
                   className="font-mono tracking-widest"
                 />

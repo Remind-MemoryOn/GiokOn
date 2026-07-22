@@ -1,20 +1,22 @@
-// 보호자 초대·승인 관리 카드 (SCR-W10 — T17.1·T17.7 UI)
+// 어르신 코드·담당·보호자 연결 관리 카드 (SCR-W10 — 영속 코드 재설계)
 //
-// 어르신 상세에서 사용: ① 초대 코드 발급(1회성·72h) + QR/링크 복사
-// ② 연결 요청 승인/거절 ③ 승인된 보호자 해제. 승인 전 보호자는 어떤 데이터도
-// 볼 수 없고, 승인 후에도 공개 커밋(guardian_shares) 항목만 열람한다.
+// ① 어르신 영속 코드: 상시 표시·복사. 보호자에게 주면 연결 요청, 다른 요양보호사
+//    에게 주면 담당 인계(기존 기록 그대로) — 소진되지 않는 하나의 코드.
+// ② 담당 요양보호사: 이 어르신을 맡은 요양보호사 목록(배정). 관리자는 해제 가능.
+// ③ 보호자 연결: 코드로 들어온 연결 요청 승인/거절, 승인된 보호자 해제.
+// 승인 전 보호자는 어떤 데이터도 못 보고, 승인 후에도 공개 커밋 항목만 열람한다.
 
 import { useState } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
-import { Check, Copy, HeartHandshake, QrCode, Ticket, X } from 'lucide-react';
+import { Check, Copy, HeartHandshake, KeyRound, RefreshCw, Users } from 'lucide-react';
 import {
   useApproveGuardianLink,
-  useCreateGuardianInvite,
   useCurrentUser,
-  useGuardianInvites,
+  useElderCode,
   useGuardianLinks,
-  useRevokeGuardianInvite,
+  useProfileCaregivers,
+  useRemoveCaregiverAssignment,
   useRevokeGuardianLink,
+  useRotateElderCode,
 } from '@giokon/data';
 import { Card, CardBody, CardDescription, CardHeader, CardTitle } from './ui/Card';
 import { Badge } from './ui/Badge';
@@ -28,67 +30,74 @@ interface Props {
   elderName: string;
 }
 
+// 혼동문자 제외 8자 코드(회전 시 클라이언트 생성 — DB unique 로 최종 검증).
+const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+function randomCode(seed: string): string {
+  let out = '';
+  for (let i = 0; i < 8; i += 1) {
+    // 렌더 순수성 유지를 위해 seed 기반 의사난수(호출 시점 문자열).
+    const n = (seed.charCodeAt(i % seed.length) * (i + 7) + i * 31) % CODE_ALPHABET.length;
+    out += CODE_ALPHABET[n];
+  }
+  return out;
+}
+
 export function GuardianAccessCard({ elderId, elderName }: Props) {
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
   const currentUser = useCurrentUser();
 
-  const invites = useGuardianInvites(isConfigured ? elderId : undefined);
+  const elderCode = useElderCode(isConfigured ? elderId : undefined);
+  const caregivers = useProfileCaregivers(isConfigured ? elderId : undefined);
   const links = useGuardianLinks(isConfigured ? elderId : undefined);
-  const createInvite = useCreateGuardianInvite();
-  const revokeInvite = useRevokeGuardianInvite();
+  const rotate = useRotateElderCode();
+  const removeAssignment = useRemoveCaregiverAssignment();
   const approveLink = useApproveGuardianLink();
   const revokeLink = useRevokeGuardianLink();
 
-  const [qrInviteId, setQrInviteId] = useState<string | null>(null);
-  // 만료 판정 기준 시각(렌더 순수성 유지 — 72h 창이라 마운트 시각 정밀도면 충분).
-  const [mountedAt] = useState(() => Date.now());
+  const [confirmRotate, setConfirmRotate] = useState(false);
 
   if (!isConfigured) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HeartHandshake size={17} className="text-violet-600" /> 보호자 연결
+            <KeyRound size={17} className="text-violet-600" /> 어르신 코드·연결
           </CardTitle>
-          <CardDescription>Supabase 연동 후 초대 코드 발급·승인을 관리할 수 있어요.</CardDescription>
+          <CardDescription>Supabase 연동 후 코드·담당·보호자 연결을 관리할 수 있어요.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  const activeInvites = (invites.data ?? []).filter(
-    (i) => !i.used_at && !i.revoked_at && new Date(i.expires_at).getTime() > mountedAt,
-  );
+  const code = elderCode.data?.code ?? null;
+  const isAdmin = currentUser.data?.role === 'org_admin';
+  const activeCaregivers = (caregivers.data ?? []).filter((c) => c.status === 'active');
   const pendingLinks = (links.data ?? []).filter((l) => l.status === 'pending');
   const approvedLinks = (links.data ?? []).filter((l) => l.status === 'approved');
 
-  function issue() {
-    const userId = currentUser.data?.id;
-    if (!userId) {
-      toast('error', '사용자 정보를 불러오지 못했습니다.');
-      return;
+  async function copyCode() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast('success', '어르신 코드를 복사했어요.');
+    } catch {
+      toast('info', `복사가 지원되지 않아요. 코드: ${code}`);
     }
-    createInvite.mutate(
-      { profileId: elderId, createdBy: userId },
+  }
+
+  function doRotate() {
+    if (!elderCode.data) return;
+    rotate.mutate(
+      { id: elderCode.data.id, newCode: randomCode(elderCode.data.id) },
       {
-        onSuccess: (row) => {
-          setQrInviteId(row.id);
-          toast('success', `초대 코드가 발급됐어요: ${row.code}`);
+        onSuccess: () => {
+          setConfirmRotate(false);
+          toast('success', '새 코드로 교체했어요. 기존 보호자 연결은 유지됩니다.');
         },
         onError: (err) => toast('error', err.message),
       },
     );
-  }
-
-  async function copyJoinUrl(codeValue: string) {
-    const url = `${window.location.origin}/join/${codeValue}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast('success', '초대 링크를 복사했어요.');
-    } catch {
-      toast('info', `복사가 지원되지 않아요. 링크: ${url}`);
-    }
   }
 
   function approve(linkId: string) {
@@ -100,13 +109,13 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
     approveLink.mutate(
       { id: linkId, userId },
       {
-        onSuccess: () => toast('success', '연결을 승인했어요. 이제 공개 항목을 보호자가 볼 수 있어요.'),
+        onSuccess: () => toast('success', '연결을 승인했어요. 공개 항목을 보호자가 볼 수 있어요.'),
         onError: (err) => toast('error', err.message),
       },
     );
   }
 
-  function reject(linkId: string, label: string) {
+  function rejectLink(linkId: string, label: string) {
     revokeLink.mutate(
       { id: linkId },
       {
@@ -120,87 +129,98 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <HeartHandshake size={17} className="text-violet-600" /> 보호자 연결
+          <KeyRound size={17} className="text-violet-600" /> 어르신 코드·연결
         </CardTitle>
         <CardDescription style={{ wordBreak: 'keep-all' }}>
-          초대 코드(QR)를 전달하고, 연결 요청을 승인하면 보호자가 {elderName} 어르신의
-          공개된 소식만 볼 수 있어요.
+          {elderName} 어르신의 코드 하나로 보호자 연결과 담당 요양보호사 인계를 처리해요.
+          담당이 바뀌거나 늘어도 이 코드로 이어받으면 기록이 그대로 유지됩니다.
         </CardDescription>
       </CardHeader>
       <CardBody className="space-y-5">
-        {/* 초대 코드 */}
+        {/* ① 어르신 코드 */}
         <section>
-          <div className="flex items-center justify-between mb-2.5">
-            <h4 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-              <Ticket size={14} className="text-slate-400" /> 초대 코드
-            </h4>
-            <Button size="sm" onClick={issue} disabled={createInvite.isPending}>
-              {createInvite.isPending ? '발급 중...' : '초대 코드 발급'}
-            </Button>
-          </div>
-
-          {invites.isLoading ? (
+          <h4 className="text-sm font-semibold text-slate-800 mb-2.5 flex items-center gap-1.5">
+            <KeyRound size={14} className="text-slate-400" /> 어르신 코드
+          </h4>
+          {elderCode.isLoading ? (
             <div className="text-sm text-slate-500 py-3 text-center">불러오는 중...</div>
-          ) : activeInvites.length === 0 ? (
-            <div className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3" style={{ wordBreak: 'keep-all' }}>
-              사용 가능한 초대 코드가 없어요. 발급하면 72시간 동안 1회 사용할 수 있습니다.
+          ) : !code ? (
+            <div className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
+              코드를 불러오지 못했어요. (담당으로 배정된 어르신만 코드를 볼 수 있어요.)
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 p-3.5 flex items-center gap-3 flex-wrap">
+              <span className="font-mono text-xl font-bold tracking-[0.25em] text-slate-900">
+                {code}
+              </span>
+              <span className="flex-1" />
+              <Button size="sm" variant="outline" onClick={copyCode}>
+                <Copy size={14} /> 코드 복사
+              </Button>
+              {confirmRotate ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Button size="sm" variant="danger" onClick={doRotate} disabled={rotate.isPending}>
+                    새 코드로 교체
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmRotate(false)}>
+                    취소
+                  </Button>
+                </span>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => setConfirmRotate(true)} title="코드 교체(유출 대비)">
+                  <RefreshCw size={13} /> 코드 교체
+                </Button>
+              )}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 mt-1.5" style={{ wordBreak: 'keep-all' }}>
+            보호자에게 주면 "어르신 연결" 요청이 오고, 다른 요양보호사에게 주면 이 어르신을
+            담당으로 이어받습니다. 코드는 소진되지 않아요.
+          </p>
+        </section>
+
+        {/* ② 담당 요양보호사 */}
+        <section>
+          <h4 className="text-sm font-semibold text-slate-800 mb-2.5 flex items-center gap-1.5">
+            <Users size={14} className="text-slate-400" /> 담당 요양보호사
+          </h4>
+          {caregivers.isLoading ? (
+            <div className="text-sm text-slate-500 py-3 text-center">불러오는 중...</div>
+          ) : activeCaregivers.length === 0 ? (
+            <div className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
+              배정된 담당 요양보호사가 없어요.
             </div>
           ) : (
             <ul className="space-y-2">
-              {activeInvites.map((invite) => (
-                <li key={invite.id} className="rounded-xl border border-slate-200 p-3.5">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-lg font-bold tracking-[0.2em] text-slate-900">
-                      {invite.code}
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      {formatKoreanDateTime(invite.expires_at)} 까지
-                    </span>
-                    <span className="flex-1" />
-                    <button
-                      type="button"
-                      onClick={() => copyJoinUrl(invite.code)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
-                      title="초대 링크 복사"
-                    >
-                      <Copy size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQrInviteId(qrInviteId === invite.id ? null : invite.id)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
-                      title="QR 보기"
-                    >
-                      <QrCode size={15} />
-                    </button>
-                    <button
-                      type="button"
+              {activeCaregivers.map((c) => (
+                <li key={c.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900">
+                      {c.caregiver?.name ?? '요양보호사'}
+                      {c.caregiver_user_id === currentUser.data?.id ? (
+                        <span className="text-xs text-slate-400 font-normal"> · 나</span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {formatKoreanDateTime(c.assigned_at)} 배정
+                    </div>
+                  </div>
+                  {isAdmin && activeCaregivers.length > 1 ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() =>
-                        revokeInvite.mutate(
-                          { id: invite.id },
+                        removeAssignment.mutate(
+                          { id: c.id },
                           {
-                            onSuccess: () => toast('success', '초대 코드를 취소했어요.'),
+                            onSuccess: () => toast('success', '담당에서 제외했어요.'),
                             onError: (err) => toast('error', err.message),
                           },
                         )
                       }
-                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-50"
-                      title="코드 취소"
                     >
-                      <X size={15} />
-                    </button>
-                  </div>
-                  {qrInviteId === invite.id ? (
-                    <div className="mt-3 flex flex-col items-center gap-2 py-2">
-                      <QRCodeCanvas
-                        value={`${window.location.origin}/join/${invite.code}`}
-                        size={148}
-                        marginSize={2}
-                      />
-                      <span className="text-[11px] text-slate-400">
-                        보호자 휴대폰으로 스캔하면 연결 화면이 열려요.
-                      </span>
-                    </div>
+                      제외
+                    </Button>
                   ) : null}
                 </li>
               ))}
@@ -208,14 +228,16 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
           )}
         </section>
 
-        {/* 연결 요청·승인 */}
+        {/* ③ 보호자 연결 요청·승인 */}
         <section>
-          <h4 className="text-sm font-semibold text-slate-800 mb-2.5">연결 상태</h4>
+          <h4 className="text-sm font-semibold text-slate-800 mb-2.5 flex items-center gap-1.5">
+            <HeartHandshake size={14} className="text-slate-400" /> 보호자 연결
+          </h4>
           {links.isLoading ? (
             <div className="text-sm text-slate-500 py-3 text-center">불러오는 중...</div>
           ) : pendingLinks.length === 0 && approvedLinks.length === 0 ? (
             <div className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
-              아직 연결 요청이 없어요.
+              아직 보호자 연결 요청이 없어요.
             </div>
           ) : (
             <ul className="space-y-2">
@@ -232,17 +254,13 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
                       {link.guardian?.phone ?? link.guardian?.email ?? ''} · 승인 대기
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => approve(link.id)}
-                    disabled={approveLink.isPending}
-                  >
+                  <Button size="sm" onClick={() => approve(link.id)} disabled={approveLink.isPending}>
                     <Check size={14} /> 승인
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => reject(link.id, '거절')}
+                    onClick={() => rejectLink(link.id, '거절')}
                     disabled={revokeLink.isPending}
                   >
                     거절
@@ -250,10 +268,7 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
                 </li>
               ))}
               {approvedLinks.map((link) => (
-                <li
-                  key={link.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5"
-                >
+                <li key={link.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-slate-900">
                       {link.guardian?.name ?? '보호자'}
@@ -267,7 +282,7 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => reject(link.id, '연결 해제')}
+                    onClick={() => rejectLink(link.id, '연결 해제')}
                     disabled={revokeLink.isPending}
                   >
                     해제

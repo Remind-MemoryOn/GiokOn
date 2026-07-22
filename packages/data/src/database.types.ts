@@ -509,6 +509,75 @@ export type Database = {
         }
         Relationships: []
       }
+      elder_codes: {
+        Row: {
+          id: string
+          org_id: string
+          profile_id: string
+          code: string
+          rotated_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          profile_id: string
+          code?: string
+          rotated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          profile_id?: string
+          code?: string
+          rotated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profile_caregivers: {
+        Row: {
+          id: string
+          org_id: string
+          profile_id: string
+          caregiver_user_id: string
+          status: Database['public']['Enums']['caregiver_assignment_status']
+          assigned_by: string | null
+          assigned_at: string
+          removed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          profile_id: string
+          caregiver_user_id: string
+          status?: Database['public']['Enums']['caregiver_assignment_status']
+          assigned_by?: string | null
+          assigned_at?: string
+          removed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          profile_id?: string
+          caregiver_user_id?: string
+          status?: Database['public']['Enums']['caregiver_assignment_status']
+          assigned_by?: string | null
+          assigned_at?: string
+          removed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       session_analyses: {
         Row: {
           id: string
@@ -641,10 +710,19 @@ export type Database = {
           p_phone: string
           p_role: string
           p_org_name?: string | null
-          p_invite_code?: string | null
+          p_elder_code?: string | null
         }
         Returns: Database['public']['Tables']['users']['Row']
       }
+      claim_elder_by_code: {
+        Args: { p_code: string }
+        Returns: Database['public']['Tables']['profile_caregivers']['Row']
+      }
+      link_guardian_by_elder_code: {
+        Args: { p_code: string }
+        Returns: Database['public']['Tables']['profile_guardians']['Row']
+      }
+      // 구 1회성 초대(폐기·감사 이력용). 신규 코드는 elder_codes 로 대체.
       redeem_guardian_invite: {
         Args: { p_code: string }
         Returns: Database['public']['Tables']['profile_guardians']['Row']
@@ -665,6 +743,7 @@ export type Database = {
       consent_capacity: 'capable' | 'limited' | 'incapable' | 'unknown'
       safety_event_level: 'watch' | 'crisis'
       guardian_link_status: 'pending' | 'approved' | 'revoked'
+      caregiver_assignment_status: 'active' | 'removed'
       journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
       journal_status: 'draft' | 'final'
       share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report'
@@ -702,6 +781,9 @@ export type SafetyEventLevel = Enums<'safety_event_level'>
 export type GuardianInviteRow = Tables<'guardian_invites'>
 export type ProfileGuardianRow = Tables<'profile_guardians'>
 export type GuardianLinkStatus = Enums<'guardian_link_status'>
+export type ElderCodeRow = Tables<'elder_codes'>
+export type ProfileCaregiverRow = Tables<'profile_caregivers'>
+export type CaregiverAssignmentStatus = Enums<'caregiver_assignment_status'>
 export type SessionAnalysisRow = Tables<'session_analyses'>
 export type CareJournalRow = Tables<'care_journals'>
 export type JournalSource = Enums<'journal_source'>

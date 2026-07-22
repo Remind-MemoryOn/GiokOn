@@ -4,7 +4,6 @@ import { ToastShelf } from './components/ui/Toast';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
-import { JoinPage } from './pages/JoinPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EldersPage } from './pages/EldersPage';
 import { ElderDetailPage } from './pages/ElderDetailPage';
@@ -48,7 +47,6 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
 

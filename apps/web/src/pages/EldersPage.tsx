@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users, ArrowRight } from 'lucide-react';
+import { KeyRound, Plus, Users, ArrowRight } from 'lucide-react';
 import {
   useProfiles,
   useSessionCounts,
   useChronicleCounts,
+  useClaimElderByCode,
   useRecentSessions,
   toElderProfile,
 } from '@giokon/data';
@@ -13,20 +14,45 @@ import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { ElderFormDialog } from '../components/ElderFormDialog';
 import { useAuth } from '../auth/AuthProvider';
+import { useStore } from '../store/store';
 import { formatRelative } from '../lib/utils';
 
 export function EldersPage() {
   const { isConfigured } = useAuth();
+  const toast = useStore((s) => s.toast);
   const profilesQuery = useProfiles();
   const sessionCounts = useSessionCounts();
   const chronicleCounts = useChronicleCounts();
   // 최근 대화 시각 표시용 — 앱이 DB에 기록한 세션(T-E1).
   const recentSessions = useRecentSessions({ limit: 100, enabled: isConfigured });
   const elders = (profilesQuery.data ?? []).map(toElderProfile);
+  const claim = useClaimElderByCode();
 
   const [openNew, setOpenNew] = useState(false);
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+
+  function submitClaim() {
+    const trimmed = claimCode.trim().toUpperCase();
+    if (!trimmed) {
+      toast('error', '어르신 코드를 입력해 주세요.');
+      return;
+    }
+    claim.mutate(
+      { code: trimmed },
+      {
+        onSuccess: () => {
+          setClaimCode('');
+          setClaimOpen(false);
+          toast('success', '담당 어르신으로 추가했어요. 기존 기록을 그대로 이어받습니다.');
+        },
+        onError: (err) => toast('error', err.message),
+      },
+    );
+  }
 
   return (
     <>
@@ -34,12 +60,44 @@ export function EldersPage() {
         title="어르신 관리"
         description="연대기를 등록해 두면 AI가 그 정보를 바탕으로 대화를 이어갑니다."
         actions={
-          <Button onClick={() => setOpenNew(true)}>
-            <Plus size={16} /> 새 어르신 등록
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setClaimOpen((v) => !v)}>
+              <KeyRound size={16} /> 코드로 담당 추가
+            </Button>
+            <Button onClick={() => setOpenNew(true)}>
+              <Plus size={16} /> 새 어르신 등록
+            </Button>
+          </>
         }
       />
       <div className="flex-1 px-8 py-6 overflow-y-auto">
+        {claimOpen ? (
+          <Card className="mb-4">
+            <CardBody className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                  <KeyRound size={15} className="text-warm-600" /> 어르신 코드로 담당 추가
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5" style={{ wordBreak: 'keep-all' }}>
+                  이전 담당 요양보호사에게 받은 어르신 코드를 입력하면, 새로 만들지 않고
+                  기존 어르신·연대기·세션·일지를 그대로 이어받아요.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={claimCode}
+                  onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && submitClaim()}
+                  placeholder="예: AB12CD34"
+                  className="font-mono tracking-widest w-40"
+                />
+                <Button onClick={submitClaim} disabled={claim.isPending} className="shrink-0">
+                  {claim.isPending ? '추가 중...' : '담당 추가'}
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        ) : null}
         {profilesQuery.isLoading ? (
           <Card>
             <CardBody className="py-16 text-center text-sm text-slate-500">불러오는 중…</CardBody>

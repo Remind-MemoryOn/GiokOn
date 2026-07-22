@@ -1,7 +1,7 @@
 // 보호자 대시보드 (SCR-W09 기반 골격 — T17.3·T17.7 / Phase W1)
 //
 // 실계정(role=guardian) 전용. 연결(승인)된 어르신 목록 + "어르신 연결"(초대
-// 코드 입력 — 가입 시와 동일한 redeem RPC 재사용) + 승인 대기 안내를 담는다.
+// 코드 입력 — 가입 시와 동일한 link RPC 재사용) + 승인 대기 안내를 담는다.
 // 공개(커밋)된 일지·분석 타임라인은 Phase W5(guardian_shares)에서 이 화면에
 // 추가된다. RLS: 보호자는 승인된 연결의 어르신 기본정보만 SELECT 가능.
 
@@ -16,7 +16,7 @@ import {
   useMyGuardianLinks,
   useMySharedContent,
   useProfiles,
-  useRedeemGuardianInvite,
+  useLinkGuardianByElderCode,
 } from '@giokon/data';
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { AnalysisSummary } from '../components/AnalysisSummary';
@@ -37,7 +37,7 @@ export function GuardianDashboardPage() {
   const links = useMyGuardianLinks({ enabled: isConfigured });
   const profiles = useProfiles(); // RLS: 승인된 연결 어르신만 반환된다.
   const shared = useMySharedContent({ enabled: isConfigured });
-  const redeem = useRedeemGuardianInvite();
+  const linkMutation = useLinkGuardianByElderCode();
   const [code, setCode] = useState('');
 
   // 공개/철회가 즉시 반영되도록 실시간 구독(T-E3).
@@ -64,10 +64,10 @@ export function GuardianDashboardPage() {
   function connect() {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) {
-      toast('error', '초대 코드를 입력해 주세요.');
+      toast('error', '어르신 코드를 입력해 주세요.');
       return;
     }
-    redeem.mutate(
+    linkMutation.mutate(
       { code: trimmed },
       {
         onSuccess: () => {
@@ -130,7 +130,7 @@ export function GuardianDashboardPage() {
                   <div className="text-sm text-slate-500 py-4 text-center">불러오는 중...</div>
                 ) : approved.length === 0 ? (
                   <div className="text-sm text-slate-500 py-6 text-center" style={{ wordBreak: 'keep-all' }}>
-                    아직 연결된 어르신이 없어요. 아래에서 초대 코드로 연결해 보세요.
+                    아직 연결된 어르신이 없어요. 아래에서 어르신 코드로 연결해 보세요.
                   </div>
                 ) : (
                   <ul className="space-y-2.5">
@@ -237,14 +237,14 @@ export function GuardianDashboardPage() {
               </CardBody>
             </Card>
 
-            {/* 어르신 연결 (초대 코드) */}
+            {/* 어르신 연결 (어르신 코드) */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus size={17} className="text-violet-600" /> 어르신 연결
                 </CardTitle>
                 <CardDescription>
-                  요양보호사에게 받은 초대 코드(QR)를 입력하세요. 승인 후 소식을 볼 수
+                  요양보호사에게 받은 어르신 코드를 입력하세요. 승인 후 소식을 볼 수
                   있어요.
                 </CardDescription>
               </CardHeader>
@@ -256,8 +256,8 @@ export function GuardianDashboardPage() {
                   placeholder="예: AB12CD34"
                   className="font-mono tracking-widest"
                 />
-                <Button onClick={connect} disabled={redeem.isPending} className="shrink-0">
-                  {redeem.isPending ? '요청 중...' : '연결 요청'}
+                <Button onClick={connect} disabled={linkMutation.isPending} className="shrink-0">
+                  {linkMutation.isPending ? '요청 중...' : '연결 요청'}
                 </Button>
               </CardBody>
             </Card>

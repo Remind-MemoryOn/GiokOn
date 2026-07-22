@@ -35,9 +35,20 @@
 
 - `users`(변경): `org_id` **NOT NULL → NULL 허용**(미온보딩·미연결 보호자), `phone text`·`onboarded_at timestamptz` 컬럼 추가.
 - `handle_new_user`(재작업): 기관 자동생성·org_admin 강제 제거 → `(id, name, email)` **최소 insert(org_id NULL)**. 온보딩 완료 전까지 데이터 미노출.
-- `app.complete_onboarding(p_name, p_phone, p_role, p_org_name, p_invite_code)`(신규 RPC, SECURITY DEFINER): caregiver→기관 생성+role=org_admin / guardian→role=guardian, 코드 유효 시 기관 합류+`profile_guardians`(pending)+코드 소진. org 생성·역할·전화·코드 소진을 **원자적**으로.
-- `redeem_guardian_invite(p_code)`(신규 RPC): 로그인 후 보호자 어르신 연결(72h·1회성 검증→`profile_guardians` pending). 온보딩 코드 입력·보호자 대시보드 "어르신 연결" 공용.
+- `app.complete_onboarding(p_name, p_phone, p_role, p_org_name, p_elder_code)`(RPC, SECURITY DEFINER): caregiver→기관 생성+role=org_admin / guardian→role=guardian, 어르신 코드 있으면 기관 합류+`profile_guardians`(pending). 원자적.
 - Edge Function `naver-auth`(신규): **네이버=Supabase 비네이티브** → OAuth 콜백→프로필→Supabase Admin 사용자 매핑·세션. 구글·카카오는 네이티브 `signInWithOAuth`. 네이버 client secret 등 비밀값=서버(secrets) 보관.
+
+어르신 영속 코드 + 요양보호사 배정 재설계(2026-07-22 — 담당 변경/추가 시 데이터 연속성. 마이그레이션 `20260722100000`, 로컬 PG16 검증):
+
+- **핵심**: 어르신(profiles)의 단일 소유(user_id) → "최초 생성 actor"로 의미 축소(nullable·**ON DELETE SET NULL**). 접근은 **배정(profile_caregivers)** 기반으로 전환. 담당이 바뀌거나 늘어도 기존 어르신·연대기·세션·분석·일지를 그대로 인계받는다(신규 생성 없음).
+- `elder_codes`: 어르신별 **영속·비소진** 코드(profile_id 1:1·unique). 어르신 생성 트리거가 자동 발급. **보호자 미열람**(별도 테이블·RLS로 권한 상승 차단) — 보호자는 코드를 link RPC 입력으로만 사용. 회전(rotate) 지원.
+- `profile_caregivers`: 어르신↔요양보호사 **배정**(다대다·status active/removed·감사). 코드로 self-claim.
+- **자식 FK 완화**: chronicle_entries/sessions/session_logs의 복합 FK `(profile_id,user_id)` → `profile_id`(자식은 session_id) 단독 + `user_id` nullable actor(SET NULL). → 새 담당자의 **쓰기 연속성** 확보.
+- **RLS 재작성(배정 기반)**: profiles·chronicle_entries·sessions·session_logs·session_analyses·care_journals·guardian_shares(요양보호사 브랜치)·safety_events·consents 를 `org_id=현재기관 AND 비 guardian AND (배정 or org_admin)`으로. 같은 기관 org_id 격리 유지(타 기관 이관은 범위 밖). 보호자 경로(공개 커밋·연결 승인)는 유지.
+- `app.is_assigned_caregiver(profile_id)`(security definer): 배정 판정 헬퍼(RLS 재귀 방지).
+- `claim_elder_by_code(p_code)`(RPC): 요양보호사 self-claim(같은 기관·role=caregiver 게이트·멱등). 기존 어르신 인계.
+- `link_guardian_by_elder_code(p_code)`(RPC): 보호자 연결(영속·비소진·멱등). 구 `redeem_guardian_invite`(1회성) 대체.
+- 구 `guardian_invites`·`redeem_guardian_invite`는 **폐기**(감사 이력 보존 위해 테이블·함수는 잔존, 신규 발급 없음). QR/`/join` 경로 제거.
 
 ## Access Model
 

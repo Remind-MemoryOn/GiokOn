@@ -37,7 +37,10 @@ export const queryKeys = {
   unacknowledgedSafetyEvents: ['safety_events', 'unacknowledged'] as const,
   // 웹 1차 MVP(Phase W) — 세션·보호자 연결·분석·요양일지·공개 커밋
   recentSessions: ['sessions', 'recent'] as const,
-  guardianInvites: (profileId: string) => ['guardian_invites', profileId] as const,
+  // 어르신 영속 코드 + 요양보호사 배정(연속성 재설계)
+  elderCode: (profileId: string) => ['elder_codes', profileId] as const,
+  profileCaregivers: (profileId: string) => ['profile_caregivers', profileId] as const,
+  myAssignments: ['profile_caregivers', 'mine'] as const,
   guardianLinks: (profileId: string) => ['profile_guardians', profileId] as const,
   orgGuardianLinks: ['profile_guardians', 'org'] as const,
   myGuardianLinks: ['profile_guardians', 'mine'] as const,

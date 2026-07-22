@@ -6,35 +6,7 @@
 
 import type { UserRow } from '@giokon/data';
 
-/** 보호자 초대 코드 스태시 키(QR /join/:code → 로그인 → 온보딩 프리필). */
-export const INVITE_CODE_STORAGE_KEY = 'giokon-invite-code';
-
 export function routeForUser(row: UserRow | null): string {
   if (!row || !row.onboarded_at) return '/onboarding';
   return row.role === 'guardian' ? '/guardian' : '/caregiver';
-}
-
-export function stashInviteCode(code: string): void {
-  try {
-    localStorage.setItem(INVITE_CODE_STORAGE_KEY, code.trim().toUpperCase());
-  } catch {
-    /* storage 불가 환경 — 프리필 생략 */
-  }
-}
-
-export function popInviteCode(): string | null {
-  try {
-    const code = localStorage.getItem(INVITE_CODE_STORAGE_KEY);
-    return code && code.trim() ? code.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-export function clearInviteCode(): void {
-  try {
-    localStorage.removeItem(INVITE_CODE_STORAGE_KEY);
-  } catch {
-    /* noop */
-  }
 }

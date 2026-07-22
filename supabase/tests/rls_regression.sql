@@ -269,63 +269,28 @@ do $$ begin
     'guardian 은 안전 이벤트를 확인 처리할 수 없어야 함';
 end $$;
 
--- ── 5.7) 보호자 초대·연결 워크플로(T17.1·T17.7) ───────────────────────────
--- 요양보호사 C(기관 A)가 'C어르신' 초대 코드 발급 → 신규 보호자 H 가 온보딩에서
--- 코드 사용 → 기관 A 합류 + pending → C 가 승인 → H 는 연결 어르신만 열람.
+-- ── 5.7) 어르신 영속 코드 — 보호자 연결(비소진·멱등, T17.7 재설계) ─────────
+-- C어르신은 부트스트랩 트리거로 영속 코드를 갖는다. 신규 보호자 H 가 그 코드로
+-- 온보딩 → 기관 A 합류 + pending → C 승인 → H 는 연결 어르신만 열람. 코드는
+-- 소진되지 않으며 보호자는 코드를 직접 조회할 수 없다(link RPC 입력으로만 사용).
 
--- 발급(요양보호사 C).
-set role authenticated;
-set test.uid = '33333333-3333-3333-3333-333333333333';
-insert into public.guardian_invites (profile_id, created_by)
-  select id, '33333333-3333-3333-3333-333333333333'
-  from public.profiles where name = 'C어르신';
-reset role;
-
-do $$ begin
-  assert (select count(*) from public.guardian_invites) = 1,
-    '요양보호사는 본인 어르신 초대 코드를 발급할 수 있어야 함';
-  assert (select expires_at > now() from public.guardian_invites limit 1),
-    '초대 코드는 만료 시각(72h)이 설정되어야 함';
-end $$;
-
--- 다른 기관 어르신으로는 발급 불가(기관 B 관리자가 기관 A 어르신 지정 시도).
-do $$
-declare
-  pid uuid;
-  blocked boolean := false;
-begin
-  select id into pid from public.profiles where name = 'C어르신';
-  set role authenticated;
-  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', true);
-  begin
-    insert into public.guardian_invites (profile_id, created_by)
-      values (pid, '22222222-2222-2222-2222-222222222222');
-  exception when insufficient_privilege or check_violation or foreign_key_violation then
-    blocked := true;
-  end;
-  reset role;
-  assert blocked, '다른 기관 어르신에 대한 초대 발급은 차단되어야 함';
-end $$;
-
--- 신규 보호자 H 가입(트리거=최소 row) → 온보딩에서 코드 사용.
--- 코드는 발급자가 보호자에게 외부 전달(QR/구두)한다 — 테스트에서는 GUC 로 전달.
--- (보호자 RLS 로는 초대 목록을 SELECT 할 수 없으므로 서브쿼리 전달은 NULL 이 된다.)
 insert into auth.users (id, email, raw_user_meta_data) values
   ('55555555-5555-5555-5555-555555555555', 'h@z.kr', '{"name":"보호자H"}');
 
-select set_config('test.invite_code', (select code from public.guardian_invites limit 1), false);
+-- 발급자가 보호자에게 외부 전달한 코드를 GUC 로 모사(보호자 RLS 로는 코드 조회 불가).
+select set_config('test.elder_code',
+  (select ec.code from public.elder_codes ec
+     join public.profiles p on p.id = ec.profile_id
+   where p.name = 'C어르신'), false);
 
 set role authenticated;
 set test.uid = '55555555-5555-5555-5555-555555555555';
 select public.complete_onboarding(
-  '보호자H', '010-5555-6666', 'guardian', null,
-  current_setting('test.invite_code')
-);
+  '보호자H', '010-5555-6666', 'guardian', null, current_setting('test.elder_code'));
 reset role;
 
 do $$
-declare
-  org_a uuid := (select org_id from public.users where id = '11111111-1111-1111-1111-111111111111');
+declare org_a uuid := (select org_id from public.users where id = '11111111-1111-1111-1111-111111111111');
 begin
   assert (select org_id from public.users where id = '55555555-5555-5555-5555-555555555555') = org_a,
     '코드 사용 시 보호자는 해당 기관에 합류해야 함';
@@ -334,36 +299,33 @@ begin
   assert (select status from public.profile_guardians
           where guardian_user_id = '55555555-5555-5555-5555-555555555555') = 'pending',
     '코드 사용 직후 연결은 pending 이어야 함';
-  assert (select used_at is not null from public.guardian_invites limit 1),
-    '사용된 초대 코드는 소진 처리되어야 함';
 end $$;
 
--- 코드 재사용 차단(1회성).
+-- 영속·멱등: 같은 보호자가 코드를 재입력해도(소진 아님) 중복 pending 생성되지 않음.
 do $$
 declare blocked boolean := false;
 begin
   set role authenticated;
-  perform set_config('test.uid', '44444444-4444-4444-4444-444444444444', true);
+  perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
   begin
-    perform public.redeem_guardian_invite(current_setting('test.invite_code'));
-  exception when others then
-    blocked := true;
+    perform public.link_guardian_by_elder_code(current_setting('test.elder_code'));
+  exception when others then blocked := true;
   end;
   reset role;
-  assert blocked, '사용된 초대 코드는 재사용할 수 없어야 함';
+  assert blocked, '이미 대기 중인 연결은 중복 생성되지 않아야 함';
 end $$;
 
--- 승인 전: H 는 어르신 정보가 보이지 않는다.
+-- 승인 전: H 는 어르신·코드가 보이지 않는다.
 set role authenticated;
 set test.uid = '55555555-5555-5555-5555-555555555555';
 do $$ begin
   assert (select count(*) from public.profiles) = 0,
     '승인 전 보호자는 어르신 정보를 볼 수 없어야 함(기대 0)';
-  assert (select count(*) from public.guardian_invites) = 0,
-    'guardian 은 초대 코드 목록을 볼 수 없어야 함';
+  assert (select count(*) from public.elder_codes) = 0,
+    '보호자는 어르신 코드를 조회할 수 없어야 함(권한 상승 차단)';
 end $$;
 
--- 보호자는 자기 연결을 스스로 승인할 수 없다(정책상 0건 갱신).
+-- 보호자 자가 승인 불가.
 update public.profile_guardians
   set status = 'approved', approved_by = '55555555-5555-5555-5555-555555555555', approved_at = now();
 reset role;
@@ -372,7 +334,7 @@ do $$ begin
     'guardian 은 연결을 자가 승인할 수 없어야 함';
 end $$;
 
--- 요양보호사 C 가 승인 → H 는 연결 어르신(1명)만 열람.
+-- C 승인 → H 는 연결 어르신(1명)만 열람.
 set role authenticated;
 set test.uid = '33333333-3333-3333-3333-333333333333';
 update public.profile_guardians
@@ -385,18 +347,85 @@ do $$ begin
     '승인 후 보호자는 연결된 어르신만 볼 수 있어야 함(기대 1)';
   assert (select count(*) from public.profiles where name <> 'C어르신') = 0,
     '연결되지 않은 어르신은 보이면 안 됨';
-  -- 보호자는 users 에서 본인 row 만 볼 수 있다(돌봄 구성원 정보 비노출).
   assert (select count(*) from public.users) = 1,
     '보호자는 users 에서 본인만 볼 수 있어야 함(기대 1)';
 end $$;
 
--- 요양보호사 C 는 승인 화면을 위해 소속 기관 보호자 계정을 볼 수 있다.
 set test.uid = '33333333-3333-3333-3333-333333333333';
 do $$ begin
   assert (select count(*) from public.users where role = 'guardian') >= 1,
     '요양보호사는 소속 기관 보호자 계정을 볼 수 있어야 함';
 end $$;
 reset role;
+
+-- ── 5.7b) 어르신 코드로 담당 요양보호사 배정 + 데이터 연속성(핵심) ─────────
+-- C가 C어르신에 연대기 1건 작성. 신규 요양보호사 D(기관 A·미배정)는 그 어르신을
+-- 조회조차 못 하다가, 어르신 코드로 self-claim 하면 기존 이력을 읽고 새 기록까지
+-- 쓸 수 있다(읽기+쓰기 연속성). 타 기관 B는 코드로도 배정 불가(테넌트 격리 유지).
+
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+insert into public.chronicle_entries (user_id, profile_id, topic, content)
+  select '33333333-3333-3333-3333-333333333333', id, '고향', '전주에서 국밥집을 오래 하셨다'
+  from public.profiles where name = 'C어르신';
+reset role;
+
+-- 신규 요양보호사 D 가입·온보딩 → 기관 A 이동(role caregiver).
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('66666666-6666-6666-6666-666666666666', 'd@x.kr', '{"name":"요양보호사D"}');
+set role authenticated;
+set test.uid = '66666666-6666-6666-6666-666666666666';
+select public.complete_onboarding('요양보호사D', '010-6666-7777', 'caregiver', '임시기관D');
+reset role;
+update public.users
+  set org_id = (select org_id from public.users where id = '11111111-1111-1111-1111-111111111111'),
+      role = 'caregiver'
+  where id = '66666666-6666-6666-6666-666666666666';
+
+-- 배정 전: D 는 C어르신·연대기를 볼 수 없다.
+set role authenticated;
+set test.uid = '66666666-6666-6666-6666-666666666666';
+do $$ begin
+  assert (select count(*) from public.profiles where name = 'C어르신') = 0,
+    '배정 전 요양보호사는 남의 어르신을 볼 수 없어야 함';
+  assert (select count(*) from public.chronicle_entries) = 0,
+    '배정 전 요양보호사는 남의 연대기를 볼 수 없어야 함';
+end $$;
+
+-- 코드로 self-claim.
+select public.claim_elder_by_code(current_setting('test.elder_code'));
+
+-- 읽기 연속성: 기존 어르신·연대기 열람.
+do $$ begin
+  assert (select count(*) from public.profiles where name = 'C어르신') = 1,
+    '배정 후 기존 어르신을 열람할 수 있어야 함(읽기 연속성)';
+  assert (select count(*) from public.chronicle_entries) = 1,
+    '배정 후 기존 연대기를 열람할 수 있어야 함(읽기 연속성)';
+end $$;
+
+-- 쓰기 연속성: D 가 기존 C어르신에 새 연대기 작성(자기 uid=actor).
+insert into public.chronicle_entries (user_id, profile_id, topic, content)
+  select '66666666-6666-6666-6666-666666666666', id, '가족', '따님이 자주 면회 온다'
+  from public.profiles where name = 'C어르신';
+do $$ begin
+  assert (select count(*) from public.chronicle_entries) = 2,
+    '배정 후 새 담당자가 기존 어르신에 기록을 작성할 수 있어야 함(쓰기 연속성)';
+end $$;
+reset role;
+
+-- 타 기관 B 는 코드로도 배정 불가.
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '22222222-2222-2222-2222-222222222222', true);
+  begin
+    perform public.claim_elder_by_code(current_setting('test.elder_code'));
+  exception when others then blocked := true;
+  end;
+  reset role;
+  assert blocked, '다른 기관 요양보호사는 어르신 코드로 배정될 수 없어야 함';
+end $$;
 
 -- ── 5.8) 세션 분석: 기관 공유·guardian 배제·타 기관 차단(T16.1) ────────────
 -- 요양보호사 C 가 세션 + 분석 기록 → 같은 기관 A 조회 가능 / 보호자 H 는

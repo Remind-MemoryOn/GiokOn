@@ -236,6 +236,11 @@
 > 분석 페이지(W3) → 요양일지(W4) → 공개 체크리스트·보호자 타임라인(W5) → AI 에이전트 mock(W6).
 > 검증: typecheck·lint·test(core 135+data 12)·build·check:copy·RLS 회귀(로컬 PG16)·라우트 스모크
 > 17/17(`apps/web/scripts/route-smoke.mjs`). 잔여=실 AI·서울 리전 연동(사용자 외부 작업, 절단선 참조).
+> 🔑 **2026-07-22 어르신 영속 코드 + 요양보호사 배정 재설계**: 담당 변경/추가 시 기존 기록 인계.
+> `elder_codes`(영속·비소진, 보호자 미열람)·`profile_caregivers`(배정) 신설, 자식 복합 FK 완화,
+> 코어+파생 9테이블 RLS 배정 기반 재작성(같은 기관 격리 유지), `claim_elder_by_code`/
+> `link_guardian_by_elder_code`(구 1회성 redeem 대체). QR·`/join`·qrcode.react 제거. 마이그레이션
+> `20260722100000`, 회귀 §5.7 재작성·§5.7b(연속성) 신설, 라우트 스모크 16/16.
 
 ### 선행 — 세션 영속화 + Realtime (Phase E 갭 해소)
 

@@ -7,7 +7,8 @@
 //   - 회원가입 = OAuth 최초 로그인 후 온보딩(completeOnboarding RPC)에서
 //     기본정보(이름·전화·역할·기관명/초대코드)를 확정한다. 가입 트리거
 //     (handle_new_user)는 최소 users row 만 만든다.
-//   - 보호자↔어르신 연결 = redeemGuardianInvite RPC(온보딩·로그인 후 공용).
+//   - 보호자↔어르신 연결 = linkGuardianByElderCode RPC(어르신 영속 코드·비소진).
+//   - 요양보호사 담당 배정 = claimElderByCode RPC(코드로 기존 어르신 인계).
 
 import type {
   AuthChangeEvent,
@@ -16,7 +17,7 @@ import type {
   User,
 } from '@supabase/supabase-js'
 import { getGiokonClient } from './client'
-import type { ProfileGuardianRow, UserRow } from './database.types'
+import type { ProfileCaregiverRow, ProfileGuardianRow, UserRow } from './database.types'
 
 // 화면(apps/web 등)에서 세션·사용자 타입을 쓸 수 있도록 재노출.
 export type { AuthChangeEvent, Session, Subscription, User } from '@supabase/supabase-js'
@@ -99,13 +100,13 @@ export interface OnboardingParams {
   role: 'caregiver' | 'guardian'
   /** 요양보호사(신규 기관 생성) 필수. */
   orgName?: string
-  /** 보호자 선택: 있으면 어르신 연결(pending)까지 처리. */
-  inviteCode?: string
+  /** 보호자 선택: 있으면 어르신 영속 코드로 연결(pending)까지 처리. */
+  elderCode?: string
 }
 
 /**
  * 온보딩 회원가입 확정(RPC complete_onboarding).
- * 요양보호사=새 기관 생성+org_admin / 보호자=guardian(+초대코드 연결).
+ * 요양보호사=새 기관 생성+org_admin / 보호자=guardian(+어르신 코드 연결).
  * 반환: 갱신된 users row(역할 라우팅에 사용).
  */
 export async function completeOnboarding(params: OnboardingParams): Promise<UserRow> {
@@ -114,22 +115,36 @@ export async function completeOnboarding(params: OnboardingParams): Promise<User
     p_phone: params.phone,
     p_role: params.role,
     p_org_name: params.orgName ?? null,
-    p_invite_code: params.inviteCode ?? null,
+    p_elder_code: params.elderCode ?? null,
   })
   if (error) throw error
   return data as UserRow
 }
 
 /**
- * 보호자 어르신 연결 — 초대 코드 사용(RPC redeem_guardian_invite).
- * 온보딩 중·로그인 후("어르신 연결") 공용. 반환: 생성된 pending 연결 row.
+ * 보호자 어르신 연결 — 어르신 영속 코드 사용(RPC link_guardian_by_elder_code).
+ * 온보딩 중·로그인 후("어르신 연결") 공용. 코드는 소진되지 않으며(멱등),
+ * 요양보호사 승인 후 열람 가능. 반환: 생성/갱신된 pending 연결 row.
  */
-export async function redeemGuardianInvite(code: string): Promise<ProfileGuardianRow> {
-  const { data, error } = await getGiokonClient().rpc('redeem_guardian_invite', {
+export async function linkGuardianByElderCode(code: string): Promise<ProfileGuardianRow> {
+  const { data, error } = await getGiokonClient().rpc('link_guardian_by_elder_code', {
     p_code: code,
   })
   if (error) throw error
   return data as ProfileGuardianRow
+}
+
+/**
+ * 요양보호사 담당 배정 — 어르신 영속 코드로 self-claim(RPC claim_elder_by_code).
+ * 같은 기관 안에서 기존 어르신·전 이력을 인계받는다(신규 생성 없음). 멱등.
+ * 반환: 생성/갱신된 배정 row.
+ */
+export async function claimElderByCode(code: string): Promise<ProfileCaregiverRow> {
+  const { data, error } = await getGiokonClient().rpc('claim_elder_by_code', {
+    p_code: code,
+  })
+  if (error) throw error
+  return data as ProfileCaregiverRow
 }
 
 /** 인증 상태 변화 구독. 반환된 subscription.unsubscribe()로 해제. */
