@@ -127,7 +127,7 @@ export function ElderDetailPage() {
         {/* 동의 관리 (M9) */}
         <ConsentStatusCard elderId={elderId} elderName={elder.name} />
 
-        {/* 보호자 연결 — 초대 코드·승인 관리 (SCR-W10) */}
+        {/* 보호자 연결 — 어르신 코드·승인 관리 (SCR-W10) */}
         <GuardianAccessCard elderId={elderId} elderName={elder.name} />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">

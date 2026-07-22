@@ -77,7 +77,7 @@ export function LandingPage() {
               </div>
               <p className="text-sm text-slate-700 leading-relaxed mb-5" style={{ wordBreak: 'keep-all' }}>
                 요양보호사가 공개한 부모님의 오늘 소식을 확인하세요. 요양보호사에게 받은
-                초대 코드(QR)로 어르신과 연결됩니다.
+                어르신 코드로 어르신과 연결됩니다.
               </p>
               <span className="inline-flex items-center gap-1.5 text-sm font-bold text-violet-700 group-hover:gap-2.5 transition-all">
                 소셜 계정으로 시작하기 <ArrowRight size={15} />

@@ -30,18 +30,6 @@ interface Props {
   elderName: string;
 }
 
-// 혼동문자 제외 8자 코드(회전 시 클라이언트 생성 — DB unique 로 최종 검증).
-const CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-function randomCode(seed: string): string {
-  let out = '';
-  for (let i = 0; i < 8; i += 1) {
-    // 렌더 순수성 유지를 위해 seed 기반 의사난수(호출 시점 문자열).
-    const n = (seed.charCodeAt(i % seed.length) * (i + 7) + i * 31) % CODE_ALPHABET.length;
-    out += CODE_ALPHABET[n];
-  }
-  return out;
-}
-
 export function GuardianAccessCard({ elderId, elderName }: Props) {
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
@@ -89,7 +77,7 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
   function doRotate() {
     if (!elderCode.data) return;
     rotate.mutate(
-      { id: elderCode.data.id, newCode: randomCode(elderCode.data.id) },
+      { profileId: elderId },
       {
         onSuccess: () => {
           setConfirmRotate(false);

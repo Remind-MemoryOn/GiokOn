@@ -733,5 +733,59 @@ $$;
 revoke execute on function public.complete_onboarding(text, text, text, text, text) from public;
 grant execute on function public.complete_onboarding(text, text, text, text, text) to authenticated;
 
+-- 코드 회전(rotate) — 유출 대비 새 코드 발급(서버 생성·매번 상이·연결 유지).
+-- 클라이언트가 코드를 만들지 않는다(예측·재사용 방지). profile_id 는 불변이므로
+-- profile_guardians(profile_id 기준) 연결은 회전과 무관하게 그대로 유지된다.
+create or replace function public.rotate_elder_code(p_profile_id uuid)
+returns public.elder_codes
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_code public.elder_codes;
+  v_new text;
+  v_try int := 0;
+begin
+  if v_uid is null then
+    raise exception '로그인이 필요합니다' using errcode = '28000';
+  end if;
+
+  select * into v_code from public.elder_codes where profile_id = p_profile_id;
+  if not found then
+    raise exception '어르신 코드를 찾을 수 없습니다' using errcode = 'P0002';
+  end if;
+
+  -- 권한: 같은 기관 · 비 guardian · (배정 요양보호사 or org_admin) — RLS UPDATE 와 동일.
+  if not (
+    v_code.org_id = app.current_org_id()
+    and app.current_org_role() <> 'guardian'
+    and (app.is_assigned_caregiver(p_profile_id) or app.is_org_admin())
+  ) then
+    raise exception '이 어르신의 코드를 교체할 권한이 없습니다' using errcode = '42501';
+  end if;
+
+  loop
+    v_new := app.generate_invite_code();
+    begin
+      update public.elder_codes
+        set code = v_new, rotated_at = now()
+        where id = v_code.id
+        returning * into v_code;
+      exit;
+    exception when unique_violation then
+      v_try := v_try + 1;
+      if v_try > 6 then raise exception '코드 교체 실패(중복)'; end if;
+    end;
+  end loop;
+
+  return v_code;
+end;
+$$;
+
+revoke execute on function public.rotate_elder_code(uuid) from public;
+grant execute on function public.rotate_elder_code(uuid) to authenticated;
+
 -- 구 redeem_guardian_invite / guardian_invites 발급은 폐기(영속 코드로 대체).
 -- 테이블·함수는 감사 이력 보존을 위해 남겨두되 UI/데이터층에서 사용하지 않는다.

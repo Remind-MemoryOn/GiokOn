@@ -139,7 +139,7 @@ export function SharesPage() {
                   <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-center gap-2" style={{ wordBreak: 'keep-all' }}>
                     <ShieldAlert size={15} className="shrink-0" />
                     아직 승인된 보호자 연결이 없어요. 공개해도 볼 수 있는 보호자가 없습니다
-                    — 어르신 상세에서 초대 코드를 발급해 보세요.
+                    — 어르신 상세에서 어르신 코드를 보호자에게 전달하고 연결을 승인해 보세요.
                   </div>
                 ) : (
                   <div className="text-xs text-slate-500">

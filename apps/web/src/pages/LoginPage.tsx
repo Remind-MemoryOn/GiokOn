@@ -45,8 +45,8 @@ export function LoginPage() {
           </div>
 
           <div className="mt-5 rounded-xl bg-white/70 border border-warm-200 px-4 py-3 text-xs text-slate-600 leading-relaxed" style={{ wordBreak: 'keep-all' }}>
-            <strong>보호자이신가요?</strong> 요양보호사에게 받은 초대 코드(QR)가 있다면,
-            로그인 후 회원가입 단계에서 입력하거나 QR 링크로 바로 접속하세요.
+            <strong>보호자이신가요?</strong> 요양보호사에게 받은 어르신 코드가 있다면,
+            로그인 후 회원가입 단계에서 입력하거나 나중에 '어르신 연결'에서 입력하세요.
           </div>
 
           <div className="mt-6 text-[11px] text-center text-slate-400 space-x-3">

@@ -427,6 +427,45 @@ begin
   assert blocked, '다른 기관 요양보호사는 어르신 코드로 배정될 수 없어야 함';
 end $$;
 
+-- ── 5.7c) 코드 회전(rotate) — 매번 새 코드(서버 생성)·연결 유지 ─────────────
+-- 배정된 C 가 rotate_elder_code 를 두 번 호출 → 매번 서로 다른 새 코드여야 하고
+-- (결정적 재사용 금지), profile_id 기준 보호자 연결(H 승인)은 그대로 유지된다.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  v_pid uuid := (select id from public.profiles where name = 'C어르신');
+  v_old text;
+  v_new1 text;
+  v_new2 text;
+begin
+  select code into v_old from public.elder_codes where profile_id = v_pid;
+  v_new1 := (public.rotate_elder_code(v_pid)).code;
+  v_new2 := (public.rotate_elder_code(v_pid)).code;
+  assert v_new1 <> v_old, '회전 후 코드가 바뀌어야 함';
+  assert v_new2 <> v_new1, '연속 회전은 매번 다른 코드여야 함(결정적 재사용 금지)';
+  assert (select count(*) from public.profile_guardians
+          where profile_id = v_pid and status = 'approved') = 1,
+    '코드 회전은 기존 보호자 연결(profile_id 기준)에 영향을 주지 않아야 함';
+end $$;
+reset role;
+
+-- 보호자 H 는 회전 권한이 없다(코드 조회 자체가 불가 — 권한 상승 차단).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
+  begin
+    -- H 는 승인된 C어르신 profile 은 볼 수 있으나(연결), 코드 회전 권한은 없어야 함.
+    perform public.rotate_elder_code(
+      (select id from public.profiles where name = 'C어르신'));
+  exception when others then blocked := true;
+  end;
+  reset role;
+  assert blocked, '보호자는 어르신 코드를 회전할 수 없어야 함';
+end $$;
+
 -- ── 5.8) 세션 분석: 기관 공유·guardian 배제·타 기관 차단(T16.1) ────────────
 -- 요양보호사 C 가 세션 + 분석 기록 → 같은 기관 A 조회 가능 / 보호자 H 는
 -- 연결 승인된 어르신이라도 직접 조회 불가(공개 커밋 경유만) / 기관 B 0건.

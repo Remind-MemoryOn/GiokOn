@@ -35,23 +35,24 @@ export function useElderCode(profileId: string | undefined): UseQueryResult<Elde
   })
 }
 
-/** 코드 회전(유출 대비) — 새 코드 발급. 기존 보호자 연결(profile_id 기준)은 유지. */
+/**
+ * 코드 회전(유출 대비) — 서버가 새 코드를 발급(rotate_elder_code RPC).
+ * 코드는 서버에서 매번 새로 생성되어 예측·재사용이 불가능하며(클라이언트 생성 금지),
+ * profile_id 는 불변이므로 기존 보호자 연결(profile_id 기준)은 그대로 유지된다.
+ */
 export function useRotateElderCode(): UseMutationResult<
   ElderCodeRow,
   Error,
-  { id: string; newCode: string }
+  { profileId: string }
 > {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, newCode }) => {
-      const { data, error } = await getGiokonClient()
-        .from('elder_codes')
-        .update({ code: newCode.toUpperCase(), rotated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single()
+    mutationFn: async ({ profileId }) => {
+      const { data, error } = await getGiokonClient().rpc('rotate_elder_code', {
+        p_profile_id: profileId,
+      })
       if (error) throw new Error(error.message)
-      return data
+      return data as ElderCodeRow
     },
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: queryKeys.elderCode(row.profile_id) })

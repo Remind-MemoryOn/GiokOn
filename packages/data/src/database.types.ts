@@ -722,6 +722,10 @@ export type Database = {
         Args: { p_code: string }
         Returns: Database['public']['Tables']['profile_guardians']['Row']
       }
+      rotate_elder_code: {
+        Args: { p_profile_id: string }
+        Returns: Database['public']['Tables']['elder_codes']['Row']
+      }
       // 구 1회성 초대(폐기·감사 이력용). 신규 코드는 elder_codes 로 대체.
       redeem_guardian_invite: {
         Args: { p_code: string }
