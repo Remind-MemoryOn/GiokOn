@@ -6,6 +6,8 @@ import {
   useSessionCounts,
   useChronicleCounts,
   useClaimElderByCode,
+  useCurrentUser,
+  useMyPendingAssignments,
   useRecentSessions,
   toElderProfile,
 } from '@giokon/data';
@@ -30,6 +32,9 @@ export function EldersPage() {
   const recentSessions = useRecentSessions({ limit: 100, enabled: isConfigured });
   const elders = (profilesQuery.data ?? []).map(toElderProfile);
   const claim = useClaimElderByCode();
+  const currentUser = useCurrentUser();
+  const myPending = useMyPendingAssignments(isConfigured ? currentUser.data?.id : undefined);
+  const pendingCount = myPending.data?.length ?? 0;
 
   const [openNew, setOpenNew] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
@@ -97,6 +102,12 @@ export function EldersPage() {
               </div>
             </CardBody>
           </Card>
+        ) : null}
+        {pendingCount > 0 ? (
+          <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800" style={{ wordBreak: 'keep-all' }}>
+            기관 합류 승인 대기 중이에요 ({pendingCount}건). 기관 담당자가 승인하면 담당
+            어르신의 기록을 볼 수 있어요.
+          </div>
         ) : null}
         {profilesQuery.isLoading ? (
           <Card>

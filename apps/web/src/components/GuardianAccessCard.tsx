@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Check, Copy, HeartHandshake, KeyRound, RefreshCw, Users } from 'lucide-react';
 import {
+  useApproveCaregiverAssignment,
   useApproveGuardianLink,
   useCurrentUser,
   useElderCode,
@@ -40,6 +41,7 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
   const links = useGuardianLinks(isConfigured ? elderId : undefined);
   const rotate = useRotateElderCode();
   const removeAssignment = useRemoveCaregiverAssignment();
+  const approveAssignment = useApproveCaregiverAssignment();
   const approveLink = useApproveGuardianLink();
   const revokeLink = useRevokeGuardianLink();
 
@@ -61,6 +63,7 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
   const code = elderCode.data?.code ?? null;
   const isAdmin = currentUser.data?.role === 'org_admin';
   const activeCaregivers = (caregivers.data ?? []).filter((c) => c.status === 'active');
+  const pendingCaregivers = (caregivers.data ?? []).filter((c) => c.status === 'pending');
   const pendingLinks = (links.data ?? []).filter((l) => l.status === 'pending');
   const approvedLinks = (links.data ?? []).filter((l) => l.status === 'approved');
 
@@ -172,12 +175,65 @@ export function GuardianAccessCard({ elderId, elderName }: Props) {
           <h4 className="text-sm font-semibold text-slate-800 mb-2.5 flex items-center gap-1.5">
             <Users size={14} className="text-slate-400" /> 담당 요양보호사
           </h4>
+          {/* 합류 요청(승인 대기) — 관리자/활성 담당이 승인/거절 */}
+          {pendingCaregivers.length > 0 ? (
+            <ul className="space-y-2 mb-2">
+              {pendingCaregivers.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900">
+                      {c.caregiver?.name ?? '요양보호사'}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {c.caregiver?.phone ?? c.caregiver?.email ?? ''} · 합류 승인 대기
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      approveAssignment.mutate(
+                        { id: c.id },
+                        {
+                          onSuccess: () => toast('success', '담당으로 승인했어요. 기존 기록을 그대로 이어받아요.'),
+                          onError: (err) => toast('error', err.message),
+                        },
+                      )
+                    }
+                    disabled={approveAssignment.isPending}
+                  >
+                    <Check size={14} /> 승인
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      removeAssignment.mutate(
+                        { id: c.id },
+                        {
+                          onSuccess: () => toast('success', '합류 요청을 거절했어요.'),
+                          onError: (err) => toast('error', err.message),
+                        },
+                      )
+                    }
+                    disabled={removeAssignment.isPending}
+                  >
+                    거절
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {caregivers.isLoading ? (
             <div className="text-sm text-slate-500 py-3 text-center">불러오는 중...</div>
           ) : activeCaregivers.length === 0 ? (
-            <div className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
-              배정된 담당 요양보호사가 없어요.
-            </div>
+            pendingCaregivers.length === 0 ? (
+              <div className="text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
+                배정된 담당 요양보호사가 없어요.
+              </div>
+            ) : null
           ) : (
             <ul className="space-y-2">
               {activeCaregivers.map((c) => (

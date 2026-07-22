@@ -358,10 +358,12 @@ do $$ begin
 end $$;
 reset role;
 
--- ── 5.7b) 어르신 코드로 담당 요양보호사 배정 + 데이터 연속성(핵심) ─────────
--- C가 C어르신에 연대기 1건 작성. 신규 요양보호사 D(기관 A·미배정)는 그 어르신을
--- 조회조차 못 하다가, 어르신 코드로 self-claim 하면 기존 이력을 읽고 새 기록까지
--- 쓸 수 있다(읽기+쓰기 연속성). 타 기관 B는 코드로도 배정 불가(테넌트 격리 유지).
+-- ── 5.7b) 어르신 코드로 요양보호사 기관 합류(승인형) + 데이터 연속성(핵심) ────
+-- C가 C어르신에 연대기 1건 작성. 신규 요양보호사 D 는 어르신 코드로 온보딩하면
+-- 기관 A 에 "합류 요청"(pending)만 되고, 승인 전에는 어르신·연대기를 볼 수 없다.
+-- 본인은 자가승인 불가(직접 update·approve RPC·claim 우회 모두 차단). C(활성 담당)
+-- 가 승인하면 D 는 기존 이력을 읽고 새 기록까지 쓸 수 있다(읽기+쓰기 연속성).
+-- 타 기관 B 는 코드로도 배정 불가(테넌트 격리 유지).
 
 set role authenticated;
 set test.uid = '33333333-3333-3333-3333-333333333333';
@@ -370,50 +372,107 @@ insert into public.chronicle_entries (user_id, profile_id, topic, content)
   from public.profiles where name = 'C어르신';
 reset role;
 
--- 신규 요양보호사 D 가입·온보딩 → 기관 A 이동(role caregiver).
+-- 신규 요양보호사 D 가입 → 어르신 코드로 온보딩(기관 A 합류 요청 = pending).
 insert into auth.users (id, email, raw_user_meta_data) values
   ('66666666-6666-6666-6666-666666666666', 'd@x.kr', '{"name":"요양보호사D"}');
 set role authenticated;
 set test.uid = '66666666-6666-6666-6666-666666666666';
-select public.complete_onboarding('요양보호사D', '010-6666-7777', 'caregiver', '임시기관D');
+select public.complete_onboarding(
+  '요양보호사D', '010-6666-7777', 'caregiver', null, current_setting('test.elder_code'));
 reset role;
-update public.users
-  set org_id = (select org_id from public.users where id = '11111111-1111-1111-1111-111111111111'),
-      role = 'caregiver'
-  where id = '66666666-6666-6666-6666-666666666666';
 
--- 배정 전: D 는 C어르신·연대기를 볼 수 없다.
+do $$
+declare org_a uuid := (select org_id from public.users where id = '11111111-1111-1111-1111-111111111111');
+begin
+  assert (select org_id from public.users where id = '66666666-6666-6666-6666-666666666666') = org_a,
+    '코드로 온보딩한 요양보호사는 해당 기관에 합류해야 함';
+  assert (select role from public.users where id = '66666666-6666-6666-6666-666666666666') = 'caregiver',
+    '기관 합류 요양보호사는 role=caregiver 여야 함';
+  assert (select status from public.profile_caregivers
+          where caregiver_user_id = '66666666-6666-6666-6666-666666666666') = 'pending',
+    '합류 직후 배정은 pending(승인 대기)이어야 함';
+end $$;
+
+-- 승인 전: D 는 C어르신·연대기를 볼 수 없다(pending 은 접근 없음).
 set role authenticated;
 set test.uid = '66666666-6666-6666-6666-666666666666';
 do $$ begin
   assert (select count(*) from public.profiles where name = 'C어르신') = 0,
-    '배정 전 요양보호사는 남의 어르신을 볼 수 없어야 함';
+    '승인 전 요양보호사는 어르신을 볼 수 없어야 함';
   assert (select count(*) from public.chronicle_entries) = 0,
-    '배정 전 요양보호사는 남의 연대기를 볼 수 없어야 함';
+    '승인 전 요양보호사는 연대기를 볼 수 없어야 함';
 end $$;
 
--- 코드로 self-claim.
-select public.claim_elder_by_code(current_setting('test.elder_code'));
+-- 자가승인 차단①: 직접 update 로 본인 배정을 active 로 못 바꾼다(RLS with_check).
+do $$
+declare blocked boolean := false;
+begin
+  begin
+    update public.profile_caregivers set status = 'active'
+      where caregiver_user_id = '66666666-6666-6666-6666-666666666666';
+  exception when others then blocked := true;
+  end;
+  assert blocked, '요양보호사는 본인 배정을 스스로 active 로 승격할 수 없어야 함';
+end $$;
 
--- 읽기 연속성: 기존 어르신·연대기 열람.
+-- 자가승인 차단②: approve RPC 로도 본인 배정 승인 불가.
+do $$
+declare blocked boolean := false; v_id uuid;
+begin
+  select id into v_id from public.profile_caregivers
+    where caregiver_user_id = '66666666-6666-6666-6666-666666666666';
+  begin
+    perform public.approve_caregiver_assignment(v_id);
+  exception when others then blocked := true;
+  end;
+  assert blocked, 'approve RPC 로도 본인 배정을 자가승인할 수 없어야 함';
+end $$;
+
+-- 자가승인 차단③: 미승인 상태에서 claim 으로 즉시 담당 확정도 불가.
+do $$
+declare blocked boolean := false;
+begin
+  begin
+    perform public.claim_elder_by_code(current_setting('test.elder_code'));
+  exception when others then blocked := true;
+  end;
+  assert blocked, '미승인 요양보호사는 claim 으로 스스로 담당을 확정할 수 없어야 함';
+end $$;
+reset role;
+
+-- C(활성 담당)가 D 의 합류를 승인 → active.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare v_id uuid;
+begin
+  select id into v_id from public.profile_caregivers
+    where caregiver_user_id = '66666666-6666-6666-6666-666666666666' and status = 'pending';
+  perform public.approve_caregiver_assignment(v_id);
+  assert (select status from public.profile_caregivers where id = v_id) = 'active',
+    '승인 후 배정은 active 여야 함';
+end $$;
+reset role;
+
+-- 승인 후: D 는 기존 어르신·연대기 열람(읽기 연속성) + 새 기록 작성(쓰기 연속성).
+set role authenticated;
+set test.uid = '66666666-6666-6666-6666-666666666666';
 do $$ begin
   assert (select count(*) from public.profiles where name = 'C어르신') = 1,
-    '배정 후 기존 어르신을 열람할 수 있어야 함(읽기 연속성)';
+    '승인 후 기존 어르신을 열람할 수 있어야 함(읽기 연속성)';
   assert (select count(*) from public.chronicle_entries) = 1,
-    '배정 후 기존 연대기를 열람할 수 있어야 함(읽기 연속성)';
+    '승인 후 기존 연대기를 열람할 수 있어야 함(읽기 연속성)';
 end $$;
-
--- 쓰기 연속성: D 가 기존 C어르신에 새 연대기 작성(자기 uid=actor).
 insert into public.chronicle_entries (user_id, profile_id, topic, content)
   select '66666666-6666-6666-6666-666666666666', id, '가족', '따님이 자주 면회 온다'
   from public.profiles where name = 'C어르신';
 do $$ begin
   assert (select count(*) from public.chronicle_entries) = 2,
-    '배정 후 새 담당자가 기존 어르신에 기록을 작성할 수 있어야 함(쓰기 연속성)';
+    '승인 후 새 담당자가 기존 어르신에 기록을 작성할 수 있어야 함(쓰기 연속성)';
 end $$;
 reset role;
 
--- 타 기관 B 는 코드로도 배정 불가.
+-- 타 기관 B 는 코드로도 배정 불가(활성 멤버지만 다른 기관 코드 → 거부).
 do $$
 declare blocked boolean := false;
 begin

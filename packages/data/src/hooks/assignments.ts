@@ -116,6 +116,50 @@ export function useClaimElderByCode(): UseMutationResult<
   })
 }
 
+/**
+ * 배정 승인(approve_caregiver_assignment RPC) — 관리자/활성 담당이 pending → active.
+ * 신규 합류 요양보호사의 기관 접근을 승인 게이트로 확정한다(본인 자가승인 불가).
+ */
+export function useApproveCaregiverAssignment(): UseMutationResult<
+  ProfileCaregiverRow,
+  Error,
+  { id: string }
+> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id }) => {
+      const { data, error } = await getGiokonClient().rpc('approve_caregiver_assignment', {
+        p_id: id,
+      })
+      if (error) throw new Error(error.message)
+      return data as ProfileCaregiverRow
+    },
+    onSuccess: (row) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.profileCaregivers(row.profile_id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.myAssignments })
+    },
+  })
+}
+
+/** 내 배정 중 승인 대기(pending) 목록 — 기관 합류 요청 상태 표시용. */
+export function useMyPendingAssignments(
+  userId: string | undefined,
+): UseQueryResult<ProfileCaregiverRow[]> {
+  return useQuery({
+    queryKey: queryKeys.myAssignments,
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient()
+        .from('profile_caregivers')
+        .select('*')
+        .eq('caregiver_user_id', userId as string)
+        .eq('status', 'pending')
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+}
+
 /** 배정 해제(org_admin/본인) — 소프트 제거(status=removed). */
 export function useRemoveCaregiverAssignment(): UseMutationResult<
   ProfileCaregiverRow,

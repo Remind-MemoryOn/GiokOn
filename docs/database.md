@@ -46,9 +46,17 @@
 - **자식 FK 완화**: chronicle_entries/sessions/session_logs의 복합 FK `(profile_id,user_id)` → `profile_id`(자식은 session_id) 단독 + `user_id` nullable actor(SET NULL). → 새 담당자의 **쓰기 연속성** 확보.
 - **RLS 재작성(배정 기반)**: profiles·chronicle_entries·sessions·session_logs·session_analyses·care_journals·guardian_shares(요양보호사 브랜치)·safety_events·consents 를 `org_id=현재기관 AND 비 guardian AND (배정 or org_admin)`으로. 같은 기관 org_id 격리 유지(타 기관 이관은 범위 밖). 보호자 경로(공개 커밋·연결 승인)는 유지.
 - `app.is_assigned_caregiver(profile_id)`(security definer): 배정 판정 헬퍼(RLS 재귀 방지).
-- `claim_elder_by_code(p_code)`(RPC): 요양보호사 self-claim(같은 기관·role=caregiver 게이트·멱등). 기존 어르신 인계.
+- `claim_elder_by_code(p_code)`(RPC): **활성 담당/관리자**만 같은 기관의 다른 어르신을 즉시 인계(멱등). 미승인 요양보호사의 자가 승격 우회는 가드로 차단.
 - `link_guardian_by_elder_code(p_code)`(RPC): 보호자 연결(영속·비소진·멱등). 구 `redeem_guardian_invite`(1회성) 대체.
 - 구 `guardian_invites`·`redeem_guardian_invite`는 **폐기**(감사 이력 보존 위해 테이블·함수는 잔존, 신규 발급 없음). QR/`/join` 경로 제거.
+
+요양보호사 기관 합류(**승인형**) — `20260722110000`(enum `pending` 추가)·`20260722120000`:
+
+- **온보딩(caregiver)**: 기관명 → 새 기관(org_admin) / 어르신 코드 → **기존 기관 합류 요청**(role=caregiver, org_id 확정, 배정 `status='pending'`). 코드만으로 즉시 권한을 얻지 못한다(보호자 연결과 대칭).
+- `profile_caregivers.status='pending'` 신설: `is_assigned_caregiver`(status='active' 만 인정)에 걸리지 않아 **승인 전 어떤 데이터 접근도 없음**.
+- `approve_caregiver_assignment(p_id)`(RPC): 그 어르신의 **활성 담당** 또는 **org_admin** 이 pending → active. **본인 자가승인 불가**.
+- **자가승인 3중 차단**: (a) UPDATE 정책 강화(본인 행은 'removed' 로만), (b) approve RPC 본인 배제, (c) claim 가드(활성 담당/admin 만). + 본인 배정 self-select 정책(승인 대기 상태 확인용).
+- `rotate_elder_code(p_profile_id)`(RPC): 코드 회전(서버 생성·매번 상이·배정/admin 게이트). 클라이언트 코드 생성 제거. profile_id 불변 → 보호자 연결 유지.
 
 ## Access Model
 

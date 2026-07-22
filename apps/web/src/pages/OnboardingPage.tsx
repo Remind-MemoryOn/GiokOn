@@ -31,6 +31,8 @@ export function OnboardingPage() {
   const name = nameDraft ?? metaName ?? '';
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<Role>('caregiver');
+  // 요양보호사: 새 기관 생성(create) vs 기존 기관 합류(join, 어르신 코드).
+  const [caregiverMode, setCaregiverMode] = useState<'create' | 'join'>('create');
   const [orgName, setOrgName] = useState('');
   const [elderCode, setElderCode] = useState('');
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
@@ -51,8 +53,12 @@ export function OnboardingPage() {
       toast('error', '전화번호를 입력해 주세요.');
       return;
     }
-    if (role === 'caregiver' && !orgName.trim()) {
+    if (role === 'caregiver' && caregiverMode === 'create' && !orgName.trim()) {
       toast('error', '소속 기관명을 입력해 주세요.');
+      return;
+    }
+    if (role === 'caregiver' && caregiverMode === 'join' && !elderCode.trim()) {
+      toast('error', '기관에 합류하려면 어르신 코드를 입력해 주세요.');
       return;
     }
     if (!privacyAgreed || !socialAgreed) {
@@ -60,17 +66,29 @@ export function OnboardingPage() {
       return;
     }
 
+    // 요양보호사: create=기관명 전달 / join=어르신 코드 전달. 보호자: 코드(선택).
+    const sendOrgName = role === 'caregiver' && caregiverMode === 'create' ? orgName.trim() : undefined;
+    const sendElderCode =
+      (role === 'caregiver' && caregiverMode === 'join') || role === 'guardian'
+        ? elderCode.trim() || undefined
+        : undefined;
+
     setSubmitting(true);
     try {
       await completeOnboarding({
         name: name.trim(),
         phone: phone.trim(),
         role,
-        orgName: role === 'caregiver' ? orgName.trim() : undefined,
-        elderCode: role === 'guardian' && elderCode.trim() ? elderCode.trim() : undefined,
+        orgName: sendOrgName,
+        elderCode: sendElderCode,
       });
       const row = await refreshUserRow();
-      toast('success', '가입이 완료되었습니다. 환영합니다!');
+      toast(
+        'success',
+        role === 'caregiver' && caregiverMode === 'join'
+          ? '합류 요청을 보냈어요. 기관 담당자의 승인 후 어르신 기록을 볼 수 있어요.'
+          : '가입이 완료되었습니다. 환영합니다!',
+      );
       navigate(routeForUser(row), { replace: true });
     } catch (err) {
       toast('error', err instanceof Error ? err.message : '가입 처리에 실패했습니다.');
@@ -139,7 +157,7 @@ export function OnboardingPage() {
                     <UserCheck size={16} className="text-warm-600" /> 요양보호사
                   </div>
                   <div className="text-xs text-slate-500 mt-1" style={{ wordBreak: 'keep-all' }}>
-                    어르신·세션·일지를 관리해요. 새 기관이 만들어집니다.
+                    어르신·세션·일지를 관리해요. 기관을 새로 만들거나 합류합니다.
                   </div>
                 </button>
                 <button
@@ -182,13 +200,56 @@ export function OnboardingPage() {
             </Field>
 
             {role === 'caregiver' ? (
-              <Field label="소속 기관명" required hint="기관(요양원·복지관) 이름으로 새 기관이 생성되고, 기관 관리자가 됩니다.">
-                <Input
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="예: 햇살 요양원"
-                />
-              </Field>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCaregiverMode('create')}
+                    className={cn(
+                      'flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition',
+                      caregiverMode === 'create'
+                        ? 'border-warm-500 bg-warm-50 text-warm-800'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-warm-300',
+                    )}
+                  >
+                    새 기관 만들기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCaregiverMode('join')}
+                    className={cn(
+                      'flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition',
+                      caregiverMode === 'join'
+                        ? 'border-warm-500 bg-warm-50 text-warm-800'
+                        : 'border-slate-200 bg-white text-slate-500 hover:border-warm-300',
+                    )}
+                  >
+                    기존 기관에 합류
+                  </button>
+                </div>
+                {caregiverMode === 'create' ? (
+                  <Field label="소속 기관명" required hint="기관(요양원·복지관) 이름으로 새 기관이 생성되고, 기관 관리자가 됩니다.">
+                    <Input
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      placeholder="예: 햇살 요양원"
+                    />
+                  </Field>
+                ) : (
+                  <Field
+                    label="어르신 코드"
+                    required
+                    hint="같은 기관 담당자에게 받은 어르신 코드를 입력하면 그 기관에 합류를 요청해요. 기관 담당자가 승인하면 기존 어르신·연대기·세션·일지를 그대로 이어받습니다."
+                  >
+                    <Input
+                      value={elderCode}
+                      onChange={(e) => setElderCode(e.target.value.toUpperCase())}
+                      placeholder="예: AB12CD34"
+                      className="font-mono tracking-widest"
+                    />
+                  </Field>
+                )}
+              </div>
             ) : (
               <Field
                 label="어르신 코드 (선택)"

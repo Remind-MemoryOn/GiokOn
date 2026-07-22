@@ -726,6 +726,10 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: Database['public']['Tables']['elder_codes']['Row']
       }
+      approve_caregiver_assignment: {
+        Args: { p_id: string }
+        Returns: Database['public']['Tables']['profile_caregivers']['Row']
+      }
       // 구 1회성 초대(폐기·감사 이력용). 신규 코드는 elder_codes 로 대체.
       redeem_guardian_invite: {
         Args: { p_code: string }
@@ -747,7 +751,7 @@ export type Database = {
       consent_capacity: 'capable' | 'limited' | 'incapable' | 'unknown'
       safety_event_level: 'watch' | 'crisis'
       guardian_link_status: 'pending' | 'approved' | 'revoked'
-      caregiver_assignment_status: 'active' | 'removed'
+      caregiver_assignment_status: 'active' | 'removed' | 'pending'
       journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
       journal_status: 'draft' | 'final'
       share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report'
