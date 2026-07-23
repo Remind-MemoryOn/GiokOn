@@ -34,7 +34,7 @@
   STT = gpt-4o-transcribe(Clova Speech 보완), TTS = Clova Voice, **Structured Outputs**.
   실연동은 Supabase Edge Functions(서버사이드 키 보호).
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
-  **로그인 = 소셜 3종(구글·카카오·네이버) — 이메일 로그인 제거 예정, 회원가입 = OAuth 후 온보딩(기본정보 입력)**
+  **로그인 = 소셜 3종(구글·카카오·네이버) + 이메일(아이디)·비밀번호 병행(2026-07-23 재도입 — 이전 "이메일 제거" 결정 사용자 요청으로 철회), 아이디/비밀번호 찾기·회원가입 포함, 회원가입 = 이메일 또는 OAuth 후 온보딩(기본정보 입력). 소셜은 provider 본인인증(이름·전화) 정보를 온보딩에 프리필**
   (구글·카카오=네이티브, 네이버=커스텀 Edge Function `naver-auth`). 계획: PLAN §2′ M17.4~17.7·Phase W1.
 - 배포: 웹 = Vercel, 모바일 = EAS.
 

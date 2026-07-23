@@ -129,8 +129,8 @@ export function SocialLoginButtons({ redirectPath = '/login', className }: Props
       </button>
 
       <p className="text-[11px] text-slate-400 text-center leading-relaxed pt-1">
-        소셜 계정으로 로그인하면 이메일·이름이 계정 생성에 사용됩니다. 비밀번호는
-        저장하지 않습니다. 네이버 로그인은 서버 함수(naver-auth) 배포 후 동작합니다.
+        소셜 계정으로 로그인하면 제공 동의한 이메일·이름·전화(본인인증) 정보가 계정
+        생성·프로필 입력에 사용됩니다. 네이버 로그인은 서버 함수(naver-auth) 배포 후 동작합니다.
       </p>
     </div>
   );

@@ -730,6 +730,10 @@ export type Database = {
         Args: { p_id: string }
         Returns: Database['public']['Tables']['profile_caregivers']['Row']
       }
+      find_login_email: {
+        Args: { p_name: string; p_phone: string }
+        Returns: string | null
+      }
       // 구 1회성 초대(폐기·감사 이력용). 신규 코드는 elder_codes 로 대체.
       redeem_guardian_invite: {
         Args: { p_code: string }

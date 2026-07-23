@@ -57,6 +57,73 @@ export function buildNaverAuthUrl(supabaseUrl: string, redirectTo: string): stri
   return `${base}/functions/v1/naver-auth/authorize?redirect_to=${encodeURIComponent(redirectTo)}`
 }
 
+// ── 이메일/비밀번호 인증(소셜과 병행, 2026-07-23 재도입) ─────────────────────
+// 소셜 3종에 더해 일반 이메일(아이디)+비밀번호 로그인·회원가입·비밀번호 재설정·
+// 아이디(이메일) 찾기를 제공한다. 이메일 회원가입도 최초 로그인 후 온보딩
+// (complete_onboarding)에서 역할·기관을 확정한다. Supabase Auth 가 비밀번호
+// 해싱·재설정 메일을 처리하며, 실제 메일 발송은 Supabase 프로젝트 SMTP 설정 필요.
+
+export interface EmailCredentials {
+  email: string
+  password: string
+}
+
+/** 이메일(아이디)+비밀번호 로그인. */
+export async function signInWithEmail(params: EmailCredentials): Promise<Session> {
+  const { data, error } = await getGiokonClient().auth.signInWithPassword({
+    email: params.email.trim(),
+    password: params.password,
+  })
+  if (error) throw error
+  if (!data.session) throw new Error('로그인에 실패했습니다.')
+  return data.session
+}
+
+/**
+ * 이메일 회원가입. 이메일 확인(컨펌) 설정에 따라 세션이 즉시 없을 수 있다
+ * (needsConfirm=true → 확인 메일 안내). 확인/즉시가입 모두 완료 후 온보딩으로.
+ * @returns session 이 있으면 바로 온보딩, 없으면 이메일 확인 대기.
+ */
+export async function signUpWithEmail(
+  params: EmailCredentials & { redirectTo?: string },
+): Promise<{ session: Session | null; needsConfirm: boolean }> {
+  const { data, error } = await getGiokonClient().auth.signUp({
+    email: params.email.trim(),
+    password: params.password,
+    options: params.redirectTo ? { emailRedirectTo: params.redirectTo } : undefined,
+  })
+  if (error) throw error
+  return { session: data.session, needsConfirm: data.session === null }
+}
+
+/** 비밀번호 재설정 메일 발송(재설정 링크가 redirectTo 로 돌아온다). */
+export async function sendPasswordResetEmail(email: string, redirectTo: string): Promise<void> {
+  const { error } = await getGiokonClient().auth.resetPasswordForEmail(email.trim(), {
+    redirectTo,
+  })
+  if (error) throw error
+}
+
+/** 새 비밀번호로 변경(재설정 링크 진입 후 세션 상태에서 호출). */
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await getGiokonClient().auth.updateUser({ password: newPassword })
+  if (error) throw error
+}
+
+/**
+ * 아이디(이메일) 찾기 — 이름+전화번호로 마스킹된 이메일 조회(RPC find_login_email).
+ * 서버는 정확히 일치하는 1건에 한해 마스킹 이메일을 반환하고, 없으면 null.
+ * (프로덕션에선 본인인증(PASS/휴대폰) 게이트 권장 — docs/runbooks 참조.)
+ */
+export async function findLoginEmail(name: string, phone: string): Promise<string | null> {
+  const { data, error } = await getGiokonClient().rpc('find_login_email', {
+    p_name: name.trim(),
+    p_phone: phone.trim(),
+  })
+  if (error) throw error
+  return (data as string | null) ?? null
+}
+
 /** 로그아웃. */
 export async function signOut(): Promise<void> {
   const { error } = await getGiokonClient().auth.signOut()

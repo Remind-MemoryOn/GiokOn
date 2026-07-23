@@ -3,6 +3,9 @@ import { CaregiverLayout } from './components/Layout';
 import { ToastShelf } from './components/ui/Toast';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { FindIdPage } from './pages/FindIdPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EldersPage } from './pages/EldersPage';
@@ -18,9 +21,10 @@ import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages';
 import { GuardianDashboardPage } from './pages/GuardianDashboardPage';
 import { useAuth } from './auth/AuthProvider';
 
-// 인증 개편(T17.4): 로그인=소셜 3종 단일 진입(/login) → 온보딩 게이트(/onboarding)
-// → 역할 기반 자동 라우팅(caregiver·org_admin→/caregiver, guardian→/guardian).
-// 이메일 로그인·비밀번호 재설정·보호자 데모 로그인 경로는 제거됨.
+// 인증(T17.4 + 2026-07-23 이메일 병행): 로그인=이메일(아이디)+비밀번호 및 소셜
+// 3종(/login) · 아이디 찾기(/find-id) · 비밀번호 찾기(/forgot-password) · 재설정
+// (/reset-password) → 온보딩 게이트(/onboarding) → 역할 기반 자동 라우팅
+// (caregiver·org_admin→/caregiver, guardian→/guardian).
 
 function CaregiverGuard({ children }: { children: React.ReactNode }) {
   const { session, userRow, loading } = useAuth();
@@ -46,6 +50,9 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/find-id" element={<FindIdPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />

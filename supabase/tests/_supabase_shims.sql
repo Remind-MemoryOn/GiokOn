@@ -23,3 +23,11 @@ begin
   create role authenticated nologin;
 exception when duplicate_object then null;
 end $$;
+
+-- Supabase 의 미인증(로그인 전) 롤. 일부 로그인 전 RPC(예: find_login_email)가
+-- anon 에 grant 되므로 로컬 회귀에서도 실재해야 한다.
+do $$
+begin
+  create role anon nologin;
+exception when duplicate_object then null;
+end $$;

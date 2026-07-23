@@ -26,10 +26,17 @@ export function OnboardingPage() {
   const navigate = useNavigate();
 
   const metaName = (user?.user_metadata?.name as string | undefined)?.trim();
-  // 사용자가 입력하기 전까지는 소셜 프로필 이름을 그대로 보여준다(effect-setState 회피).
+  // 소셜 본인인증에서 온 전화번호(handle_new_user 가 users.phone 에 선반영) 또는
+  // provider 메타의 전화 키를 프리필한다.
+  const metaPhone =
+    userRow?.phone?.trim() ||
+    (user?.user_metadata?.phone as string | undefined)?.trim() ||
+    (user?.user_metadata?.phone_number as string | undefined)?.trim();
+  // 사용자가 입력하기 전까지는 소셜 프로필 값을 그대로 보여준다(effect-setState 회피).
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const name = nameDraft ?? metaName ?? '';
-  const [phone, setPhone] = useState('');
+  const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
+  const phone = phoneDraft ?? metaPhone ?? '';
   const [role, setRole] = useState<Role>('caregiver');
   // 요양보호사: 새 기관 생성(create) vs 기존 기관 합류(join, 어르신 코드).
   const [caregiverMode, setCaregiverMode] = useState<'create' | 'join'>('create');
@@ -189,11 +196,11 @@ export function OnboardingPage() {
               />
             </Field>
 
-            <Field label="전화번호" required hint="긴급 연락·계정 확인에만 사용됩니다.">
+            <Field label="전화번호" required hint="소셜 본인인증 정보가 있으면 자동 입력됩니다. 긴급 연락·계정 확인에만 사용됩니다.">
               <Input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhoneDraft(e.target.value)}
                 placeholder="예: 010-1234-5678"
                 autoComplete="tel"
               />

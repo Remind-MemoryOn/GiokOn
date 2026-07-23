@@ -59,6 +59,12 @@
 - `rotate_elder_code(p_profile_id)`(RPC): 코드 회전(서버 생성·매번 상이·배정/admin 게이트). 클라이언트 코드 생성 제거. profile_id 불변 → 보호자 연결 유지.
 - **코드 생성 강화(`20260722130000`)**: `app.generate_invite_code()` 를 **암호학적 난수**(`gen_random_bytes`, pgcrypto CSPRNG — 예측 가능한 `random()` 대체) + **혼동문자 전면 제외 30자 알파벳**(`0/1/I/L/O/U` 제외) + **10자**로 개선. 승인 게이트와 함께 추측/열거 저항. 기존 8자 코드는 유효(check 6~32), 신규 발급·회전분부터 10자.
 
+이메일 인증 병행 + 소셜 본인인증 캡처(`20260722140000`, 2026-07-23 — 이메일 로그인 재도입):
+
+- 이메일(아이디)+비밀번호 로그인·회원가입·비밀번호 재설정은 **Supabase Auth 기본 제공**(데이터층 `signInWithEmail`/`signUpWithEmail`/`sendPasswordResetEmail`/`updatePassword`). 실 메일 발송은 프로젝트 **SMTP 설정 필요**(runbook).
+- `find_login_email(p_name, p_phone)`(RPC, SECURITY DEFINER): **아이디(이메일) 찾기** — 이름+전화 정확히 1건 일치일 때만 **마스킹 이메일**(`ab***@dom`) 반환, 없음·중복은 null(존재 노출 최소화). 로그인 전 기능이라 `anon`+`authenticated` 에 grant. 프로덕션은 본인인증(PASS) 게이트 권장.
+- `handle_new_user` 보강: provider 메타의 **전화(본인인증)** 를 형식 검증 후 `users.phone` 에 선반영 → 온보딩 프리필(구글은 전화 미제공, 카카오·네이버는 동의·검수 시 제공).
+
 ## Access Model
 
 대부분의 요청은 클라이언트가 **supabase-js로 직접** 수행한다. 인증된 사용자의 JWT가 자동 첨부되고, RLS가 각 행의 소유자(`user_id = auth.uid()`)를 검증한다.
