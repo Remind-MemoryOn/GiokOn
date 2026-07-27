@@ -16,6 +16,7 @@
 
 export * from './client'
 export * from './auth'
+export * from './stt'
 export * from './query'
 export * from './database.types'
 export * from './mappers'

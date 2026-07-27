@@ -7,10 +7,11 @@
 // 보호자에게 선별 공개할 수 있다. 민감정보 취급.
 
 import { useRef, useState } from 'react';
-import { Camera, Keyboard, Mic, MicOff, NotebookPen, Sparkles, Trash2 } from 'lucide-react';
+import { Camera, FileAudio, Keyboard, Mic, MicOff, NotebookPen, Sparkles, Trash2, Upload } from 'lucide-react';
 import { buildJournalDraft, type JournalDraftSource } from '@giokon/core';
 import {
   toElderProfile,
+  transcribeAudio,
   useCareJournals,
   useCreateCareJournal,
   useCurrentUser,
@@ -80,7 +81,31 @@ export function CareJournalPage() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [listening, setListening] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // 음성 파일 업로드 → CLOVA STT(Edge Function)로 텍스트 변환 후 원문에 붙인다.
+  async function transcribeFile(file: File) {
+    if (!isConfigured) {
+      toast('error', 'Supabase 연동 후 음성 인식을 사용할 수 있어요.');
+      return;
+    }
+    setTranscribing(true);
+    try {
+      const text = await transcribeAudio(file, { lang: 'Kor' });
+      setRawText((prev) => (prev ? `${prev} ` : '') + text.trim());
+      toast('success', '음성 파일을 텍스트로 옮겼어요. 내용을 확인해 주세요.');
+    } catch (err) {
+      toast(
+        'error',
+        err instanceof Error
+          ? `음성 인식 실패: ${err.message} (STT 서버(stt-transcribe) 배포 후 이용 가능)`
+          : '음성 인식에 실패했습니다.',
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  }
 
   function toggleListening() {
     if (listening) {
@@ -242,25 +267,57 @@ export function CareJournalPage() {
                 </div>
 
                 {tab === 'voice' ? (
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant={listening ? 'danger' : 'outline'}
-                      onClick={toggleListening}
-                      size="sm"
-                    >
-                      {listening ? (
-                        <>
-                          <MicOff size={14} /> 입력 종료
-                        </>
-                      ) : (
-                        <>
-                          <Mic size={14} /> 음성 입력 시작
-                        </>
-                      )}
-                    </Button>
-                    <span className="text-xs text-slate-500" style={{ wordBreak: 'keep-all' }}>
-                      말씀하시면 아래 원문에 붙습니다. (브라우저 음성 인식 — 정식 STT는 연동 후)
-                    </span>
+                  <div className="space-y-3">
+                    {/* ① 실시간 음성 입력(브라우저 STT) */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Button
+                        variant={listening ? 'danger' : 'outline'}
+                        onClick={toggleListening}
+                        size="sm"
+                      >
+                        {listening ? (
+                          <>
+                            <MicOff size={14} /> 입력 종료
+                          </>
+                        ) : (
+                          <>
+                            <Mic size={14} /> 실시간 음성 입력
+                          </>
+                        )}
+                      </Button>
+                      <span className="text-xs text-slate-500" style={{ wordBreak: 'keep-all' }}>
+                        말씀하시면 아래 원문에 붙습니다(브라우저 음성 인식).
+                      </span>
+                    </div>
+
+                    {/* ② 음성 파일 업로드 → CLOVA STT */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <FileAudio size={15} className="text-warm-600" /> 음성 파일 올리기 (CLOVA 음성 인식)
+                      </div>
+                      <label className={cn(
+                        'inline-flex items-center gap-2 rounded-lg border border-warm-300 bg-white px-3 py-2 text-sm font-semibold text-warm-700 cursor-pointer hover:bg-warm-50 transition',
+                        transcribing && 'opacity-60 pointer-events-none',
+                      )}>
+                        <Upload size={15} />
+                        {transcribing ? '변환 중…' : '음성 파일 선택'}
+                        <input
+                          type="file"
+                          accept="audio/*,.m4a,.mp3,.wav,.aac"
+                          className="hidden"
+                          disabled={transcribing}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void transcribeFile(f);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      <p className="text-[11px] text-slate-500 leading-relaxed" style={{ wordBreak: 'keep-all' }}>
+                        녹음한 음성 파일(mp3·m4a·wav 등)을 올리면 CLOVA 음성 인식으로 텍스트로 옮겨
+                        아래 원문에 붙습니다. 인식 결과는 저장 전 꼭 확인해 주세요.
+                      </p>
+                    </div>
                   </div>
                 ) : null}
 

@@ -150,6 +150,13 @@ Supabase 콜백 URL은 보통 `https://<project-ref>.supabase.co/auth/v1/callbac
   ```
 - [ ] 앱의 네이버 버튼이 `.../functions/v1/naver-auth/authorize` 로 이동하는지 확인
       (`buildNaverAuthUrl`). 콜백 URL은 §3-3과 일치.
+- [ ] **`stt-transcribe`(요양일지 음성 파일 인식)**: 이미 스캐폴드 있음
+      (`supabase/functions/stt-transcribe/index.ts`, CLOVA CSR). CLOVA 키 등록 후 배포:
+      ```bash
+      supabase secrets set NCP_CLOVA_CLIENT_ID=... NCP_CLOVA_CLIENT_SECRET=...
+      supabase functions deploy stt-transcribe
+      ```
+      배포 전에는 요양일지 "음성 파일 올리기"가 안내 메시지를 띄운다(브라우저 실시간 음성 입력은 무관하게 동작).
 
 ---
 

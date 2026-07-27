@@ -57,7 +57,7 @@ export function toChronicleEntry(row: ChronicleRow): ChronicleEntry {
     elderId: row.profile_id,
     topic: row.topic,
     content: row.content,
-    keywords: row.keywords,
+    keywords: row.keywords ?? [],
     source: toChronicleSource(row.source),
     recordedAt: row.recorded_at,
     updatedAt: row.updated_at,

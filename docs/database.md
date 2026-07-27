@@ -65,6 +65,11 @@
 - `find_login_email(p_name, p_phone)`(RPC, SECURITY DEFINER): **아이디(이메일) 찾기** — 이름+전화 정확히 1건 일치일 때만 **마스킹 이메일**(`ab***@dom`) 반환, 없음·중복은 null(존재 노출 최소화). 로그인 전 기능이라 `anon`+`authenticated` 에 grant. 프로덕션은 본인인증(PASS) 게이트 권장.
 - `handle_new_user` 보강: provider 메타의 **전화(본인인증)** 를 형식 검증 후 `users.phone` 에 선반영 → 온보딩 프리필(구글은 전화 미제공, 카카오·네이버는 동의·검수 시 제공).
 
+온보딩 단순화 + 음성 STT(`20260722150000` · Edge Function, 2026-07-25):
+
+- `complete_onboarding` 개정: **요양보호사 = 소속 기관명 입력**(새 기관+org_admin)으로 되돌림(어르신 코드 합류 토글 제거 — 코드는 보호자용). 보호자 브랜치(어르신 코드 연결) 유지. 여러 요양보호사 같은 기관 합류(연속성)는 추후 기관 초대 메커니즘으로(런북).
+- Edge Function **`stt-transcribe`**(신규): 요양일지 음성 파일 → CLOVA CSR 인식 → `{text}`. CLOVA 키는 서버 시크릿(`NCP_CLOVA_CLIENT_ID/SECRET`). 데이터층 `transcribeAudio(file)`. 미배포 시 UI 안내.
+
 ## Access Model
 
 대부분의 요청은 클라이언트가 **supabase-js로 직접** 수행한다. 인증된 사용자의 JWT가 자동 첨부되고, RLS가 각 행의 소유자(`user_id = auth.uid()`)를 검증한다.
