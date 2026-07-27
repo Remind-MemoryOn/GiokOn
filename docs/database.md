@@ -112,8 +112,9 @@ Edge Functions 전용 비밀값은 Supabase secrets로 관리하고 클라이언
 ```env
 # Edge Functions secrets (클라이언트 미노출)
 SUPABASE_SECRET_KEY="<secret-key>"             # 레거시 service_role key 대체
-OPENAI_API_KEY="<...>"
-CLOVA_VOICE_KEY="<...>"
+OPENAI_API_KEY="sk-..."                        # LLM·STT(gpt-4o-transcribe) — Bearer 단일 키
+NCP_CLOVA_CLIENT_ID="<X-NCP-APIGW-API-KEY-ID>"     # CLOVA Voice(TTS)/Speech(STT) — Client ID
+NCP_CLOVA_CLIENT_SECRET="<X-NCP-APIGW-API-KEY>"    # CLOVA — Client Secret (쌍으로 인증)
 NAVER_CLIENT_ID="<...>"                         # 소셜 로그인(네이버, 커스텀 naver-auth)
 NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 ```

@@ -10,9 +10,10 @@
 #   SUPABASE_URL              (apps/web + supabase 공용)
 #   SUPABASE_PUBLISHABLE_KEY  (apps/web 클라이언트)
 #   SUPABASE_SECRET_KEY       (supabase Edge Functions)
-#   OPENAI_API_KEY            (선택, Edge Functions)
-#   CLOVA_VOICE_KEY           (선택, Edge Functions)
-#   CLOVA_SPEECH_KEY          (선택, Edge Functions)
+#   OPENAI_API_KEY            (선택, Edge Functions — LLM·STT)
+#   NCP_CLOVA_CLIENT_ID       (선택, Edge Functions — CLOVA Voice/Speech, X-NCP-APIGW-API-KEY-ID)
+#   NCP_CLOVA_CLIENT_SECRET   (선택, Edge Functions — CLOVA Voice/Speech, X-NCP-APIGW-API-KEY)
+#   NAVER_CLIENT_ID/SECRET    (선택, Edge Functions — naver-auth 소셜 로그인)
 set -euo pipefail
 
 # 로컬(비원격)에서는 건너뛴다 — 로컬 .env 수동 관리를 덮어쓰지 않기 위함
@@ -51,14 +52,16 @@ else
 fi
 
 # supabase/.env — Edge Functions secrets (클라이언트 미노출)
-if [ -n "${SUPABASE_URL:-}${SUPABASE_SECRET_KEY:-}${OPENAI_API_KEY:-}${CLOVA_VOICE_KEY:-}${CLOVA_SPEECH_KEY:-}" ]; then
+if [ -n "${SUPABASE_URL:-}${SUPABASE_SECRET_KEY:-}${OPENAI_API_KEY:-}${NCP_CLOVA_CLIENT_ID:-}${NCP_CLOVA_CLIENT_SECRET:-}${NAVER_CLIENT_ID:-}${NAVER_CLIENT_SECRET:-}" ]; then
   {
     echo "# 자동 생성됨: .claude/hooks/session-start.sh (환경변수 기반, 커밋 금지)"
     emit "SUPABASE_URL" "${SUPABASE_URL:-}"
     emit "SUPABASE_SECRET_KEY" "${SUPABASE_SECRET_KEY:-}"
     emit "OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
-    emit "CLOVA_VOICE_KEY" "${CLOVA_VOICE_KEY:-}"
-    emit "CLOVA_SPEECH_KEY" "${CLOVA_SPEECH_KEY:-}"
+    emit "NCP_CLOVA_CLIENT_ID" "${NCP_CLOVA_CLIENT_ID:-}"
+    emit "NCP_CLOVA_CLIENT_SECRET" "${NCP_CLOVA_CLIENT_SECRET:-}"
+    emit "NAVER_CLIENT_ID" "${NAVER_CLIENT_ID:-}"
+    emit "NAVER_CLIENT_SECRET" "${NAVER_CLIENT_SECRET:-}"
   } > supabase/.env
   echo "[session-start] supabase/.env 생성 완료"
 else

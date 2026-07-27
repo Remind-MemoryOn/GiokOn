@@ -162,7 +162,11 @@ Supabase 콜백 URL은 보통 `https://<project-ref>.supabase.co/auth/v1/callbac
 
 ## 7. 실 AI 키·STT/TTS (앱 음성·분석 실연동 시)
 > 현재 AI는 mock(사람 확인 게이트). 실연동은 서버 Edge Function으로 키를 보호한다.
-- [ ] `supabase secrets set OPENAI_API_KEY=... CLOVA_VOICE_KEY=...` (LLM·STT·TTS).
+- [ ] `supabase secrets set OPENAI_API_KEY=sk-...` (LLM·STT gpt-4o-transcribe — Bearer 단일 키).
+- [ ] CLOVA(TTS=Voice, STT 보완=Speech)는 **Client ID+Secret 한 쌍**(NCP AI·NAVER API):
+      `supabase secrets set NCP_CLOVA_CLIENT_ID=... NCP_CLOVA_CLIENT_SECRET=...`
+      (헤더 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY`. 서비스별 애플리케이션을 따로
+      등록했다면 `CLOVA_VOICE_*`/`CLOVA_SPEECH_*` 로 분리 — `supabase/.env.example` 참조.)
 - [ ] STT=gpt-4o-transcribe(+Clova 보완), TTS=Clova Voice, LLM=현행 프런티어(Structured Outputs).
 - [ ] AI 파이프라인 Edge Function 구현·배포 후, 앱/웹의 mock 자리에 배선(코드 변경 최소).
 
