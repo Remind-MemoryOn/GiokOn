@@ -9,7 +9,7 @@ import { DetailHeader } from '../../src/components/AppHeader';
 import { Card, Chip, SectionTitle, StatTile } from '../../src/components/ui';
 import { ToneBar } from '../../src/components/brand';
 import { NonMedicalFootnote } from '../../src/components/banners';
-import { useApp } from '../../src/store/appStore';
+import { useLog, useAnalysis, useElderSessions } from '../../src/data/reads';
 import { C } from '../../src/theme';
 
 function durationLabel(startIso: string, endIso?: string): string {
@@ -21,9 +21,10 @@ function durationLabel(startIso: string, endIso?: string): string {
 
 export default function SingleAnalysis() {
   const { logId } = useLocalSearchParams<{ logId: string }>();
-  const log = useApp((s) => (logId ? s.getLog(logId) : undefined));
-  const analysis = useApp((s) => (logId ? s.getAnalysis(logId) : undefined));
-  const session = useApp((s) => (log ? s.sessionsByElder(log.elderId).find((x) => x.id === log.sessionId) : undefined));
+  const log = useLog(logId);
+  const analysis = useAnalysis(logId);
+  const sessions = useElderSessions(log?.elderId);
+  const session = log ? sessions.find((x) => x.id === log.sessionId) : undefined;
 
   if (!log || !analysis) {
     return (

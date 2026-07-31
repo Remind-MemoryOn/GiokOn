@@ -5,6 +5,7 @@ import {
   toConversationLog,
   toConversationTurn,
   toElderProfile,
+  toSession,
 } from './mappers'
 import { queryKeys } from './query'
 import type { ChronicleRow, ProfileRow, SessionLogRow, SessionRow } from './database.types'
@@ -192,6 +193,40 @@ describe('toConversationLog', () => {
     expect(conv.endedAt).toBeUndefined()
     expect(conv.status).toBe('active')
     expect(conv.turns).toEqual([])
+  })
+})
+
+describe('toSession', () => {
+  const row: SessionRow = {
+    id: 's1',
+    profile_id: 'p1',
+    user_id: 'u1',
+    org_id: 'o1',
+    status: 'ended',
+    turn_count: 4,
+    duration_seconds: 150,
+    current_topic: '고향',
+    started_at: '2026-01-04T00:00:00Z',
+    ended_at: '2026-01-04T00:10:00Z',
+    updated_at: '2026-01-04T00:10:00Z',
+  }
+
+  it('세션 메타를 도메인 Session으로 매핑한다(title←현재 주제, 분←초/60)', () => {
+    expect(toSession(row)).toEqual({
+      id: 's1',
+      title: '고향',
+      therapyType: 'reminiscence',
+      durationMinutes: 3,
+      elderId: 'p1',
+      createdAt: '2026-01-04T00:00:00Z',
+      updatedAt: '2026-01-04T00:10:00Z',
+    })
+  })
+
+  it('current_topic null은 기본 제목, duration_seconds null은 0분', () => {
+    const s = toSession({ ...row, current_topic: null, duration_seconds: null })
+    expect(s.title).toBe('회상 대화')
+    expect(s.durationMinutes).toBe(0)
   })
 })
 

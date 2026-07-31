@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DetailHeader } from '../src/components/AppHeader';
 import { Card, SectionTitle, TopicBar } from '../src/components/ui';
 import { NonMedicalFootnote } from '../src/components/banners';
-import { useApp } from '../src/store/appStore';
+import { useElder } from '../src/data/reads';
 import {
   elderParticipation,
   elderTopicShares,
@@ -32,7 +32,7 @@ export default function Observations() {
   const { scope, id } = useLocalSearchParams<{ scope?: string; id?: string }>();
   const isElder = scope === 'elder' && !!id;
 
-  const elder = useApp((s) => (id ? s.getElder(id) : undefined));
+  const elder = useElder(id);
   const title = isElder ? '관찰 지표' : '전체 관찰 지표';
 
   let participationPct: number;

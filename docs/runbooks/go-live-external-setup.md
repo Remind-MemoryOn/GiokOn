@@ -30,7 +30,7 @@
 세부는 [`seoul-region-migration.md`](./seoul-region-migration.md). **리전은 반드시
 `Northeast Asia (Seoul) = ap-northeast-2`**(데이터 국내보관).
 
-### 1-1. 마이그레이션 (번호 순서 엄수 — 총 19개)
+### 1-1. 마이그레이션 (번호 순서 엄수 — 총 20개)
 > 실 Supabase에는 `auth.users`·`auth.uid()`·`authenticated`·`anon` 롤이 이미 존재하므로
 > **로컬 테스트 심(`supabase/tests/_supabase_shims.sql`)은 적용하지 않는다.**
 
@@ -62,8 +62,9 @@ supabase db push          # supabase/migrations/ 전체를 순서대로 적용
 | 17 | `20260722120000_caregiver_org_join_approval.sql` | 요양보호사 기관 합류 승인형 |
 | 18 | `20260722130000_elder_code_generation_hardening.sql` | 코드 생성 CSPRNG·혼동문자 제거 |
 | 19 | `20260722140000_email_auth_support.sql` | 이메일 인증 보조(find_login_email·전화 캡처) |
+| 20 | `20260722150000_onboarding_caregiver_org_name.sql` | 온보딩 기관명 단순화(요양보호사 새 기관 생성) |
 
-- [ ] 19개 전부 오류 없이 적용됐는지 확인. (`13`은 Storage 버킷 정책 포함 → §6과 연계.)
+- [ ] 20개 전부 오류 없이 적용됐는지 확인. (`13`은 Storage 버킷 정책 포함 → §6과 연계.)
 
 ---
 
@@ -190,7 +191,16 @@ Supabase 콜백 URL은 보통 `https://<project-ref>.supabase.co/auth/v1/callbac
 - [ ] 키를 넣으면 `isSupabaseConfigured=true` 가 되어 목업→실데이터로 전환(코드 변경 불필요).
 
 ### 8-2. 모바일 (EAS, 선택)
-- [ ] `apps/mobile` Expo 환경변수에 동일 URL·키. EAS 빌드/제출.
+- [ ] `apps/mobile/.env`(예시 `apps/mobile/.env.example`) 또는 EAS 환경변수에 **동일 URL·키**:
+  ```env
+  EXPO_PUBLIC_SUPABASE_URL="https://<서울-project-ref>.supabase.co"
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<publishable-key>"
+  ```
+  (웹의 `VITE_*` 와 같은 값, 접두사만 `EXPO_PUBLIC_*`. 값은 번들 시점에 인라인되므로 EAS
+  빌드는 `eas.json` 의 env 또는 `eas secret:create` 로도 넣어야 한다 — 로컬 `.env` 는
+  Metro dev 서버에서만 읽힘.)
+- [ ] 키를 넣으면 앱이 `isSupabaseConfigured=true` 가 되어 목업→실데이터로 전환(코드 변경
+      불필요 — 인증·읽기/쓰기 어댑터·세션 영속화가 자동 라이브). EAS 빌드/제출.
 
 ---
 

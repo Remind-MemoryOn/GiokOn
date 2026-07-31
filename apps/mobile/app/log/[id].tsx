@@ -6,7 +6,7 @@ import { formatKoreanDate, type ConversationTurn } from '@giokon/core';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Button } from '../../src/components/ui';
 import { RobotMascot } from '../../src/components/brand';
-import { useApp } from '../../src/store/appStore';
+import { useLog, useAnalysis } from '../../src/data/reads';
 import { ScrollView } from 'react-native';
 
 function hhmm(iso: string): string {
@@ -36,8 +36,8 @@ function Bubble({ turn }: { turn: ConversationTurn }) {
 
 export default function LogTranscript() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const log = useApp((s) => (id ? s.getLog(id) : undefined));
-  const analysis = useApp((s) => (id ? s.getAnalysis(id) : undefined));
+  const log = useLog(id);
+  const analysis = useAnalysis(id);
 
   if (!log || !id) {
     return (

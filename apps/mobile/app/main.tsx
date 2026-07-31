@@ -7,13 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HomeHeader } from '../src/components/AppHeader';
 import { PatientCard } from '../src/components/PatientCard';
 import { Button } from '../src/components/ui';
-import { useApp } from '../src/store/appStore';
+import { useElders } from '../src/data/reads';
+import { useAuth } from '../src/auth/AuthProvider';
 import { C } from '../src/theme';
 
 export default function Main() {
-  const caregiver = useApp((s) => s.caregiver);
-  const elders = useApp((s) => s.eldersSorted());
-  const logout = useApp((s) => s.logout);
+  const { caregiverName, signOut } = useAuth();
+  const elders = useElders();
   const [q, setQ] = useState('');
 
   const filtered = useMemo(
@@ -25,14 +25,14 @@ export default function Main() {
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <View className="px-5">
         <HomeHeader
-          onSettings={() => {
-            logout();
+          onSettings={async () => {
+            await signOut();
             router.replace('/');
           }}
         />
         <Text className="text-[24px] font-semibold text-ink mt-3 leading-[34px]">
           안녕하세요!{'\n'}
-          {caregiver?.name ?? '요양 보호사'} 요양 보호사님
+          {caregiverName} 요양 보호사님
         </Text>
         <View className="flex-row items-center border border-line rounded-card px-4 h-[46px] mt-5 mb-4">
           <Ionicons name="search" size={18} color={C.textSecondary} />

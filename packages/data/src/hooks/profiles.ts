@@ -17,10 +17,11 @@ import type { ProfileRow, TablesInsert, TablesUpdate } from '../database.types'
 export type ProfileInsert = TablesInsert<'profiles'>
 export type ProfileUpdate = TablesUpdate<'profiles'>
 
-/** 담당 어르신 목록(최신순). */
-export function useProfiles(): UseQueryResult<ProfileRow[]> {
+/** 담당 어르신 목록(최신순). enabled=false로 유휴화 가능(미설정 클라이언트 보호). */
+export function useProfiles(options?: { enabled?: boolean }): UseQueryResult<ProfileRow[]> {
   return useQuery({
     queryKey: queryKeys.profiles,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const { data, error } = await getGiokonClient()
         .from('profiles')
