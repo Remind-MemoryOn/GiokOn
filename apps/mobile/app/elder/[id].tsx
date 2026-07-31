@@ -7,7 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { canStartElderSession, initial } from '@giokon/core';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Button, Card, InfoRow, SectionTitle, StatTile, TopicBar } from '../../src/components/ui';
-import { useApp } from '../../src/store/appStore';
+import {
+  useElder,
+  useChronicles,
+  useElderSessions,
+  useElderLogs,
+  useElderConsents,
+} from '../../src/data/reads';
 import { ageOf, ELDER_GENDER } from '../../src/lib/mockData';
 import { elderParticipation, elderTopicShares, elderObservationSummary } from '../../src/lib/analytics';
 import { C } from '../../src/theme';
@@ -22,11 +28,11 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function ElderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useApp((s) => (id ? s.getElder(id) : undefined));
-  const chronicles = useApp((s) => (id ? s.chroniclesByElder(id) : []));
-  const sessions = useApp((s) => (id ? s.sessionsByElder(id) : []));
-  const logs = useApp((s) => (id ? s.logsByElder(id) : []));
-  const consents = useApp((s) => (id ? s.elderConsents(id) : []));
+  const elder = useElder(id);
+  const chronicles = useChronicles(id);
+  const sessions = useElderSessions(id);
+  const logs = useElderLogs(id);
+  const consents = useElderConsents(id);
   const [tab, setTab] = useState<Tab>('profile');
 
   if (!elder || !id) {
@@ -147,7 +153,9 @@ export default function ElderDetail() {
 }
 
 function AnalysisTab({ elderId }: { elderId: string }) {
-  const elder = useApp((s) => s.getElder(elderId));
+  // 종합 분석 탭의 관찰지표(elderParticipation/topics/summary)는 analytics.ts가 목업
+  // 스토어에 결합돼 있어 이번 범위 밖(후속) — 어르신 조회만 라이브로 정합.
+  const elder = useElder(elderId);
   const part = elderParticipation(elderId);
   const topics = elderTopicShares(elderId);
   if (!elder) return null;

@@ -15,6 +15,7 @@ import {
   type ConversationTurn,
   type ElderProfile,
   type Guardian,
+  type Session,
   type Speaker,
 } from '@giokon/core'
 import type {
@@ -75,6 +76,25 @@ export function toConversationTurn(row: SessionLogRow): ConversationTurn {
     text: row.content,
     timestamp: row.spoken_at,
     topic: row.topic ?? undefined,
+  }
+}
+
+/**
+ * DB 세션 메타 → 도메인 Session(세션 목록 카드용).
+ * v1 스키마는 title/therapyType/note를 별도 컬럼으로 두지 않으므로(프로토타입 도메인
+ * ↔ v1 스키마 불일치) 표시값을 파생한다: title←현재 주제, therapyType←회상 고정,
+ * durationMinutes←duration_seconds/60.
+ */
+export function toSession(row: SessionRow): Session {
+  return {
+    id: row.id,
+    title: row.current_topic ?? '회상 대화',
+    therapyType: 'reminiscence',
+    durationMinutes:
+      row.duration_seconds != null ? Math.max(0, Math.round(row.duration_seconds / 60)) : 0,
+    elderId: row.profile_id,
+    createdAt: row.started_at,
+    updatedAt: row.updated_at,
   }
 }
 

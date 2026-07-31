@@ -16,11 +16,12 @@ import { DetailHeader } from '../../src/components/AppHeader';
 import { Button } from '../../src/components/ui';
 import { NonMedicalFootnote } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
+import { useElder } from '../../src/data/reads';
 import { C } from '../../src/theme';
 
 export default function ConsentGate() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useApp((s) => (id ? s.getElder(id) : undefined));
+  const elder = useElder(id);
   const grant = useApp((s) => s.grantElderConsents);
   const required = requiredElderConsents();
   const [checked, setChecked] = useState<Record<ConsentType, boolean>>(

@@ -7,13 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { HomeHeader } from '../src/components/AppHeader';
 import { PatientCard } from '../src/components/PatientCard';
 import { Button } from '../src/components/ui';
-import { useApp } from '../src/store/appStore';
+import { useElders } from '../src/data/reads';
 import { useAuth } from '../src/auth/AuthProvider';
 import { C } from '../src/theme';
 
 export default function Main() {
   const { caregiverName, signOut } = useAuth();
-  const elders = useApp((s) => s.eldersSorted());
+  const elders = useElders();
   const [q, setQ] = useState('');
 
   const filtered = useMemo(

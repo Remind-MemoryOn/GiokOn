@@ -7,11 +7,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Field, Button, Card, SectionTitle } from '../../src/components/ui';
 import { useApp } from '../../src/store/appStore';
+import { useElder, useChronicles } from '../../src/data/reads';
 
 export default function ChronicleEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useApp((s) => (id ? s.getElder(id) : undefined));
-  const chronicles = useApp((s) => (id ? s.chroniclesByElder(id) : []));
+  const elder = useElder(id);
+  const chronicles = useChronicles(id);
   const upsertElder = useApp((s) => s.upsertElder);
   const upsertChronicle = useApp((s) => s.upsertChronicle);
 

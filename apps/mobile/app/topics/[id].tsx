@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Card, Chip, SectionTitle } from '../../src/components/ui';
 import { NonMedicalFootnote } from '../../src/components/banners';
-import { useApp } from '../../src/store/appStore';
+import { useElder } from '../../src/data/reads';
 import { elderTopicShares, overallSummary } from '../../src/lib/analytics';
 
 // 주제별 대표 키워드(관찰 근거). 실데이터에선 대화 로그에서 추출된다.
@@ -21,7 +21,7 @@ const TOPIC_KEYWORDS: Record<string, string[]> = {
 
 export default function Topics() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useApp((s) => (id && id !== 'all' ? s.getElder(id) : undefined));
+  const elder = useElder(id === 'all' ? undefined : id);
 
   const topics = elder ? elderTopicShares(elder.id) : overallSummary().topTopics;
 
