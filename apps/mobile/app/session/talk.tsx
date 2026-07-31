@@ -4,7 +4,7 @@
 //   - 마이크(모의 STT) → 확인 화면 → 다음 질문(core)
 //   - 위기 감지 시 요양보호사 배너(escalate/caregiverAlert)
 //   - AI 이용 사전 고지 상시 노출(투명성)
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,12 +12,15 @@ import { RobotMascot, Waveform, MicButton } from '../../src/components/brand';
 import { AiDisclosureBanner, CrisisBanner } from '../../src/components/banners';
 import { ExpoSpeechProvider } from '../../src/lib/speech';
 import { useApp } from '../../src/store/appStore';
+import { useSessionPersistence } from '../../src/data/session-persistence';
 
 export default function Talk() {
   const active = useApp((s) => s.active);
   const capture = useApp((s) => s.captureUtterance);
   const acknowledge = useApp((s) => s.acknowledgeSafety);
-  const finish = useApp((s) => s.finishSession);
+  const { finishAndPersist } = useSessionPersistence();
+  // 종료 중에는 active가 null이 되어도 /main으로 튕기지 않도록 가드(라이브 저장 await 동안).
+  const finishing = useRef(false);
 
   const question = active?.currentQuestion;
 
@@ -28,16 +31,17 @@ export default function Talk() {
     return () => ExpoSpeechProvider.cancelSpeak();
   }, [question]);
 
-  // 활성 세션이 없으면 메인으로.
+  // 활성 세션이 없으면 메인으로(단, 종료 저장 진행 중에는 제외 — saved로 이동).
   useEffect(() => {
-    if (!active) router.replace('/main');
+    if (!active && !finishing.current) router.replace('/main');
   }, [active]);
 
   if (!active) return <SafeAreaView className="flex-1 bg-white" />;
 
-  const endAndSave = () => {
+  const endAndSave = async () => {
+    finishing.current = true;
     ExpoSpeechProvider.cancelSpeak();
-    const logId = finish();
+    const logId = await finishAndPersist();
     router.replace(`/session/saved${logId ? `?logId=${logId}` : ''}`);
   };
 

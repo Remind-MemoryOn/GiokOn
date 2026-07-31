@@ -7,11 +7,12 @@ import { RobotMascot } from '../../src/components/brand';
 import { Button } from '../../src/components/ui';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
+import { useElder, useChronicles } from '../../src/data/reads';
 
 export default function SessionStart() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useApp((s) => (id ? s.getElder(id) : undefined));
-  const chronicles = useApp((s) => (id ? s.chroniclesByElder(id) : []));
+  const elder = useElder(id);
+  const chronicles = useChronicles(id);
   const begin = useApp((s) => s.beginSession);
 
   if (!elder || !id) {
@@ -20,7 +21,7 @@ export default function SessionStart() {
 
   const onStart = () => {
     const topic = recommendNextTopics(elder, chronicles)[0] ?? '오늘';
-    begin(id, { title: `${topic} 이야기`, therapyType: 'reminiscence' });
+    begin(elder, chronicles, { title: `${topic} 이야기`, therapyType: 'reminiscence' });
     router.replace('/session/talk');
   };
 

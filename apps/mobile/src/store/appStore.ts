@@ -55,6 +55,23 @@ export interface ActiveSession {
   events: SafetyEventDraft[];
 }
 
+/**
+ * 종료된 세션 1건의 전체 묶음 — 라이브 영속화 레이어(useSessionPersistence)가
+ * DB(sessions·session_logs·session_analyses·safety_events)에 쓰기 위한 스냅샷.
+ * finishSession이 목업 갱신과 함께 이 값을 채우고, 영속화 후 clearLastFinished로 비운다.
+ */
+export interface FinishedSessionBundle {
+  logId: string;
+  elder: ElderProfile;
+  turns: ConversationTurn[];
+  events: SafetyEventDraft[];
+  analysis: SessionAnalysis;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  currentTopic: string;
+}
+
 const SAFE_INITIAL: RuntimeSafety = {
   escalate: false,
   caregiverAlert: null,
@@ -98,7 +115,13 @@ interface AppState {
 
   // ── 세션 실행 런타임 ──
   active: ActiveSession | null;
-  beginSession: (elderId: string, input: { title: string; therapyType: TherapyType; note?: string }) => void;
+  // 어르신·연대기는 호출자(화면)가 어댑터로 조회해 넘긴다 — 런타임을 목업 데이터에서
+  // 분리(라이브 어르신으로도 세션 시작 가능).
+  beginSession: (
+    elder: ElderProfile,
+    chronicles: ChronicleEntry[],
+    input: { title: string; therapyType: TherapyType; note?: string },
+  ) => void;
   /** 마이크(모의 STT) — 어르신 발화를 인식해 확인 화면으로 넘긴다. */
   captureUtterance: () => void;
   setPendingStt: (text: string) => void;
@@ -108,8 +131,12 @@ interface AppState {
   confirmUtterance: (finalText: string) => void;
   acknowledgeSafety: () => void;
   cancelSession: () => void;
-  /** 종료 → 로그·분석 저장, logId 반환. */
+  /** 종료 → 로그·분석 저장, logId 반환. lastFinished도 채운다(라이브 영속화용). */
   finishSession: () => string | null;
+
+  // ── 라이브 영속화 인계(useSessionPersistence가 소비) ──
+  lastFinished: FinishedSessionBundle | null;
+  clearLastFinished: () => void;
 }
 
 function makeTurn(speaker: ConversationTurn['speaker'], text: string, topic?: string): ConversationTurn {
@@ -202,10 +229,10 @@ export const useApp = create<AppState>((set, get) => ({
   elderConsents: (elderId) => get().consentsByElder[elderId] ?? [],
 
   active: null,
+  lastFinished: null,
+  clearLastFinished: () => set({ lastFinished: null }),
 
-  beginSession: (elderId, input) => {
-    const elder = get().getElder(elderId);
-    if (!elder) return;
+  beginSession: (elder, chronicles, input) => {
     const ts = nowIso();
     const session: Session = {
       id: uid('ses_'),
@@ -213,12 +240,11 @@ export const useApp = create<AppState>((set, get) => ({
       therapyType: input.therapyType,
       note: input.note,
       durationMinutes: 0,
-      elderId,
+      elderId: elder.id,
       createdAt: ts,
       updatedAt: ts,
     };
-    const chronicle = get().chroniclesByElder(elderId);
-    const guarded = openConversation(elder, session, chronicle);
+    const guarded = openConversation(elder, session, chronicles);
     const aiTurn = makeTurn('AI', guarded.response.question, guarded.response.topic);
     set({
       active: {
@@ -317,6 +343,17 @@ export const useApp = create<AppState>((set, get) => ({
       logs: [log, ...s.logs],
       sessions: [session, ...s.sessions],
       analyses: { ...s.analyses, [logId]: analysis },
+      lastFinished: {
+        logId,
+        elder: a.elder,
+        turns: a.turns,
+        events: a.events,
+        analysis,
+        startedAt: a.startedAt,
+        endedAt,
+        durationSeconds: Math.max(0, Math.round(durationMs / 1000)),
+        currentTopic: a.currentTopic,
+      },
       active: null,
     }));
     return logId;
