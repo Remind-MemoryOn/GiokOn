@@ -1,15 +1,16 @@
 // 어르신 등록 — 이름·출생연도(필수) + 출신지·가족·직업·취미·주요 기억.
 import { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { DetailHeader } from '../src/components/AppHeader';
 import { Field, Button } from '../src/components/ui';
-import { useApp } from '../src/store/appStore';
+import { useUpsertElder, useUpsertChronicle } from '../src/data/writes';
 
 export default function Register() {
-  const upsertElder = useApp((s) => s.upsertElder);
-  const upsertChronicle = useApp((s) => s.upsertChronicle);
+  const upsertElder = useUpsertElder();
+  const upsertChronicle = useUpsertChronicle();
+  const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState('');
   const [birth, setBirth] = useState('');
@@ -21,25 +22,32 @@ export default function Register() {
 
   const canSave = name.trim().length > 0 && /^\d{4}$/.test(birth.trim());
 
-  const onSave = () => {
-    if (!canSave) return;
-    const elder = upsertElder({
-      name: name.trim(),
-      birthYear: Number(birth),
-      hometown: hometown.trim() || undefined,
-      family: family.trim() || undefined,
-      job: job.trim() || undefined,
-      hobbies: hobbies.trim() || undefined,
-    });
-    if (memory.trim()) {
-      upsertChronicle({
-        elderId: elder.id,
-        topic: '주요 기억',
-        content: memory.trim(),
-        keywords: [],
+  const onSave = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    try {
+      const elder = await upsertElder({
+        name: name.trim(),
+        birthYear: Number(birth),
+        hometown: hometown.trim() || undefined,
+        family: family.trim() || undefined,
+        job: job.trim() || undefined,
+        hobbies: hobbies.trim() || undefined,
       });
+      if (memory.trim()) {
+        await upsertChronicle({
+          elderId: elder.id,
+          topic: '주요 기억',
+          content: memory.trim(),
+          keywords: [],
+        });
+      }
+      router.replace(`/elder/${elder.id}`);
+    } catch (e) {
+      Alert.alert('저장 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
+    } finally {
+      setSaving(false);
     }
-    router.replace(`/elder/${elder.id}`);
   };
 
   return (
@@ -71,7 +79,7 @@ export default function Register() {
           multiline
         />
         <View className="mt-2">
-          <Button label="저장하기" onPress={onSave} disabled={!canSave} />
+          <Button label="저장하기" onPress={onSave} disabled={!canSave || saving} />
         </View>
       </ScrollView>
     </SafeAreaView>

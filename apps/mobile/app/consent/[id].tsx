@@ -2,7 +2,7 @@
 // @giokon/core 동의 카탈로그를 단일 기준으로 사용한다(민감정보·국외이전·AI 고지).
 // 대리동의(보호자/성년후견)·의사능력은 웹에서 상세 처리하며, 앱은 세션 게이팅을 담당한다.
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,14 +15,15 @@ import {
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Button } from '../../src/components/ui';
 import { NonMedicalFootnote } from '../../src/components/banners';
-import { useApp } from '../../src/store/appStore';
 import { useElder } from '../../src/data/reads';
+import { useGrantConsents } from '../../src/data/writes';
 import { C } from '../../src/theme';
 
 export default function ConsentGate() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id);
-  const grant = useApp((s) => s.grantElderConsents);
+  const grant = useGrantConsents();
+  const [saving, setSaving] = useState(false);
   const required = requiredElderConsents();
   const [checked, setChecked] = useState<Record<ConsentType, boolean>>(
     () => Object.fromEntries(required.map((t) => [t, false])) as Record<ConsentType, boolean>,
@@ -41,10 +42,17 @@ export default function ConsentGate() {
   }
 
   const toggle = (t: ConsentType) => setChecked((c) => ({ ...c, [t]: !c[t] }));
-  const onAgree = () => {
-    if (!allChecked) return;
-    grant(id, required);
-    router.replace(`/session/start?id=${id}`);
+  const onAgree = async () => {
+    if (!allChecked || saving) return;
+    setSaving(true);
+    try {
+      await grant(id, required);
+      router.replace(`/session/start?id=${id}`);
+    } catch (e) {
+      Alert.alert('동의 저장 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -95,7 +103,7 @@ export default function ConsentGate() {
         <NonMedicalFootnote />
 
         <View className="mt-6">
-          <Button label="동의하고 시작하기" onPress={onAgree} disabled={!allChecked} />
+          <Button label="동의하고 시작하기" onPress={onAgree} disabled={!allChecked || saving} />
           <View className="mt-3">
             <Button label="취소" variant="ghost" onPress={() => router.back()} />
           </View>

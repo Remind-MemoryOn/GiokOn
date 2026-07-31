@@ -1,20 +1,21 @@
 // 연대기(어르신 프로필 기록) 수정 — 프로필 필드 + 주요 기억.
 // 첫 AI 질문·주제 추천이 이 연대기를 근거로 개인화된다(core).
 import { useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Field, Button, Card, SectionTitle } from '../../src/components/ui';
-import { useApp } from '../../src/store/appStore';
 import { useElder, useChronicles } from '../../src/data/reads';
+import { useUpsertElder, useUpsertChronicle } from '../../src/data/writes';
 
 export default function ChronicleEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id);
   const chronicles = useChronicles(id);
-  const upsertElder = useApp((s) => s.upsertElder);
-  const upsertChronicle = useApp((s) => s.upsertChronicle);
+  const upsertElder = useUpsertElder();
+  const upsertChronicle = useUpsertChronicle();
+  const [saving, setSaving] = useState(false);
 
   const [hometown, setHometown] = useState(elder?.hometown ?? '');
   const [family, setFamily] = useState(elder?.family ?? '');
@@ -33,21 +34,29 @@ export default function ChronicleEdit() {
     );
   }
 
-  const onSave = () => {
-    upsertElder({
-      id: elder.id,
-      name: elder.name,
-      birthYear: elder.birthYear,
-      hometown: hometown.trim() || undefined,
-      family: family.trim() || undefined,
-      job: job.trim() || undefined,
-      hobbies: hobbies.trim() || undefined,
-    });
-    if (memory.trim()) {
-      upsertChronicle({ elderId: elder.id, topic: '주요 기억', content: memory.trim(), keywords: [] });
-      setMemory('');
+  const onSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await upsertElder({
+        id: elder.id,
+        name: elder.name,
+        birthYear: elder.birthYear,
+        hometown: hometown.trim() || undefined,
+        family: family.trim() || undefined,
+        job: job.trim() || undefined,
+        hobbies: hobbies.trim() || undefined,
+      });
+      if (memory.trim()) {
+        await upsertChronicle({ elderId: elder.id, topic: '주요 기억', content: memory.trim(), keywords: [] });
+        setMemory('');
+      }
+      router.back();
+    } catch (e) {
+      Alert.alert('저장 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
+    } finally {
+      setSaving(false);
     }
-    router.back();
   };
 
   return (
@@ -78,7 +87,7 @@ export default function ChronicleEdit() {
           multiline
         />
         <View className="mt-2">
-          <Button label="저장하기" onPress={onSave} />
+          <Button label="저장하기" onPress={onSave} disabled={saving} />
         </View>
       </ScrollView>
     </SafeAreaView>
