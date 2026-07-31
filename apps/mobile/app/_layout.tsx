@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { initSupabase, queryClient } from '../src/lib/supabase';
+import { AuthProvider } from '../src/auth/AuthProvider';
 
 // 데이터 레이어 초기화(미설정 시 목업). 웹 main.tsx와 동일 패턴.
 initSupabase();
@@ -14,14 +15,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: '#ffffff' },
-              animation: 'fade',
-            }}
-          />
+          <AuthProvider>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: '#ffffff' },
+                animation: 'fade',
+              }}
+            />
+          </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
