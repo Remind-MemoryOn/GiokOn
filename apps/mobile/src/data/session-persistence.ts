@@ -69,7 +69,7 @@ async function persistCompletedSession(
         session_id: sessionId,
         profile_id: b.elder.id,
         user_id: userId,
-        turn_index: i,
+        turn_index: i + 1, // DB 제약: turn_index >= 1 (1-기반)
         role: t.speaker === 'AI' ? ('ai' as const) : ('user' as const),
         content: t.text,
         topic: t.topic ?? null,
