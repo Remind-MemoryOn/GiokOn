@@ -15,9 +15,12 @@
 import {
   useChronicles as useChroniclesData,
   useConsents as useConsentsData,
+  useOrgSessionAnalyses as useOrgSessionAnalysesData,
   useProfile as useProfileData,
   useProfiles as useProfilesData,
+  useRecentSessions as useRecentSessionsData,
   useSession as useSessionData,
+  useSessionAnalyses as useSessionAnalysesData,
   useSessionAnalysisBySession as useSessionAnalysisData,
   useSessionLogs as useSessionLogsData,
   useSessions as useSessionsData,
@@ -107,4 +110,41 @@ export function useElderConsents(elderId: string | undefined): ConsentType[] {
   if (!CFG) return mock;
   const active = (live.data ?? []).filter((c) => c.granted && !c.revoked_at);
   return [...new Set(active.map((c) => c.consent_type as ConsentType))];
+}
+
+// ── 관찰지표 집계용 데이터(T1) — 순수 집계 함수(@giokon/core)에 주입할 배열 ──────────
+
+/** 어르신 세션 분석 목록. */
+export function useElderAnalyses(elderId: string | undefined): SessionAnalysis[] {
+  const mock = useApp((s) =>
+    elderId
+      ? s
+          .logsByElder(elderId)
+          .map((l) => s.getAnalysis(l.id))
+          .filter((a): a is SessionAnalysis => Boolean(a))
+      : [],
+  );
+  const live = useSessionAnalysesData(CFG ? elderId : undefined);
+  if (!CFG) return mock;
+  return (live.data ?? [])
+    .map(parseSessionAnalysis)
+    .filter((a): a is SessionAnalysis => Boolean(a));
+}
+
+/** 담당 전체 세션(전체 분석·관찰지표 집계용). */
+export function useAllSessions(): Session[] {
+  const mock = useApp((s) => s.sessions);
+  const live = useRecentSessionsData({ enabled: CFG, limit: 500 });
+  if (!CFG) return mock;
+  return (live.data ?? []).map(toSession);
+}
+
+/** 담당 전체 세션 분석(전체 관찰지표 집계용). */
+export function useAllAnalyses(): SessionAnalysis[] {
+  const mock = useApp((s) => Object.values(s.analyses));
+  const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
+  if (!CFG) return mock;
+  return (live.data ?? [])
+    .map(parseSessionAnalysis)
+    .filter((a): a is SessionAnalysis => Boolean(a));
 }

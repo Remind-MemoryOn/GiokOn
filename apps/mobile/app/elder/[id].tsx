@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { canStartElderSession, initial } from '@giokon/core';
+import { canStartElderSession, initial, observationSummary } from '@giokon/core';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Button, Card, InfoRow, SectionTitle, StatTile, TopicBar } from '../../src/components/ui';
 import {
@@ -14,8 +14,8 @@ import {
   useElderLogs,
   useElderConsents,
 } from '../../src/data/reads';
+import { useElderObservations } from '../../src/data/observations';
 import { ageOf, ELDER_GENDER } from '../../src/lib/mockData';
-import { elderParticipation, elderTopicShares, elderObservationSummary } from '../../src/lib/analytics';
 import { C } from '../../src/theme';
 
 type Tab = 'profile' | 'sessions' | 'analysis';
@@ -153,12 +153,12 @@ export default function ElderDetail() {
 }
 
 function AnalysisTab({ elderId }: { elderId: string }) {
-  // 종합 분석 탭의 관찰지표(elderParticipation/topics/summary)는 analytics.ts가 목업
-  // 스토어에 결합돼 있어 이번 범위 밖(후속) — 어르신 조회만 라이브로 정합.
+  // 관찰지표는 @giokon/core 순수 집계(어댑터가 live/mock 데이터 주입).
   const elder = useElder(elderId);
-  const part = elderParticipation(elderId);
-  const topics = elderTopicShares(elderId);
+  const obs = useElderObservations(elderId);
   if (!elder) return null;
+  const part = obs.participation;
+  const topics = obs.topics;
 
   return (
     <View>
@@ -181,7 +181,7 @@ function AnalysisTab({ elderId }: { elderId: string }) {
           <Ionicons name="sparkles-outline" size={18} color={C.accent} />
           <Text className="text-[15px] font-semibold text-ink ml-2">AI 종합 의견</Text>
         </View>
-        <Text className="text-[15px] text-ink leading-[23px]">{elderObservationSummary(elder)}</Text>
+        <Text className="text-[15px] text-ink leading-[23px]">{observationSummary(elder.name, topics)}</Text>
       </Card>
 
       <Button

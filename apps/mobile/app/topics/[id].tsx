@@ -7,7 +7,7 @@ import { DetailHeader } from '../../src/components/AppHeader';
 import { Card, Chip, SectionTitle } from '../../src/components/ui';
 import { NonMedicalFootnote } from '../../src/components/banners';
 import { useElder } from '../../src/data/reads';
-import { elderTopicShares, overallSummary } from '../../src/lib/analytics';
+import { useElderObservations, useOverallObservations } from '../../src/data/observations';
 
 // 주제별 대표 키워드(관찰 근거). 실데이터에선 대화 로그에서 추출된다.
 const TOPIC_KEYWORDS: Record<string, string[]> = {
@@ -22,8 +22,10 @@ const TOPIC_KEYWORDS: Record<string, string[]> = {
 export default function Topics() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id === 'all' ? undefined : id);
+  const elderObs = useElderObservations(id === 'all' ? undefined : id);
+  const overall = useOverallObservations();
 
-  const topics = elder ? elderTopicShares(elder.id) : overallSummary().topTopics;
+  const topics = elder ? elderObs.topics : overall.topTopics;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DetailHeader } from '../src/components/AppHeader';
 import { Button, Card, SectionTitle, TopicBar } from '../src/components/ui';
 import { NonMedicalFootnote } from '../src/components/banners';
-import { overallSummary } from '../src/lib/analytics';
+import { useOverallObservations } from '../src/data/observations';
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -20,7 +20,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 export default function Analytics() {
-  const o = overallSummary();
+  const o = useOverallObservations();
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>

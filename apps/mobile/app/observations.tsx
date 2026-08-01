@@ -8,13 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DetailHeader } from '../src/components/AppHeader';
 import { Card, SectionTitle, TopicBar } from '../src/components/ui';
 import { NonMedicalFootnote } from '../src/components/banners';
+import { observationSummary } from '@giokon/core';
 import { useElder } from '../src/data/reads';
-import {
-  elderParticipation,
-  elderTopicShares,
-  elderObservationSummary,
-  overallSummary,
-} from '../src/lib/analytics';
+import { useElderObservations, useOverallObservations } from '../src/data/observations';
 
 function Indicator({ label, value, note }: { label: string; value: string; note: string }) {
   return (
@@ -33,6 +29,8 @@ export default function Observations() {
   const isElder = scope === 'elder' && !!id;
 
   const elder = useElder(id);
+  const elderObs = useElderObservations(isElder ? id : undefined);
+  const overall = useOverallObservations();
   const title = isElder ? '관찰 지표' : '전체 관찰 지표';
 
   let participationPct: number;
@@ -44,16 +42,16 @@ export default function Observations() {
   let summary: string;
 
   if (isElder && elder) {
-    const p = elderParticipation(elder.id);
+    const p = elderObs.participation;
     participationPct = Math.round(p.avgResponseRate); // 관찰된 참여/응답
     responsePct = p.avgResponseRate;
     uttLabel = p.avgUtteranceChars >= 30 ? '많음' : p.avgUtteranceChars >= 15 ? '보통' : '짧음';
-    topics = elderTopicShares(elder.id);
+    topics = elderObs.topics;
     topicCount = topics.length;
     sessionCount = p.totalSessions;
-    summary = elderObservationSummary(elder);
+    summary = observationSummary(elder.name, elderObs.topics);
   } else {
-    const o = overallSummary();
+    const o = overall;
     responsePct = o.avgResponseRate;
     participationPct = o.avgResponseRate;
     uttLabel = '보통';
