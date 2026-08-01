@@ -15,6 +15,23 @@ import { useApp, type FinishedSessionBundle } from '../store/appStore';
 import { useAuth } from '../auth/AuthProvider';
 
 /**
+ * 네트워크 일시 오류에 견디는 소규모 재시도(지수 백오프). 첫 쓰기처럼 **재시도해도
+ * 중복 위험이 없는** 작업에만 쓴다(중복 insert 위험이 있는 단계엔 쓰지 않는다).
+ */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i));
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * 완료 세션 묶음을 DB에 저장하고 생성된 세션 id를 반환한다(실패 시 throw).
  * org_id는 INSERT 트리거가 스탬프하므로 지정하지 않는다. RLS(본인+기관·배정)가 인가.
  */
@@ -24,22 +41,25 @@ async function persistCompletedSession(
 ): Promise<string> {
   const client = getGiokonClient();
 
-  // 1) 세션 메타(종료 상태).
-  const { data: session, error: sErr } = await client
-    .from('sessions')
-    .insert({
-      profile_id: b.elder.id,
-      user_id: userId,
-      status: 'ended',
-      turn_count: b.turns.length,
-      duration_seconds: b.durationSeconds,
-      current_topic: b.currentTopic,
-      started_at: b.startedAt,
-      ended_at: b.endedAt,
-    })
-    .select()
-    .single();
-  if (sErr) throw new Error(sErr.message);
+  // 1) 세션 메타(종료 상태). 첫 쓰기라 실패 시 재시도해도 중복 위험이 없다.
+  const session = await withRetry(async () => {
+    const { data, error } = await client
+      .from('sessions')
+      .insert({
+        profile_id: b.elder.id,
+        user_id: userId,
+        status: 'ended',
+        turn_count: b.turns.length,
+        duration_seconds: b.durationSeconds,
+        current_topic: b.currentTopic,
+        started_at: b.startedAt,
+        ended_at: b.endedAt,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  });
   const sessionId = session.id;
 
   // 2) 대화 전문(턴 순서).
