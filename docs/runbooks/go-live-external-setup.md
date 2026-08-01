@@ -30,7 +30,7 @@
 세부는 [`seoul-region-migration.md`](./seoul-region-migration.md). **리전은 반드시
 `Northeast Asia (Seoul) = ap-northeast-2`**(데이터 국내보관).
 
-### 1-1. 마이그레이션 (번호 순서 엄수 — 총 20개)
+### 1-1. 마이그레이션 (번호 순서 엄수 — 총 21개)
 > 실 Supabase에는 `auth.users`·`auth.uid()`·`authenticated`·`anon` 롤이 이미 존재하므로
 > **로컬 테스트 심(`supabase/tests/_supabase_shims.sql`)은 적용하지 않는다.**
 
@@ -63,8 +63,9 @@ supabase db push          # supabase/migrations/ 전체를 순서대로 적용
 | 18 | `20260722130000_elder_code_generation_hardening.sql` | 코드 생성 CSPRNG·혼동문자 제거 |
 | 19 | `20260722140000_email_auth_support.sql` | 이메일 인증 보조(find_login_email·전화 캡처) |
 | 20 | `20260722150000_onboarding_caregiver_org_name.sql` | 온보딩 기관명 단순화(요양보호사 새 기관 생성) |
+| 21 | `20260801000000_realtime_safety_events.sql` | Realtime publication에 safety_events 추가(위기 알림 실시간) |
 
-- [ ] 20개 전부 오류 없이 적용됐는지 확인. (`13`은 Storage 버킷 정책 포함 → §6과 연계.)
+- [ ] 21개 전부 오류 없이 적용됐는지 확인. (`13`은 Storage 버킷 정책 포함 → §6과 연계.)
 
 ---
 
