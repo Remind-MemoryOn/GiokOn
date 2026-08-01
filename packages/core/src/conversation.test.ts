@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { computeSessionSafety, openConversation, respondToUserTurn } from './conversation'
+import {
+  computeSessionSafety,
+  openConversation,
+  resolveSessionRecommendation,
+  respondToUserTurn,
+  SESSION_TURN_LIMIT,
+} from './conversation'
 import { assessUtterance } from './safety'
 import { DEFAULT_APPEARANCE } from './types'
 import type { ConversationTurn, ElderProfile, Session } from './types'
@@ -134,5 +140,23 @@ describe('openConversation — 오프너', () => {
     expect(r.event).toBeNull()
     expect(r.session.recommendation).toBe('continue')
     expect(r.response.question).toContain('전주')
+  })
+})
+
+describe('resolveSessionRecommendation — 자동 종료 정책', () => {
+  it('안전 권고가 있으면 무조건 우선한다(턴 수 무관)', () => {
+    expect(resolveSessionRecommendation('end_session', 0)).toBe('end_session')
+    expect(resolveSessionRecommendation('comfort', 99)).toBe('comfort')
+    expect(resolveSessionRecommendation('suggest_break', 99)).toBe('suggest_break')
+  })
+
+  it('안전 권고가 없으면 설계 세션 길이 도달 시 종료를 권고한다', () => {
+    expect(resolveSessionRecommendation('continue', SESSION_TURN_LIMIT)).toBe('end_session')
+    expect(resolveSessionRecommendation('continue', SESSION_TURN_LIMIT + 3)).toBe('end_session')
+  })
+
+  it('안전 권고가 없고 세션 길이 미달이면 계속 진행', () => {
+    expect(resolveSessionRecommendation('continue', 0)).toBe('continue')
+    expect(resolveSessionRecommendation('continue', SESSION_TURN_LIMIT - 1)).toBe('continue')
   })
 })

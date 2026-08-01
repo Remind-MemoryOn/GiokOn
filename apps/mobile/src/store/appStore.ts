@@ -12,6 +12,7 @@ import { create } from 'zustand';
 import {
   analyzeSession,
   openConversation,
+  resolveSessionRecommendation,
   respondToUserTurn,
   nowIso,
   uid,
@@ -79,12 +80,6 @@ const SAFE_INITIAL: RuntimeSafety = {
   recommendation: 'continue',
   acknowledged: false,
 };
-
-/**
- * 설계 기본 세션 길이 — 어르신 응답이 이 수에 도달하면 대화 마무리를 권고한다(자동 종료
- * 1차 수단). 안전(위기·중단 요청 등) 권고가 있으면 그쪽이 우선한다.
- */
-const AUTO_END_ELDER_TURNS = 10;
 
 interface AppState {
   // ── 인증(요양보호사) — 시연용 목업 ──
@@ -292,14 +287,9 @@ export const useApp = create<AppState>((set, get) => ({
     const history = [...a.turns, elderTurn];
     const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
     const aiTurn = makeTurn('AI', guarded.response.question, guarded.response.topic);
-    // 자동 종료: 안전 권고가 없고 설계 세션 길이에 도달하면 마무리를 권고한다.
+    // 자동 종료: 안전 권고가 없고 설계 세션 길이에 도달하면 마무리를 권고한다(core 정책).
     const elderTurns = history.filter((t) => t.speaker === 'Elderly').length;
-    const recommendation =
-      guarded.session.recommendation !== 'continue'
-        ? guarded.session.recommendation
-        : elderTurns >= AUTO_END_ELDER_TURNS
-          ? 'end_session'
-          : 'continue';
+    const recommendation = resolveSessionRecommendation(guarded.session.recommendation, elderTurns);
     const safety: RuntimeSafety = {
       escalate: guarded.escalate,
       caregiverAlert: guarded.caregiverAlert,

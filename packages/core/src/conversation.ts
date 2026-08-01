@@ -88,6 +88,21 @@ export function computeSessionSafety(
   return { crisisCount, distressStreak, refusalStreak, silenceStreak, recommendation }
 }
 
+/** 설계 기본 세션 길이 — 어르신 응답이 이 수에 도달하면 종료를 권고한다(자동 종료 1차 수단). */
+export const SESSION_TURN_LIMIT = 10
+
+/**
+ * 최종 세션 권고(순수) — 안전 권고(위기·중단·반복 거부 등)가 있으면 그쪽이 우선하고,
+ * 없을 때만 설계 세션 길이 도달 시 종료를 권고한다. 요양보호사 부재 시 1차 종료 수단.
+ */
+export function resolveSessionRecommendation(
+  safetyRecommendation: SessionRecommendation,
+  elderTurns: number,
+): SessionRecommendation {
+  if (safetyRecommendation !== 'continue') return safetyRecommendation
+  return elderTurns >= SESSION_TURN_LIMIT ? 'end_session' : 'continue'
+}
+
 // ─────────────────────────────────────────────────────────────
 // 에스컬레이션 이벤트 초안 — safety_events 영속화용
 // ─────────────────────────────────────────────────────────────
