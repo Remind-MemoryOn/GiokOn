@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useGiokonRealtime } from '@giokon/data';
 import { initSupabase, isSupabaseConfigured, queryClient } from '../src/lib/supabase';
 import { AuthProvider } from '../src/auth/AuthProvider';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 // 데이터 레이어 초기화(미설정 시 목업). 웹 main.tsx와 동일 패턴.
 initSupabase();
@@ -28,13 +29,15 @@ export default function RootLayout() {
           <AuthProvider>
             <RealtimeBridge />
             <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: '#ffffff' },
-                animation: 'fade',
-              }}
-            />
+            <ErrorBoundary>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: '#ffffff' },
+                  animation: 'fade',
+                }}
+              />
+            </ErrorBoundary>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
