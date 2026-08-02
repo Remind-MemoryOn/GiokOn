@@ -1,3 +1,8 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm 10부터 버전 오버라이드는 package.json 의 "pnpm.overrides" 가 아니라 여기에 둔다.
+# (구 위치는 무시되며 [WARN] "pnpm.overrides" ignored 경고가 난다.)
+overrides:
+  react-native-reanimated: 3.17.4
