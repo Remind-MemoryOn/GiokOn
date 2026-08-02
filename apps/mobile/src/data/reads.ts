@@ -38,12 +38,18 @@ import type {
   Session,
   SessionAnalysis,
 } from '@giokon/core';
+import { useShallow } from 'zustand/react/shallow';
 import { isSupabaseConfigured as CFG } from '../lib/supabase';
 import { useApp } from '../store/appStore';
 
+// Zustand v5는 useSyncExternalStore를 쓰므로, 셀렉터가 매 렌더 "새 배열/객체"를 반환하면
+// 스냅샷이 매번 바뀐 것으로 간주돼 무한 리렌더("getSnapshot should be cached" 경고 +
+// "Maximum update depth")가 난다. 파생 배열을 만드는 셀렉터는 useShallow로 감싸 얕은 비교
+// (원소 참조 동일 시 동일 취급)로 안정화한다. .find()·함수·원시 state 슬라이스는 안정 참조라 제외.
+
 /** 담당 어르신 목록(최신순). */
 export function useElders(): ElderProfile[] {
-  const mock = useApp((s) => s.eldersSorted());
+  const mock = useApp(useShallow((s) => s.eldersSorted()));
   const live = useProfilesData({ enabled: CFG });
   if (!CFG) return mock;
   return (live.data ?? [])
@@ -61,7 +67,7 @@ export function useElder(id: string | undefined): ElderProfile | undefined {
 
 /** 어르신 연대기(최신순). */
 export function useChronicles(elderId: string | undefined): ChronicleEntry[] {
-  const mock = useApp((s) => (elderId ? s.chroniclesByElder(elderId) : []));
+  const mock = useApp(useShallow((s) => (elderId ? s.chroniclesByElder(elderId) : [])));
   const live = useChroniclesData(CFG ? elderId : undefined);
   if (!CFG) return mock;
   return (live.data ?? []).map(toChronicleEntry);
@@ -69,7 +75,7 @@ export function useChronicles(elderId: string | undefined): ChronicleEntry[] {
 
 /** 어르신 세션 이력(최신순, 목록 카드용). */
 export function useElderSessions(elderId: string | undefined): Session[] {
-  const mock = useApp((s) => (elderId ? s.sessionsByElder(elderId) : []));
+  const mock = useApp(useShallow((s) => (elderId ? s.sessionsByElder(elderId) : [])));
   const live = useSessionsData(CFG ? elderId : undefined);
   if (!CFG) return mock;
   return (live.data ?? []).map(toSession);
@@ -80,7 +86,7 @@ export function useElderSessions(elderId: string | undefined): Session[] {
  * (목록에서는 전문 턴이 필요 없어 turns=[]로 매핑 — 상세는 useLog가 전문을 읽는다.)
  */
 export function useElderLogs(elderId: string | undefined): ConversationLog[] {
-  const mock = useApp((s) => (elderId ? s.logsByElder(elderId) : []));
+  const mock = useApp(useShallow((s) => (elderId ? s.logsByElder(elderId) : [])));
   const live = useSessionsData(CFG ? elderId : undefined);
   if (!CFG) return mock;
   return (live.data ?? []).map((row) => toConversationLog(row, []));
@@ -105,7 +111,7 @@ export function useAnalysis(logId: string | undefined): SessionAnalysis | undefi
 
 /** 어르신 유효 동의 타입(세션 게이팅용) — granted && 미철회. */
 export function useElderConsents(elderId: string | undefined): ConsentType[] {
-  const mock = useApp((s) => (elderId ? s.elderConsents(elderId) : []));
+  const mock = useApp(useShallow((s) => (elderId ? s.elderConsents(elderId) : [])));
   const live = useConsentsData(CFG ? elderId : undefined);
   if (!CFG) return mock;
   const active = (live.data ?? []).filter((c) => c.granted && !c.revoked_at);
@@ -116,13 +122,15 @@ export function useElderConsents(elderId: string | undefined): ConsentType[] {
 
 /** 어르신 세션 분석 목록. */
 export function useElderAnalyses(elderId: string | undefined): SessionAnalysis[] {
-  const mock = useApp((s) =>
-    elderId
-      ? s
-          .logsByElder(elderId)
-          .map((l) => s.getAnalysis(l.id))
-          .filter((a): a is SessionAnalysis => Boolean(a))
-      : [],
+  const mock = useApp(
+    useShallow((s) =>
+      elderId
+        ? s
+            .logsByElder(elderId)
+            .map((l) => s.getAnalysis(l.id))
+            .filter((a): a is SessionAnalysis => Boolean(a))
+        : [],
+    ),
   );
   const live = useSessionAnalysesData(CFG ? elderId : undefined);
   if (!CFG) return mock;
@@ -141,7 +149,7 @@ export function useAllSessions(): Session[] {
 
 /** 담당 전체 세션 분석(전체 관찰지표 집계용). */
 export function useAllAnalyses(): SessionAnalysis[] {
-  const mock = useApp((s) => Object.values(s.analyses));
+  const mock = useApp(useShallow((s) => Object.values(s.analyses)));
   const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
   if (!CFG) return mock;
   return (live.data ?? [])
