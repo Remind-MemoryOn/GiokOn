@@ -6,12 +6,12 @@
 //
 // ⚠️ 값은 모두 실데이터 바인딩(실서비스 원칙):
 //   - "최근 대화"는 실제 최근 세션 시각에서 계산(예시 날짜 금지, 없으면 '없음').
-//   - 성별은 v1 DB 스키마에 없다(폼에도 입력 필드가 없다) → 값이 없으면 표기 생략.
+//   - 성별은 profiles.gender(선택) → 미입력이면 표기 생략(임의값 표시 금지).
 //   - 사진은 profiles.photo_path(private Storage) → signed URL. 없으면 이니셜 아바타.
 import { Image, Pressable, Text, View } from 'react-native';
 import { initial, type ElderProfile } from '@giokon/core';
-import { ageOf, ELDER_GENDER } from '../lib/mockData';
-import { lastTalkLabel } from '../lib/format';
+import { ageOf } from '../lib/mockData';
+import { genderLabel, lastTalkLabel } from '../lib/format';
 import { useElderPhotoUrl } from '../data/elder-photo';
 import chevron from '../../assets/brand/btn-chevron.png';
 
@@ -25,7 +25,7 @@ export function PatientCard({
   lastTalkAt?: string;
   onPress: () => void;
 }) {
-  const gender = ELDER_GENDER[elder.id]; // 목업 데모에만 존재 — 라이브에선 undefined
+  const gender = genderLabel(elder.gender);
   const meta = gender ? `${ageOf(elder.birthYear)}세   l   ${gender}` : `${ageOf(elder.birthYear)}세`;
   const photoUrl = useElderPhotoUrl(elder.photoPath);
 

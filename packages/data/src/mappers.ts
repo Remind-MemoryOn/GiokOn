@@ -13,6 +13,7 @@ import {
   type ChronicleSource,
   type ConversationLog,
   type ConversationTurn,
+  type ElderGender,
   type ElderProfile,
   type Guardian,
   type Session,
@@ -42,6 +43,7 @@ export function toElderProfile(row: ProfileRow): ElderProfile {
     hobbies: row.hobbies ?? undefined,
     avatarColor: pickAvatarColor(row.id),
     photoPath: row.photo_path ?? undefined,
+    gender: row.gender ?? undefined,
     guardian,
     appearance: DEFAULT_APPEARANCE,
     createdAt: row.created_at,
@@ -126,6 +128,8 @@ export interface ElderWriteInput {
   hobbies?: string
   /** Storage elder-photos 내 경로(업로드 후 반환값). 미변경 시 undefined. */
   photoPath?: string
+  /** 성별(선택). 미입력이면 저장하지 않는다. */
+  gender?: ElderGender
   guardian?: Guardian
 }
 
@@ -139,6 +143,7 @@ export function toProfileInsert(input: ElderWriteInput, userId: string): TablesI
     family: input.family ?? null,
     hobbies: input.hobbies ?? null,
     photo_path: input.photoPath ?? null,
+    gender: input.gender ?? null,
     guardian_name: input.guardian?.name ?? null,
     guardian_relation: input.guardian?.relation ?? null,
   }
@@ -156,6 +161,7 @@ export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'
     job: input.job ?? null,
     family: input.family ?? null,
     hobbies: input.hobbies ?? null,
+    gender: input.gender ?? null,
     guardian_name: input.guardian?.name ?? null,
     guardian_relation: input.guardian?.relation ?? null,
   }

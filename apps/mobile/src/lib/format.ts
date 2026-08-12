@@ -30,3 +30,13 @@ export function lastTalkLabel(iso: string | null | undefined): string {
   if (days === 1) return '어제';
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
+
+/**
+ * 성별 표기 — DB enum('female'/'male') → 화면 문구. 미입력이면 null(표기 생략).
+ * ⚠️ 값이 없을 때 임의로 채우지 않는다.
+ */
+export function genderLabel(g: 'female' | 'male' | undefined | null): string | null {
+  if (g === 'female') return '여성';
+  if (g === 'male') return '남성';
+  return null;
+}

@@ -15,8 +15,8 @@ import {
   useElderConsents,
 } from '../../src/data/reads';
 import { useElderObservations } from '../../src/data/observations';
-import { metric } from '../../src/lib/format';
-import { ageOf, ELDER_GENDER } from '../../src/lib/mockData';
+import { genderLabel, metric } from '../../src/lib/format';
+import { ageOf } from '../../src/lib/mockData';
 import { C } from '../../src/theme';
 
 type Tab = 'profile' | 'sessions' | 'analysis';
@@ -47,7 +47,7 @@ export default function ElderDetail() {
     );
   }
 
-  const gender = ELDER_GENDER[elder.id];
+  const gender = genderLabel(elder.gender);
   const startTalk = () => {
     if (canStartElderSession(consents)) router.push(`/session/start?id=${elder.id}`);
     else router.push(`/consent/${elder.id}`);

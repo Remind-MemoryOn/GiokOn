@@ -33,14 +33,7 @@ function elder(
   };
 }
 
-/** 카드에 표기할 성별(코스메틱) — ElderProfile 스키마엔 없어 별도 맵으로 둔다. */
-export const ELDER_GENDER: Record<string, '여성' | '남성'> = {
-  eld_lee: '여성',
-  eld_park: '남성',
-  eld_kim: '여성',
-  eld_choio: '여성',
-  eld_choise: '남성',
-};
+// 성별은 이제 ElderProfile.gender(DB profiles.gender)로 표현한다 — 목업 상수 제거.
 
 /** 카드에 표기할 '최근 대화' 라벨(코스메틱 시드). */
 export const ELDER_LAST_TALK: Record<string, string> = {
@@ -53,16 +46,17 @@ export const ELDER_LAST_TALK: Record<string, string> = {
 
 export const MOCK_ELDERS: ElderProfile[] = [
   elder('eld_lee', '이순자', 83, {
+    gender: 'female',
     hometown: '전라북도 전주시',
     family: '2녀, 사위 2명, 손자 3명',
     job: '식당 운영, 30년',
     hobbies: '텃밭 가꾸기',
     updatedAt: '2026-06-24T09:20:00.000Z',
   }),
-  elder('eld_park', '박만수', 79, { hometown: '경상남도 진주시', job: '농사', hobbies: '바둑' }),
-  elder('eld_kim', '김영희', 71, { hometown: '서울', family: '아들 하나', hobbies: '노래' }),
-  elder('eld_choio', '최옥순', 86, { hometown: '충청북도 청주시', hobbies: '뜨개질' }),
-  elder('eld_choise', '최성호', 73, { hometown: '강원도 강릉시', job: '어부' }),
+  elder('eld_park', '박만수', 79, { gender: 'male', hometown: '경상남도 진주시', job: '농사', hobbies: '바둑' }),
+  elder('eld_kim', '김영희', 71, { gender: 'female', hometown: '서울', family: '아들 하나', hobbies: '노래' }),
+  elder('eld_choio', '최옥순', 86, { gender: 'female', hometown: '충청북도 청주시', hobbies: '뜨개질' }),
+  elder('eld_choise', '최성호', 73, { gender: 'male', hometown: '강원도 강릉시', job: '어부' }),
 ];
 
 export const MOCK_CHRONICLES: ChronicleEntry[] = [

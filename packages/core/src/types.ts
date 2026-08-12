@@ -81,6 +81,9 @@ export const BACKGROUND_OPTIONS: AppearanceOptionMeta<BackgroundId>[] = [
   { id: 'living_room', label: '거실' },
 ];
 
+/** 어르신 성별 — DB enum(elder_gender)과 1:1. 표기 문구는 화면에서 매핑. */
+export type ElderGender = 'female' | 'male';
+
 export interface ElderProfile {
   id: string;
   name: string;
@@ -95,6 +98,8 @@ export interface ElderProfile {
    * 공개 URL 이 아니므로 표시 시 signed URL 로 변환한다. 없으면 이니셜 아바타로 대체.
    */
   photoPath?: string;
+  /** 성별(선택). 미입력 시 화면에서 표기를 생략한다(임의값 표시 금지). */
+  gender?: ElderGender;
   guardian?: Guardian;
   appearance: CharacterAppearance;
   createdAt: string;

@@ -99,6 +99,8 @@ export type Database = {
           guardian_relation: string | null
           /** Storage elder-photos 내 경로(private 버킷 — 조회는 signed URL). */
           photo_path: string | null
+          /** 어르신 성별(선택). 화면 표기는 앱에서 매핑. */
+          gender: Database['public']['Enums']['elder_gender'] | null
           created_at: string
           updated_at: string
         }
@@ -116,6 +118,7 @@ export type Database = {
           guardian_name?: string | null
           guardian_relation?: string | null
           photo_path?: string | null
+          gender?: Database['public']['Enums']['elder_gender'] | null
           created_at?: string
           updated_at?: string
         }
@@ -133,6 +136,7 @@ export type Database = {
           guardian_name?: string | null
           guardian_relation?: string | null
           photo_path?: string | null
+          gender?: Database['public']['Enums']['elder_gender'] | null
           created_at?: string
           updated_at?: string
         }
@@ -748,6 +752,7 @@ export type Database = {
       chronicle_source: 'caregiver' | 'ai'
       session_status: 'active' | 'ended'
       session_log_role: 'ai' | 'user'
+      elder_gender: 'female' | 'male'
       org_role: 'org_admin' | 'caregiver' | 'guardian'
       consent_type:
         | 'privacy_required'

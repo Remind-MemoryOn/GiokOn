@@ -8,15 +8,18 @@ import { AI_DISCLOSURE } from '@giokon/core';
 import { C } from '../theme';
 
 /** AI 이용 사전 고지(AI기본법 2026 — 투명성). 대화 화면 상단 상시 노출. */
+/**
+ * AI 이용 사전 고지 — 법·정책상 필수(AI 투명성, docs/ai-safety.md).
+ *
+ * Figma 원본에는 없는 요소이므로 **디자인을 최대한 해치지 않는 형태**로 유지한다
+ * (사용자 확정 2026-08-12): 배경·아이콘·테두리 없이 **작은 회색 한 줄 텍스트**만.
+ * 화면 톤(Pretendard·#7b7c7c)을 그대로 따르고 레이아웃 높이를 거의 차지하지 않는다.
+ */
 export function AiDisclosureBanner() {
   return (
-    <View
-      accessibilityRole="text"
-      className="flex-row items-center bg-cream-100 rounded-full px-4 py-2 self-center"
-    >
-      <Ionicons name="information-circle-outline" size={16} color={C.textSecondary} />
-      <Text className="text-[13px] text-muted ml-1.5 font-normal">{AI_DISCLOSURE}</Text>
-    </View>
+    <Text accessibilityRole="text" className="text-[11px] text-muted font-normal text-center">
+      {AI_DISCLOSURE}
+    </Text>
   );
 }
 
