@@ -46,9 +46,21 @@ describe('computeParticipation', () => {
     expect(p.avgUtteranceChars).toBeGreaterThan(0)
   })
 
-  it('분석이 없으면 표시용 기본값(응답률 92·발화 24)', () => {
+  it('근거가 없으면 숫자를 만들어내지 않고 null 을 반환한다(실서비스 원칙)', () => {
     const p = computeParticipation([], [])
-    expect(p).toEqual({ totalSessions: 0, avgMinutes: 0, avgResponseRate: 92, avgUtteranceChars: 24 })
+    expect(p).toEqual({
+      totalSessions: 0,
+      avgMinutes: null,
+      avgResponseRate: null,
+      avgUtteranceChars: null,
+    })
+  })
+
+  it('세션은 있고 분석이 없으면 시간만 계산하고 분석 지표는 null', () => {
+    const p = computeParticipation([session(10)], [])
+    expect(p.avgMinutes).toBe(10)
+    expect(p.avgResponseRate).toBeNull()
+    expect(p.avgUtteranceChars).toBeNull()
   })
 })
 
@@ -64,9 +76,8 @@ describe('computeTopicShares', () => {
     expect(shares[0].label).toBe('고향') // 연대기+분석 반응이 가장 큼
   })
 
-  it('근거가 없으면 기본 분포로 골격을 채운다', () => {
-    const shares = computeTopicShares([], [])
-    expect(shares.map((s) => s.label)).toEqual(['고향', '가족', '직업', '취미', '음식'])
+  it('근거가 없으면 예시 분포를 만들지 않고 빈 배열을 반환한다(실서비스 원칙)', () => {
+    expect(computeTopicShares([], [])).toEqual([])
   })
 })
 
@@ -76,6 +87,10 @@ describe('observationSummary', () => {
     expect(s).toContain('이순자 어르신')
     expect(s).toContain('고향·가족')
     expect(s).not.toMatch(/향상|효과|개선|\d+%/)
+  })
+
+  it('근거가 없으면 문장을 만들지 않고 null(관찰하지 않은 내용 서술 금지)', () => {
+    expect(observationSummary('이순자', [])).toBeNull()
   })
 })
 
@@ -89,9 +104,14 @@ describe('computeOverall', () => {
     expect(o.topTopics.length).toBeGreaterThan(0)
   })
 
-  it('데이터가 없으면 0과 기본 주제 분포', () => {
+  it('데이터가 없으면 집계값은 null, 주제는 빈 배열(실서비스 원칙)', () => {
     const o = computeOverall([], [], [])
-    expect(o).toMatchObject({ totalElders: 0, totalSessions: 0, avgMinutes: 0, avgResponseRate: 0 })
-    expect(o.topTopics.length).toBe(5)
+    expect(o).toMatchObject({
+      totalElders: 0,
+      totalSessions: 0,
+      avgMinutes: null,
+      avgResponseRate: null,
+    })
+    expect(o.topTopics).toEqual([])
   })
 })

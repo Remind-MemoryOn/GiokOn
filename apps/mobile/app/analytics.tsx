@@ -7,6 +7,7 @@ import { DetailHeader } from '../src/components/AppHeader';
 import { Button, Card, SectionTitle, TopicBar } from '../src/components/ui';
 import { NonMedicalFootnote } from '../src/components/banners';
 import { useOverallObservations } from '../src/data/observations';
+import { metric } from '../src/lib/format';
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -36,15 +37,17 @@ export default function Analytics() {
         <View className="flex-row flex-wrap -m-1.5 mb-5">
           <StatCard label="총 어르신 수" value={`${o.totalElders}명`} />
           <StatCard label="총 세션 수" value={`${o.totalSessions}회`} />
-          <StatCard label="평균 대화 시간" value={`${o.avgMinutes}분`} />
-          <StatCard label="평균 응답률" value={`${o.avgResponseRate}%`} />
+          <StatCard label="평균 대화 시간" value={metric(o.avgMinutes, '분')} />
+          <StatCard label="평균 응답률" value={metric(o.avgResponseRate, '%')} />
         </View>
 
         <SectionTitle>가장 많이 이야기한 주제 TOP 5</SectionTitle>
         <View className="mb-6">
-          {o.topTopics.map((t) => (
-            <TopicBar key={t.label} label={t.label} percent={t.percent} />
-          ))}
+          {o.topTopics.length === 0 ? (
+            <Text className="text-[14px] text-muted">아직 관찰된 주제가 없어요.</Text>
+          ) : (
+            o.topTopics.map((t) => <TopicBar key={t.label} label={t.label} percent={t.percent} />)
+          )}
         </View>
 
         <Button

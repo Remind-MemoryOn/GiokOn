@@ -15,6 +15,7 @@ import {
   useElderConsents,
 } from '../../src/data/reads';
 import { useElderObservations } from '../../src/data/observations';
+import { metric } from '../../src/lib/format';
 import { ageOf, ELDER_GENDER } from '../../src/lib/mockData';
 import { C } from '../../src/theme';
 
@@ -164,24 +165,29 @@ function AnalysisTab({ elderId }: { elderId: string }) {
     <View>
       <SectionTitle>종합 대화 참여도</SectionTitle>
       <Card className="flex-row bg-card mb-6">
-        <StatTile icon="time-outline" value={`${part.avgMinutes}분`} label="평균 대화 시간" />
+        <StatTile icon="time-outline" value={metric(part.avgMinutes, '분')} label="평균 대화 시간" />
         <StatTile icon="chatbubbles-outline" value={`${part.totalSessions}회`} label="총 대화 횟수" />
-        <StatTile icon="pulse-outline" value={`${part.avgResponseRate}%`} label="평균 응답률" />
+        <StatTile icon="pulse-outline" value={metric(part.avgResponseRate, '%')} label="평균 응답률" />
       </Card>
 
       <SectionTitle>종합 관심 주제 TOP 5</SectionTitle>
       <View className="mb-6">
-        {topics.map((t) => (
-          <TopicBar key={t.label} label={t.label} percent={t.percent} />
-        ))}
+        {topics.length === 0 ? (
+          <Text className="text-[14px] text-muted">아직 관찰된 주제가 없어요.</Text>
+        ) : (
+          topics.map((t) => <TopicBar key={t.label} label={t.label} percent={t.percent} />)
+        )}
       </View>
 
+      {/* 근거가 없으면 서술하지 않는다(실 AI 연동 시 이 자리에 LLM 요약) */}
       <Card className="mb-6">
         <View className="flex-row items-center mb-2">
           <Ionicons name="sparkles-outline" size={18} color={C.accent} />
           <Text className="text-[15px] font-semibold text-ink ml-2">AI 종합 의견</Text>
         </View>
-        <Text className="text-[15px] text-ink leading-[23px]">{observationSummary(elder.name, topics)}</Text>
+        <Text className="text-[15px] text-ink leading-[23px]">
+          {observationSummary(elder.name, topics) ?? '대화 기록이 쌓이면 관찰된 내용을 정리해 드려요.'}
+        </Text>
       </Card>
 
       <Button

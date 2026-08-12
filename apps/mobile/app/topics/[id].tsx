@@ -6,26 +6,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DetailHeader } from '../../src/components/AppHeader';
 import { Card, Chip, SectionTitle } from '../../src/components/ui';
 import { NonMedicalFootnote } from '../../src/components/banners';
-import { useElder } from '../../src/data/reads';
+import { useAllAnalyses, useElder, useElderAnalyses } from '../../src/data/reads';
 import { useElderObservations, useOverallObservations } from '../../src/data/observations';
 
-// 주제별 대표 키워드(관찰 근거). 실데이터에선 대화 로그에서 추출된다.
-const TOPIC_KEYWORDS: Record<string, string[]> = {
-  고향: ['고향', '어린 시절', '동네', '추억'],
-  가족: ['자녀', '손주', '남편', '명절'],
-  직업: ['시장', '상인', '일', '보람'],
-  취미: ['텃밭', '바둑', '노래'],
-  음식: ['김치', '국수', '잔치'],
-  '주요 기억': ['추억', '장터', '결혼식'],
-};
+// ⚠️ 실서비스 원칙: 키워드는 **실제 대화 분석에서 관찰된 것만** 보여준다.
+// (이전 구현은 주제별 예시 키워드를 코드에 박아 넣어 관찰하지 않은 근거를 표시했다 — 제거.)
 
 export default function Topics() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useElder(id === 'all' ? undefined : id);
-  const elderObs = useElderObservations(id === 'all' ? undefined : id);
+  const elderId = id === 'all' ? undefined : id;
+  const elder = useElder(elderId);
+  const elderObs = useElderObservations(elderId);
   const overall = useOverallObservations();
+  const elderAnalyses = useElderAnalyses(elderId);
+  const allAnalyses = useAllAnalyses();
 
   const topics = elder ? elderObs.topics : overall.topTopics;
+  // 관찰된 관심 키워드(분석 결과에서 추출된 실제 값만).
+  const analyses = elder ? elderAnalyses : allAnalyses;
+  const keywords = [...new Set(analyses.flatMap((a) => a.interestKeywords))].slice(0, 12);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -37,17 +36,27 @@ export default function Topics() {
           {elder ? `${elder.name} 어르신` : '담당 어르신 전체'} · 관찰된 주제 반응
         </Text>
 
+        {/* 관찰된 관심 키워드 — 실제 분석 결과가 있을 때만 노출 */}
+        {keywords.length > 0 ? (
+          <>
+            <SectionTitle>관찰된 관심 키워드</SectionTitle>
+            <View className="flex-row flex-wrap mb-4">
+              {keywords.map((k) => (
+                <Chip key={k} label={`#${k}`} />
+              ))}
+            </View>
+          </>
+        ) : null}
+
         <SectionTitle>주제별 상세 분석</SectionTitle>
+        {topics.length === 0 ? (
+          <Text className="text-[14px] text-muted">아직 관찰된 주제 반응이 없어요.</Text>
+        ) : null}
         {topics.map((t) => (
           <Card key={t.label} className="mb-3">
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-[17px] font-semibold text-ink">{t.label}</Text>
               <Text className="text-[15px] font-semibold text-accent">{t.percent}%</Text>
-            </View>
-            <View className="flex-row flex-wrap">
-              {(TOPIC_KEYWORDS[t.label] ?? ['추억']).map((k) => (
-                <Chip key={k} label={`#${k}`} />
-              ))}
             </View>
             <View className="flex-row mt-3">
               <View className="flex-1">

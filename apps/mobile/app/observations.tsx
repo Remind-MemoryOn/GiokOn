@@ -33,36 +33,38 @@ export default function Observations() {
   const overall = useOverallObservations();
   const title = isElder ? '관찰 지표' : '전체 관찰 지표';
 
-  let participationPct: number;
-  let responsePct: number;
-  let uttLabel: string;
-  let topicCount: number;
+  // 실서비스 원칙: 근거 없는 값은 표시하지 않는다(null → '—', 빈 목록 → 빈 상태 안내).
+  const DASH = '—';
+  let responsePct: number | null;
+  let uttChars: number | null;
   let sessionCount: number;
   let topics: { label: string; percent: number }[];
-  let summary: string;
+  let summary: string | null;
 
   if (isElder && elder) {
     const p = elderObs.participation;
-    participationPct = Math.round(p.avgResponseRate); // 관찰된 참여/응답
     responsePct = p.avgResponseRate;
-    uttLabel = p.avgUtteranceChars >= 30 ? '많음' : p.avgUtteranceChars >= 15 ? '보통' : '짧음';
+    uttChars = p.avgUtteranceChars;
     topics = elderObs.topics;
-    topicCount = topics.length;
     sessionCount = p.totalSessions;
     summary = observationSummary(elder.name, elderObs.topics);
   } else {
     const o = overall;
     responsePct = o.avgResponseRate;
-    participationPct = o.avgResponseRate;
-    uttLabel = '보통';
+    uttChars = null; // 전체 평균 발화량은 별도 근거가 없으면 표시하지 않는다
     topics = o.topTopics;
-    topicCount = o.topTopics.length;
     sessionCount = o.totalSessions;
-    summary = `담당 어르신들의 대화 참여가 꾸준히 이어지고 있어요. 관심 주제는 ${o.topTopics
-      .slice(0, 2)
-      .map((t) => t.label)
-      .join('·')} 순으로 관찰됩니다.`;
+    summary =
+      o.topTopics.length > 0
+        ? `담당 어르신들의 대화 참여가 이어지고 있어요. 관심 주제는 ${o.topTopics
+            .slice(0, 2)
+            .map((t) => t.label)
+            .join('·')} 순으로 관찰됩니다.`
+        : null;
   }
+
+  const pctText = responsePct === null ? DASH : `${responsePct}%`;
+  const uttLabel = uttChars === null ? DASH : uttChars >= 30 ? '많음' : uttChars >= 15 ? '보통' : '짧음';
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -76,18 +78,24 @@ export default function Observations() {
 
         {/* 관찰 지표 그리드 */}
         <View className="flex-row flex-wrap -m-1.5 mb-4">
-          <Indicator label="대화 참여도" value={`${participationPct}%`} note="응답한 비율(관찰)" />
-          <Indicator label="응답률" value={`${responsePct}%`} note="질문 대비 응답(관찰)" />
+          <Indicator label="대화 참여도" value={pctText} note="응답한 비율(관찰)" />
+          <Indicator label="응답률" value={pctText} note="질문 대비 응답(관찰)" />
           <Indicator label="발화량" value={uttLabel} note="평균 발화 길이(관찰)" />
-          <Indicator label="관심 주제 수" value={`${topicCount}개`} note="반응한 주제(관찰)" />
+          <Indicator
+            label="관심 주제 수"
+            value={topics.length > 0 ? `${topics.length}개` : DASH}
+            note="반응한 주제(관찰)"
+          />
         </View>
 
         {/* 주제별 반응 */}
         <SectionTitle>주제별 반응(관찰)</SectionTitle>
         <View className="mb-6">
-          {topics.map((t) => (
-            <TopicBar key={t.label} label={t.label} percent={t.percent} />
-          ))}
+          {topics.length === 0 ? (
+            <Text className="text-[14px] text-muted">아직 관찰된 주제 반응이 없어요.</Text>
+          ) : (
+            topics.map((t) => <TopicBar key={t.label} label={t.label} percent={t.percent} />)
+          )}
         </View>
 
         {/* 활동량 */}
@@ -99,10 +107,12 @@ export default function Observations() {
           </Text>
         </Card>
 
-        {/* 관찰 의견 */}
+        {/* 관찰 의견 — 근거가 없으면 서술하지 않는다(실 AI 연동 시 이 자리에 LLM 요약) */}
         <Card>
           <Text className="text-[15px] font-semibold text-ink mb-2">AI 종합 의견</Text>
-          <Text className="text-[15px] text-ink leading-[23px]">{summary}</Text>
+          <Text className="text-[15px] text-ink leading-[23px]">
+            {summary ?? '대화 기록이 쌓이면 관찰된 내용을 정리해 드려요.'}
+          </Text>
         </Card>
 
         <NonMedicalFootnote />
