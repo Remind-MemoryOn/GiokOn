@@ -1,18 +1,26 @@
-// 브랜드·대화 시각 요소 — Figma 디자인 재현(로봇 마스코트·오디오 파형·마이크).
+// 브랜드·대화 시각 요소.
+//
+// ⚠️ 원칙: 로고·아이콘·일러스트는 **Figma 에서 내보낸 에셋**으로 렌더한다. 코드로 직접
+// 그리면(도형 조립·글자 대체) 원본과 확연히 달라진다. 아래 남아 있는 코드 드로잉
+// (RobotMascot·Waveform·MicButton·ToneBar)은 대화 화면 재적용 시 에셋으로 교체 예정.
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Image, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { C } from '../theme';
+import wordmarkAsset from '../../assets/brand/wordmark.png';
 
-// ── 워드마크 GIEOK-ON ─────────────────────────────────────────
+// ── 워드마크 GIEOK-ON (Figma 에셋) ─────────────────────────────
+// 원본 비율 208×31.8 ≈ 6.54:1 — height 를 기준으로 폭을 맞춘다.
+const WORDMARK_RATIO = 208 / 31.8;
+
 export function Wordmark({ size = 22 }: { size?: number }) {
   return (
-    <Text
-      style={{ fontSize: size, letterSpacing: 1, color: C.accent, fontWeight: '800' }}
+    <Image
+      source={wordmarkAsset}
+      style={{ height: size, width: size * WORDMARK_RATIO }}
+      resizeMode="contain"
       accessibilityLabel="기억온"
-    >
-      GIEOK-ON
-    </Text>
+    />
   );
 }
 
@@ -154,7 +162,7 @@ export function ToneBar({
         {segments.map((s, i) => (
           <View key={i} className="flex-row items-center">
             <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: s.color }} />
-            <Text className="text-[13px] text-muted ml-1.5">
+            <Text className="text-[13px] text-muted ml-1.5 font-normal">
               {s.label} {s.percent}%
             </Text>
           </View>

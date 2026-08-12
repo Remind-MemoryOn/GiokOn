@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text className="text-[22px] font-semibold text-ink text-center leading-[32px]">
             화면을 불러오는 중{'\n'}문제가 생겼어요.
           </Text>
-          <Text className="text-[15px] text-muted text-center mt-3 leading-[22px]">
+          <Text className="text-[15px] text-muted text-center mt-3 leading-[22px] font-normal">
             잠시 후 다시 시도해 주세요. 문제가 계속되면 앱을 다시 실행해 주세요.
           </Text>
           <Pressable

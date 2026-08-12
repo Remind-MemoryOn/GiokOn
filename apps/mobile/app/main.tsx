@@ -105,14 +105,14 @@ export default function Main() {
             onChangeText={setQ}
             placeholder="이름을 검색하세요"
             placeholderTextColor="#7b7c7c"
-            className="flex-1 text-[18px] text-ink"
+            className="flex-1 text-[18px] text-ink font-normal"
             style={{ marginLeft: 6, paddingVertical: 0 }}
           />
         </View>
 
         {/* 어르신 목록 */}
         {filtered.length === 0 ? (
-          <Text className="text-[16px] text-muted text-center mt-16">
+          <Text className="text-[16px] text-muted text-center mt-16 font-normal">
             {elders.length === 0 ? '등록된 어르신이 없어요.' : '검색 결과가 없어요.'}
           </Text>
         ) : (

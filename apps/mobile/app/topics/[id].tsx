@@ -32,7 +32,7 @@ export default function Topics() {
         <DetailHeader title="주제별 분석" />
       </View>
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Text className="text-[13px] text-muted mt-1 mb-4">
+        <Text className="text-[13px] text-muted mt-1 mb-4 font-normal">
           {elder ? `${elder.name} 어르신` : '담당 어르신 전체'} · 관찰된 주제 반응
         </Text>
 
@@ -50,7 +50,7 @@ export default function Topics() {
 
         <SectionTitle>주제별 상세 분석</SectionTitle>
         {topics.length === 0 ? (
-          <Text className="text-[14px] text-muted">아직 관찰된 주제 반응이 없어요.</Text>
+          <Text className="text-[14px] text-muted font-normal">아직 관찰된 주제 반응이 없어요.</Text>
         ) : null}
         {topics.map((t) => (
           <Card key={t.label} className="mb-3">
@@ -60,11 +60,11 @@ export default function Topics() {
             </View>
             <View className="flex-row mt-3">
               <View className="flex-1">
-                <Text className="text-[12px] text-muted">응답 반응(관찰)</Text>
+                <Text className="text-[12px] text-muted font-normal">응답 반응(관찰)</Text>
                 <Text className="text-[15px] font-medium text-ink mt-0.5">{t.percent}%</Text>
               </View>
               <View className="flex-1">
-                <Text className="text-[12px] text-muted">언급 빈도(관찰)</Text>
+                <Text className="text-[12px] text-muted font-normal">언급 빈도(관찰)</Text>
                 <Text className="text-[15px] font-medium text-ink mt-0.5">
                   {t.percent >= 60 ? '높음' : t.percent >= 30 ? '보통' : '낮음'}
                 </Text>

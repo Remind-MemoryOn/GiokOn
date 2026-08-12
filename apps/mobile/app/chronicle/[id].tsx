@@ -29,7 +29,7 @@ export default function ChronicleEdit() {
         <View className="px-5">
           <DetailHeader title="연대기 수정" />
         </View>
-        <Text className="text-center text-muted mt-16">어르신을 찾을 수 없어요.</Text>
+        <Text className="text-center text-muted mt-16 font-normal">어르신을 찾을 수 없어요.</Text>
       </SafeAreaView>
     );
   }
@@ -76,8 +76,8 @@ export default function ChronicleEdit() {
         <SectionTitle>주요 기억</SectionTitle>
         {chronicles.map((c) => (
           <Card key={c.id} className="mb-2">
-            <Text className="text-[13px] text-accent mb-1">{c.topic}</Text>
-            <Text className="text-[15px] text-ink leading-[22px]">{c.content}</Text>
+            <Text className="text-[13px] text-accent mb-1 font-normal">{c.topic}</Text>
+            <Text className="text-[15px] text-ink leading-[22px] font-normal">{c.content}</Text>
           </Card>
         ))}
         <Field

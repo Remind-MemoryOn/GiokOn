@@ -42,7 +42,7 @@ export default function ElderDetail() {
         <View className="px-5">
           <DetailHeader title="어르신 상세" />
         </View>
-        <Text className="text-center text-muted mt-16">어르신을 찾을 수 없어요.</Text>
+        <Text className="text-center text-muted mt-16 font-normal">어르신을 찾을 수 없어요.</Text>
       </SafeAreaView>
     );
   }
@@ -69,7 +69,7 @@ export default function ElderDetail() {
         </View>
         <View className="ml-4">
           <Text className="text-[20px] font-semibold text-ink">{elder.name} 어르신</Text>
-          <Text className="text-[15px] text-muted mt-0.5">
+          <Text className="text-[15px] text-muted mt-0.5 font-normal">
             {ageOf(elder.birthYear)}세{gender ? ` l ${gender}` : ''}
           </Text>
         </View>
@@ -99,13 +99,13 @@ export default function ElderDetail() {
             <View className="flex-row items-center justify-between mt-6 mb-2">
               <SectionTitle>주요 기억 ({chronicles.length})</SectionTitle>
               <Pressable onPress={() => router.push(`/chronicle/${elder.id}`)} className="active:opacity-60">
-                <Text className="text-[14px] text-accent">연대기 수정</Text>
+                <Text className="text-[14px] text-accent font-normal">연대기 수정</Text>
               </Pressable>
             </View>
             {chronicles.map((c) => (
               <Card key={c.id} className="mb-2">
-                <Text className="text-[13px] text-accent mb-1">{c.topic}</Text>
-                <Text className="text-[15px] text-ink leading-[22px]">{c.content}</Text>
+                <Text className="text-[13px] text-accent mb-1 font-normal">{c.topic}</Text>
+                <Text className="text-[15px] text-ink leading-[22px] font-normal">{c.content}</Text>
               </Card>
             ))}
           </View>
@@ -114,7 +114,7 @@ export default function ElderDetail() {
         {tab === 'sessions' && (
           <View>
             {sessions.length === 0 ? (
-              <Text className="text-center text-muted mt-10">아직 세션 기록이 없어요.</Text>
+              <Text className="text-center text-muted mt-10 font-normal">아직 세션 기록이 없어요.</Text>
             ) : (
               sessions.map((s) => {
                 const log = logs.find((l) => l.sessionId === s.id);
@@ -126,12 +126,12 @@ export default function ElderDetail() {
                   >
                     <View className="flex-1 pr-3">
                       <Text className="text-[16px] font-medium text-ink">{s.title}</Text>
-                      <Text className="text-[13px] text-muted mt-1">
+                      <Text className="text-[13px] text-muted mt-1 font-normal">
                         {s.createdAt.slice(0, 10).replace(/-/g, '. ')}
                       </Text>
                     </View>
                     <View className="flex-row items-center">
-                      <Text className="text-[14px] text-muted mr-2">{s.durationMinutes}분</Text>
+                      <Text className="text-[14px] text-muted mr-2 font-normal">{s.durationMinutes}분</Text>
                       {log ? <Ionicons name="chevron-forward" size={18} color={C.textSecondary} /> : null}
                     </View>
                   </Pressable>
@@ -173,7 +173,7 @@ function AnalysisTab({ elderId }: { elderId: string }) {
       <SectionTitle>종합 관심 주제 TOP 5</SectionTitle>
       <View className="mb-6">
         {topics.length === 0 ? (
-          <Text className="text-[14px] text-muted">아직 관찰된 주제가 없어요.</Text>
+          <Text className="text-[14px] text-muted font-normal">아직 관찰된 주제가 없어요.</Text>
         ) : (
           topics.map((t) => <TopicBar key={t.label} label={t.label} percent={t.percent} />)
         )}
@@ -185,7 +185,7 @@ function AnalysisTab({ elderId }: { elderId: string }) {
           <Ionicons name="sparkles-outline" size={18} color={C.accent} />
           <Text className="text-[15px] font-semibold text-ink ml-2">AI 종합 의견</Text>
         </View>
-        <Text className="text-[15px] text-ink leading-[23px]">
+        <Text className="text-[15px] text-ink leading-[23px] font-normal">
           {observationSummary(elder.name, topics) ?? '대화 기록이 쌓이면 관찰된 내용을 정리해 드려요.'}
         </Text>
       </Card>

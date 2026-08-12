@@ -54,7 +54,7 @@ export default function Talk() {
       <View className="flex-row items-center justify-between px-5 pt-1">
         <AiDisclosureBanner />
         <Pressable onPress={endAndSave} accessibilityRole="button" className="px-3 py-2 active:opacity-60">
-          <Text className="text-[15px] text-muted">종료</Text>
+          <Text className="text-[15px] text-muted font-normal">종료</Text>
         </Pressable>
       </View>
 
@@ -91,7 +91,7 @@ export default function Talk() {
           ) : (
             <>
               <MicButton onPress={() => { ExpoSpeechProvider.cancelSpeak(); capture(); router.push('/session/correct'); }} />
-              <Text className="text-[23px] text-ink mt-2">듣고 있어요...</Text>
+              <Text className="text-[23px] text-ink mt-2 font-normal">듣고 있어요...</Text>
             </>
           )}
         </View>

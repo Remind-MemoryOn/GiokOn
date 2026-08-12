@@ -90,7 +90,7 @@ export default function Login() {
           placeholderTextColor="#7b7c7c"
           autoCapitalize="none"
           keyboardType="email-address"
-          className="text-[13px] text-ink"
+          className="text-[13px] text-ink font-normal"
           style={{
             width: fieldW,
             height: 44,
@@ -109,7 +109,7 @@ export default function Login() {
           placeholder="비밀번호"
           placeholderTextColor="#7b7c7c"
           secureTextEntry
-          className="text-[13px] text-ink"
+          className="text-[13px] text-ink font-normal"
           style={{
             width: fieldW,
             height: 44,
@@ -144,15 +144,15 @@ export default function Login() {
         style={{ top: top(518, height) }}
       >
         <Pressable onPress={() => (isConfigured ? notOnApp('아이디 찾기') : onLogin())} hitSlop={8}>
-          <Text className="text-[12px] text-muted">아이디 찾기</Text>
+          <Text className="text-[12px] text-muted font-normal">아이디 찾기</Text>
         </Pressable>
-        <Text className="text-[12px] text-line mx-3">|</Text>
+        <Text className="text-[12px] text-line mx-3 font-normal">|</Text>
         <Pressable onPress={onFindPassword} hitSlop={8}>
-          <Text className="text-[12px] text-muted">비밀번호 찾기</Text>
+          <Text className="text-[12px] text-muted font-normal">비밀번호 찾기</Text>
         </Pressable>
-        <Text className="text-[12px] text-line mx-3">|</Text>
+        <Text className="text-[12px] text-line mx-3 font-normal">|</Text>
         <Pressable onPress={() => (isConfigured ? notOnApp('회원가입') : onLogin())} hitSlop={8}>
-          <Text className="text-[12px] text-muted">회원가입</Text>
+          <Text className="text-[12px] text-muted font-normal">회원가입</Text>
         </Pressable>
       </View>
 

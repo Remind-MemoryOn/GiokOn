@@ -15,7 +15,8 @@
     "typecheck": "pnpm -r typecheck",
     "check:copy": "node scripts/check-nonmedical-copy.mjs",
     "web": "pnpm -F @giokon/web dev",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "check:font": "node scripts/check-font-class.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

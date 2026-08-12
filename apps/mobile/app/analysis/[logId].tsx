@@ -32,7 +32,7 @@ export default function SingleAnalysis() {
         <View className="px-5">
           <DetailHeader title="대화 분석" />
         </View>
-        <Text className="text-center text-muted mt-16">분석 결과가 없어요.</Text>
+        <Text className="text-center text-muted mt-16 font-normal">분석 결과가 없어요.</Text>
       </SafeAreaView>
     );
   }
@@ -54,7 +54,7 @@ export default function SingleAnalysis() {
         <DetailHeader title="대화 분석" rightIcon="share-outline" onRight={() => {}} />
       </View>
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Text className="text-[13px] text-muted mt-1">{log.startedAt.slice(0, 10).replace(/-/g, '. ')}</Text>
+        <Text className="text-[13px] text-muted mt-1 font-normal">{log.startedAt.slice(0, 10).replace(/-/g, '. ')}</Text>
         <Text className="text-[20px] font-semibold text-ink mt-1 mb-4">{session?.title ?? '회상 대화'}</Text>
 
         {/* 관찰 지표 3종 */}
@@ -67,7 +67,7 @@ export default function SingleAnalysis() {
         {/* 핵심 요약 */}
         <SectionTitle>핵심 요약</SectionTitle>
         <Card className="mb-6">
-          <Text className="text-[15px] text-ink leading-[23px]">{analysis.summary}</Text>
+          <Text className="text-[15px] text-ink leading-[23px] font-normal">{analysis.summary}</Text>
         </Card>
 
         {/* 대화 특성(관찰) */}
@@ -75,15 +75,15 @@ export default function SingleAnalysis() {
         <Card className="mb-6">
           <View className="flex-row justify-between mb-3">
             <View className="items-center flex-1">
-              <Text className="text-[13px] text-muted mb-1">대화 참여도</Text>
+              <Text className="text-[13px] text-muted mb-1 font-normal">대화 참여도</Text>
               <Text className="text-[16px] font-semibold text-ink">{participationLabel}</Text>
             </View>
             <View className="items-center flex-1">
-              <Text className="text-[13px] text-muted mb-1">발화량</Text>
+              <Text className="text-[13px] text-muted mb-1 font-normal">발화량</Text>
               <Text className="text-[16px] font-semibold text-ink">{lengthLabel}</Text>
             </View>
             <View className="items-center flex-1">
-              <Text className="text-[13px] text-muted mb-1">관심 톤</Text>
+              <Text className="text-[13px] text-muted mb-1 font-normal">관심 톤</Text>
               <Text className="text-[16px] font-semibold text-ink">
                 {tone.emoji} {tone.label}
               </Text>
@@ -101,7 +101,7 @@ export default function SingleAnalysis() {
         {/* 대화 반응(관찰) — Figma '감정 82%'를 관찰된 응답 분포로 순화 */}
         <SectionTitle>대화 반응</SectionTitle>
         <Card>
-          <Text className="text-[14px] text-muted mb-3">대화에서 관찰된 응답 정도예요.</Text>
+          <Text className="text-[14px] text-muted mb-3 font-normal">대화에서 관찰된 응답 정도예요.</Text>
           <ToneBar
             segments={[
               { label: '활발히 응답', percent: pct(rich), color: C.positive },

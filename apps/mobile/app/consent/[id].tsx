@@ -64,7 +64,7 @@ export default function ConsentGate() {
         <Text className="text-[20px] font-semibold text-ink mt-2 leading-[30px]">
           {elder.name} 어르신과의 대화를 위해{'\n'}아래 동의가 필요해요.
         </Text>
-        <Text className="text-[14px] text-muted mt-2 mb-5">
+        <Text className="text-[14px] text-muted mt-2 mb-5 font-normal">
           어르신(정보주체) 또는 보호자·대리인의 동의를 확인해 주세요. (동의서 {CONSENT_VERSION})
         </Text>
 
@@ -88,13 +88,13 @@ export default function ConsentGate() {
                 <View className="flex-row flex-wrap items-center">
                   <Text className="text-[16px] font-semibold text-ink">{def.label}</Text>
                   {def.sensitive ? (
-                    <Text className="text-[12px] text-danger ml-2">민감정보</Text>
+                    <Text className="text-[12px] text-danger ml-2 font-normal">민감정보</Text>
                   ) : null}
                   {def.crossBorder ? (
-                    <Text className="text-[12px] text-accent ml-2">국외이전</Text>
+                    <Text className="text-[12px] text-accent ml-2 font-normal">국외이전</Text>
                   ) : null}
                 </View>
-                <Text className="text-[14px] text-muted mt-1 leading-[20px]">{def.summary}</Text>
+                <Text className="text-[14px] text-muted mt-1 leading-[20px] font-normal">{def.summary}</Text>
               </View>
             </Pressable>
           );

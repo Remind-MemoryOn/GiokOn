@@ -32,7 +32,7 @@ export default function SessionStart() {
         <Text className="text-[24px] font-semibold text-ink text-center mt-8 leading-[34px]">
           {elder.name} 어르신과{'\n'}회상 대화를 시작합니다.
         </Text>
-        <Text className="text-[16px] text-muted text-center mt-3">어르신께 기기를 전달해 주세요.</Text>
+        <Text className="text-[16px] text-muted text-center mt-3 font-normal">어르신께 기기를 전달해 주세요.</Text>
         <View className="mt-6">
           <AiDisclosureBanner />
         </View>

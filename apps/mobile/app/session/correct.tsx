@@ -39,12 +39,12 @@ export default function Correct() {
       </View>
 
       <Card className="mt-2">
-        <Text className="text-[17px] text-ink leading-[26px]">{raw}</Text>
+        <Text className="text-[17px] text-ink leading-[26px] font-normal">{raw}</Text>
       </Card>
 
       <Text className="text-[16px] font-semibold text-ink mt-6 mb-2">수정하기</Text>
       <Field value={edited} onChangeText={setEdited} placeholder="어르신 말씀을 수정해 주세요" multiline maxLength={200} />
-      <Text className="text-[14px] text-muted">내용이 맞다면 수정 없이 저장하세요.</Text>
+      <Text className="text-[14px] text-muted font-normal">내용이 맞다면 수정 없이 저장하세요.</Text>
 
       <View className="flex-1" />
       <View className="pb-6">

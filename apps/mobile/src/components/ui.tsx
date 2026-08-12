@@ -115,7 +115,7 @@ export function Field({
       {label ? (
         <View className="flex-row items-center mb-2">
           <Text className="text-[16px] font-semibold text-ink">{label}</Text>
-          {required ? <Text className="text-accent text-[16px] ml-1">✱</Text> : null}
+          {required ? <Text className="text-accent text-[16px] ml-1 font-normal">✱</Text> : null}
         </View>
       ) : null}
       <TextInput
@@ -133,7 +133,7 @@ export function Field({
         textAlignVertical={multiline ? 'top' : 'center'}
       />
       {typeof maxLength === 'number' ? (
-        <Text className="text-[13px] text-muted mt-1 text-right">
+        <Text className="text-[13px] text-muted mt-1 text-right font-normal">
           {value.length}/{maxLength}
         </Text>
       ) : null}
@@ -170,7 +170,7 @@ export function StatTile({
         <Ionicons name={icon} size={24} color={C.accent} />
       </View>
       <Text className="text-[18px] font-bold text-ink">{value}</Text>
-      <Text className="text-[13px] text-muted mt-0.5">{label}</Text>
+      <Text className="text-[13px] text-muted mt-0.5 font-normal">{label}</Text>
     </View>
   );
 }
@@ -181,7 +181,7 @@ export function TopicBar({ label, percent }: { label: string; percent: number })
   return (
     <View className="mb-3">
       <View className="flex-row justify-between mb-1">
-        <Text className="text-[15px] text-ink">{label}</Text>
+        <Text className="text-[15px] text-ink font-normal">{label}</Text>
         <Text className="text-[15px] font-semibold text-accent">{pct}%</Text>
       </View>
       <View className="h-2.5 rounded-full bg-cream-200 overflow-hidden">
@@ -204,8 +204,8 @@ export function Chip({ label }: { label: string }) {
 export function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-row py-3 border-b border-line/60">
-      <Text className="w-24 text-[16px] text-muted">{label}</Text>
-      <Text className="flex-1 text-[16px] text-ink">{value}</Text>
+      <Text className="w-24 text-[16px] text-muted font-normal">{label}</Text>
+      <Text className="flex-1 text-[16px] text-ink font-normal">{value}</Text>
     </View>
   );
 }

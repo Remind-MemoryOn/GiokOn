@@ -13,7 +13,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <View className="w-1/2 p-1.5">
       <Card>
-        <Text className="text-[13px] text-muted">{label}</Text>
+        <Text className="text-[13px] text-muted font-normal">{label}</Text>
         <Text className="text-[24px] font-bold text-ink mt-1">{value}</Text>
       </Card>
     </View>
@@ -31,7 +31,7 @@ export default function Analytics() {
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }}>
         <View className="flex-row items-center justify-between mt-1 mb-3">
           <SectionTitle>전체 요약</SectionTitle>
-          <Text className="text-[13px] text-muted">최근 3개월</Text>
+          <Text className="text-[13px] text-muted font-normal">최근 3개월</Text>
         </View>
 
         <View className="flex-row flex-wrap -m-1.5 mb-5">
@@ -44,7 +44,7 @@ export default function Analytics() {
         <SectionTitle>가장 많이 이야기한 주제 TOP 5</SectionTitle>
         <View className="mb-6">
           {o.topTopics.length === 0 ? (
-            <Text className="text-[14px] text-muted">아직 관찰된 주제가 없어요.</Text>
+            <Text className="text-[14px] text-muted font-normal">아직 관찰된 주제가 없어요.</Text>
           ) : (
             o.topTopics.map((t) => <TopicBar key={t.label} label={t.label} percent={t.percent} />)
           )}

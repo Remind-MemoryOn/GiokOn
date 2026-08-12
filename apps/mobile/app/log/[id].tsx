@@ -45,7 +45,7 @@ export default function LogTranscript() {
         <View className="px-5">
           <DetailHeader title="대화 기록" />
         </View>
-        <Text className="text-center text-muted mt-16">기록을 찾을 수 없어요.</Text>
+        <Text className="text-center text-muted mt-16 font-normal">기록을 찾을 수 없어요.</Text>
       </SafeAreaView>
     );
   }
@@ -56,7 +56,7 @@ export default function LogTranscript() {
         <DetailHeader title="대화 기록" />
       </View>
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 16 }}>
-        <Text className="text-center text-[13px] text-muted my-3">
+        <Text className="text-center text-[13px] text-muted my-3 font-normal">
           {formatKoreanDate(log.startedAt)}
         </Text>
         {log.turns.map((t) => (

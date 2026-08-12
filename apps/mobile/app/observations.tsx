@@ -16,9 +16,9 @@ function Indicator({ label, value, note }: { label: string; value: string; note:
   return (
     <View className="w-1/2 p-1.5">
       <Card>
-        <Text className="text-[13px] text-muted">{label}</Text>
+        <Text className="text-[13px] text-muted font-normal">{label}</Text>
         <Text className="text-[22px] font-bold text-ink mt-1">{value}</Text>
-        <Text className="text-[12px] text-muted mt-1">{note}</Text>
+        <Text className="text-[12px] text-muted mt-1 font-normal">{note}</Text>
       </Card>
     </View>
   );
@@ -72,7 +72,7 @@ export default function Observations() {
         <DetailHeader title={title} />
       </View>
       <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Text className="text-[13px] text-muted mt-1 mb-4">
+        <Text className="text-[13px] text-muted mt-1 mb-4 font-normal">
           최근 3개월 · 대화에서 관찰된 값입니다. (효능·향상 지표가 아닙니다)
         </Text>
 
@@ -92,7 +92,7 @@ export default function Observations() {
         <SectionTitle>주제별 반응(관찰)</SectionTitle>
         <View className="mb-6">
           {topics.length === 0 ? (
-            <Text className="text-[14px] text-muted">아직 관찰된 주제 반응이 없어요.</Text>
+            <Text className="text-[14px] text-muted font-normal">아직 관찰된 주제 반응이 없어요.</Text>
           ) : (
             topics.map((t) => <TopicBar key={t.label} label={t.label} percent={t.percent} />)
           )}
@@ -101,7 +101,7 @@ export default function Observations() {
         {/* 활동량 */}
         <SectionTitle>대화 활동량</SectionTitle>
         <Card className="mb-6">
-          <Text className="text-[15px] text-ink">
+          <Text className="text-[15px] text-ink font-normal">
             최근 3개월간 총 <Text className="font-bold text-accent">{sessionCount}회</Text>의 대화가
             관찰되었습니다.
           </Text>
@@ -110,7 +110,7 @@ export default function Observations() {
         {/* 관찰 의견 — 근거가 없으면 서술하지 않는다(실 AI 연동 시 이 자리에 LLM 요약) */}
         <Card>
           <Text className="text-[15px] font-semibold text-ink mb-2">AI 종합 의견</Text>
-          <Text className="text-[15px] text-ink leading-[23px]">
+          <Text className="text-[15px] text-ink leading-[23px] font-normal">
             {summary ?? '대화 기록이 쌓이면 관찰된 내용을 정리해 드려요.'}
           </Text>
         </Card>
