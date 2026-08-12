@@ -5,6 +5,8 @@ import {
   toConversationLog,
   toConversationTurn,
   toElderProfile,
+  toProfileInsert,
+  toProfileUpdate,
   toSession,
 } from './mappers'
 import { queryKeys } from './query'
@@ -23,6 +25,7 @@ const profileRow: ProfileRow = {
   hobbies: '텃밭 가꾸기',
   guardian_name: '박민준',
   guardian_relation: '아들',
+  photo_path: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
 }
@@ -65,6 +68,11 @@ describe('toElderProfile', () => {
     expect(elder.job).toBeUndefined()
     expect(elder.family).toBeUndefined()
     expect(elder.hobbies).toBeUndefined()
+  })
+
+  it('photo_path 를 photoPath 로 매핑하고, null 이면 undefined', () => {
+    expect(toElderProfile(profileRow).photoPath).toBeUndefined()
+    expect(toElderProfile({ ...profileRow, photo_path: 'p1/abc.jpg' }).photoPath).toBe('p1/abc.jpg')
   })
 
   it('avatarColor는 id 시드 기반 결정적 값, appearance는 기본값(v2 미저장)', () => {
@@ -193,6 +201,24 @@ describe('toConversationLog', () => {
     expect(conv.endedAt).toBeUndefined()
     expect(conv.status).toBe('active')
     expect(conv.turns).toEqual([])
+  })
+})
+
+describe('toProfileInsert / toProfileUpdate — 사진 경로', () => {
+  const base = { name: '이순자', birthYear: 1945 }
+
+  it('insert: photoPath 없으면 null', () => {
+    expect(toProfileInsert(base, 'u1').photo_path).toBeNull()
+    expect(toProfileInsert({ ...base, photoPath: 'p1/a.jpg' }, 'u1').photo_path).toBe('p1/a.jpg')
+  })
+
+  it('update: photoPath 가 undefined 면 사진 필드를 건드리지 않는다(기존 사진 유지)', () => {
+    expect('photo_path' in toProfileUpdate(base)).toBe(false)
+  })
+
+  it('update: photoPath 를 주면 갱신, null 이면 삭제', () => {
+    expect(toProfileUpdate({ ...base, photoPath: 'p1/b.jpg' }).photo_path).toBe('p1/b.jpg')
+    expect(toProfileUpdate({ ...base, photoPath: null as unknown as string }).photo_path).toBeNull()
   })
 })
 

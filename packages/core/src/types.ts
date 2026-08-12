@@ -90,6 +90,11 @@ export interface ElderProfile {
   family?: string;
   hobbies?: string;
   avatarColor: string;
+  /**
+   * 어르신 사진의 Storage 경로(`<profile_id>/<uuid>.<ext>`, private 버킷 elder-photos).
+   * 공개 URL 이 아니므로 표시 시 signed URL 로 변환한다. 없으면 이니셜 아바타로 대체.
+   */
+  photoPath?: string;
   guardian?: Guardian;
   appearance: CharacterAppearance;
   createdAt: string;

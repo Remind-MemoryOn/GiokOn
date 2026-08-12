@@ -179,8 +179,13 @@ URL: `https://www.figma.com/design/nLfWkg2H7dFfDH1pehcH5I/기억온?node-id=0-1`
 
 **이 폼의 실제 스펙(두 이미지 대조로 확인)**
 - 헤더: 뒤로(<) + 타이틀 중앙, 하단 구분선.
-- **사진 업로드 필드**(빈 상태=라운드 사각 + 이미지+ 아이콘 / 입력 상태=사진). ⚠️ v1 DB
-  스키마에 사진 컬럼이 없다 → 사용자 결정 대기(스키마 추가 여부).
+- **사진 업로드 필드**(빈 상태=라운드 사각 + 이미지+ 아이콘 / 입력 상태=사진).
+  ✅ **사용자 결정(2026-08-12): 스키마 추가로 디자인 100% 구현**
+  → 마이그레이션 `20260812000000_profile_photo.sql`(21번째): `profiles.photo_path`
+  + private 버킷 `elder-photos`(select/insert/update/delete 정책, 보호자 배제).
+  앱: `src/data/elder-photo.ts`(`uploadElderPhoto`/`useElderPhotoUrl` — signed URL),
+  `ElderProfile.photoPath`·`ElderWriteInput.photoPath`·매퍼 반영. PatientCard 사진 표시 완료.
+  ⏳ 폼의 업로드 UI 는 폼 구현 시(expo-image-picker 필요).
 - 필드 순서: 이름* · 출생연도* · 출신지 · 가족 구성 · 직업 이력 · 취미 · 주요 기억.
   `*`는 주황색 필수 표시. 입력은 `#f4f4f4` 채움.
 - **글자수 카운터 = maxLength 스펙**: 이름 10 · 가족 구성 25 · 직업 이력 30 · 취미 30
@@ -197,6 +202,8 @@ URL: `https://www.figma.com/design/nLfWkg2H7dFfDH1pehcH5I/기억온?node-id=0-1`
 - 기억 항목 **삭제**: `@giokon/data` 의 `useDeleteChronicle` 을 앱 쓰기 어댑터
   (`src/data/writes.ts`)에 노출해야 한다(현재 upsert 만 있음). 목업 모드용 삭제도 필요
   (`appStore` 에 removeChronicle 추가).
+- 사진 업로드: `expo-image-picker` 설치 + `uploadElderPhoto()` 연결(경로를 photoPath 로 저장).
+  수정 시 photoPath 를 **undefined 로 두면 기존 사진 유지**(toProfileUpdate 규약).
 - 기억 항목은 `chronicle_entries` 여러 행 ↔ 화면의 목록 항목이 1:1 이다.
   빈 상태의 단일 "주요 기억" 입력은 저장 시 항목 1건 생성으로 처리.
 - 입력 상태의 값(이순자·1945·전라북도 전주시·"내 오랜 고향 전주" 등)은 **전부 자리표시자**다

@@ -97,6 +97,8 @@ export type Database = {
           hobbies: string | null
           guardian_name: string | null
           guardian_relation: string | null
+          /** Storage elder-photos 내 경로(private 버킷 — 조회는 signed URL). */
+          photo_path: string | null
           created_at: string
           updated_at: string
         }
@@ -113,6 +115,7 @@ export type Database = {
           hobbies?: string | null
           guardian_name?: string | null
           guardian_relation?: string | null
+          photo_path?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -129,6 +132,7 @@ export type Database = {
           hobbies?: string | null
           guardian_name?: string | null
           guardian_relation?: string | null
+          photo_path?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -41,6 +41,7 @@ export function toElderProfile(row: ProfileRow): ElderProfile {
     family: row.family ?? undefined,
     hobbies: row.hobbies ?? undefined,
     avatarColor: pickAvatarColor(row.id),
+    photoPath: row.photo_path ?? undefined,
     guardian,
     appearance: DEFAULT_APPEARANCE,
     createdAt: row.created_at,
@@ -123,6 +124,8 @@ export interface ElderWriteInput {
   job?: string
   family?: string
   hobbies?: string
+  /** Storage elder-photos 내 경로(업로드 후 반환값). 미변경 시 undefined. */
+  photoPath?: string
   guardian?: Guardian
 }
 
@@ -135,13 +138,18 @@ export function toProfileInsert(input: ElderWriteInput, userId: string): TablesI
     job: input.job ?? null,
     family: input.family ?? null,
     hobbies: input.hobbies ?? null,
+    photo_path: input.photoPath ?? null,
     guardian_name: input.guardian?.name ?? null,
     guardian_relation: input.guardian?.relation ?? null,
   }
 }
 
+/**
+ * 어르신 수정 페이로드. `photoPath` 가 undefined 면 **사진 필드를 건드리지 않는다**
+ * (기존 사진 유지). 사진을 지우려면 명시적으로 null 을 넣도록 호출부에서 처리한다.
+ */
 export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'> {
-  return {
+  const patch: TablesUpdate<'profiles'> = {
     name: input.name,
     birth_year: input.birthYear,
     hometown: input.hometown ?? null,
@@ -151,6 +159,8 @@ export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'
     guardian_name: input.guardian?.name ?? null,
     guardian_relation: input.guardian?.relation ?? null,
   }
+  if (input.photoPath !== undefined) patch.photo_path = input.photoPath
+  return patch
 }
 
 /** 연대기 항목 입력. */
