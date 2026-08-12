@@ -46,14 +46,17 @@ export const figma = {
     accentPressed: '#c86f22',
     cardTint: '#fdf8f2', // 카드 배경 rgba(233,130,43,0.07) 불투명 근사
     aiCard: '#fdf3ea', // 대화 AI 질문 카드 배경
+    field: '#f4f4f4', // 입력 필드 채움(Figma 로그인 실측)
     surface: '#ffffff',
     textPrimary: '#1a1a1a',
     textSecondary: '#7b7c7c',
     border: '#cccdce',
     positive: '#3fa34d', // 감정/관찰 긍정 표시
     danger: '#d8503c', // 위기 배너
+    gradientEnd: '#f4c398', // 스플래쉬 하단 그라데이션 종단(실측 샘플링)
   },
-  radius: { card: 10, button: 10, input: 10, pill: 999 },
+  // Figma 실측: 입력·버튼 라운드는 5(기존 10은 근사값이었음).
+  radius: { card: 10, button: 5, input: 5, pill: 999 },
   // 화면 표준 폭(디자인 프레임 393px 기준). 모바일은 반응형이지만 카드 여백 근거로 사용.
   frameWidth: 393,
 } as const

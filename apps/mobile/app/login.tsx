@@ -1,32 +1,42 @@
-// 로그인 — 아이디(이메일)/비밀번호 + 소셜 간편 로그인.
-// 라이브(Supabase 설정) 시 signInWithEmail로 실제 인증, 미설정 시 목업 로그인(시연).
-// 소셜 3종·아이디/비밀번호 찾기·회원가입은 디자인 유지 — 라이브에서 미배선 경로는
-// 안내(웹에서 진행)로 게이트한다. 계정 생성·온보딩은 웹 담당(앱 신규 화면 없음).
+// 로그인 (Figma `130:161`) — 워드마크 + 아이디/비밀번호 + 로그인 + 링크 3개 + 소셜 3종.
+//
+// Figma 스펙(393×852 프레임 기준):
+//   워드마크 145×22.2 @ (120, 204)              · 입력 292×44 @ (50, 284) / (50, 355)
+//   입력 bg #f4f4f4 r5, placeholder 13px #7b7c7c · 버튼 293×42 @ (49, 426) bg #e9822b r5,
+//   버튼 텍스트 13px SemiBold 흰색               · 링크 12px #7b7c7c @ top 518 (구분자 |)
+//   소셜 49.8×49.8 @ top 643, left 90/168.6/247
+// 세로 위치는 프레임 비율로 환산해 기기 높이에 맞춘다(고정 프레임 디자인 충실 재현).
+// 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
+//
+// 기능은 기존과 동일: signIn(이메일+비밀번호), 비밀번호 찾기(재설정 메일),
+// 소셜/아이디찾기/회원가입은 라이브 미배선 구간 안내.
 import { useState } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, Image, Alert, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
-import { Screen, Field, Button } from '../src/components/ui';
-import { Wordmark } from '../src/components/brand';
 import { useAuth } from '../src/auth/AuthProvider';
+import { C } from '../src/theme';
+import wordmark from '../assets/brand/wordmark.png';
+import socialNaver from '../assets/brand/social-naver.png';
+import socialKakao from '../assets/brand/social-kakao.png';
+import socialGoogle from '../assets/brand/social-google.png';
 
-function SocialDot({ label, bg, color = '#fff' }: { label: string; bg: string; color?: string }) {
-  return (
-    <View
-      className="w-14 h-14 rounded-full items-center justify-center mx-2"
-      style={{ backgroundColor: bg }}
-      accessibilityLabel={`${label} 로그인`}
-    >
-      <Text style={{ color, fontWeight: '800', fontSize: 20 }}>{label}</Text>
-    </View>
-  );
-}
+const FRAME_W = 393;
+const FRAME_H = 852;
+
+/** Figma 세로 좌표 → 화면 높이 비율 */
+const top = (y: number, h: number) => (y / FRAME_H) * h;
 
 export default function Login() {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const { signIn, isConfigured } = useAuth();
+  const { width, height } = useWindowDimensions();
+
+  // 가로는 프레임 비율 유지(292/393). 좁은 기기에서도 여백이 깨지지 않는다.
+  const fieldW = (292 / FRAME_W) * width;
+  const btnW = (293 / FRAME_W) * width;
 
   const onLogin = async () => {
     if (busy) return;
@@ -41,9 +51,7 @@ export default function Login() {
     }
   };
 
-  // 라이브에서 아직 앱에 배선하지 않은 경로는 웹으로 안내한다.
-  const notOnApp = (what: string) =>
-    Alert.alert(what, `${what}은(는) 웹에서 진행해 주세요.`);
+  const notOnApp = (what: string) => Alert.alert(what, `${what}은(는) 웹에서 진행해 주세요.`);
 
   const onFindPassword = async () => {
     if (!isConfigured) return onLogin();
@@ -62,47 +70,114 @@ export default function Login() {
   };
 
   return (
-    <Screen scroll>
-      <View className="items-center mt-16 mb-10">
-        <Wordmark size={30} />
-      </View>
-      <Field label="" value={id} onChangeText={setId} placeholder="아이디" />
-      <Field label="" value={pw} onChangeText={setPw} placeholder="비밀번호" secureTextEntry />
-      <View className="mt-2">
-        <Button label="로그인" onPress={onLogin} />
-      </View>
-
-      <View className="flex-row items-center justify-center mt-5">
-        <Pressable
-          onPress={() => (isConfigured ? notOnApp('아이디 찾기') : onLogin())}
-          className="px-2 active:opacity-60"
-        >
-          <Text className="text-[14px] text-muted">아이디 찾기</Text>
-        </Pressable>
-        <Text className="text-muted">|</Text>
-        <Pressable onPress={onFindPassword} className="px-2 active:opacity-60">
-          <Text className="text-[14px] text-muted">비밀번호 찾기</Text>
-        </Pressable>
-        <Text className="text-muted">|</Text>
-        <Pressable
-          onPress={() => (isConfigured ? notOnApp('회원가입') : onLogin())}
-          className="px-2 active:opacity-60"
-        >
-          <Text className="text-[14px] text-muted">회원가입</Text>
-        </Pressable>
+    <View className="flex-1 bg-white">
+      {/* 워드마크 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: top(204, height) }}>
+        <Image
+          source={wordmark}
+          style={{ width: 145, height: 22 }}
+          resizeMode="contain"
+          accessibilityLabel="기억온"
+        />
       </View>
 
-      <View className="flex-row items-center justify-center mt-10">
-        <Pressable onPress={onSocial}>
-          <SocialDot label="N" bg="#03c75a" />
-        </Pressable>
-        <Pressable onPress={onSocial}>
-          <SocialDot label="K" bg="#fee500" color="#191600" />
-        </Pressable>
-        <Pressable onPress={onSocial}>
-          <SocialDot label="G" bg="#ffffff" color="#4285f4" />
+      {/* 아이디 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: top(284, height) }}>
+        <TextInput
+          value={id}
+          onChangeText={setId}
+          placeholder="아이디"
+          placeholderTextColor="#7b7c7c"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          className="text-[13px] text-ink"
+          style={{
+            width: fieldW,
+            height: 44,
+            backgroundColor: '#f4f4f4',
+            borderRadius: 5,
+            paddingHorizontal: 22,
+          }}
+        />
+      </View>
+
+      {/* 비밀번호 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: top(355, height) }}>
+        <TextInput
+          value={pw}
+          onChangeText={setPw}
+          placeholder="비밀번호"
+          placeholderTextColor="#7b7c7c"
+          secureTextEntry
+          className="text-[13px] text-ink"
+          style={{
+            width: fieldW,
+            height: 44,
+            backgroundColor: '#f4f4f4',
+            borderRadius: 5,
+            paddingHorizontal: 22,
+          }}
+        />
+      </View>
+
+      {/* 로그인 버튼 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: top(426, height) }}>
+        <Pressable
+          onPress={onLogin}
+          disabled={busy}
+          accessibilityRole="button"
+          className="items-center justify-center active:opacity-90"
+          style={{
+            width: btnW,
+            height: 42,
+            backgroundColor: busy ? C.accentPressed : C.accent,
+            borderRadius: 5,
+          }}
+        >
+          <Text className="text-[13px] font-semibold text-white">로그인</Text>
         </Pressable>
       </View>
-    </Screen>
+
+      {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 */}
+      <View
+        className="absolute left-0 right-0 flex-row items-center justify-center"
+        style={{ top: top(518, height) }}
+      >
+        <Pressable onPress={() => (isConfigured ? notOnApp('아이디 찾기') : onLogin())} hitSlop={8}>
+          <Text className="text-[12px] text-muted">아이디 찾기</Text>
+        </Pressable>
+        <Text className="text-[12px] text-line mx-3">|</Text>
+        <Pressable onPress={onFindPassword} hitSlop={8}>
+          <Text className="text-[12px] text-muted">비밀번호 찾기</Text>
+        </Pressable>
+        <Text className="text-[12px] text-line mx-3">|</Text>
+        <Pressable onPress={() => (isConfigured ? notOnApp('회원가입') : onLogin())} hitSlop={8}>
+          <Text className="text-[12px] text-muted">회원가입</Text>
+        </Pressable>
+      </View>
+
+      {/* 소셜 3종 — Figma 간격(중심 114 / 193 / 271) 비율 유지 */}
+      <View
+        className="absolute left-0 right-0 flex-row items-center justify-center"
+        style={{ top: top(643, height) }}
+      >
+        {[
+          { key: 'naver', src: socialNaver, label: '네이버' },
+          { key: 'kakao', src: socialKakao, label: '카카오' },
+          { key: 'google', src: socialGoogle, label: '구글' },
+        ].map((s) => (
+          <Pressable
+            key={s.key}
+            onPress={onSocial}
+            accessibilityRole="button"
+            accessibilityLabel={`${s.label} 로그인`}
+            className="active:opacity-70"
+            style={{ marginHorizontal: (29 / FRAME_W) * width * 0.5 }}
+          >
+            <Image source={s.src} style={{ width: 50, height: 50 }} resizeMode="contain" />
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }

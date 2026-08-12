@@ -11,3 +11,14 @@ declare module '*.svg' {
   const content: React.FC<SvgProps>;
   export default content;
 }
+
+// 래스터 에셋(Figma @4x 크롭 등)을 ES import 로 쓰기 위한 선언.
+// (Metro 가 asset 모듈로 해석 — Image source 에 그대로 전달한다.)
+declare module '*.png' {
+  const content: number;
+  export default content;
+}
+declare module '*.jpg' {
+  const content: number;
+  export default content;
+}

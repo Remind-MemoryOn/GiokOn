@@ -10,6 +10,7 @@ module.exports = {
         accent: { DEFAULT: '#e9822b', pressed: '#c86f22' },
         card: '#fdf8f2', // 카드 배경(주황 7% 틴트 근사)
         aicard: '#fdf3ea', // 대화 AI 질문 카드
+        field: '#f4f4f4', // 입력 필드 채움(Figma 실측)
         ink: '#1a1a1a', // 본문 진한 텍스트
         muted: '#7b7c7c', // 보조 텍스트
         line: '#cccdce', // 보더/입력
@@ -57,6 +58,9 @@ module.exports = {
       },
       borderRadius: {
         card: '10px',
+        // Figma 실측: 입력·버튼 라운드 5
+        input: '5px',
+        btn: '5px',
       },
     },
   },
