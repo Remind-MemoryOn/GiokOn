@@ -114,3 +114,77 @@ URL: `https://www.figma.com/design/nLfWkg2H7dFfDH1pehcH5I/기억온?node-id=0-1`
 
 > ⚠️ 미확인 사항은 임의로 정하지 말고, **비주얼은 `get_screenshot`으로, 값은 `get_variable_defs`/
 > `get_design_context`로 실제 디자인을 근거**로 반영한다. 디자인 원본을 못 볼 땐 추측 대신 사용자에게 확인.
+
+---
+
+# 6. 재적용 v2 (2026-08, 진행 중) — **이 섹션이 최신 절차다**
+
+## 왜 다시 하는가
+1차 구현(2026-07-13)은 Figma 원본을 **손으로 근사**해 실기기 UI가 디자인과 크게 달랐다.
+사용자 확정: **기존 디자인 폐기, Figma 원본을 100% 재적용**(비교 무의미).
+
+**근본 원인 3가지(실측 확인)**
+1. **폰트 미로드** — tailwind 에 'Pretendard' 이름만 있고 등록이 없어 시스템 폰트 폴백
+   (Android=Roboto/Noto CJK → 화면 전체가 다르게 보임). → `src/lib/fonts.ts` 로 해결.
+2. **에셋 0개** — 로고·마스코트·소셜을 코드로 그렸다(Figma 가이드가 금지). → 크롭 에셋으로 해결.
+3. **치수 근사** — 예: 입력 라운드 실측 5인데 10, 폰트 13px인데 18px 등.
+
+## 확정 정책 (사용자)
+- **상태바**: Figma 상태바 목업(9:41·배터리) **미구현**, 실기기 상태바 사용.
+- **범위**: 19화면 전부. **내부 동작(데이터·인증·세션 저장) 무수정**, 프레젠테이션만 교체.
+- **비의료 카피 / 노인 글자크기**: 사용자 **보류** → 레이아웃·치수는 Figma 100%,
+  카피는 현행 순화 유지(`check:copy` 가 CI 차단), 글자크기는 Figma 값 적용.
+- **⚠️ 자리표시자 금지(최우선)**: Figma 의 정량 지표(%·평균 분)·예시 분석문·예시 키워드·
+  예시 이름/날짜/사진은 **AI 또는 사람이 나중에 채울 값**이다. 코드에 넣지 말고 실데이터
+  바인딩, 근거 없으면 `null`/빈 배열 → `—`·빈 상태 안내. (CLAUDE.md 작업방침 참조)
+
+## 인프라 (완료)
+- `react-native-svg` + `react-native-svg-transformer` + `expo-font` + `expo-linear-gradient`.
+- `metro.config.js`: svg 를 sourceExts 로 이동 + babelTransformer 교체.
+  **기존 React/react-query 단일화 `resolveRequest` 훅(a936160)·NativeWind 래핑 보존 필수.**
+- `svg.d.ts`: `*.svg`(컴포넌트)·`*.png`/`*.jpg`(number) 모듈 선언 → 에셋은 **ES import** 사용
+  (`require()` 는 eslint 금지 — `src/lib/fonts.ts` 만 예외 주석).
+- 폰트: `assets/fonts/Pretendard-1.3.9/public/static/alternative/*.ttf`(Regular/Medium/
+  SemiBold/Bold) → `src/lib/fonts.ts` FONT_MAP, `_layout.tsx` useFonts(로드 전 흰 화면),
+  `tailwind.config.js` 플러그인이 `font-normal/medium/semibold/bold` → 굵기별 패밀리 매핑.
+
+## 에셋 확보 방법 (개별 export 없이)
+사용자가 제공한 것은 **화면별 @4x 스크린샷 19장**(`assets/figma/<화면이름>.png`, 1572px = 4x)
++ 캔버스 조망도(`기억온.png`). 개별 아이콘/로고는 **여기서 크롭**한다.
+1. `get_design_context`(노드) → 요소의 `inset`% 또는 `left/top/size` 취득.
+2. inset% → px 환산: `left = left% × 393`, `top = top% × 프레임높이`,
+   `w = (100-left%-right%) × 393`, `h = (100-top%-bottom%) × 프레임높이`.
+   **프레임 높이는 화면마다 다르다**(로그인 852, 메인 1291 …) — §2 표 확인.
+3. Pillow 로 `×4` 크롭 후 배경 흰색 트림 → `assets/brand/<name>.png`.
+   (Pillow 없으면 `pip install Pillow`. `convert`/`ffmpeg` 는 컨테이너에 없음.)
+4. 버튼 위 아이콘은 버튼 배경색이 포함된 채로 크롭해도 무방(색이 정확히 일치).
+
+## 화면 진행 현황
+- ✅ 스플래쉬 `130:162` — 그라데이션(#fff→#f4c398 @58~100%)·카피 Bold16·로고 208×32.
+  **Figma 에 버튼 없음** → 기존 "간편 계정 연결" 제거, 1.6s 후 자동 진입.
+- ✅ 로그인 `130:161` — 입력 292×44 `#f4f4f4` r5 13px / 버튼 293×42 `#e9822b` r5 13px SemiBold
+  / 링크 12px + `|` / 소셜 50 실제 에셋.
+- ✅ 메인 `6:50` — 헤더 워드마크90×14·설정18×19 / 인사 SemiBold24/35+이름 주황밑줄 /
+  검색 h46 r10 border`#cccdce` 18px / 카드 336×146 r10 `rgba(233,130,43,0.07)` gap26,
+  사진101원형·이름 SemiBold19/30·메타 Medium16/30·화살표34 / 하단바118 버튼158×57 r10 18px.
+  **"최근 대화"=실제 최근 세션**(`useLastTalkByElder`+`lastTalkLabel`), 성별·사진은 스키마
+  부재로 생략/이니셜 아바타.
+- ⏳ 남은 16화면: 어르신 등록 `56:337` · 연대기 `15:7` · 상세_프로필 `56:214` ·
+  상세_세션기록 `75:177` · 종합분석 `130:388` · 대화 시작 전 `15:165` · 대화 `17:108` ·
+  대화 수정 `25:120` · 질문 로딩 `28:37` · 대화저장 `28:79` · 대화기록 `28:129` ·
+  단일 대화 분석 `118:74` · 개인 인지효과분석 `134:94` · 전체 인지효과분석 `144:201` ·
+  전체분석 `140:201` · 주제별 분석 `140:562`.
+
+## 화면 1개 작업 루틴
+1. `assets/figma/<이름>.png` 을 Pillow 로 축소(≤330×900, 긴 화면은 상/하 분할) → Read 로 육안 확인.
+2. `get_design_context`(해당 node, `excludeScreenshot:true` — 스크린샷은 이미 있음).
+3. 필요한 아이콘/이미지 크롭 → `assets/brand/`.
+4. 화면 구현: **레이아웃·치수·색·타이포는 Figma 그대로**, 세로 좌표는 프레임 비율 환산
+   (`(y/프레임높이) × 화면높이`) 또는 Figma 간격값을 flex 로. 값은 **실데이터 바인딩**.
+5. 게이트: `pnpm --filter @giokon/mobile typecheck`·`lint` + `node scripts/check-nonmedical-copy.mjs`
+   + **Metro Android 번들**(`npx expo export --platform android`, iOS 만 하지 말 것) → 화면별 커밋.
+
+## 분석 5화면 주의
+Figma 에 "인지효과분석 · 23% 향상"·82% 등 **가짜 수치**가 가득하다. 레이아웃만 가져오고
+수치는 `session_analyses`/`core observations` 바인딩, 없으면 `metric()`→`—`·빈 상태.
+카피는 관찰 지표 표현 유지(`check:copy`).
