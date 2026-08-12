@@ -5,14 +5,22 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "nativewind-env.d.ts",
-    "expo-env.d.ts"
+    "nativewind-env.d.ts"
   ],
-  "exclude": ["node_modules", ".expo", "dist", "babel.config.js", "metro.config.js", "tailwind.config.js"]
+  "exclude": [
+    "node_modules",
+    ".expo",
+    "dist",
+    "babel.config.js",
+    "metro.config.js",
+    "tailwind.config.js"
+  ]
 }
