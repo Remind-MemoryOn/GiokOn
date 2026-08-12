@@ -44,7 +44,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Pretendard', 'System'],
+        // expo-font 로 등록한 실제 패밀리명(src/lib/fonts.ts FONT 와 일치).
+        // 기본(굵기 미지정) 텍스트도 Pretendard 로 렌더된다.
+        sans: ['Pretendard-Regular'],
       },
       // 어르신 화면 대형 타이포(접근성 ≥18pt) — 단위 px
       fontSize: {
@@ -58,5 +60,20 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // 굵기 유틸 → Pretendard 굵기별 패밀리 매핑.
+    // RN(특히 Android)은 fontWeight 만으로 패밀리 내 굵기 파일을 골라주지 않으므로,
+    // font-medium/semibold/bold 가 등록된 별도 패밀리를 직접 가리키게 한다.
+    // (fontWeight 도 함께 유지 — iOS 렌더링·접근성 정보에 유용)
+    require('tailwindcss/plugin')(({ addUtilities }) => {
+      addUtilities({
+        '.font-normal': { fontFamily: 'Pretendard-Regular', fontWeight: '400' },
+        '.font-medium': { fontFamily: 'Pretendard-Medium', fontWeight: '500' },
+        '.font-semibold': { fontFamily: 'Pretendard-SemiBold', fontWeight: '600' },
+        '.font-bold': { fontFamily: 'Pretendard-Bold', fontWeight: '700' },
+        // Figma 에 ExtraBold 사용처가 있으면 Bold 로 근사(등록 파일 최소화).
+        '.font-extrabold': { fontFamily: 'Pretendard-Bold', fontWeight: '700' },
+      });
+    }),
+  ],
 };
