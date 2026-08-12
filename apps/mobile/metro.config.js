@@ -9,6 +9,14 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
+// ── SVG 를 컴포넌트로 임포트 (Figma 벡터 에셋 렌더링) ─────────────────────────
+// Figma 에서 내보낸 .svg 를 <Logo /> 처럼 쓰기 위해 svg 를 asset → source 로 옮기고
+// babelTransformer 를 react-native-svg-transformer(expo 진입점)로 교체한다.
+// PNG/JPG 등 래스터는 기존 asset 파이프라인 그대로 사용한다.
+config.transformer.babelTransformerPath = require.resolve('react-native-svg-transformer/expo');
+config.resolver.assetExts = config.resolver.assetExts.filter((ext) => ext !== 'svg');
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'svg'];
+
 config.watchFolders = [workspaceRoot];
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
