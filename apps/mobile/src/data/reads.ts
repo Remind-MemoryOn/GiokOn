@@ -147,6 +147,20 @@ export function useAllSessions(): Session[] {
   return (live.data ?? []).map(toSession);
 }
 
+/**
+ * 어르신별 **최근 대화 시각**(ISO) — 메인 화면 카드의 "최근 대화" 표시용.
+ * 실제 세션 기록에서 파생한다(예시 날짜 하드코딩 금지). 기록이 없는 어르신은 키가 없다.
+ */
+export function useLastTalkByElder(): Record<string, string> {
+  const sessions = useAllSessions();
+  const map: Record<string, string> = {};
+  for (const s of sessions) {
+    const prev = map[s.elderId];
+    if (!prev || s.createdAt > prev) map[s.elderId] = s.createdAt;
+  }
+  return map;
+}
+
 /** 담당 전체 세션 분석(전체 관찰지표 집계용). */
 export function useAllAnalyses(): SessionAnalysis[] {
   const mock = useApp(useShallow((s) => Object.values(s.analyses)));

@@ -14,3 +14,19 @@ export const NO_VALUE = '—';
 export function metric(value: number | null | undefined, suffix = ''): string {
   return value === null || value === undefined ? NO_VALUE : `${value}${suffix}`;
 }
+
+/**
+ * "최근 대화" 표시 — 오늘이면 '오늘', 어제면 '어제', 그 외 'M월 D일'.
+ * 기록이 없으면 '없음'(Figma 디자인에도 '없음' 상태가 존재한다).
+ * ⚠️ 예시 날짜를 만들지 않는다 — 반드시 실제 세션 시각을 넘긴다.
+ */
+export function lastTalkLabel(iso: string | null | undefined): string {
+  if (!iso) return '없음';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '없음';
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOf(new Date()) - startOf(d)) / 86400000);
+  if (days === 0) return '오늘';
+  if (days === 1) return '어제';
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
