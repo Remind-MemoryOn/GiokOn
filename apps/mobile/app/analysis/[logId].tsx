@@ -2,15 +2,19 @@
 //
 // Figma 실측:
 //   헤더 0..114 (뒤로 @(29,74) · "대화 분석" Medium 18/30 @top71 · 공유 18×20 @(347,74))
-//   크림 히어로 114..224 #fdf3ea — 날짜 Medium 14 #7b7c7c @(29,142) · 제목 SemiBold 20 @(29,169)
-//   흰 시트 top 224, 상단 라운드 30 (뒤로 크림이 보인다)
+//   크림 히어로 114..222 #fdf3ea (h108) — 날짜 Medium 14 #7b7c7c 잉크 top 150.75 ·
+//     제목 SemiBold 20 잉크 top 175 (lineHeight 25/30 기준 박스 top 144.25 / 169)
+//   흰 시트 top 222, 상단 라운드 30 (뒤로 크림이 보인다)
 //   참여 타일 103×115 r5 #fefbf8/#f8d7bb @(29/146/262, 255) — 라벨 SemiBold 12 · 값 SemiBold 16
-//   구분선 336×1 #d9d9d9 @400 · "핵심 요약" SemiBold 17 @(29,421) · 불릿 Regular 13/26 @(29,451)
+//     (좌우 끝을 29/365 에 고정 → space-between. Figma 는 화면마다 145/146 이 섞여 있다)
+//   구분선 336×1 #d9d9d9 @400 · "핵심 요약" SemiBold 17 @(29,421)
+//     불릿 Regular 13/26 — 점 잉크 x37.25 · 본문 박스 x48.5 · 행 pitch 26 (첫 행 잉크 top 458.75)
 //   구분선 @555 · "대화 특성" @(29,574)
-//     특성 카드 162×73 r5 #fefbf8/#f8d7bb 2×2 @(29/203, 615/700) — 라벨 Regular 13 · 값 SemiBold 16
+//     특성 카드 162×73 r5 #fefbf8/#f8d7bb 2×2 @(29/203, 615/700)
+//       라벨 Regular 13 잉크 rel+20.75 · 값 SemiBold 16 잉크 rel+40.5
 //     키워드 칩 76×32 r5 @(29/116/203/289, 788) — SemiBold 16 #e9822b
 //   구분선 @850 · "감정 분석" @(29,873)
-//     스마일 43 @(29,914) · 문장 Regular 12 @(84,910) · 수치 SemiBold 12 @(84/157/231, 932)
+//     스마일 43 @(29,914) · 문장 Regular 12 @(84,910) · 수치 SemiBold 12 @(84/157.25/231.25, 932)
 //     막대 336×12 @(29,973) — #e9822b / #f3bb8a / #fdf3ea
 //
 // ⚠️ 값은 전부 실측 관찰지표다. Figma 의 "12분 34초·6회·94%·긍정 82%·#고향" 등은 자리표시자다.
@@ -59,15 +63,16 @@ function TraitCard({ label, value }: { label: string; value: string }) {
         alignItems: 'center',
       }}
     >
+      {/* 잉크 위치를 Figma 실측(rel +20.75 / +40.5)에 맞춘 값 — 카드 내부 top 은 테두리 1 포함 */}
       <Text
         className="text-[13px] font-normal text-black"
-        style={{ lineHeight: 30, marginTop: 5.75 }}
+        style={{ lineHeight: 30, marginTop: 10.5 }}
       >
         {label}
       </Text>
       <Text
         className="text-[16px] font-semibold text-black"
-        style={{ lineHeight: 30, marginTop: -3.75 }}
+        style={{ lineHeight: 30, marginTop: -9.25 }}
       >
         {value}
       </Text>
@@ -146,17 +151,17 @@ export default function SingleAnalysis() {
         rightLabel="보호자 공유 안내"
       />
 
-      {/* 크림 히어로 114..224 */}
-      <View style={{ height: 110, paddingLeft: DETAIL.left, backgroundColor: DETAIL.chipBg }}>
+      {/* 크림 히어로 114..222 (h108) */}
+      <View style={{ height: 108, paddingLeft: DETAIL.left, backgroundColor: DETAIL.chipBg }}>
         <Text
           className="text-[14px] font-medium text-muted"
-          style={{ lineHeight: 25, marginTop: 21 }}
+          style={{ lineHeight: 25, marginTop: 30.25 }}
         >
           {longKoreanDate(log.startedAt).replace(/^\d+년\s/, '')} {hhmmLabel(log.startedAt)}
         </Text>
         <Text
           className="text-[20px] font-semibold text-black"
-          style={{ lineHeight: 30, marginTop: 2 }}
+          style={{ lineHeight: 30, marginTop: -0.25 }}
         >
           {session?.title ?? '회상 대화'}
         </Text>
@@ -174,10 +179,10 @@ export default function SingleAnalysis() {
         >
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 31, paddingBottom: 50 }}
+            contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 33, paddingBottom: 50 }}
           >
-            {/* 참여 타일 3종 */}
-            <View className="flex-row" style={{ width: DETAIL.width, columnGap: 13 }}>
+            {/* 참여 타일 3종 — 좌우 끝을 29/365 에 고정(간격 13.5) */}
+            <View className="flex-row justify-between" style={{ width: DETAIL.width }}>
               <StatTile
                 icon={statTime}
                 iconSize={{ width: 24, height: 24 }}
@@ -212,15 +217,16 @@ export default function SingleAnalysis() {
             ) : (
               bullets.map((b) => (
                 <View key={b} className="flex-row" style={{ width: DETAIL.width }}>
+                  {/* 점 박스 x35.25(잉크 37.25) · 폭 13.25 → 본문 박스 x48.5 (Figma 실측) */}
                   <Text
                     className="text-[13px] font-normal text-black"
-                    style={{ lineHeight: 26, marginLeft: 8.5 }}
+                    style={{ lineHeight: 26, marginLeft: 6.25, width: 13.25 }}
                   >
                     •
                   </Text>
                   <Text
                     className="flex-1 text-[13px] font-normal text-black"
-                    style={{ lineHeight: 26, marginLeft: 7 }}
+                    style={{ lineHeight: 26 }}
                   >
                     {b}
                   </Text>
@@ -288,14 +294,27 @@ export default function SingleAnalysis() {
                   {tone.label} 톤이 가장 많이 관찰됐어요
                 </Text>
                 {/* Figma 는 두 줄이 8px 겹쳐 있다(문장 box 910 / 수치 box 932) */}
-                <View className="flex-row" style={{ marginTop: -8, columnGap: 22 }}>
-                  <Text className="text-[12px] font-semibold text-black" style={{ lineHeight: 30 }}>
+                {/* 3열은 Figma 실측 x(84/157.25/231.25) = pitch 73.5 고정 — 라벨 길이가 달라도 정렬 유지 */}
+                <View className="flex-row" style={{ marginTop: -8 }}>
+                  <Text
+                    className="text-[12px] font-semibold text-black"
+                    style={{ lineHeight: 30, width: 73.5 }}
+                    numberOfLines={1}
+                  >
                     활발 {pct(rich)}%
                   </Text>
-                  <Text className="text-[12px] font-semibold text-black" style={{ lineHeight: 30 }}>
+                  <Text
+                    className="text-[12px] font-semibold text-black"
+                    style={{ lineHeight: 30, width: 73.5 }}
+                    numberOfLines={1}
+                  >
                     짧게 {pct(short)}%
                   </Text>
-                  <Text className="text-[12px] font-semibold text-black" style={{ lineHeight: 30 }}>
+                  <Text
+                    className="text-[12px] font-semibold text-black"
+                    style={{ lineHeight: 30 }}
+                    numberOfLines={1}
+                  >
                     무응답 {pct(silent)}%
                   </Text>
                 </View>

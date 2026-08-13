@@ -3,10 +3,12 @@
 // Figma 실측(393×1291 프레임):
 //   헤더 높이 114, shadow 1px 1px 10px rgba(108,101,101,0.13)
 //     워드마크 90×13.7 @ (30, 78) · 설정 18×19 @ (344, 75)
-//   인사 SemiBold 24/35 검정 @ (30, 144) — 이름 아래 주황 밑줄(62×3 @ y205)
+//   인사 SemiBold 24/35 검정 @ (30, 144) — 이름 아래 주황 밑줄 62×3 @ (30, 205)
 //   검색 335×46 @ (30, 234) border #cccdce r10 · 아이콘 19 @ (49,247) · 안내 Regular 18 #7b7c7c
-//   카드 336×146 gap 26(top 311부터) · 하단바 118 흰색 shadow 0 4 12 rgba(0,0,0,0.25)
+//   카드 336×146 @ x29, top 311부터 pitch 172(gap 26)
+//   하단바 118 흰색 shadow 0 4 12 rgba(0,0,0,0.25) — 버튼은 **하단 정렬**(top 1197, pb 37)
 //     버튼 158×57 r10 (등록=#e9822b 채움 / 전체분석=흰색+#e9822b 외곽선) 라벨 SemiBold 18
+// 세로 간격은 @4x 내보내기 픽셀 대조로 확정: 인사행→검색 20, 검색→카드 31, 밑줄 marginTop -9.
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 //
 // 기능은 기존과 동일(로그아웃·검색·등록·전체분석 이동). "최근 대화"는 실제 세션에서 파생.
@@ -65,11 +67,11 @@ export default function Main() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 28.5, paddingTop: 30, paddingBottom: 24 }}
+        contentContainerStyle={{ paddingLeft: 29, paddingRight: 28, paddingTop: 30, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >
         {/* 인사 — 이름에 주황 밑줄 */}
-        <View style={{ paddingLeft: 1.5 }}>
+        <View style={{ marginLeft: 1 }}>
           <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
             안녕하세요!
           </Text>
@@ -78,7 +80,7 @@ export default function Main() {
               <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
                 {caregiverName}
               </Text>
-              <View style={{ height: 3, backgroundColor: '#e9822b', marginTop: -4 }} />
+              <View style={{ height: 3, backgroundColor: '#e9822b', marginTop: -9 }} />
             </View>
             <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
               {' '}
@@ -91,13 +93,15 @@ export default function Main() {
         <View
           className="flex-row items-center"
           style={{
+            width: 335,
             height: 46,
             borderRadius: 10,
             borderWidth: 1,
             borderColor: '#cccdce',
-            paddingHorizontal: 20,
-            marginTop: 24,
-            marginBottom: 30,
+            paddingHorizontal: 19,
+            marginLeft: 1,
+            marginTop: 20,
+            marginBottom: 31,
           }}
         >
           <Image source={iconSearch} style={{ width: 19, height: 19 }} resizeMode="contain" />
@@ -130,7 +134,7 @@ export default function Main() {
 
       {/* 하단 액션 바 */}
       <View
-        className="flex-row items-center justify-center bg-white"
+        className="flex-row items-end justify-center bg-white"
         style={{
           height: 118,
           paddingBottom: 37,

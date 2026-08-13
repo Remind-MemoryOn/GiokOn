@@ -6,18 +6,21 @@
 //   전체: "AI 종합 의견"        (AI 배지 37 + 제목 SemiBold 17 + 본문 Regular 13/25)
 // 제목도 "인지 효과 분석" / "전체 인지 효과 분석" 로 다르다.
 //
-// Figma 실측:
+// Figma 실측(@4x 픽셀 대조로 확정):
 //   헤더 0..114 · "인지 효과 지표" SemiBold 17 @(29,145) + 기간 pill 99×25 @(266,148)
-//   레이더 링 5개(r 97.5~18.5) 중심 (196.5,318.5) · 축 라벨 Medium 13 @189~439
-//   지표 카드 103×103 r5 #fefbf8/#f8d7bb 3+2 @(29/145/262, 457/574) gap 13/14
-//     라벨 Medium 12 · 값 SemiBold 16 · 배지(▲ 11 + SemiBold 12 #60bd66) @+64
-//   구분선 @713 · "종합 인지 활동 효과 분석" @(32,737)
-//     요약 카드 162×95 2×2 @(29/203, 785/893) — 라벨 Regular 14 · 값 SemiBold 18
-//   구분선 @1023 · "지표별 변화 추이" @(29,1045) · 범례 12점 2행 @1084/1115
-//     꺾은선 0%↔1317 / 100%↔1169 · X축선 290 @(71,1317) · 월 라벨 @1321
+//   레이더 블록 top 185.5 (중심 (196.5,318.5)) · 축 라벨 Medium 13/38
+//   지표 카드 103×103 r5 #fefbf8/#f8d7bb 3+2 @(29/145.5/262, 457/574)
+//     라벨 Medium 12 잉크 rel+21.5 · 값 SemiBold 16 잉크 rel+46.25 ·
+//     배지 ▲ 8×7 #60bd66 + SemiBold 12 잉크 rel+73.25 (▲↔글자 간격 2.5)
+//   구분선 @713 · "종합 인지 활동 효과 분석" (Figma 만 x32.5 — 다른 제목은 전부 29)
+//     변화율 카드 162×95 2×2 @(29/203, 785/893) — 라벨 Regular 14 잉크 rel+23.5 ·
+//       [아이콘 + 값 SemiBold 18 **#e9822b**] 잉크 rel+50.5 (아이콘↔값 간격 평균 12)
+//   구분선 @1023 · "지표별 변화 추이" @(29,1045)
+//     범례 12점 @x(34/160/283) · 라벨 Regular 12 박스 +18 · 행 top 1083.75 pitch 31
+//     꺾은선 블록 top 1169 (0%↔1317 / 100%↔1169) · X축선 290 @(71,1317)
 //   구분선 @1372 · "인지 효과 종합 평가" @(29,1394)
-//     스마일 54 @(170,1446) · 평가 SemiBold 20 #e9822b @(151,1509)
-//     문장 Regular 13 w222 @(86,1543) · 배지 pill 176×25 #fdf3ea @(109,1608) SemiBold 13
+//     스마일 54 @(170,1446) · 평가 SemiBold 20 #e9822b 잉크 @1515
+//     문장 Regular 13/25 w222 잉크 @1549.5 · 배지 pill 176×25 #fdf3ea @(109,1608) SemiBold 13
 //
 // ⚠️ Figma 의 "기억 회상력 23% ▲향상 / +23% / 전체 평균 대비 +17% 향상" 은 자리표시자다.
 //   사용자 확정(2026-08-13)에 따라 5축을 **실측 관찰지표**로 재정의(core computeAxisObservations)
@@ -28,7 +31,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polygon } from 'react-native-svg';
 import type { AxisObservation, ObservationAxis } from '@giokon/core';
 import { ScreenHeader } from '../src/components/ScreenHeader';
-import { AiOpinion, DETAIL, Divider, SectionHeading } from '../src/components/detail';
+import { AiOpinion, DETAIL, Divider, PeriodPill, SectionHeading } from '../src/components/detail';
 import { RadarChart, TrendChart } from '../src/components/charts';
 import { useElder } from '../src/data/reads';
 import {
@@ -43,6 +46,7 @@ import iconSmileBig from '../assets/brand/icon-smile.png';
 import statTime from '../assets/brand/stat-time.png';
 import statSmile from '../assets/brand/stat-smile.png';
 import statCount from '../assets/brand/stat-count.png';
+import statTrend from '../assets/brand/stat-trend.png';
 
 /** Figma 축 라벨(시계방향: 위 → 우 → 우하 → 좌하 → 좌). */
 const AXIS_LABEL: Record<ObservationAxis, string> = {
@@ -65,11 +69,11 @@ const SERIES_COLOR: Record<ObservationAxis, string> = {
 const UP = '#60bd66';
 const DOWN = '#d8503c';
 
-/** ▲/▼ 삼각형 11×11. */
+/** ▲/▼ 삼각형 8×7 (Figma 실측). */
 function DeltaMark({ up }: { up: boolean }) {
   return (
-    <Svg width={11} height={11}>
-      <Polygon points={up ? '5.5,0 11,11 0,11' : '0,0 11,0 5.5,11'} fill={up ? UP : DOWN} />
+    <Svg width={8} height={7}>
+      <Polygon points={up ? '4,0 8,7 0,7' : '0,0 8,0 4,7'} fill={up ? UP : DOWN} />
     </Svg>
   );
 }
@@ -96,19 +100,20 @@ function AxisCard({
         alignItems: 'center',
       }}
     >
+      {/* 잉크 rel +21.5 / +46.25 / +73.25 에 맞춘 값 (카드 내부 top 은 테두리 1 포함) */}
       <Text
         className="text-[12px] font-medium text-black"
-        style={{ lineHeight: 30, marginTop: 2.5 }}
+        style={{ lineHeight: 30, marginTop: 10.75 }}
       >
         {label}
       </Text>
       <Text
         className="text-[16px] font-semibold text-black"
-        style={{ lineHeight: 30, marginTop: -5 }}
+        style={{ lineHeight: 30, marginTop: -3.5 }}
       >
         {metric(value, '%')}
       </Text>
-      <View className="flex-row items-center" style={{ marginTop: -3 }}>
+      <View className="flex-row items-center" style={{ marginTop: -4.75 }}>
         {delta === null || delta === 0 ? (
           <Text className="text-[12px] font-semibold text-muted" style={{ lineHeight: 30 }}>
             {delta === 0 ? '변화 없음' : NO_VALUE}
@@ -118,7 +123,7 @@ function AxisCard({
             <DeltaMark up={delta > 0} />
             <Text
               className="text-[12px] font-semibold"
-              style={{ lineHeight: 30, marginLeft: 4, color: delta > 0 ? UP : DOWN }}
+              style={{ lineHeight: 30, marginLeft: 2.5, color: delta > 0 ? UP : DOWN }}
             >
               {delta > 0 ? '향상' : '감소'}
             </Text>
@@ -154,17 +159,15 @@ function RateCard({
         alignItems: 'center',
       }}
     >
-      <Text
-        className="text-[14px] font-normal text-black"
-        style={{ lineHeight: 30, marginTop: 8.25 }}
-      >
+      <Text className="text-[14px] font-normal text-black" style={{ lineHeight: 30, marginTop: 13 }}>
         {label}
       </Text>
-      <View className="flex-row items-center" style={{ marginTop: 3 }}>
+      <View className="flex-row items-center" style={{ marginTop: -0.25 }}>
         <Image source={icon} style={iconSize} resizeMode="contain" />
+        {/* Figma 는 이 카드의 값만 주황이다(전체 분석의 요약 카드는 검정) */}
         <Text
-          className="text-[18px] font-semibold text-black"
-          style={{ lineHeight: 30, marginLeft: 6.5 }}
+          className="text-[18px] font-semibold text-accent"
+          style={{ lineHeight: 30, marginLeft: 12 }}
         >
           {text}
         </Text>
@@ -173,18 +176,14 @@ function RateCard({
   );
 }
 
-function PeriodPill({ label }: { label: string }) {
-  return (
-    <View
-      className="items-center justify-center"
-      style={{ width: 99, height: 25, borderRadius: 5, borderWidth: 1, borderColor: '#d5d5d5' }}
-    >
-      <Text className="text-[12px] font-normal text-muted" style={{ lineHeight: 25 }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
+/** 범례 항목 x (Figma 점 좌측 34/160/283 − 콘텐츠 원점 29) + 행 배치 3+2. */
+const LEGEND_POS = [
+  { left: 5, top: 0 },
+  { left: 131, top: 0 },
+  { left: 254, top: 0 },
+  { left: 5, top: 31 },
+  { left: 131, top: 31 },
+];
 
 export default function Observations() {
   const { scope, id } = useLocalSearchParams<{ scope?: string; id?: string }>();
@@ -245,12 +244,16 @@ export default function Observations() {
           <PeriodPill label="최근 3개월" />
         </View>
 
-        <View style={{ marginTop: 14 }}>
+        {/* 레이더 — 블록 top 185.5 (= 175 + 10.5) */}
+        <View style={{ marginTop: 10.5 }}>
           <RadarChart axes={ordered.map((a) => ({ label: AXIS_LABEL[a.axis], value: a.value }))} />
         </View>
 
         {/* 지표 카드 3 + 2 (Figma 배치 순서: 기억·정서·참여 / 집중·표현) */}
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 18, columnGap: 13 }}>
+        <View
+          className="flex-row justify-between"
+          style={{ width: DETAIL.width, marginTop: 18 }}
+        >
           {ordered.slice(0, 3).map((a) => (
             <AxisCard key={a.axis} label={AXIS_LABEL[a.axis]} value={a.value} delta={a.delta} />
           ))}
@@ -271,8 +274,8 @@ export default function Observations() {
         <View className="flex-row" style={{ width: DETAIL.width, marginTop: 18, columnGap: 12 }}>
           <RateCard
             label="기억 회상 향상률"
-            icon={statSmile}
-            iconSize={{ width: 25, height: 25 }}
+            icon={statTrend}
+            iconSize={{ width: 29.25, height: 17.25 }}
             delta={byAxis.get('recall')?.delta ?? null}
           />
           <RateCard
@@ -304,20 +307,24 @@ export default function Observations() {
           <SectionHeading>지표별 변화 추이</SectionHeading>
         </View>
 
-        {/* 범례 — 12점 + Regular 12, 3+2 배치 */}
-        <View className="flex-row flex-wrap" style={{ width: DETAIL.width, marginTop: 9 }}>
+        {/* 범례 — 12점 + Regular 12, 3+2 배치. Figma x 가 균등하지 않아 실측 좌표로 절대 배치. */}
+        <View style={{ width: DETAIL.width, height: 62, marginTop: 8.75 }}>
           {AXIS_ORDER.map((k, i) => (
-            <View
-              key={k}
-              className="flex-row items-center"
-              style={{ width: i === 2 || i === 4 ? 110 : 126, height: 31 }}
-            >
+            <View key={k} className="absolute" style={LEGEND_POS[i]}>
               <View
-                style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: SERIES_COLOR[k] }}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 8.25,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor: SERIES_COLOR[k],
+                }}
               />
               <Text
-                className="text-[12px] font-normal text-black"
-                style={{ lineHeight: 30, marginLeft: 6 }}
+                className="absolute text-[12px] font-normal text-black"
+                style={{ left: 18, top: 0, lineHeight: 30 }}
               >
                 {AXIS_LABEL[k]}
               </Text>
@@ -325,7 +332,8 @@ export default function Observations() {
           ))}
         </View>
 
-        <View style={{ marginTop: 13 }}>
+        {/* 꺾은선 — 블록 top 1169 (범례 하단 1145.75 + 23.25) */}
+        <View style={{ marginTop: 23.25 }}>
           <TrendChart
             labels={trend.months.map((m) => `${Number(m.slice(5))}월`)}
             series={AXIS_ORDER.map((k) => ({
@@ -351,7 +359,7 @@ export default function Observations() {
               <SectionHeading>인지 효과 종합 평가</SectionHeading>
             </View>
 
-            <View className="items-center" style={{ width: DETAIL.width, marginTop: 23 }}>
+            <View className="items-center" style={{ width: DETAIL.width, marginTop: 22 }}>
               <Image source={iconSmileBig} style={{ width: 54, height: 54 }} resizeMode="contain" />
               <Text
                 className="text-[20px] font-semibold text-accent"
@@ -361,7 +369,7 @@ export default function Observations() {
               </Text>
               <Text
                 className="text-[13px] font-normal text-black text-center"
-                style={{ lineHeight: 25, width: 222, marginTop: 4 }}
+                style={{ lineHeight: 25, width: 222, marginTop: 3.75 }}
               >
                 {summarySentence}
               </Text>
@@ -373,7 +381,7 @@ export default function Observations() {
                     height: 25,
                     borderRadius: 12.5,
                     backgroundColor: DETAIL.chipBg,
-                    marginTop: 16,
+                    marginTop: 15.25,
                   }}
                 >
                   <Text className="text-[13px] font-semibold text-black" style={{ lineHeight: 25 }}>

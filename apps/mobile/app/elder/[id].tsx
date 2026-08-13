@@ -253,7 +253,8 @@ function AnalysisTab({ elderId }: { elderId: string }) {
     >
       <SectionHeading>종합 대화 참여도</SectionHeading>
 
-      <View className="flex-row" style={{ width: DETAIL.width, marginTop: 14, columnGap: 13 }}>
+      {/* 타일 좌우 끝을 29/365 에 고정(간격 13.5) — Figma 는 145/146 이 섞여 있다 */}
+      <View className="flex-row justify-between" style={{ width: DETAIL.width, marginTop: 14 }}>
         <StatTile
           icon={statTime}
           iconSize={{ width: 24, height: 24 }}

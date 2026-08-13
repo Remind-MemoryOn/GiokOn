@@ -38,8 +38,8 @@ export default function SessionStart() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      {/* 로봇 마스코트 */}
-      <View className="absolute left-0 right-0 items-center" style={{ top: (185 / FRAME_H) * height }}>
+      {/* 로봇 마스코트 — Figma (98, 185) 195×124. 중앙(99)이 아니라 실측 x 를 쓴다. */}
+      <View className="absolute" style={{ left: 98, top: (185 / FRAME_H) * height }}>
         <RobotMascot size={195} />
       </View>
 

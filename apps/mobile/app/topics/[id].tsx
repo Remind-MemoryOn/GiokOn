@@ -1,22 +1,25 @@
 // 주제별 분석 (Figma `140:562`, 프레임 393×852)
 //
-// Figma 실측:
+// Figma 실측(@4x 픽셀 대조로 확정):
 //   헤더 0..114 (뒤로 @(29,74) · "주제별 분석" Medium 18/30 @(155,71) · 공유 18×20 @(347,74))
 //   "종합 관심 주제 변화" SemiBold 17 @(29,145) + 기간 pill 99×25 @(266,147)
-//   범례 12점 + Regular 12: 3열(35/161/284) × 2행(192/223) — 라벨 x 53/180/303
-//   꺾은선 0% ↔ X축선 y417 / 100% ↔ 269 · X축선 290×1 @(72,417) · 월 라벨 @422
+//   범례 12점 + Regular 12: 점 x 35/161/284 × 행 top 192/223 — 라벨 박스 = 점+18
+//   꺾은선 블록 top 269 (0% ↔ X축선 y417 / 100% ↔ 269) · X축선 290×1 @(72,417)
+//     ※ 이 화면만 X축선이 72(다른 화면 71) — 공용 컴포넌트라 71 유지(편차 1px)
 //   구분선 @473 · "주제별 상세 분석" @(29,498) + 주제 pill 73×25 @(292,500)
-//     상세 카드 103×87 r5 #fefbf8/#f8d7bb @(29/146/262, 546) — 라벨 @+16 · 값 @+39
-//   구분선 @671 · "주요 키워드" @(29,699) · 키워드 칩 h25 r5 @746 (gap 10)
+//     상세 카드 103×87 r5 #fefbf8/#f8d7bb @(29/146/262, 546)
+//       라벨 Regular 13 잉크 rel+25.75 · 값 SemiBold 16 잉크 rel+47.25
+//   구분선 @671 · "주요 키워드" @(29,699)
+//     키워드 칩 h25 r5 #fefbf8/#f8d7bb @746 (gap 10) — 텍스트 **SemiBold 14 #e9822b**
 //
 // ⚠️ 79%·75회·88%·8분 45초·예시 키워드는 자리표시자다. 전부 실집계(core)와
 //   분석 결과의 실제 키워드에 바인딩하고, 근거가 없으면 '—'/빈 상태로 둔다.
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { assessEngagement } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
-import { DETAIL, Divider, SectionHeading } from '../../src/components/detail';
+import { DETAIL, Divider, PeriodPill, SectionHeading } from '../../src/components/detail';
 import { TrendChart } from '../../src/components/charts';
 import {
   useAllAnalyses,
@@ -34,42 +37,20 @@ import {
 } from '../../src/data/observations';
 import { metric, NO_VALUE } from '../../src/lib/format';
 import iconShare from '../../assets/brand/icon-share.png';
-import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 
 /** 주제 시계열 색(개인 인지효과분석 범례와 같은 팔레트). */
 const SERIES_COLORS = ['#e9822b', '#8cd565', '#2bc9e9', '#e92b90', '#d147dd'];
 
-function Pill({ label, width, onPress }: { label: string; width: number; onPress?: () => void }) {
-  const inner = (
-    <>
-      <Text className="text-[12px] font-normal text-muted" style={{ lineHeight: 25, marginLeft: 16 }}>
-        {label}
-      </Text>
-      <Image
-        source={iconChevronDown}
-        style={{ position: 'absolute', right: 6.2, top: 8, width: 8.4, height: 5.45 }}
-        resizeMode="contain"
-      />
-    </>
-  );
-  const style = {
-    width,
-    height: 25,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#d5d5d5',
-    justifyContent: 'center' as const,
-  };
-  return onPress ? (
-    <Pressable onPress={onPress} accessibilityRole="button" className="active:opacity-70" style={style}>
-      {inner}
-    </Pressable>
-  ) : (
-    <View style={style}>{inner}</View>
-  );
-}
+/** 범례 항목 위치 — Figma 점 좌측 35/161/284 − 콘텐츠 원점 29, 행 pitch 31. */
+const LEGEND_POS = [
+  { left: 6, top: 0 },
+  { left: 132, top: 0 },
+  { left: 255, top: 0 },
+  { left: 6, top: 31 },
+  { left: 132, top: 31 },
+];
 
-/** 상세 카드 103×87. */
+/** 상세 카드 103×87 — 잉크 rel +25.75 / +47.25. */
 function DetailCard({ label, value }: { label: string; value: string }) {
   return (
     <View
@@ -83,10 +64,16 @@ function DetailCard({ label, value }: { label: string; value: string }) {
         alignItems: 'center',
       }}
     >
-      <Text className="text-[13px] font-normal text-black" style={{ lineHeight: 30, marginTop: 6.25 }}>
+      <Text
+        className="text-[13px] font-normal text-black"
+        style={{ lineHeight: 30, marginTop: 15.5 }}
+      >
         {label}
       </Text>
-      <Text className="text-[16px] font-semibold text-black" style={{ lineHeight: 30, marginTop: -1 }}>
+      <Text
+        className="text-[16px] font-semibold text-black"
+        style={{ lineHeight: 30, marginTop: -7.25 }}
+      >
         {value}
       </Text>
     </View>
@@ -102,11 +89,11 @@ function KeywordChip({ text }: { text: string }) {
         backgroundColor: DETAIL.tileBg,
         borderWidth: 1,
         borderColor: DETAIL.tileBorder,
-        paddingHorizontal: 12,
+        paddingHorizontal: 14,
         justifyContent: 'center',
       }}
     >
-      <Text className="text-[13px] font-normal text-black" style={{ lineHeight: 25 }}>
+      <Text className="text-[14px] font-semibold text-accent" style={{ lineHeight: 25 }}>
         {text}
       </Text>
     </View>
@@ -171,34 +158,36 @@ export default function Topics() {
       >
         <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
           <SectionHeading>종합 관심 주제 변화</SectionHeading>
-          <Pill label="최근 6개월" width={99} />
+          <PeriodPill label="최근 6개월" />
         </View>
 
-        {/* 범례 — 3열 × 2행 (Figma 좌표: 점 35/161/284, 라벨 53/180/303) */}
-        <View className="flex-row flex-wrap" style={{ width: DETAIL.width, marginTop: 10 }}>
-          {trend.series.map((s, i) => (
-            <View
-              key={s.label}
-              className="flex-row items-center"
-              style={{ width: i % 3 === 2 ? 82 : 126, height: 31 }}
-            >
+        {/* 범례 — 3열 × 2행. Figma x 가 균등하지 않아 실측 좌표로 절대 배치. */}
+        <View style={{ width: DETAIL.width, height: 62, marginTop: 8.75 }}>
+          {trend.series.slice(0, LEGEND_POS.length).map((s, i) => (
+            <View key={s.label} className="absolute" style={LEGEND_POS[i]}>
               <View
                 style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 8.25,
                   width: 12,
                   height: 12,
                   borderRadius: 6,
                   backgroundColor: SERIES_COLORS[i % SERIES_COLORS.length],
-                  marginLeft: 6,
                 }}
               />
-              <Text className="text-[12px] font-normal text-black" style={{ lineHeight: 30, marginLeft: 6 }}>
+              <Text
+                className="absolute text-[12px] font-normal text-black"
+                style={{ left: 18, top: 0, lineHeight: 30 }}
+              >
                 {s.label}
               </Text>
             </View>
           ))}
         </View>
 
-        <View style={{ marginTop: 12 }}>
+        {/* 꺾은선 — 블록 top 269 (범례 하단 245.75 + 23.25) */}
+        <View style={{ marginTop: 23.25 }}>
           <TrendChart
             labels={trend.months.map((m) => `${Number(m.slice(5))}월`)}
             series={trend.series.map((s, i) => ({
@@ -209,7 +198,7 @@ export default function Topics() {
           />
         </View>
 
-        <View style={{ marginTop: 26 }}>
+        <View style={{ marginTop: 25 }}>
           <Divider />
         </View>
 
@@ -218,10 +207,11 @@ export default function Topics() {
           style={{ width: DETAIL.width, marginTop: 24 }}
         >
           <SectionHeading>주제별 상세 분석</SectionHeading>
-          <Pill label={focus?.label ?? NO_VALUE} width={73} />
+          <PeriodPill label={focus?.label ?? NO_VALUE} width={73} labelInset={17} />
         </View>
 
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 18, columnGap: 13 }}>
+        {/* 좌우 끝을 29/365 에 고정(간격 13.5) */}
+        <View className="flex-row justify-between" style={{ width: DETAIL.width, marginTop: 18 }}>
           <DetailCard label="언급 빈도" value={focus ? `${mentions}회` : NO_VALUE} />
           <DetailCard label="활발 응답률" value={metric(engagedRate, '%')} />
           <DetailCard label="평균 대화 시간" value={metric(avgMinutes, '분')} />

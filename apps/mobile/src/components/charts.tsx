@@ -2,11 +2,14 @@
 //
 // Figma 실측:
 //  [레이더] 5각형 링 5개 r 97.5/77/58/37.5/18.5, 중심 (196.5, 318.5) — 20/40/60/80/100%
+//    (실측: 최외곽 오각형 y 221.0..397.4 · x 103.75..289.25 — 정오각형과 일치)
 //    링 선 #e9e9e9 · 데이터 폴리곤 채움 #f8e3d2 + 선 #e9822b + 꼭지점 점 4
-//    축 라벨 Medium 13 검정 (기억 회상력 위 → 시계방향)
-//  [꺾은선] 0% ↔ y 1317(=X축선), 100% ↔ 1169 → 플롯 높이 148
-//    X축선 290×1 #d9d9d9 @left 71 · 점 x 86~341 등분 · 점 7 · 선 두께 2
-//    Y 라벨 Regular 12 #7b7c7c (우측 정렬 ~64) · 월 라벨 Regular 12 검정
+//    축 라벨 Medium 13 검정 (기억 회상력 위 → 시계방향), lineHeight 38 기준 잉크 offset 13
+//    라벨 잉크 top 198.5(위) / 284.5(좌·우) / 410.5(하) → 블록 top 185.5
+//  [꺾은선] 0% ↔ y 1317(=X축선), 100% ↔ 1169 → 플롯 높이 148, 블록 top 1169
+//    X축선 290×1 #d9d9d9 @left 71 · 점 중심 x 89.5 / 217 / 344.5 · 점 지름 7 · 선 두께 2
+//    Y 라벨 Regular 12 #7b7c7c (우측 정렬 ~63, 잉크 top 1164.25 부터 pitch 37)
+//    월 라벨 Regular 12 검정 잉크 top 1330.5
 //
 // ⚠️ 값이 없는 지점(null)은 점·선을 그리지 않는다 — 없는 관찰을 이어 붙이지 않는다.
 import React from 'react';
@@ -19,10 +22,11 @@ const CONTENT_W = 336;
 const RADAR_R = 97.5;
 /** 링 반지름(Figma 실측) — 20/40/60/80/100% 위치. */
 const RINGS = [18.5, 37.5, 58, 77, 97.5];
-/** 컴포넌트 로컬 중심 (Figma (196.5,318.5) − 콘텐츠 원점 (29,189)). */
+/** 컴포넌트 로컬 중심 (Figma (196.5,318.5) − 블록 원점 (29,185.5)). */
 const RADAR_CX = 167.5;
-const RADAR_CY = 129.5;
-const RADAR_H = 250;
+const RADAR_CY = 133;
+/** 블록 높이 — 다음 요소(지표 카드)가 Figma 457 에 오도록 185.5 + 253.5 + 18 = 457. */
+const RADAR_H = 253.5;
 
 function pentagonPoints(cx: number, cy: number, r: number): string {
   return Array.from({ length: 5 }, (_, i) => {
@@ -37,13 +41,16 @@ export interface RadarAxis {
   value: number | null;
 }
 
-/** 축 라벨 위치(Figma 좌표 − 콘텐츠 원점). 시계방향: 위 → 우 → 우하 → 좌하 → 좌. */
+/**
+ * 축 라벨 위치(Figma 좌표 − 블록 원점 (29,185.5)). 시계방향: 위 → 우 → 우하 → 좌하 → 좌.
+ * 정렬은 Figma 잉크 x 실측(162.75 / 302.25 / 248.5 / 102.25 / 29.5)에 맞춘 값이다.
+ */
 const AXIS_LABEL_POS = [
   { left: 124, top: 0, width: 78, align: 'center' as const },
   { left: 273, top: 86, width: 99, align: 'left' as const },
-  { left: 199, top: 212, width: 99, align: 'left' as const },
-  { left: 40, top: 212, width: 99, align: 'right' as const },
-  { left: 0, top: 86, width: 99, align: 'right' as const },
+  { left: 199, top: 212, width: 99, align: 'center' as const },
+  { left: 40, top: 212, width: 99, align: 'center' as const },
+  { left: 0, top: 86, width: 99, align: 'left' as const },
 ];
 
 export function RadarChart({ axes }: { axes: RadarAxis[] }) {
@@ -131,9 +138,10 @@ const PLOT_H = 148;
 const Y_STEPS = [100, 75, 50, 25, 0];
 const AXIS_LEFT = 42; // Figma 71 − 29
 const AXIS_W = 290;
-const DOT_FIRST = 57; // Figma 86 − 29
-const DOT_LAST = 312; // Figma 341 − 29
-const LABEL_ROW_H = 30;
+const DOT_FIRST = 60.5; // Figma 첫 점 중심 89.5 − 29
+const DOT_LAST = 315.5; // Figma 마지막 점 중심 344.5 − 29
+/** 블록 높이 — 다음 구분선이 Figma 1372 에 오도록 1169 + 179 + 24 = 1372. */
+const TREND_H = 179;
 
 export interface TrendSeries {
   label: string;
@@ -156,7 +164,7 @@ export function TrendChart({
   const hasData = series.some((s) => s.points.some((p) => p !== null));
 
   return (
-    <View style={{ width: CONTENT_W, height: PLOT_H + LABEL_ROW_H + 8 }}>
+    <View style={{ width: CONTENT_W, height: TREND_H }}>
       <Svg width={CONTENT_W} height={PLOT_H + 1}>
         <Line x1={AXIS_LEFT} y1={PLOT_H} x2={AXIS_LEFT + AXIS_W} y2={PLOT_H} stroke="#d9d9d9" strokeWidth={1} />
         {hasData
@@ -195,23 +203,23 @@ export function TrendChart({
           : null}
       </Svg>
 
-      {/* Y 라벨 — 0% 는 축선, 100% 는 축선 −148 */}
+      {/* Y 라벨 — 0% 는 축선, 100% 는 축선 −148 (잉크 top 을 Figma 에 맞춘 −10.5) */}
       {Y_STEPS.map((v) => (
         <Text
           key={v}
           className="absolute text-[12px] font-normal text-muted"
-          style={{ left: 0, width: 35, top: yOf(v) - 10, lineHeight: 20, textAlign: 'right' }}
+          style={{ left: 0, width: 35, top: yOf(v) - 10.5, lineHeight: 20, textAlign: 'right' }}
         >
           {v}%
         </Text>
       ))}
 
-      {/* X 라벨 */}
+      {/* X 라벨 — Figma 잉크 top 1330.5 (블록 top 1169 기준 rel 161.5) */}
       {labels.map((l, i) => (
         <Text
           key={l}
           className="absolute text-[12px] font-normal text-black text-center"
-          style={{ left: xOf(i) - 20, width: 40, top: PLOT_H + 4, lineHeight: 20 }}
+          style={{ left: xOf(i) - 20, width: 40, top: PLOT_H + 8.75, lineHeight: 20 }}
         >
           {l}
         </Text>

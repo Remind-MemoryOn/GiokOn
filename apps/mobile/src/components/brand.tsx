@@ -45,9 +45,10 @@ export function RobotMascot({ size = 197 }: { size?: number }) {
 }
 
 /** 질문 카드 안에 들어가는 소형 로봇(원본 48×22). */
-const ROBOT_INLINE_RATIO = 48 / 22;
+// Figma 대화 카드 안 로봇 실측 46.5×29.5(에셋 재크롭 — 이전 48×22 는 안테나·꼬리가 잘려 있었다).
+const ROBOT_INLINE_RATIO = 46.5 / 29.5;
 
-export function RobotInline({ size = 48 }: { size?: number }) {
+export function RobotInline({ size = 46.5 }: { size?: number }) {
   return (
     <Image
       source={robotInlineAsset}

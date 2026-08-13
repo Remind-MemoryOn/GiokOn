@@ -1,8 +1,8 @@
 // 대화저장 (Figma `28:79`) — 클립보드 일러스트 + 저장 완료 문구 + 기록 보기/목록으로.
 //
 // Figma 실측(393×852):
-//   일러스트 163.9×179 @ (125, 194)  ← 주황 클립보드+연필. **로봇이 아니다**
-//     (이전 구현이 임의 아이콘을 넣었다 — 사용자 지적)
+//   일러스트 163.9×179 @ (125, 194) — **가로 중앙이 아니다**(중앙은 114.5)
+//     에셋 알파 범위가 노드와 같으므로 노드 좌표·크기를 그대로 쓴다.
 //   문구 SemiBold 28/42 검정 중앙 2줄 @ top 411
 //   대화 기록 보기 336×57 r10 #e9822b @ top 644 · 라벨 SemiBold 18/30 흰색
 //   목록으로       336×57 r10 흰색+border #cccdce @ top 721 · 라벨 SemiBold 18/30 #7b7c7c
@@ -21,14 +21,18 @@ export default function SessionSaved() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {/* 일러스트 */}
-      <View className="absolute left-0 right-0 items-center" style={{ top: (194 / FRAME_H) * height }}>
-        <Image
-          source={savedIllustration}
-          style={{ width: 164, height: 179 }}
-          resizeMode="contain"
-          accessibilityLabel="저장 완료"
-        />
-      </View>
+      <Image
+        source={savedIllustration}
+        style={{
+          position: 'absolute',
+          left: 125,
+          top: (194 / FRAME_H) * height,
+          width: 164,
+          height: 179,
+        }}
+        resizeMode="contain"
+        accessibilityLabel="저장 완료"
+      />
 
       {/* 문구 */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (411 / FRAME_H) * height }}>

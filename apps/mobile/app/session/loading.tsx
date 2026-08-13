@@ -3,6 +3,7 @@
 // Figma 실측(393×852):
 //   X 닫기 17×17 @ (347.7, 76)
 //   스피너 52×52 @ (166, 354)  ← **로봇이 아니다**(이전 구현이 임의로 로봇을 넣었다)
+//     중앙(170.5)이 아니라 실측 x 166 을 쓴다(픽셀 대조로 확인).
 //   문구 "곧 다음 질문을 들려드릴게요." Medium 23/40 #7b7c7c 중앙 @ top 425
 //
 // 스피너 에셋은 원형 도트라 회전만 입힌다(형태는 원본 그대로 — 새로 그리지 않는다).
@@ -53,13 +54,18 @@ export default function QuestionLoading() {
         </Pressable>
       </View>
 
-      <View className="absolute left-0 right-0 items-center" style={{ top: (354 / FRAME_H) * height }}>
-        <Animated.Image
-          source={spinner}
-          style={{ width: 52, height: 52, transform: [{ rotate }] }}
-          resizeMode="contain"
-        />
-      </View>
+      <Animated.Image
+        source={spinner}
+        style={{
+          position: 'absolute',
+          left: 166,
+          top: (354 / FRAME_H) * height,
+          width: 52,
+          height: 52,
+          transform: [{ rotate }],
+        }}
+        resizeMode="contain"
+      />
 
       <View className="absolute left-0 right-0 items-center" style={{ top: (425 / FRAME_H) * height }}>
         <Text

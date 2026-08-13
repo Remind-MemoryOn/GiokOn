@@ -20,8 +20,8 @@ const SPECS = [
   [`${APP}/app/main.tsx`, '메인: 헤더 워드마크 90×14', [/width: 90, height: 14/]],
   [`${APP}/app/main.tsx`, '메인: 설정 아이콘 18×19', [/width: 18, height: 19/]],
   [`${APP}/app/main.tsx`, '메인: 인사 SemiBold 24 / lh35', [/text-\[24px\] font-semibold/, /lineHeight: 35/]],
-  [`${APP}/app/main.tsx`, '메인: 이름 주황 밑줄 h3', [/height: 3, backgroundColor: '#e9822b'/]],
-  [`${APP}/app/main.tsx`, '메인: 검색 h46 r10 #cccdce', [/height: 46/, /borderRadius: 10/, /borderColor: '#cccdce'/]],
+  [`${APP}/app/main.tsx`, '메인: 이름 주황 밑줄 h3 @ y205(marginTop -9)', [/height: 3, backgroundColor: '#e9822b', marginTop: -9/]],
+  [`${APP}/app/main.tsx`, '메인: 검색 335×46 r10 #cccdce @ x30', [/width: 335/, /height: 46/, /borderRadius: 10/, /borderColor: '#cccdce'/, /marginTop: 20/, /marginBottom: 31/]],
   [`${APP}/app/main.tsx`, '메인: 검색 안내 18px #7b7c7c', [/text-\[18px\]/, /placeholderTextColor="#7b7c7c"/]],
   [
     `${APP}/app/main.tsx`,
@@ -52,12 +52,20 @@ const SPECS = [
   [`${APP}/app/login.tsx`, '로그인: 입력 h44 #f4f4f4 r5', [/height: 44/, /backgroundColor: '#f4f4f4'/, /borderRadius: 5/]],
   [`${APP}/app/login.tsx`, '로그인: 버튼 h42 / 13px SemiBold', [/height: 42/, /text-\[13px\] font-semibold/]],
   [`${APP}/app/login.tsx`, '로그인: 링크 12px', [/text-\[12px\]/]],
-  [`${APP}/app/login.tsx`, '로그인: 소셜 50×50', [/width: 50, height: 50/]],
+  [
+    `${APP}/app/login.tsx`,
+    '로그인: 절대 좌표(워드마크 120 · 링크행 80 · 소셜 89.75/168.35/246.95, 52)',
+    [/left: x\(120\)/, /left: x\(80\)/, /left: 89\.75/, /left: 168\.35/, /left: 246\.95/, /width: x\(52\), height: 52/],
+  ],
 
   // ── 스플래쉬 (Figma 130:162) ───────────────────────────────────────────
   [`${APP}/app/index.tsx`, '스플래쉬: 그라데이션 #fff→#f4c398 @58%', [/'#f4c398'/, /locations=\{\[0, 0\.58, 1\]\}/]],
   [`${APP}/app/index.tsx`, '스플래쉬: 카피 Bold 16 주황', [/text-\[16px\] font-bold text-accent/]],
-  [`${APP}/app/index.tsx`, '스플래쉬: 워드마크 208×32', [/width: 208, height: 32/]],
+  [
+    `${APP}/app/index.tsx`,
+    '스플래쉬: 카피 박스 362.5 · 워드마크 (92,395) 208×31.8',
+    [/362\.5 \/ FRAME_H/, /left: 92, top: \(395 \/ FRAME_H\)/, /width: 208, height: 31\.8/],
+  ],
 
 
   // ── 대화 시작 전 (Figma 15:165) ────────────────────────────────────────
@@ -69,7 +77,11 @@ const SPECS = [
 
   // ── 대화 (Figma 17:108) ───────────────────────────────────────────────
   [`${APP}/app/session/talk.tsx`, '대화: X 닫기 17×17 에셋', [/icon-close\.png/, /width: 17, height: 17/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 질문카드 336×258 r10 #fdf3ea + 주황 테두리', [/width: 336,\s*height: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/]],
+  [
+    `${APP}/app/session/talk.tsx`,
+    '대화: 질문카드 336×258 r10 #fdf3ea + 주황 테두리 · 로봇(18,38) 46.5 · 질문(75.25,27) w251',
+    [/width: 336,\s*height: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /left: 18, top: 38/, /RobotInline size=\{46\.5\}/, /left: 75\.25, top: 27, width: 251/],
+  ],
   [`${APP}/app/session/talk.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
   [`${APP}/app/session/talk.tsx`, '대화: 마이크 123 + 상태', [/MicButton onPress=\{onMic\} state=\{micState\} size=\{123\}/]],
@@ -78,12 +90,20 @@ const SPECS = [
   [`${APP}/app/session/talk.tsx`, '대화: 인식결과 인라인(페이지 이동 없음)', [/AI가 이렇게 이해했어요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
 
   // ── 질문 로딩 (Figma 28:37) ───────────────────────────────────────────
-  [`${APP}/app/session/loading.tsx`, '로딩: 스피너 52 에셋(로봇 아님)', [/loading-indicator\.png/, /width: 52, height: 52/]],
+  [
+    `${APP}/app/session/loading.tsx`,
+    '로딩: 스피너 52 에셋 @ left 166(중앙 아님)',
+    [/loading-indicator\.png/, /left: 166/, /width: 52,\s*height: 52/],
+  ],
   [`${APP}/app/session/loading.tsx`, '로딩: 문구 Medium 23 lh40 w289', [/text-\[23px\] font-medium/, /lineHeight: 40, width: 289/]],
   [`${APP}/app/session/loading.tsx`, '로딩: X 닫기 17×17', [/icon-close\.png/, /width: 17, height: 17/]],
 
   // ── 대화저장 (Figma 28:79) ────────────────────────────────────────────
-  [`${APP}/app/session/saved.tsx`, '저장: 일러스트 164×179 에셋', [/saved-illustration\.png/, /width: 164, height: 179/]],
+  [
+    `${APP}/app/session/saved.tsx`,
+    '저장: 일러스트 164×179 @ (125,194) — 중앙 아님',
+    [/saved-illustration\.png/, /left: 125/, /width: 164,\s*height: 179/],
+  ],
   [`${APP}/app/session/saved.tsx`, '저장: 문구 SemiBold 28 lh42', [/text-\[28px\] font-semibold/, /lineHeight: 42/]],
   [`${APP}/app/session/saved.tsx`, '저장: 버튼 336×57 r10 (주황/외곽선)', [/width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
 
@@ -230,8 +250,8 @@ const SPECS = [
   ],
   [
     `${APP}/src/components/detail.tsx`,
-    '분석: 주제 막대 트랙 241×12 r6 + 순위별 농도 · 라벨/퍼센트 Regular 13',
-    [/width: 241, height: 12, borderRadius: 6/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
+    '분석: 주제 막대 트랙 242×12 r6 + 순위별 농도 · 라벨/퍼센트 Regular 13',
+    [/width: TRACK_W, height: 12, borderRadius: 6/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
@@ -289,18 +309,33 @@ const SPECS = [
   // ── 단일 대화 분석 (Figma 118:74) ─────────────────────────────────────
   [
     `${APP}/app/analysis/[logId].tsx`,
-    '대화분석: 크림 히어로 110 + 흰 시트 상단 라운드 30',
-    [/height: 110, paddingLeft: DETAIL\.left, backgroundColor: DETAIL\.chipBg/, /SHEET_RADIUS = 30/, /borderTopLeftRadius: SHEET_RADIUS/],
+    '대화분석: 크림 히어로 108(시트 top 222) + 흰 시트 상단 라운드 30',
+    [/height: 108, paddingLeft: DETAIL\.left, backgroundColor: DETAIL\.chipBg/, /SHEET_RADIUS = 30/, /borderTopLeftRadius: SHEET_RADIUS/],
   ],
   [
     `${APP}/app/analysis/[logId].tsx`,
-    '대화분석: 날짜 Medium 14 · 제목 SemiBold 20 · 타일 top 31',
-    [/text-\[14px\] font-medium text-muted/, /text-\[20px\] font-semibold text-black/, /paddingTop: 31/],
+    '대화분석: 날짜 Medium 14 잉크 150.75 · 제목 SemiBold 20 잉크 175 · 타일 top 255',
+    [/text-\[14px\] font-medium text-muted/, /marginTop: 30\.25/, /text-\[20px\] font-semibold text-black/, /marginTop: -0\.25/, /paddingTop: 33/],
   ],
   [
     `${APP}/app/analysis/[logId].tsx`,
-    '대화분석: 특성 카드 162×73 r5 (라벨 Regular 13 / 값 SemiBold 16) 2×2 gap 12',
-    [/width: 162,\s*height: 73,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /text-\[16px\] font-semibold text-black/, /columnGap: 12/],
+    '대화분석: 참여 타일 좌우 끝 29/365 고정(space-between)',
+    [/className="flex-row justify-between" style=\{\{ width: DETAIL\.width \}\}/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 불릿 점 박스 35.25(폭 13.25) → 본문 박스 48.5',
+    [/marginLeft: 6\.25, width: 13\.25/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 감정 3열 pitch 73.5 고정',
+    [/lineHeight: 30, width: 73\.5/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 특성 카드 162×73 r5 (라벨 Regular 13 잉크+20.75 / 값 SemiBold 16 잉크+40.5) gap 12',
+    [/width: 162,\s*height: 73,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /marginTop: 10\.5/, /marginTop: -9\.25/, /columnGap: 12/],
   ],
   [
     `${APP}/app/analysis/[logId].tsx`,
@@ -321,18 +356,23 @@ const SPECS = [
   // ── 전체 분석 (Figma 140:201) ─────────────────────────────────────────
   [
     `${APP}/app/analytics.tsx`,
-    '전체분석: 요약 카드 162×95 r5 (라벨 Regular 14 / 값 SemiBold 18) 2×2 gap 12/13',
-    [/width: 162,\s*height: 95,\s*borderRadius: 5/, /text-\[14px\] font-normal text-black/, /text-\[18px\] font-semibold text-black/, /marginTop: 23, columnGap: 12/, /marginTop: 13, columnGap: 12/],
+    '전체분석: 요약 카드 162×95 r5 (라벨 Regular 14 잉크+22.75 / 값 SemiBold 18 잉크+47) gap 12/13',
+    [/width: 162,\s*height: 95,\s*borderRadius: 5/, /text-\[14px\] font-normal text-black" style=\{\{ lineHeight: 30, marginTop: 13 \}\}/, /text-\[18px\] font-semibold text-black/, /marginTop: -0\.25/, /marginLeft: 12/, /marginTop: 23, columnGap: 12/, /marginTop: 13, columnGap: 12/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '공통: 기간 pill 99×25 bg #fbfbfb border #d5d5d5 + ∨ 8.4×5.45 @(우13.5,위10)',
+    [/backgroundColor: '#fbfbfb'/, /borderColor: '#d5d5d5'/, /paddingLeft: labelInset/, /labelInset = 15/, /right: 13\.5, top: 10, width: 8\.4, height: 5\.45/],
   ],
   [
     `${APP}/app/analytics.tsx`,
-    '전체분석: 기간 pill 99×25 border #d5d5d5 + ∨ 8.4×5.45',
-    [/width: 99,\s*height: 25/, /borderColor: '#d5d5d5'/, /width: 8\.4, height: 5\.45/],
+    '전체분석: 아이콘 4종 에셋 · 막대 라벨 30 / 트랙 75 / 퍼센트 337',
+    [/stat-elders\.png/, /stat-smile\.png/, /stat-time\.png/, /stat-rate\.png/, /labelInset=\{1\}/, /labelWidth=\{45\}/, /percentGap=\{20\}/],
   ],
   [
     `${APP}/app/analytics.tsx`,
-    '전체분석: 아이콘 4종 에셋 · 막대 라벨 30 / 트랙 76',
-    [/stat-elders\.png/, /stat-smile\.png/, /stat-time\.png/, /stat-rate\.png/, /labelInset=\{1\} labelWidth=\{46\}/],
+    '전체분석: 주제별 분석 보기 버튼 top 809(막대 5개 아래 31.75)',
+    [/marginTop: 31\.75/],
   ],
   [
     `${APP}/app/analytics.tsx`,
@@ -343,13 +383,23 @@ const SPECS = [
   // ── 차트 (Figma 인지 효과 분석 134:94 / 주제별 분석 140:562) ──────────
   [
     `${APP}/src/components/charts.tsx`,
-    '레이더: 링 r 97.5~18.5 · 중심 (167.5,129.5) · 채움 #f8e3d2 + 선 #e9822b',
-    [/RADAR_R = 97\.5/, /RINGS = \[18\.5, 37\.5, 58, 77, 97\.5\]/, /RADAR_CX = 167\.5/, /RADAR_CY = 129\.5/, /fill="#f8e3d2"/, /stroke="#e9822b"/],
+    '레이더: 링 r 97.5~18.5 · 중심 (167.5,133) 블록 253.5 · 채움 #f8e3d2 + 선 #e9822b',
+    [/RADAR_R = 97\.5/, /RINGS = \[18\.5, 37\.5, 58, 77, 97\.5\]/, /RADAR_CX = 167\.5/, /RADAR_CY = 133/, /RADAR_H = 253\.5/, /fill="#f8e3d2"/, /stroke="#e9822b"/],
   ],
   [
     `${APP}/src/components/charts.tsx`,
-    '꺾은선: 플롯 148 · X축선 290 @42 · 점 57~312 · 점 3.5 / 선 2',
-    [/PLOT_H = 148/, /AXIS_LEFT = 42/, /AXIS_W = 290/, /DOT_FIRST = 57/, /DOT_LAST = 312/, /strokeWidth=\{2\}/],
+    '레이더 축 라벨 정렬(실측 잉크 x 162.75/302.25/248.5/102.25/29.5)',
+    [/left: 199, top: 212, width: 99, align: 'center'/, /left: 40, top: 212, width: 99, align: 'center'/, /left: 0, top: 86, width: 99, align: 'left'/],
+  ],
+  [
+    `${APP}/src/components/charts.tsx`,
+    '꺾은선: 플롯 148 · X축선 290 @42 · 점 60.5~315.5 · 블록 179 · 점 3.5 / 선 2',
+    [/PLOT_H = 148/, /AXIS_LEFT = 42/, /AXIS_W = 290/, /DOT_FIRST = 60\.5/, /DOT_LAST = 315\.5/, /TREND_H = 179/, /strokeWidth=\{2\}/],
+  ],
+  [
+    `${APP}/src/components/charts.tsx`,
+    '꺾은선 라벨: Y 잉크 pitch 37(−10.5) · X 라벨 PLOT_H+8.75',
+    [/top: yOf\(v\) - 10\.5/, /top: PLOT_H \+ 8\.75/],
   ],
   [
     `${APP}/src/components/charts.tsx`,
@@ -360,13 +410,23 @@ const SPECS = [
   // ── 인지 효과 분석 (Figma 134:94 / 144:201) ───────────────────────────
   [
     `${APP}/app/observations.tsx`,
-    '인지효과: 지표 카드 103×103 r5 (라벨 Medium 12 / 값 SemiBold 16) 3+2 gap 13/14',
-    [/width: 103,\s*height: 103,\s*borderRadius: 5/, /text-\[12px\] font-medium text-black/, /text-\[16px\] font-semibold text-black/, /marginTop: 18, columnGap: 13/, /marginTop: 14, columnGap: 13/],
+    '인지효과: 지표 카드 103×103 r5 (라벨 Medium 12 잉크+21.5 / 값 SemiBold 16 잉크+46.25) 3+2',
+    [/width: 103,\s*height: 103,\s*borderRadius: 5/, /text-\[12px\] font-medium text-black/, /marginTop: 10\.75/, /text-\[16px\] font-semibold text-black/, /marginTop: -3\.5/, /className="flex-row justify-between"/, /marginTop: 14, columnGap: 13/],
   ],
   [
     `${APP}/app/observations.tsx`,
-    '인지효과: 변화 배지 ▲ 11 + SemiBold 12 (#60bd66 / 감소 #d8503c)',
-    [/UP = '#60bd66'/, /DOWN = '#d8503c'/, /width=\{11\} height=\{11\}/, /text-\[12px\] font-semibold/],
+    '인지효과: 변화 배지 ▲ 8×7 + SemiBold 12 (#60bd66 / 감소 #d8503c) 간격 2.5',
+    [/UP = '#60bd66'/, /DOWN = '#d8503c'/, /width=\{8\} height=\{7\}/, /marginLeft: 2\.5/, /text-\[12px\] font-semibold/],
+  ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 레이더 블록 top 185.5 · 변화율 카드 값 주황 + 추세 아이콘 에셋',
+    [/marginTop: 10\.5/, /text-\[18px\] font-semibold text-accent/, /stat-trend\.png/, /width: 29\.25, height: 17\.25/],
+  ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 범례 점 x 34/160/283 절대배치 · 추이 블록 top 1169',
+    [/LEGEND_POS = \[\s*\{ left: 5, top: 0 \}/, /\{ left: 254, top: 0 \}/, /top: 8\.25/, /marginTop: 8\.75/, /marginTop: 23\.25/],
   ],
   [
     `${APP}/app/observations.tsx`,
@@ -392,13 +452,18 @@ const SPECS = [
   // ── 주제별 분석 (Figma 140:562) ───────────────────────────────────────
   [
     `${APP}/app/topics/[id].tsx`,
-    '주제별: 상세 카드 103×87 r5 (라벨 Regular 13 / 값 SemiBold 16) gap 13',
-    [/width: 103,\s*height: 87,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /text-\[16px\] font-semibold text-black/, /marginTop: 18, columnGap: 13/],
+    '주제별: 상세 카드 103×87 r5 (라벨 Regular 13 잉크+25.75 / 값 SemiBold 16 잉크+47.25)',
+    [/width: 103,\s*height: 87,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /marginTop: 15\.5/, /text-\[16px\] font-semibold text-black/, /marginTop: -7\.25/, /className="flex-row justify-between" style=\{\{ width: DETAIL\.width, marginTop: 18 \}\}/],
   ],
   [
     `${APP}/app/topics/[id].tsx`,
-    '주제별: 기간 pill 99 / 주제 pill 73 · 키워드 칩 h25 r5 gap 10',
-    [/width=\{99\}/, /width=\{73\}/, /height: 25,\s*borderRadius: 5/, /columnGap: 10, rowGap: 10/],
+    '주제별: 기간 pill 99 / 주제 pill 73(들여쓰기 17) · 키워드 칩 h25 r5 SemiBold 14 주황 gap 10',
+    [/<PeriodPill label="최근 6개월" \/>/, /width=\{73\} labelInset=\{17\}/, /height: 25,\s*borderRadius: 5/, /paddingHorizontal: 14/, /text-\[14px\] font-semibold text-accent/, /columnGap: 10, rowGap: 10/],
+  ],
+  [
+    `${APP}/app/topics/[id].tsx`,
+    '주제별: 범례 점 x 35/161/284 절대배치 · 추이 블록 top 269 · 구분선 473',
+    [/LEGEND_POS = \[\s*\{ left: 6, top: 0 \}/, /\{ left: 255, top: 0 \}/, /marginTop: 8\.75/, /marginTop: 23\.25/, /marginTop: 25/],
   ],
   [
     `${APP}/app/topics/[id].tsx`,
@@ -408,6 +473,25 @@ const SPECS = [
 
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
   [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],
+  [`${APP}/src/components/brand.tsx`, '브랜드: 인라인 로봇 비율 46.5:29.5(재크롭)', [/ROBOT_INLINE_RATIO = 46\.5 \/ 29\.5/]],
+  [`${APP}/app/session/start.tsx`, '시작전: 로봇 left 98(중앙 아님)', [/left: 98/]],
+
+  // ── 공용 컴포넌트: 화면 간 Figma 불일치의 중간값 고정 ──────────────────
+  [
+    `${APP}/src/components/detail.tsx`,
+    '타일: 아이콘 rel 43 기준 · 라벨/값은 두 화면 중간값(단일 17.25 / 종합 19.25)',
+    [/marginTop: 7\.5 \}\}/, /height: 24, marginTop: 4\.5/, /marginTop: 6\.4 \}\}/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '주제 막대: 트랙 242 · 라벨 폭 기본 41 · 퍼센트 간격 인자',
+    [/TRACK_W = 242/, /labelWidth = 41/, /percentGap = 19/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    'AI 종합 의견: 아바타 left −1 / 본문 열 51.75 (27·29 / 80.25·82.25 중간값)',
+    [/left: -1, top: 0, width: 37, height: 37/, /marginLeft: 51\.75/],
+  ],
 ];
 
 let ok = 0;

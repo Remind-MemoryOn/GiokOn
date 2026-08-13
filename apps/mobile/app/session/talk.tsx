@@ -2,8 +2,9 @@
 //
 // Figma 실측(393×852):
 //   X 닫기 17×17 @ (347.7, 76)            ← 기존 구현은 "종료" 텍스트였다(수정)
-//   질문 카드 336×258 r10 bg #fdf3ea **border #e9822b** @ top 121
-//     카드 내 로봇 46.4×29.5 @ (47,159) · 질문 SemiBold 28/50 검정, 좌측정렬 @ (104,148) w251
+//   질문 카드 336×258 r10 bg #fdf3ea **border #e9822b** @ (29, 121)
+//     카드 내 로봇 46.5×29.5 @ (47,159) · 질문 SemiBold 28/50 검정 @ (104,148) w251
+//     → 둘의 top 이 다르므로(로봇 38 / 텍스트 27, 카드 기준) flex-row 가 아니라 절대 배치한다
 //   파형 226×78 @ (84, 419)
 //   마이크 123×123 정사각 @ (135, 536) · 라벨 "듣고 있어요..." Medium 23/42 검정 @ gap 3
 //   다시 듣기 336×57 r10 border #cccdce @ (26, 743) — 스피커 20×20 + SemiBold 18/30 #7b7c7c
@@ -126,20 +127,18 @@ export default function Talk() {
             backgroundColor: '#fdf3ea',
             borderWidth: 1,
             borderColor: '#e9822b',
-            paddingTop: 38,
-            paddingLeft: 21,
-            paddingRight: 21,
           }}
         >
-          <View className="flex-row">
-            <RobotInline size={46} />
-            <Text
-              className="flex-1 text-[28px] font-semibold text-black"
-              style={{ lineHeight: 50, marginLeft: 11 }}
-            >
-              {question}
-            </Text>
+          {/* 카드 기준 로봇 (18, 38) · 질문 (75.25, 27) w251 — Figma 절대 좌표 */}
+          <View className="absolute" style={{ left: 18, top: 38 }}>
+            <RobotInline size={46.5} />
           </View>
+          <Text
+            className="absolute text-[28px] font-semibold text-black"
+            style={{ left: 75.25, top: 27, width: 251, lineHeight: 50 }}
+          >
+            {question}
+          </Text>
         </View>
       </View>
 

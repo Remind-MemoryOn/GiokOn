@@ -1,10 +1,12 @@
 // 로그인 (Figma `130:161`) — 워드마크 + 아이디/비밀번호 + 로그인 + 링크 3개 + 소셜 3종.
 //
-// Figma 스펙(393×852 프레임 기준):
-//   워드마크 145×22.2 @ (120, 204)              · 입력 292×44 @ (50, 284) / (50, 355)
-//   입력 bg #f4f4f4 r5, placeholder 13px #7b7c7c · 버튼 293×42 @ (49, 426) bg #e9822b r5,
-//   버튼 텍스트 13px SemiBold 흰색               · 링크 12px #7b7c7c @ top 518 (구분자 |)
-//   소셜 49.8×49.8 @ top 643, left 90/168.6/247
+// Figma 실측(393×852 프레임, @4x 내보내기 픽셀 대조로 확정):
+//   워드마크 145×22.2 @ (120, 204)   — **화면 중앙이 아니다**(중앙은 124)
+//   입력 292×44 @ (50, 284) / (50, 355) · bg #f4f4f4 r5 · 안내문구 Regular 13 #7b7c7c(좌 22)
+//   버튼 293×42 @ (49, 426) #e9822b r5 · 라벨 SemiBold 13 흰색
+//   링크 Regular 12 #7b7c7c · 행 시작 x 80(중앙 88 아님) · 항목 간격 12 · 잉크 top 519
+//   소셜 @ (89.75 / 168.35 / 246.95, 642.75) — 에셋이 그림자를 포함해 52×52
+// 가로는 **Figma x 를 그대로** 쓴다(중앙 정렬로 두면 워드마크 4px·링크행 8px 이 밀린다).
 // 세로 위치는 프레임 비율로 환산해 기기 높이에 맞춘다(고정 프레임 디자인 충실 재현).
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 //
@@ -34,9 +36,8 @@ export default function Login() {
   const { signIn, isConfigured } = useAuth();
   const { width, height } = useWindowDimensions();
 
-  // 가로는 프레임 비율 유지(292/393). 좁은 기기에서도 여백이 깨지지 않는다.
-  const fieldW = (292 / FRAME_W) * width;
-  const btnW = (293 / FRAME_W) * width;
+  // 가로는 Figma 좌표를 화면 폭 비율로 환산(393 기준 디자인 → 좁은 기기에서도 비율 유지).
+  const x = (v: number) => (v / FRAME_W) * width;
 
   const onLogin = async () => {
     if (busy) return;
@@ -71,113 +72,113 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-white">
-      {/* 워드마크 */}
-      <View className="absolute left-0 right-0 items-center" style={{ top: top(204, height) }}>
-        <Image
-          source={wordmark}
-          style={{ width: 145, height: 22 }}
-          resizeMode="contain"
-          accessibilityLabel="기억온"
-        />
-      </View>
+      {/* 워드마크 — Figma (120, 204) */}
+      <Image
+        source={wordmark}
+        style={{ position: 'absolute', left: x(120), top: top(204, height), width: x(145), height: 22.2 }}
+        resizeMode="contain"
+        accessibilityLabel="기억온"
+      />
 
-      {/* 아이디 */}
-      <View className="absolute left-0 right-0 items-center" style={{ top: top(284, height) }}>
-        <TextInput
-          value={id}
-          onChangeText={setId}
-          placeholder="아이디"
-          placeholderTextColor="#7b7c7c"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          className="text-[13px] text-ink font-normal"
-          style={{
-            width: fieldW,
-            height: 44,
-            backgroundColor: '#f4f4f4',
-            borderRadius: 5,
-            paddingHorizontal: 22,
-          }}
-        />
-      </View>
+      {/* 아이디 — Figma (50, 284) 292×44 */}
+      <TextInput
+        value={id}
+        onChangeText={setId}
+        placeholder="아이디"
+        placeholderTextColor="#7b7c7c"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        className="absolute text-[13px] text-ink font-normal"
+        style={{
+          left: x(50),
+          top: top(284, height),
+          width: x(292),
+          height: 44,
+          backgroundColor: '#f4f4f4',
+          borderRadius: 5,
+          paddingHorizontal: 22,
+        }}
+      />
 
-      {/* 비밀번호 */}
-      <View className="absolute left-0 right-0 items-center" style={{ top: top(355, height) }}>
-        <TextInput
-          value={pw}
-          onChangeText={setPw}
-          placeholder="비밀번호"
-          placeholderTextColor="#7b7c7c"
-          secureTextEntry
-          className="text-[13px] text-ink font-normal"
-          style={{
-            width: fieldW,
-            height: 44,
-            backgroundColor: '#f4f4f4',
-            borderRadius: 5,
-            paddingHorizontal: 22,
-          }}
-        />
-      </View>
+      {/* 비밀번호 — Figma (50, 355) */}
+      <TextInput
+        value={pw}
+        onChangeText={setPw}
+        placeholder="비밀번호"
+        placeholderTextColor="#7b7c7c"
+        secureTextEntry
+        className="absolute text-[13px] text-ink font-normal"
+        style={{
+          left: x(50),
+          top: top(355, height),
+          width: x(292),
+          height: 44,
+          backgroundColor: '#f4f4f4',
+          borderRadius: 5,
+          paddingHorizontal: 22,
+        }}
+      />
 
-      {/* 로그인 버튼 */}
-      <View className="absolute left-0 right-0 items-center" style={{ top: top(426, height) }}>
-        <Pressable
-          onPress={onLogin}
-          disabled={busy}
-          accessibilityRole="button"
-          className="items-center justify-center active:opacity-90"
-          style={{
-            width: btnW,
-            height: 42,
-            backgroundColor: busy ? C.accentPressed : C.accent,
-            borderRadius: 5,
-          }}
-        >
-          <Text className="text-[13px] font-semibold text-white">로그인</Text>
-        </Pressable>
-      </View>
-
-      {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 */}
-      <View
-        className="absolute left-0 right-0 flex-row items-center justify-center"
-        style={{ top: top(518, height) }}
+      {/* 로그인 버튼 — Figma (49, 426) 293×42 */}
+      <Pressable
+        onPress={onLogin}
+        disabled={busy}
+        accessibilityRole="button"
+        className="absolute items-center justify-center active:opacity-90"
+        style={{
+          left: x(49),
+          top: top(426, height),
+          width: x(293),
+          height: 42,
+          backgroundColor: busy ? C.accentPressed : C.accent,
+          borderRadius: 5,
+        }}
       >
+        <Text className="text-[13px] font-semibold text-white">로그인</Text>
+      </Pressable>
+
+      {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 — Figma 행 시작 x 80, 잉크 top 519 */}
+      <View className="absolute flex-row items-center" style={{ left: x(80), top: top(515, height) }}>
         <Pressable onPress={() => (isConfigured ? notOnApp('아이디 찾기') : onLogin())} hitSlop={8}>
-          <Text className="text-[12px] text-muted font-normal">아이디 찾기</Text>
+          <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
+            아이디 찾기
+          </Text>
         </Pressable>
-        <Text className="text-[12px] text-line mx-3 font-normal">|</Text>
+        <Text className="text-[12px] text-line mx-3 font-normal" style={{ lineHeight: 20 }}>
+          |
+        </Text>
         <Pressable onPress={onFindPassword} hitSlop={8}>
-          <Text className="text-[12px] text-muted font-normal">비밀번호 찾기</Text>
+          <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
+            비밀번호 찾기
+          </Text>
         </Pressable>
-        <Text className="text-[12px] text-line mx-3 font-normal">|</Text>
+        <Text className="text-[12px] text-line mx-3 font-normal" style={{ lineHeight: 20 }}>
+          |
+        </Text>
         <Pressable onPress={() => (isConfigured ? notOnApp('회원가입') : onLogin())} hitSlop={8}>
-          <Text className="text-[12px] text-muted font-normal">회원가입</Text>
+          <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
+            회원가입
+          </Text>
         </Pressable>
       </View>
 
-      {/* 소셜 3종 — Figma 간격(중심 114 / 193 / 271) 비율 유지 */}
-      <View
-        className="absolute left-0 right-0 flex-row items-center justify-center"
-        style={{ top: top(643, height) }}
-      >
-        {[
-          { key: 'naver', src: socialNaver, label: '네이버' },
-          { key: 'kakao', src: socialKakao, label: '카카오' },
-          { key: 'google', src: socialGoogle, label: '구글' },
-        ].map((s) => (
-          <Pressable
-            key={s.key}
-            onPress={onSocial}
-            accessibilityRole="button"
-            accessibilityLabel={`${s.label} 로그인`}
-            className="active:opacity-70"
-            style={{ marginHorizontal: (29 / FRAME_W) * width * 0.5 }}
-          >
-            <Image source={s.src} style={{ width: 50, height: 50 }} resizeMode="contain" />
-          </Pressable>
-        ))}
-      </View>
+      {/* 소셜 3종 — Figma x 89.75 / 168.35 / 246.95 (pitch 78.6), 에셋은 그림자 포함 52 */}
+      {[
+        { key: 'naver', src: socialNaver, label: '네이버', left: 89.75 },
+        { key: 'kakao', src: socialKakao, label: '카카오', left: 168.35 },
+        { key: 'google', src: socialGoogle, label: '구글', left: 246.95 },
+      ].map((s) => (
+        <Pressable
+          key={s.key}
+          onPress={onSocial}
+          accessibilityRole="button"
+          accessibilityLabel={`${s.label} 로그인`}
+          className="absolute active:opacity-70"
+          style={{ left: x(s.left), top: top(642.75, height) }}
+        >
+          <Image source={s.src} style={{ width: x(52), height: 52 }} resizeMode="contain" />
+        </Pressable>
+      ))}
     </View>
   );
 }
