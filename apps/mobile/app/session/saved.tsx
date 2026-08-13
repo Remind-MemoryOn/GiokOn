@@ -1,32 +1,74 @@
-// 대화 저장 완료 — "오늘의 대화가 저장되었습니다." + 대화 기록 보기 / 목록으로.
-import { View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// 대화저장 (Figma `28:79`) — 클립보드 일러스트 + 저장 완료 문구 + 기록 보기/목록으로.
+//
+// Figma 실측(393×852):
+//   일러스트 163.9×179 @ (125, 194)  ← 주황 클립보드+연필. **로봇이 아니다**
+//     (이전 구현이 임의 아이콘을 넣었다 — 사용자 지적)
+//   문구 SemiBold 28/42 검정 중앙 2줄 @ top 411
+//   대화 기록 보기 336×57 r10 #e9822b @ top 644 · 라벨 SemiBold 18/30 흰색
+//   목록으로       336×57 r10 흰색+border #cccdce @ top 721 · 라벨 SemiBold 18/30 #7b7c7c
+// 상태바는 실기기 상태바 사용.
+import { View, Text, Pressable, Image, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '../../src/components/ui';
-import { C } from '../../src/theme';
+import savedIllustration from '../../assets/brand/saved-illustration.png';
+
+const FRAME_H = 852;
 
 export default function SessionSaved() {
   const { logId } = useLocalSearchParams<{ logId?: string }>();
+  const { height } = useWindowDimensions();
 
   return (
-    <SafeAreaView className="flex-1 bg-white px-6" edges={['top', 'bottom']}>
-      <View className="flex-1 items-center justify-center">
-        <View className="w-24 h-24 rounded-full bg-accent/10 items-center justify-center">
-          <Ionicons name="document-text-outline" size={48} color={C.accent} />
-        </View>
-        <Text className="text-[24px] font-semibold text-ink text-center mt-8 leading-[34px]">
-          오늘의 대화가{'\n'}저장되었습니다.
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      {/* 일러스트 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: (194 / FRAME_H) * height }}>
+        <Image
+          source={savedIllustration}
+          style={{ width: 164, height: 179 }}
+          resizeMode="contain"
+          accessibilityLabel="저장 완료"
+        />
+      </View>
+
+      {/* 문구 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: (411 / FRAME_H) * height }}>
+        <Text className="text-[28px] font-semibold text-black text-center" style={{ lineHeight: 42 }}>
+          오늘의 대화가
+        </Text>
+        <Text className="text-[28px] font-semibold text-black text-center" style={{ lineHeight: 42 }}>
+          저장되었습니다.
         </Text>
       </View>
-      <View className="pb-6">
-        <Button
-          label="대화 기록 보기"
+
+      {/* 하단 버튼 — Figma top 644 / 721 (프레임 하단에서 151 / 74) */}
+      <View className="absolute left-0 right-0 items-center" style={{ bottom: (74 / FRAME_H) * height }}>
+        <Pressable
           onPress={() => (logId ? router.replace(`/log/${logId}`) : router.replace('/main'))}
-        />
-        <View className="mt-3">
-          <Button label="목록으로" variant="ghost" onPress={() => router.replace('/main')} />
-        </View>
+          accessibilityRole="button"
+          className="items-center justify-center active:opacity-90"
+          style={{ width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+        >
+          <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
+            대화 기록 보기
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.replace('/main')}
+          accessibilityRole="button"
+          className="items-center justify-center active:opacity-70"
+          style={{
+            width: 336,
+            height: 57,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: '#cccdce',
+            marginTop: 20,
+          }}
+        >
+          <Text className="text-[18px] font-semibold text-muted" style={{ lineHeight: 30 }}>
+            목록으로
+          </Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
