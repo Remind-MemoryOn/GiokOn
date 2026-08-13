@@ -2,7 +2,7 @@
 //   - AI 이용 사전 고지(대화 화면 상시)
 //   - 위기 감지 시 요양보호사 배너(core respondToUserTurn의 escalate/caregiverAlert)
 //   - 비의료 면책 문구(상시 노출용)
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AI_DISCLOSURE } from '@giokon/core';
 import { C } from '../theme';
@@ -66,9 +66,16 @@ export function CrisisBanner({
 }
 
 /** 비의료 포지셔닝 면책 문구(상시 노출). 의료 표현 없이 정보 제공 성격만 명시. */
-export function NonMedicalFootnote() {
+export function NonMedicalFootnote({
+  className = 'text-[12px] text-muted leading-[18px] mt-4 font-normal',
+  style,
+}: {
+  /** 화면별 타이포를 맞추기 위한 override(문구는 한 곳에서만 관리한다). */
+  className?: string;
+  style?: StyleProp<TextStyle>;
+} = {}) {
   return (
-    <Text className="text-[12px] text-muted leading-[18px] mt-4 font-normal">
+    <Text className={className} style={style}>
       기억온은 인지활동 보조·회상 대화 서비스로, 의료기기가 아닙니다. 표시되는 요약·지표는 대화에서
       관찰된 기록이며 의학적 판단이 아닙니다.
     </Text>

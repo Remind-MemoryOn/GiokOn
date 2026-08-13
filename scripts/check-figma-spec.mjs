@@ -517,6 +517,33 @@ const SPECS = [
     '전체분석: 기간 선택이 집계에 반영된다',
     [/useOverallObservations\(period\)/, /OVERALL_PERIODS\.map/],
   ],
+
+  // ── 동의 확인 (Figma 463:62, 프레임 393×852 — 2026-08-13 신규) ──────────
+  [
+    `${APP}/app/consent/[id].tsx`,
+    '동의: 제목 SemiBold 19/30 @144 · 부제 Regular 14/25 w337 @208',
+    [/paddingTop: 30/, /text-\[19px\] font-semibold text-black/, /lineHeight: 30/, /text-\[14px\] font-normal text-muted/, /lineHeight: 25, width: 337, marginTop: 4/],
+  ],
+  [
+    `${APP}/app/consent/[id].tsx`,
+    '동의: 카드 335×97 r10 #d9d9d9 pitch 116 @(29, 273/389/505)',
+    [/CARD_W = 335/, /CARD_H = 97/, /CARD_GAP = 116 - CARD_H/, /borderColor: '#d9d9d9'/, /marginTop: i === 0 \? 15 : CARD_GAP/],
+  ],
+  [
+    `${APP}/app/consent/[id].tsx`,
+    '동의: 체크박스 17 @(50,+23) · 제목 SemiBold 13/16 @(79,+22) · 설명 Regular 12/16 w252',
+    [/BOX = 17/, /left: 20, top: 22/, /text-\[13px\] font-semibold text-black/, /left: 49, top: 21, lineHeight: 16/, /left: 49, top: 43, width: 252, lineHeight: 16/],
+  ],
+  [
+    `${APP}/app/consent/[id].tsx`,
+    '동의: 비의료 고지 14/25 w316 @39 · CTA 336×57 r10 #e9822b @727',
+    [/NonMedicalFootnote/, /lineHeight: 25, width: 316, marginLeft: 10, marginTop: 15/, /width: 336,\s*height: 57,\s*borderRadius: 10,\s*backgroundColor: '#e9822b'/, /marginTop: 35/, /paddingBottom: 68/],
+  ],
+  [
+    `${APP}/app/consent/[id].tsx`,
+    '동의: 항목·문구는 core 카탈로그 파생(문자열 하드코딩 금지)',
+    [/CONSENT_CATALOG/, /requiredElderConsents/, /def\.label\.replace/, /\{def\.summary\}/, /CONSENT_VERSION/],
+  ],
   [
     `${APP}/src/components/detail.tsx`,
     '주제 막대: 실제 라벨 길이에 맞춰 라벨 칸/트랙 조정(글자 잘림 방지)',

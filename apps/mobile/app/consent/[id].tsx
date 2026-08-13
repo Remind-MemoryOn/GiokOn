@@ -1,27 +1,93 @@
-// 동의 수집·게이팅 (Figma 미포함 · 필수) — 어르신 세션 시작 전 필수 동의.
-// @giokon/core 동의 카탈로그를 단일 기준으로 사용한다(민감정보·국외이전·AI 고지).
-// 대리동의(보호자/성년후견)·의사능력은 웹에서 상세 처리하며, 앱은 세션 게이팅을 담당한다.
+// 동의 확인 (Figma `463:62`, 프레임 393×852) — 어르신 세션 시작 전 필수 동의.
+//
+// Figma 실측(get_metadata + get_design_context, 2026-08-13 사용자 신규 디자인):
+//   헤더 0..114 — 공용 ScreenHeader(뒤로 @(29,74) · "동의 확인" Medium 18/30)
+//   제목   SemiBold 19/30 검정 @(29,144) 2줄
+//   부제   Regular 14/25 #7b7c7c @(29,208) 2줄 — 동의서 버전 포함
+//   동의 카드 335×97 r10 흰색 border #d9d9d9 @(29, 273 / 389 / 505) — pitch 116
+//     체크박스 17 @(50, +23) · 제목 SemiBold 13/16 검정 @(79, +22)
+//     설명 Regular 12/16 #7b7c7c @(79, +44) w252
+//   비의료 고지 Regular 14/25 #7b7c7c @(39,617) w316 3줄
+//   "동의하고 시작하기" 336×57 r10 #e9822b @(29,727) · 라벨 SemiBold 18/30 흰색 @top741
+//
+// 동의 항목·문구는 @giokon/core 카탈로그가 단일 기준(SoT)이다. Figma 는 필수 표시를
+// 라벨 뒤 "(필수, 별도)" 대신 앞의 "[필수,별도]" 배지로 뒀을 뿐이라, 문자열을 새로
+// 박지 않고 카탈로그 라벨에서 파생한다(법무 문구가 바뀌면 화면도 함께 바뀐다).
+//
+// ⚠️ 체크박스는 Figma 컴포넌트(`463:57`)지만 이 컨테이너의 egress 정책상 figma.com
+//   에셋 URL을 받을 수 없어 react-native-svg 로 같은 형태를 그린다(17×17 라운드 사각,
+//   미선택=회색 외곽선 / 선택=검정 채움 + 흰 체크). 에셋을 assets/figma 에 넣어 주시면
+//   이미지로 교체한다.
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path, Rect } from 'react-native-svg';
 import {
   CONSENT_CATALOG,
   CONSENT_VERSION,
   requiredElderConsents,
+  type ConsentDefinition,
   type ConsentType,
 } from '@giokon/core';
-import { DetailHeader } from '../../src/components/AppHeader';
-import { Button } from '../../src/components/ui';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { NonMedicalFootnote } from '../../src/components/banners';
-import { useElder } from '../../src/data/reads';
+import { useElderView } from '../../src/data/reads';
 import { useGrantConsents } from '../../src/data/writes';
-import { C } from '../../src/theme';
+
+/** Figma 콘텐츠 열. 카드만 335(우측 끝 364), 버튼은 336(우측 끝 365) — 원본 그대로. */
+const LEFT = 29;
+const CARD_W = 335;
+const CARD_H = 97;
+const CARD_GAP = 116 - CARD_H; // Figma 카드 pitch 116
+const BOX = 17;
+
+/**
+ * 동의 카드 제목 — 카탈로그 라벨의 "(필수…)" 접미사를 Figma 의 앞 배지로 옮긴다.
+ * 예) "민감정보(건강·음성) 처리 동의(필수, 별도)" → "[필수,별도] 민감정보(건강·음성) 처리 동의"
+ */
+function cardTitle(def: ConsentDefinition): string {
+  const base = def.label.replace(/\s*\([^)]*\)\s*$/, '');
+  const badge = def.required ? (def.sensitive ? '[필수,별도]' : '[필수]') : '[선택]';
+  return `${badge} ${base}`;
+}
+
+/** 체크박스 17×17 — 미선택은 회색 외곽선, 선택은 검정 채움 + 흰 체크(사용자 디자인). */
+function CheckBox({ checked }: { checked: boolean }) {
+  const sw = 1.6;
+  return (
+    <Svg width={BOX} height={BOX}>
+      {checked ? (
+        <>
+          <Rect x={0} y={0} width={BOX} height={BOX} rx={3} fill="#111111" />
+          <Path
+            d="M4.3 8.9 L7.1 11.7 L12.7 5.7"
+            stroke="#ffffff"
+            strokeWidth={1.9}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </>
+      ) : (
+        <Rect
+          x={sw / 2}
+          y={sw / 2}
+          width={BOX - sw}
+          height={BOX - sw}
+          rx={3}
+          stroke="#7b7c7c"
+          strokeWidth={sw}
+          fill="none"
+        />
+      )}
+    </Svg>
+  );
+}
 
 export default function ConsentGate() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useElder(id);
+  const { elder, loading } = useElderView(id);
   const grant = useGrantConsents();
   const [saving, setSaving] = useState(false);
   const required = requiredElderConsents();
@@ -33,10 +99,13 @@ export default function ConsentGate() {
 
   if (!elder || !id) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
-        <View className="px-5">
-          <DetailHeader title="동의 확인" />
-        </View>
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <ScreenHeader title="동의 확인" />
+        {!loading ? (
+          <Text className="text-[18px] font-normal text-muted text-center" style={{ marginTop: 60 }}>
+            어르신을 찾을 수 없어요.
+          </Text>
+        ) : null}
       </SafeAreaView>
     );
   }
@@ -57,18 +126,25 @@ export default function ConsentGate() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <View className="px-5">
-        <DetailHeader title="동의 확인" />
-      </View>
-      <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Text className="text-[20px] font-semibold text-ink mt-2 leading-[30px]">
-          {elder.name} 어르신과의 대화를 위해{'\n'}아래 동의가 필요해요.
+      <ScreenHeader title="동의 확인" />
+
+      <ScrollView
+        className="flex-1"
+        // 제목 박스 top 144 = 헤더 114 + 30 · CTA 하단 784 → 프레임 하단 68
+        contentContainerStyle={{ paddingLeft: LEFT, paddingTop: 30, paddingBottom: 68 }}
+      >
+        <Text className="text-[19px] font-semibold text-black" style={{ lineHeight: 30 }}>
+          {elder.name} 어르신과의{'\n'}대화를 위해 아래 동의가 필요해요.
         </Text>
-        <Text className="text-[14px] text-muted mt-2 mb-5 font-normal">
+
+        <Text
+          className="text-[14px] font-normal text-muted"
+          style={{ lineHeight: 25, width: 337, marginTop: 4 }}
+        >
           어르신(정보주체) 또는 보호자·대리인의 동의를 확인해 주세요. (동의서 {CONSENT_VERSION})
         </Text>
 
-        {required.map((t) => {
+        {required.map((t, i) => {
           const def = CONSENT_CATALOG[t];
           const on = checked[t];
           return (
@@ -77,37 +153,72 @@ export default function ConsentGate() {
               onPress={() => toggle(t)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
-              className={`flex-row items-start rounded-card border p-4 mb-3 ${on ? 'border-accent bg-accent/5' : 'border-line bg-white'}`}
+              accessibilityLabel={cardTitle(def)}
+              className="active:opacity-80"
+              style={{
+                width: CARD_W,
+                height: CARD_H,
+                borderRadius: 10,
+                backgroundColor: '#ffffff',
+                borderWidth: 1,
+                borderColor: '#d9d9d9',
+                // 첫 카드 top 273 = 부제 하단 258 + 15
+                marginTop: i === 0 ? 15 : CARD_GAP,
+              }}
             >
-              <Ionicons
-                name={on ? 'checkbox' : 'square-outline'}
-                size={24}
-                color={on ? C.accent : C.textSecondary}
-              />
-              <View className="flex-1 ml-3">
-                <View className="flex-row flex-wrap items-center">
-                  <Text className="text-[16px] font-semibold text-ink">{def.label}</Text>
-                  {def.sensitive ? (
-                    <Text className="text-[12px] text-danger ml-2 font-normal">민감정보</Text>
-                  ) : null}
-                  {def.crossBorder ? (
-                    <Text className="text-[12px] text-accent ml-2 font-normal">국외이전</Text>
-                  ) : null}
-                </View>
-                <Text className="text-[14px] text-muted mt-1 leading-[20px] font-normal">{def.summary}</Text>
+              {/*
+               * Figma 절대 좌표 — 체크박스 (50,296) · 제목 (79,295) · 설명 (79,317).
+               * RN 은 absolute 자식을 **테두리 안쪽(padding box)** 기준으로 놓으므로
+               * 카드 원점(29,273) + 테두리 1 을 빼서 상대 좌표로 바꾼다.
+               */}
+              <View className="absolute" style={{ left: 20, top: 22 }}>
+                <CheckBox checked={on} />
               </View>
+              <Text
+                className="absolute text-[13px] font-semibold text-black"
+                style={{ left: 49, top: 21, lineHeight: 16 }}
+                numberOfLines={1}
+              >
+                {cardTitle(def)}
+              </Text>
+              <Text
+                className="absolute text-[12px] font-normal text-muted"
+                style={{ left: 49, top: 43, width: 252, lineHeight: 16 }}
+              >
+                {def.summary}
+              </Text>
             </Pressable>
           );
         })}
 
-        <NonMedicalFootnote />
+        {/* 비의료 고지 — 문구는 banners.tsx 한 곳에서 관리(카피 린트 대상) */}
+        <NonMedicalFootnote
+          className="text-[14px] font-normal text-muted"
+          // 카드 하단 602 → 617 (마지막 카드 아래 15), Figma 는 콘텐츠 열보다 10 안쪽
+          style={{ lineHeight: 25, width: 316, marginLeft: 10, marginTop: 15 }}
+        />
 
-        <View className="mt-6">
-          <Button label="동의하고 시작하기" onPress={onAgree} disabled={!allChecked || saving} />
-          <View className="mt-3">
-            <Button label="취소" variant="ghost" onPress={() => router.back()} />
-          </View>
-        </View>
+        <Pressable
+          onPress={onAgree}
+          disabled={!allChecked || saving}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !allChecked || saving }}
+          className="items-center justify-center active:opacity-90"
+          style={{
+            width: 336,
+            height: 57,
+            borderRadius: 10,
+            backgroundColor: '#e9822b',
+            // 고지 하단 692 → 727
+            marginTop: 35,
+            // 필수 동의 전에는 흐리게(디자인은 활성 상태만 그려져 있다)
+            opacity: allChecked && !saving ? 1 : 0.45,
+          }}
+        >
+          <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
+            동의하고 시작하기
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
