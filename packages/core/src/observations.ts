@@ -97,6 +97,214 @@ export function observationSummary(elderName: string, shares: TopicShare[]): str
   return `${elderName} 어르신은 ${top} 이야기에 특히 자주 응답하셨어요. 대화 참여가 꾸준히 이어지고 있으며, 관심 주제가 조금씩 넓어지는 모습이 관찰됩니다.`
 }
 
+// ─────────────────────────────────────────────────────────────
+// 관찰 5축 + 기간 대비 변화 (Figma "인지 효과 분석" 화면)
+// ─────────────────────────────────────────────────────────────
+//
+// Figma 는 "기억 회상력 23% ▲향상" 처럼 **인지 기능 향상 수치**를 그렸지만, 그 값을
+// 계산할 근거(임상 기준선·검사 도구)가 우리 데이터에 없다. 사용자 확정(2026-08-13)에 따라
+// 5축을 **우리가 실제로 세는 값**으로 재정의하고, "향상률"은 같은 길이의 **직전 기간 대비
+// 실제 변화량**으로 계산한다. 근거가 없으면 null(화면은 '—').
+//
+// 축 정의(전부 대화에서 직접 관찰한 값):
+//   recall(기억 회상력)   = 회상이 이어진 주제 비율 = engaged / (engaged + low)
+//   emotion(정서 안정감)  = 안정 톤(bright·calm·mixed) 세션 비율
+//   participation(대화 참여도) = 풍부한 발화 비율 평균(metrics.participation)
+//   focus(집중력)         = 응답률 평균(metrics.responseRate)
+//   expression(언어 표현력) = 평균 발화 길이 / 기준 60자 (100 상한)
+
+/** 언어 표현력 정규화 기준(자). 100% = 평균 발화가 이 길이일 때. */
+export const EXPRESSION_REFERENCE_CHARS = 60
+
+export type ObservationAxis = 'recall' | 'emotion' | 'participation' | 'focus' | 'expression'
+
+export const OBSERVATION_AXES: ObservationAxis[] = [
+  'recall',
+  'emotion',
+  'participation',
+  'focus',
+  'expression',
+]
+
+export interface AxisObservation {
+  axis: ObservationAxis
+  /** 0~100. 측정 근거(분석)가 없으면 null. */
+  value: number | null
+  /** 직전 동일 길이 기간 대비 변화량(%p). 비교 근거가 없으면 null. */
+  delta: number | null
+}
+
+function ratio(num: number, den: number): number | null {
+  return den > 0 ? Math.round((num / den) * 100) : null
+}
+
+/** 한 묶음(기간)의 5축 값. 분석이 없으면 전부 null. */
+function axisValues(analyses: SessionAnalysis[]): Record<ObservationAxis, number | null> {
+  if (analyses.length === 0) {
+    return { recall: null, emotion: null, participation: null, focus: null, expression: null }
+  }
+  let engaged = 0
+  let low = 0
+  let stable = 0
+  let participation = 0
+  let focus = 0
+  let chars = 0
+  for (const a of analyses) {
+    engaged += a.topicsEngaged.length
+    low += a.topicsLow.length
+    if (a.emotionTone === 'bright' || a.emotionTone === 'calm' || a.emotionTone === 'mixed') stable += 1
+    participation += a.metrics.participation
+    focus += a.metrics.responseRate
+    chars += a.metrics.avgUtteranceChars
+  }
+  const n = analyses.length
+  return {
+    recall: ratio(engaged, engaged + low),
+    emotion: ratio(stable, n),
+    participation: Math.round((participation / n) * 100),
+    focus: Math.round((focus / n) * 100),
+    expression: Math.min(100, Math.round((chars / n / EXPRESSION_REFERENCE_CHARS) * 100)),
+  }
+}
+
+/** ISO 문자열을 `YYYY-MM` 으로. */
+function monthKey(iso: string): string {
+  return iso.slice(0, 7)
+}
+
+/**
+ * 최근 `months` 개월을 최근 기간 / 직전 기간으로 나눠 5축 값과 변화량을 계산한다.
+ * `now` 는 테스트 주입용(기본 현재 시각).
+ */
+export function computeAxisObservations(
+  analyses: (SessionAnalysis & { at: string })[],
+  months = 3,
+  now = new Date(),
+): AxisObservation[] {
+  const span = months * 30 * 86400000
+  const end = now.getTime()
+  const recent: SessionAnalysis[] = []
+  const previous: SessionAnalysis[] = []
+  for (const a of analyses) {
+    const t = new Date(a.at).getTime()
+    if (Number.isNaN(t)) continue
+    if (t > end - span) recent.push(a)
+    else if (t > end - span * 2) previous.push(a)
+  }
+  const cur = axisValues(recent)
+  const prev = axisValues(previous)
+  return OBSERVATION_AXES.map((axis) => {
+    const value = cur[axis]
+    const before = prev[axis]
+    return {
+      axis,
+      value,
+      delta: value === null || before === null ? null : value - before,
+    }
+  })
+}
+
+export interface MonthlyAxisSeries {
+  axis: ObservationAxis
+  /** 월별 값(0~100). 기록이 없는 달은 null. */
+  points: (number | null)[]
+}
+
+export interface MonthlyAxisTrend {
+  /** `YYYY-MM` 오름차순. */
+  months: string[]
+  series: MonthlyAxisSeries[]
+}
+
+/** 최근 `months` 개월의 달 키 배열(오름차순). */
+function monthKeys(months: number, now: Date): string[] {
+  const keys: string[] = []
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  return keys
+}
+
+function groupByMonth(
+  analyses: (SessionAnalysis & { at: string })[],
+  keys: string[],
+): Map<string, SessionAnalysis[]> {
+  const byMonth = new Map<string, SessionAnalysis[]>()
+  for (const a of analyses) {
+    const k = monthKey(a.at)
+    if (!keys.includes(k)) continue
+    const list = byMonth.get(k)
+    if (list) list.push(a)
+    else byMonth.set(k, [a])
+  }
+  return byMonth
+}
+
+/**
+ * 관찰 5축의 월별 추이(Figma "지표별 변화 추이").
+ * 기록이 없는 달은 null → 화면에서 점·선을 잇지 않는다.
+ */
+export function computeMonthlyAxisTrend(
+  analyses: (SessionAnalysis & { at: string })[],
+  months = 3,
+  now = new Date(),
+): MonthlyAxisTrend {
+  const keys = monthKeys(months, now)
+  const byMonth = groupByMonth(analyses, keys)
+  return {
+    months: keys,
+    series: OBSERVATION_AXES.map((axis) => ({
+      axis,
+      points: keys.map((k) => {
+        const list = byMonth.get(k)
+        if (!list || list.length === 0) return null
+        return axisValues(list)[axis]
+      }),
+    })),
+  }
+}
+
+export interface MonthlyTopicSeries {
+  label: string
+  /** 월별 점유율(0~100). 해당 월에 기록이 없으면 null(점을 찍지 않는다). */
+  points: (number | null)[]
+}
+
+export interface MonthlyTopicTrend {
+  /** `YYYY-MM` 오름차순. */
+  months: string[]
+  /** 상위 주제별 시계열(최대 5). 근거가 없으면 빈 배열. */
+  series: MonthlyTopicSeries[]
+}
+
+/**
+ * 월별 관심 주제 점유율 추이(Figma 주제별 분석의 꺾은선).
+ * 세션 시각으로 월을 나누고 그 달의 분석만으로 주제 점유율을 계산한다.
+ * 기록이 없는 달은 null → 화면에서 점·선을 잇지 않는다(값을 만들지 않는다).
+ */
+export function computeMonthlyTopicTrend(
+  analyses: (SessionAnalysis & { at: string })[],
+  months = 6,
+  now = new Date(),
+): MonthlyTopicTrend {
+  const keys = monthKeys(months, now)
+  const byMonth = groupByMonth(analyses, keys)
+  // 전체 기간 상위 주제를 시계열 대상으로 고정한다(월마다 다른 주제가 나오면 비교 불가).
+  const overall = computeTopicShares([], analyses)
+  if (overall.length === 0) return { months: keys, series: [] }
+  const series = overall.map((t) => ({
+    label: t.label,
+    points: keys.map((k) => {
+      const list = byMonth.get(k)
+      if (!list || list.length === 0) return null
+      const shares = computeTopicShares([], list)
+      return shares.find((s) => s.label === t.label)?.percent ?? 0
+    }),
+  }))
+  return { months: keys, series }
+}
+
 /** 담당 어르신 전체 관찰 요약(대시보드·전체 분석). */
 export function computeOverall(
   profiles: ElderProfile[],

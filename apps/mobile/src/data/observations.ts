@@ -5,18 +5,26 @@
 // 코어(테스트됨)에 단일화된다.
 
 import {
+  computeAxisObservations,
+  computeMonthlyAxisTrend,
+  computeMonthlyTopicTrend,
   computeOverall,
   computeParticipation,
   computeTopicShares,
+  type AxisObservation,
+  type MonthlyAxisTrend,
+  type MonthlyTopicTrend,
   type OverallObservations,
   type ParticipationSummary,
   type TopicShare,
 } from '@giokon/core';
 import {
   useAllAnalyses,
+  useAllAnalysesDated,
   useAllSessions,
   useChronicles,
   useElderAnalyses,
+  useElderAnalysesDated,
   useElders,
   useElderSessions,
 } from './reads';
@@ -43,4 +51,41 @@ export function useOverallObservations(): OverallObservations {
   const sessions = useAllSessions();
   const analyses = useAllAnalyses();
   return computeOverall(profiles, sessions, analyses);
+}
+
+// ── 인지 효과 분석 화면(5축 + 기간 대비 변화) / 주제별 추이 ────────────────
+// Figma 의 "기억 회상력 23% ▲향상" 은 자리표시자였다. 사용자 확정(2026-08-13)대로
+// 5축을 실측 관찰지표로 재정의하고 변화량은 직전 기간과의 실제 차이로 계산한다.
+
+/** 어르신 관찰 5축 + 최근 N개월 대비 변화(근거 없으면 null). */
+export function useElderAxisObservations(
+  elderId: string | undefined,
+  months = 3,
+): AxisObservation[] {
+  return computeAxisObservations(useElderAnalysesDated(elderId), months);
+}
+
+/** 담당 전체 관찰 5축 + 변화. */
+export function useOverallAxisObservations(months = 3): AxisObservation[] {
+  return computeAxisObservations(useAllAnalysesDated(), months);
+}
+
+/** 어르신 관찰 5축 월별 추이(지표별 변화 추이 그래프). */
+export function useElderAxisTrend(elderId: string | undefined, months = 3): MonthlyAxisTrend {
+  return computeMonthlyAxisTrend(useElderAnalysesDated(elderId), months);
+}
+
+/** 담당 전체 관찰 5축 월별 추이. */
+export function useOverallAxisTrend(months = 3): MonthlyAxisTrend {
+  return computeMonthlyAxisTrend(useAllAnalysesDated(), months);
+}
+
+/** 어르신 월별 주제 점유율 추이. */
+export function useElderTopicTrend(elderId: string | undefined, months = 6): MonthlyTopicTrend {
+  return computeMonthlyTopicTrend(useElderAnalysesDated(elderId), months);
+}
+
+/** 담당 전체 월별 주제 점유율 추이. */
+export function useOverallTopicTrend(months = 6): MonthlyTopicTrend {
+  return computeMonthlyTopicTrend(useAllAnalysesDated(), months);
 }

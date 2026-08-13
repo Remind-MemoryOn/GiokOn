@@ -340,6 +340,67 @@ const SPECS = [
     [/useOverallObservations/, /metric\(o\.avgMinutes, '분'\)/, /metric\(o\.avgResponseRate, '%'\)/, /아직 관찰된 주제가 없어요/],
   ],
 
+  // ── 차트 (Figma 인지 효과 분석 134:94 / 주제별 분석 140:562) ──────────
+  [
+    `${APP}/src/components/charts.tsx`,
+    '레이더: 링 r 97.5~18.5 · 중심 (167.5,129.5) · 채움 #f8e3d2 + 선 #e9822b',
+    [/RADAR_R = 97\.5/, /RINGS = \[18\.5, 37\.5, 58, 77, 97\.5\]/, /RADAR_CX = 167\.5/, /RADAR_CY = 129\.5/, /fill="#f8e3d2"/, /stroke="#e9822b"/],
+  ],
+  [
+    `${APP}/src/components/charts.tsx`,
+    '꺾은선: 플롯 148 · X축선 290 @42 · 점 57~312 · 점 3.5 / 선 2',
+    [/PLOT_H = 148/, /AXIS_LEFT = 42/, /AXIS_W = 290/, /DOT_FIRST = 57/, /DOT_LAST = 312/, /strokeWidth=\{2\}/],
+  ],
+  [
+    `${APP}/src/components/charts.tsx`,
+    '차트: null 구간은 선·점을 그리지 않는다(없는 관찰 금지)',
+    [/기록이 쌓이면 추이를 보여드려요/, /아직 관찰된 기록이 없어요/],
+  ],
+
+  // ── 인지 효과 분석 (Figma 134:94 / 144:201) ───────────────────────────
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 지표 카드 103×103 r5 (라벨 Medium 12 / 값 SemiBold 16) 3+2 gap 13/14',
+    [/width: 103,\s*height: 103,\s*borderRadius: 5/, /text-\[12px\] font-medium text-black/, /text-\[16px\] font-semibold text-black/, /marginTop: 18, columnGap: 13/, /marginTop: 14, columnGap: 13/],
+  ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 변화 배지 ▲ 11 + SemiBold 12 (#60bd66 / 감소 #d8503c)',
+    [/UP = '#60bd66'/, /DOWN = '#d8503c'/, /width=\{11\} height=\{11\}/, /text-\[12px\] font-semibold/],
+  ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 5축 계열 색(Figma 범례 실측)',
+    [/recall: '#e9822b'/, /emotion: '#8cd565'/, /participation: '#2bc9e9'/, /focus: '#e92b90'/, /expression: '#d147dd'/],
+  ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 종합 평가 스마일 54 · SemiBold 20 주황 · 문장 Regular 13 w222',
+    [/width: 54, height: 54/, /text-\[20px\] font-semibold text-accent/, /lineHeight: 25, width: 222/],
+  ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 값·향상률은 실측 관찰지표(23%·+17% 자리표시자 금지)',
+    [/useElderAxisObservations/, /useOverallAxisObservations/, /metric\(value, '%'\)/, /직전 기간 대비/],
+  ],
+
+  // ── 주제별 분석 (Figma 140:562) ───────────────────────────────────────
+  [
+    `${APP}/app/topics/[id].tsx`,
+    '주제별: 상세 카드 103×87 r5 (라벨 Regular 13 / 값 SemiBold 16) gap 13',
+    [/width: 103,\s*height: 87,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /text-\[16px\] font-semibold text-black/, /marginTop: 18, columnGap: 13/],
+  ],
+  [
+    `${APP}/app/topics/[id].tsx`,
+    '주제별: 기간 pill 99 / 주제 pill 73 · 키워드 칩 h25 r5 gap 10',
+    [/width=\{99\}/, /width=\{73\}/, /height: 25,\s*borderRadius: 5/, /columnGap: 10, rowGap: 10/],
+  ],
+  [
+    `${APP}/app/topics/[id].tsx`,
+    '주제별: 6개월 추이·지표는 실집계(79%·75회 자리표시자 금지)',
+    [/useElderTopicTrend/, /useOverallTopicTrend/, /metric\(engagedRate, '%'\)/, /아직 관찰된 키워드가 없어요/],
+  ],
+
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
   [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],
 ];

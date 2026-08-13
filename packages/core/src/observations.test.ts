@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeSession } from './analysis'
 import {
+  computeAxisObservations,
+  computeMonthlyAxisTrend,
+  computeMonthlyTopicTrend,
   computeOverall,
   computeParticipation,
   computeTopicShares,
@@ -113,5 +116,77 @@ describe('computeOverall', () => {
       avgResponseRate: null,
     })
     expect(o.topTopics).toEqual([])
+  })
+})
+
+// ── 관찰 5축 + 기간 대비 변화 / 월별 추이 (Figma 인지 효과 분석·주제별 분석) ──
+describe('computeAxisObservations', () => {
+  const at = (iso: string) => ({ ...analysis, at: iso })
+  const now = new Date('2026-07-15T00:00:00Z')
+
+  it('분석이 없으면 값·변화량을 만들지 않는다(전부 null)', () => {
+    const axes = computeAxisObservations([], 3, now)
+    expect(axes).toHaveLength(5)
+    expect(axes.every((a) => a.value === null && a.delta === null)).toBe(true)
+  })
+
+  it('최근 기간만 있으면 값은 나오고 변화량은 null(비교 근거 없음)', () => {
+    const axes = computeAxisObservations([at('2026-07-01T00:00:00Z')], 3, now)
+    const focus = axes.find((a) => a.axis === 'focus')
+    expect(focus?.value).not.toBeNull()
+    expect(focus?.delta).toBeNull()
+  })
+
+  it('직전 기간이 있으면 변화량(%p)을 계산한다', () => {
+    const axes = computeAxisObservations(
+      [at('2026-07-01T00:00:00Z'), at('2026-02-01T00:00:00Z')],
+      3,
+      now,
+    )
+    // 같은 분석을 넣었으므로 변화량은 0(값이 없다는 뜻의 null 과 구분된다)
+    for (const a of axes) if (a.value !== null) expect(a.delta).toBe(0)
+  })
+
+  it('언어 표현력은 기준 60자에 대한 비율이며 100을 넘지 않는다', () => {
+    const long = {
+      ...analysis,
+      metrics: { ...analysis.metrics, avgUtteranceChars: 500 },
+      at: '2026-07-01T00:00:00Z',
+    }
+    const axes = computeAxisObservations([long], 3, now)
+    expect(axes.find((a) => a.axis === 'expression')?.value).toBe(100)
+  })
+})
+
+describe('computeMonthlyTopicTrend', () => {
+  const now = new Date('2026-06-15T00:00:00Z')
+
+  it('근거가 없으면 빈 시계열(달 축은 유지)', () => {
+    const t = computeMonthlyTopicTrend([], 6, now)
+    expect(t.months).toHaveLength(6)
+    expect(t.series).toEqual([])
+  })
+
+  it('기록이 있는 달만 점을 찍고 없는 달은 null', () => {
+    const t = computeMonthlyTopicTrend([{ ...analysis, at: '2026-06-02T00:00:00Z' }], 6, now)
+    expect(t.months[5]).toBe('2026-06')
+    expect(t.series.length).toBeGreaterThan(0)
+    expect(t.series[0].points[5]).not.toBeNull()
+    expect(t.series[0].points[0]).toBeNull()
+  })
+})
+
+describe('computeMonthlyAxisTrend', () => {
+  const now = new Date('2026-06-15T00:00:00Z')
+
+  it('기록 없는 달은 null, 있는 달만 값을 낸다', () => {
+    const t = computeMonthlyAxisTrend([{ ...analysis, at: '2026-06-02T00:00:00Z' }], 3, now)
+    expect(t.months).toEqual(['2026-04', '2026-05', '2026-06'])
+    expect(t.series).toHaveLength(5)
+    for (const s of t.series) {
+      expect(s.points[0]).toBeNull()
+      expect(s.points[1]).toBeNull()
+    }
+    expect(t.series.find((s) => s.axis === 'focus')?.points[2]).not.toBeNull()
   })
 })

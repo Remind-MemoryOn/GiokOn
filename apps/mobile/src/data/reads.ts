@@ -38,6 +38,9 @@ import type {
   Session,
   SessionAnalysis,
 } from '@giokon/core';
+
+/** 분석 + 기록 시각 — core 의 기간 집계 함수가 요구하는 형태. */
+export type DatedAnalysis = SessionAnalysis & { at: string };
 import { useShallow } from 'zustand/react/shallow';
 import { isSupabaseConfigured as CFG } from '../lib/supabase';
 import { useApp } from '../store/appStore';
@@ -137,6 +140,56 @@ export function useElderAnalyses(elderId: string | undefined): SessionAnalysis[]
   return (live.data ?? [])
     .map(parseSessionAnalysis)
     .filter((a): a is SessionAnalysis => Boolean(a));
+}
+
+/**
+ * 어르신 세션 분석 + **기록 시각**(기간 대비 변화·월별 추이 집계용).
+ * 라이브는 session_analyses.created_at, 목업은 로그의 startedAt 을 쓴다.
+ */
+export function useElderAnalysesDated(elderId: string | undefined): DatedAnalysis[] {
+  const mock = useApp(
+    useShallow((s) =>
+      elderId
+        ? s
+            .logsByElder(elderId)
+            .map((l) => {
+              const a = s.getAnalysis(l.id);
+              return a ? { ...a, at: l.startedAt } : null;
+            })
+            .filter((x): x is DatedAnalysis => Boolean(x))
+        : [],
+    ),
+  );
+  const live = useSessionAnalysesData(CFG ? elderId : undefined);
+  if (!CFG) return mock;
+  return (live.data ?? [])
+    .map((row) => {
+      const a = parseSessionAnalysis(row);
+      return a ? { ...a, at: row.created_at } : null;
+    })
+    .filter((x): x is DatedAnalysis => Boolean(x));
+}
+
+/** 담당 전체 분석 + 기록 시각(전체 인지 효과 분석·전체 주제 추이). */
+export function useAllAnalysesDated(): DatedAnalysis[] {
+  const mock = useApp(
+    useShallow((s) =>
+      s.logs
+        .map((l) => {
+          const a = s.analyses[l.id];
+          return a ? { ...a, at: l.startedAt } : null;
+        })
+        .filter((x): x is DatedAnalysis => Boolean(x)),
+    ),
+  );
+  const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
+  if (!CFG) return mock;
+  return (live.data ?? [])
+    .map((row) => {
+      const a = parseSessionAnalysis(row);
+      return a ? { ...a, at: row.created_at } : null;
+    })
+    .filter((x): x is DatedAnalysis => Boolean(x));
 }
 
 /** 담당 전체 세션(전체 분석·관찰지표 집계용). */
