@@ -31,6 +31,15 @@ export function lastTalkLabel(iso: string | null | undefined): string {
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
+const DOW = ['일', '월', '화', '수', '목', '금', '토'] as const;
+
+/** "2026년 6월 24일 (수)" — Figma 대화 기록 날짜 제목 형식(core 의 `2026.06.24` 와 다름). */
+export function longKoreanDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return NO_VALUE;
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`;
+}
+
 /**
  * 성별 표기 — DB enum('female'/'male') → 화면 문구. 미입력이면 null(표기 생략).
  * ⚠️ 값이 없을 때 임의로 채우지 않는다.

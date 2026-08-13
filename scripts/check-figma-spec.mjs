@@ -259,6 +259,65 @@ const SPECS = [
     [/metric\(part\.avgMinutes, '분'\)/, /metric\(part\.avgResponseRate, '%'\)/, /아직 관찰된 주제가 없어요/, /observationSummary\(elder\.name, topics\)/],
   ],
 
+  // ── 대화 기록 (Figma 28:129) ───────────────────────────────────────────
+  [
+    `${APP}/app/log/[id].tsx`,
+    '대화기록: 날짜 SemiBold 18 · 첫 버블 19+15 · 버블 간격 30',
+    [/text-\[18px\] font-semibold text-black/, /paddingTop: 19/, /marginTop: 15/, /marginBottom: 30/],
+  ],
+  [
+    `${APP}/app/log/[id].tsx`,
+    '대화기록: AI 버블 흰색 r14 + 그림자 1 1 8 .25 · padding 19/12 · 아바타 37',
+    [/borderRadius: 14/, /boxShadow: '1px 1px 8px rgba\(106,106,106,0\.25\)'/, /paddingHorizontal: 19/, /avatar-ai\.png/, /width: 37, height: 37/],
+  ],
+  [
+    `${APP}/app/log/[id].tsx`,
+    '대화기록: 어르신 버블 #e9822b r14 padding 17/12 · 텍스트 Regular 14 lh24',
+    [/backgroundColor: '#e9822b'/, /paddingHorizontal: 17/, /text-\[14px\] font-normal text-white/, /lineHeight: 24/],
+  ],
+  [
+    `${APP}/app/log/[id].tsx`,
+    '대화기록: 시간 Regular 11 (버블 옆 9) · 하단 패널 200 · 재생바 336×57 r10',
+    [/text-\[11px\] font-normal text-muted/, /height: 200, paddingTop: 26/, /borderColor: '#cccdce'/, /btn-play\.png/],
+  ],
+  [
+    `${APP}/app/log/[id].tsx`,
+    '대화기록: 녹음 미구현 → 값 대신 빈 상태(자리표시자 금지)',
+    [/녹음 없음/],
+  ],
+
+  // ── 단일 대화 분석 (Figma 118:74) ─────────────────────────────────────
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 크림 히어로 110 + 흰 시트 상단 라운드 30',
+    [/height: 110, paddingLeft: DETAIL\.left, backgroundColor: DETAIL\.chipBg/, /SHEET_RADIUS = 30/, /borderTopLeftRadius: SHEET_RADIUS/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 날짜 Medium 14 · 제목 SemiBold 20 · 타일 top 31',
+    [/text-\[14px\] font-medium text-muted/, /text-\[20px\] font-semibold text-black/, /paddingTop: 31/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 특성 카드 162×73 r5 (라벨 Regular 13 / 값 SemiBold 16) 2×2 gap 12',
+    [/width: 162,\s*height: 73,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /text-\[16px\] font-semibold text-black/, /columnGap: 12/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 키워드 칩 h32 minW76 r5 · SemiBold 16 주황',
+    [/height: 32,\s*minWidth: 76,\s*borderRadius: 5/, /text-\[16px\] font-semibold text-accent/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 감정 스마일 43 · 막대 336×12 r6 3구간',
+    [/icon-smile\.png/, /width: 43, height: 43/, /height: 12,\s*borderRadius: 6/, /#f3bb8a/],
+  ],
+  [
+    `${APP}/app/analysis/[logId].tsx`,
+    '대화분석: 값은 실측 관찰지표(긍정 82% 류 자리표시자 금지)',
+    [/assessEngagement/, /EMOTION_META/, /metric\(Math\.round\(m\.responseRate \* 100\), '%'\)/, /아직 정리된 요약이 없어요/],
+  ],
+
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
   [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],
 ];
