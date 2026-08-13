@@ -318,6 +318,28 @@ const SPECS = [
     [/assessEngagement/, /EMOTION_META/, /metric\(Math\.round\(m\.responseRate \* 100\), '%'\)/, /아직 정리된 요약이 없어요/],
   ],
 
+  // ── 전체 분석 (Figma 140:201) ─────────────────────────────────────────
+  [
+    `${APP}/app/analytics.tsx`,
+    '전체분석: 요약 카드 162×95 r5 (라벨 Regular 14 / 값 SemiBold 18) 2×2 gap 12/13',
+    [/width: 162,\s*height: 95,\s*borderRadius: 5/, /text-\[14px\] font-normal text-black/, /text-\[18px\] font-semibold text-black/, /marginTop: 23, columnGap: 12/, /marginTop: 13, columnGap: 12/],
+  ],
+  [
+    `${APP}/app/analytics.tsx`,
+    '전체분석: 기간 pill 99×25 border #d5d5d5 + ∨ 8.4×5.45',
+    [/width: 99,\s*height: 25/, /borderColor: '#d5d5d5'/, /width: 8\.4, height: 5\.45/],
+  ],
+  [
+    `${APP}/app/analytics.tsx`,
+    '전체분석: 아이콘 4종 에셋 · 막대 라벨 30 / 트랙 76',
+    [/stat-elders\.png/, /stat-smile\.png/, /stat-time\.png/, /stat-rate\.png/, /labelInset=\{1\} labelWidth=\{46\}/],
+  ],
+  [
+    `${APP}/app/analytics.tsx`,
+    '전체분석: 값은 computeOverall 실집계(52명·12.4분 류 자리표시자 금지)',
+    [/useOverallObservations/, /metric\(o\.avgMinutes, '분'\)/, /metric\(o\.avgResponseRate, '%'\)/, /아직 관찰된 주제가 없어요/],
+  ],
+
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
   [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],
 ];

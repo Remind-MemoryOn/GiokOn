@@ -223,16 +223,27 @@ export function TopicBar({
   label,
   percent,
   rank,
+  labelInset = 3,
+  labelWidth = 42,
 }: {
   label: string;
   percent: number;
   /** 0-based 순위(색 농도용). */
   rank: number;
+  /**
+   * 라벨 좌측 여백·폭 — 트랙 시작 x 를 Figma 에 맞춘다.
+   * 어르신 종합분석은 라벨 32 / 트랙 74, 전체분석은 라벨 30 / 트랙 76 이다.
+   */
+  labelInset?: number;
+  labelWidth?: number;
 }) {
   const pct = Math.max(0, Math.min(100, percent));
   return (
     <View className="flex-row items-center" style={{ height: 30, marginBottom: 2.25 }}>
-      <Text className="text-[13px] font-normal text-black" style={{ lineHeight: 30, marginLeft: 3, width: 42 }}>
+      <Text
+        className="text-[13px] font-normal text-black"
+        style={{ lineHeight: 30, marginLeft: labelInset, width: labelWidth }}
+      >
         {label}
       </Text>
       <View style={{ width: 241, height: 12, borderRadius: 6, backgroundColor: DETAIL.chipBg }}>
