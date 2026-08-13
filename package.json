@@ -16,7 +16,8 @@
     "check:copy": "node scripts/check-nonmedical-copy.mjs",
     "web": "pnpm -F @giokon/web dev",
     "format": "prettier --write .",
-    "check:font": "node scripts/check-font-class.mjs"
+    "check:font": "node scripts/check-font-class.mjs",
+    "check:figma": "node scripts/check-figma-spec.mjs"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

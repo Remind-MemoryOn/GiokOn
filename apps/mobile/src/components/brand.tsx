@@ -1,16 +1,21 @@
-// 브랜드·대화 시각 요소.
+// 브랜드·대화 시각 요소 — **모두 Figma 에셋으로 렌더**한다.
 //
-// ⚠️ 원칙: 로고·아이콘·일러스트는 **Figma 에서 내보낸 에셋**으로 렌더한다. 코드로 직접
-// 그리면(도형 조립·글자 대체) 원본과 확연히 달라진다. 아래 남아 있는 코드 드로잉
-// (RobotMascot·Waveform·MicButton·ToneBar)은 대화 화면 재적용 시 에셋으로 교체 예정.
-import { useEffect, useState } from 'react';
-import { Animated, Easing, Image, Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { C } from '../theme';
-import wordmarkAsset from '../../assets/brand/wordmark.png';
+// ⚠️ 원칙(사용자 지적 2026-08-12): 로고·아이콘·일러스트를 코드로 그리면(도형 조립·글자·
+// 이모지 대체) 원본과 확연히 달라진다. 이전 구현은 로봇(안테나+점 눈)·파형·마이크를
+// 코드로 그려 Figma 디자인과 완전히 달랐다. 지금은 @4x 스크린샷에서 크롭한 실제 에셋을
+// 쓴다(assets/brand/*). 에셋 원본 비율을 유지해 왜곡을 막는다.
+//
+// 예외: ToneBar 는 아이콘이 아니라 **데이터에 따라 폭이 바뀌는 시각화**라 코드로 그린다.
 
-// ── 워드마크 GIEOK-ON (Figma 에셋) ─────────────────────────────
-// 원본 비율 208×31.8 ≈ 6.54:1 — height 를 기준으로 폭을 맞춘다.
+import { Image, Pressable, Text, View } from 'react-native';
+import wordmarkAsset from '../../assets/brand/wordmark.png';
+import robotAsset from '../../assets/brand/robot-mascot.png';
+import robotInlineAsset from '../../assets/brand/robot-inline.png';
+import waveformAsset from '../../assets/brand/waveform.png';
+import micAsset from '../../assets/brand/btn-mic.png';
+
+// ── 워드마크 GIEOK-ON ─────────────────────────────────────────
+// 원본 208×31.8 → 6.54:1. height 기준으로 폭을 맞춘다.
 const WORDMARK_RATIO = 208 / 31.8;
 
 export function Wordmark({ size = 22 }: { size?: number }) {
@@ -24,128 +29,102 @@ export function Wordmark({ size = 22 }: { size?: number }) {
   );
 }
 
-// ── AI 로봇 마스코트(대화 상대 표식) ──────────────────────────
-export function RobotMascot({ size = 92 }: { size?: number }) {
-  const eyeW = Math.round(size * 0.11);
-  const eyeH = Math.round(size * 0.22);
+// ── AI 로봇 마스코트 ──────────────────────────────────────────
+// Figma 원본 197×126(1.563:1) — 주황 채움 얼굴 + 양쪽 귀 + 아치 눈 + 말풍선 꼬리.
+const ROBOT_RATIO = 197 / 126;
+
+export function RobotMascot({ size = 197 }: { size?: number }) {
   return (
-    <View style={{ width: size, height: size * 0.86, alignItems: 'center', justifyContent: 'center' }}>
-      {/* 안테나 */}
-      <View style={{ position: 'absolute', top: -size * 0.16, alignItems: 'center' }}>
-        <View style={{ width: size * 0.07, height: size * 0.07, borderRadius: 999, backgroundColor: C.accent }} />
-        <View style={{ width: 2, height: size * 0.1, backgroundColor: C.accent }} />
-      </View>
-      {/* 머리 */}
-      <View
-        style={{
-          width: size,
-          height: size * 0.86,
-          borderRadius: size * 0.28,
-          backgroundColor: C.accent,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: size * 0.14,
-        }}
-      >
-        <View style={{ width: eyeW, height: eyeH, borderRadius: 999, backgroundColor: '#fff' }} />
-        <View style={{ width: eyeW, height: eyeH, borderRadius: 999, backgroundColor: '#fff' }} />
-      </View>
-    </View>
+    <Image
+      source={robotAsset}
+      style={{ width: size, height: size / ROBOT_RATIO }}
+      resizeMode="contain"
+      accessibilityLabel="AI 도우미"
+    />
   );
 }
 
-// ── 오디오 파형(듣는 중 표시) ─────────────────────────────────
-const BAR_HEIGHTS = [14, 26, 40, 30, 52, 36, 22, 44, 58, 34, 20, 46, 30, 54, 38, 24, 42, 28, 50, 32, 18, 36, 26, 16];
+/** 질문 카드 안에 들어가는 소형 로봇(원본 48×22). */
+const ROBOT_INLINE_RATIO = 48 / 22;
 
-export function Waveform({ active = true }: { active?: boolean }) {
-  const [anim] = useState(() => new Animated.Value(0.5));
-  useEffect(() => {
-    if (!active) {
-      anim.setValue(0.5);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 620, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 620, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [active, anim]);
-
+export function RobotInline({ size = 48 }: { size?: number }) {
   return (
-    <View className="flex-row items-center justify-center gap-1 h-16">
-      {BAR_HEIGHTS.map((h, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            width: 3,
-            height: h,
-            borderRadius: 2,
-            backgroundColor: C.accent,
-            opacity: active ? (i % 2 === 0 ? anim : 0.6) : 0.5,
-            transform: [{ scaleY: active && i % 3 === 0 ? anim : 1 }],
-          }}
-        />
-      ))}
-    </View>
+    <Image
+      source={robotInlineAsset}
+      style={{ width: size, height: size / ROBOT_INLINE_RATIO }}
+      resizeMode="contain"
+    />
   );
 }
 
-// ── 대형 마이크 버튼(어르신 접근성: 큰 터치 타깃) ───────────────
-export function MicButton({ onPress, listening = false }: { onPress: () => void; listening?: boolean }) {
-  const [ring] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    if (!listening) return;
-    const loop = Animated.loop(
-      Animated.timing(ring, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [listening, ring]);
+// ── 오디오 파형 ───────────────────────────────────────────────
+// Figma 원본 228×77(2.96:1) 주황 파형. 정적 에셋을 쓰고, 비활성 시 흐리게만 처리한다
+// (코드 애니메이션으로 형태를 바꾸면 원본과 달라진다).
+const WAVEFORM_RATIO = 228 / 77;
 
+export function Waveform({ active = true, width = 228 }: { active?: boolean; width?: number }) {
   return (
-    <View className="items-center justify-center" style={{ width: 200, height: 200 }}>
-      {listening ? (
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            width: 160,
-            height: 160,
-            borderRadius: 999,
-            backgroundColor: C.accent,
-            opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] }),
-            transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }],
-          }}
-        />
-      ) : null}
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel="말하기"
-        className="items-center justify-center active:opacity-90"
-        style={{
-          width: 160,
-          height: 160,
-          borderRadius: 999,
-          backgroundColor: C.accent,
-          shadowColor: '#dc5032',
-          shadowOpacity: 0.25,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 8 },
-          elevation: 6,
-        }}
-      >
-        <Ionicons name="mic" size={72} color="#fff" />
-      </Pressable>
-    </View>
+    <Image
+      source={waveformAsset}
+      style={{ width, height: width / WAVEFORM_RATIO, opacity: active ? 1 : 0.35 }}
+      resizeMode="contain"
+    />
   );
 }
 
-// ── 감정/관찰 톤 막대(긍정·보통·낮음) ─────────────────────────
+// ── 마이크 버튼 ───────────────────────────────────────────────
+// Figma 원본 125×114 **회색** 원형 버튼(주황이 아니다).
+const MIC_RATIO = 125 / 114;
+
+/**
+ * 마이크 상태 — 사용자 지적("TTS 끝나거나 응답할 때 마이크가 그대로다")을 반영해
+ * 눌림 가능 여부를 시각적으로 구분한다. 형태는 Figma 에셋 그대로 두고 **투명도와
+ * 얇은 링만** 더해 디자인을 해치지 않는다.
+ *   speaking  : AI 발화 중 — 누를 수 없음(흐리게)
+ *   ready     : 누를 수 있음 — 원본 그대로
+ *   listening : 듣는 중 — 주황 링
+ *   processing: 인식 처리 중 — 흐리게
+ */
+export type MicState = 'speaking' | 'ready' | 'listening' | 'processing';
+
+export function MicButton({
+  onPress,
+  state = 'ready',
+  size = 125,
+}: {
+  onPress: () => void;
+  state?: MicState;
+  size?: number;
+}) {
+  const disabled = state === 'speaking' || state === 'processing';
+  const opacity = disabled ? 0.4 : 1;
+  const label =
+    state === 'listening' ? '듣는 중' : state === 'processing' ? '인식 중' : '마이크';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      style={{
+        borderRadius: 999,
+        borderWidth: state === 'listening' ? 3 : 0,
+        borderColor: '#e9822b',
+        opacity,
+      }}
+    >
+      <Image
+        source={micAsset}
+        style={{ width: size, height: size / MIC_RATIO }}
+        resizeMode="contain"
+      />
+    </Pressable>
+  );
+}
+
+// ── 관찰 반응 분포 바(데이터 시각화 — 값에 따라 폭이 바뀌므로 코드로 그린다) ──
 export function ToneBar({
   segments,
 }: {

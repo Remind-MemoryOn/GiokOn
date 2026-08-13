@@ -39,11 +39,8 @@ export default function Main() {
         style={{
           height: 56,
           paddingHorizontal: 30,
-          shadowColor: 'rgba(108,101,101,1)',
-          shadowOpacity: 0.13,
-          shadowRadius: 10,
-          shadowOffset: { width: 1, height: 1 },
-          elevation: 2,
+          // Figma: 1px 1px 10px rgba(108,101,101,0.13) — Android elevation 은 과대해서 미사용.
+          boxShadow: '1px 1px 10px rgba(108,101,101,0.13)',
           zIndex: 10,
         }}
       >
@@ -133,11 +130,8 @@ export default function Main() {
         style={{
           height: 118,
           paddingBottom: 37,
-          shadowColor: '#000',
-          shadowOpacity: 0.25,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: -4 },
-          elevation: 12,
+          // Figma: 0px 4px 12px rgba(0,0,0,0.25)
+          boxShadow: '0px 4px 12px rgba(0,0,0,0.25)',
         }}
       >
         <Pressable

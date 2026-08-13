@@ -42,11 +42,10 @@ export function PatientCard({
         marginBottom: 26,
         paddingLeft: 18.5,
         paddingRight: 24.5,
-        shadowColor: 'rgba(106,106,106,1)',
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        shadowOffset: { width: 1, height: 1 },
-        elevation: 3,
+        // Figma: 1px 1px 8px rgba(106,106,106,0.25).
+        // ⚠️ Android 에서 `elevation` 을 쓰면 훨씬 크고 진한 그림자가 생겨 원본과 달라진다
+        // (사용자 지적 "그림자 크기 너무 큼"). RN 0.79 의 boxShadow 로 값을 그대로 대응시킨다.
+        boxShadow: '1px 1px 8px rgba(106,106,106,0.25)',
       }}
     >
       {/* 사진(있으면) — 없으면 이니셜 아바타 */}
