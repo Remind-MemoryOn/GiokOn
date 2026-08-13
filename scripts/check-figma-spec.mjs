@@ -383,6 +383,11 @@ const SPECS = [
     '인지효과: 값·향상률은 실측 관찰지표(23%·+17% 자리표시자 금지)',
     [/useElderAxisObservations/, /useOverallAxisObservations/, /metric\(value, '%'\)/, /직전 기간 대비/],
   ],
+  [
+    `${APP}/app/observations.tsx`,
+    '인지효과: 개인=종합 평가 / 전체=AI 종합 의견 · 제목도 범위별(134:94 vs 144:201)',
+    [/isElder \? '인지 효과 분석' : '전체 인지 효과 분석'/, /<AiOpinion paragraphs=\{\[summarySentence\]\}/, /인지 효과 종합 평가/],
+  ],
 
   // ── 주제별 분석 (Figma 140:562) ───────────────────────────────────────
   [

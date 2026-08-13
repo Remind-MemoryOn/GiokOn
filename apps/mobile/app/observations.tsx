@@ -1,4 +1,10 @@
-// 인지 효과 분석 (Figma 개인 `134:94` 393×1685 / 전체 `144:201` — 같은 레이아웃, 범위만 다름)
+// 인지 효과 분석 (Figma 개인 `134:94` 393×1685 / 전체 `144:201` 393×1554)
+//
+// 두 프레임은 레이더·지표 카드·변화율 카드·추이 그래프까지 **완전히 같은 레이아웃**이고
+// 마지막 섹션만 다르다:
+//   개인: "인지 효과 종합 평가" (스마일 54 + 등급 SemiBold 20 + 문장 + pill 176×25)
+//   전체: "AI 종합 의견"        (AI 배지 37 + 제목 SemiBold 17 + 본문 Regular 13/25)
+// 제목도 "인지 효과 분석" / "전체 인지 효과 분석" 로 다르다.
 //
 // Figma 실측:
 //   헤더 0..114 · "인지 효과 지표" SemiBold 17 @(29,145) + 기간 pill 99×25 @(266,148)
@@ -22,7 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polygon } from 'react-native-svg';
 import type { AxisObservation, ObservationAxis } from '@giokon/core';
 import { ScreenHeader } from '../src/components/ScreenHeader';
-import { DETAIL, Divider, SectionHeading } from '../src/components/detail';
+import { AiOpinion, DETAIL, Divider, SectionHeading } from '../src/components/detail';
 import { RadarChart, TrendChart } from '../src/components/charts';
 import { useElder } from '../src/data/reads';
 import {
@@ -69,7 +75,15 @@ function DeltaMark({ up }: { up: boolean }) {
 }
 
 /** 지표 카드 103×103 — 값 + 변화 배지. */
-function AxisCard({ label, value, delta }: { label: string; value: number | null; delta: number | null }) {
+function AxisCard({
+  label,
+  value,
+  delta,
+}: {
+  label: string;
+  value: number | null;
+  delta: number | null;
+}) {
   return (
     <View
       style={{
@@ -82,10 +96,16 @@ function AxisCard({ label, value, delta }: { label: string; value: number | null
         alignItems: 'center',
       }}
     >
-      <Text className="text-[12px] font-medium text-black" style={{ lineHeight: 30, marginTop: 2.5 }}>
+      <Text
+        className="text-[12px] font-medium text-black"
+        style={{ lineHeight: 30, marginTop: 2.5 }}
+      >
         {label}
       </Text>
-      <Text className="text-[16px] font-semibold text-black" style={{ lineHeight: 30, marginTop: -5 }}>
+      <Text
+        className="text-[16px] font-semibold text-black"
+        style={{ lineHeight: 30, marginTop: -5 }}
+      >
         {metric(value, '%')}
       </Text>
       <View className="flex-row items-center" style={{ marginTop: -3 }}>
@@ -134,12 +154,18 @@ function RateCard({
         alignItems: 'center',
       }}
     >
-      <Text className="text-[14px] font-normal text-black" style={{ lineHeight: 30, marginTop: 8.25 }}>
+      <Text
+        className="text-[14px] font-normal text-black"
+        style={{ lineHeight: 30, marginTop: 8.25 }}
+      >
         {label}
       </Text>
       <View className="flex-row items-center" style={{ marginTop: 3 }}>
         <Image source={icon} style={iconSize} resizeMode="contain" />
-        <Text className="text-[18px] font-semibold text-black" style={{ lineHeight: 30, marginLeft: 6.5 }}>
+        <Text
+          className="text-[18px] font-semibold text-black"
+          style={{ lineHeight: 30, marginLeft: 6.5 }}
+        >
           {text}
         </Text>
       </View>
@@ -174,13 +200,13 @@ export default function Observations() {
   const axes = isElder ? elderAxes : overallAxes;
   const trend = isElder ? elderTrend : overallTrend;
   const byAxis = new Map<ObservationAxis, AxisObservation>(axes.map((a) => [a.axis, a]));
-  const ordered = AXIS_ORDER.map(
-    (k) => byAxis.get(k) ?? { axis: k, value: null, delta: null },
-  );
+  const ordered = AXIS_ORDER.map((k) => byAxis.get(k) ?? { axis: k, value: null, delta: null });
 
   // 종합 평가 — 측정된 축의 평균 변화량으로 등급을 매긴다(임의 문구 금지).
   const deltas = ordered.map((a) => a.delta).filter((d): d is number => d !== null);
-  const avgDelta = deltas.length ? Math.round(deltas.reduce((n, d) => n + d, 0) / deltas.length) : null;
+  const avgDelta = deltas.length
+    ? Math.round(deltas.reduce((n, d) => n + d, 0) / deltas.length)
+    : null;
   const grade =
     avgDelta === null
       ? null
@@ -192,11 +218,18 @@ export default function Observations() {
             ? '변화 없음'
             : '주의 관찰';
   const measured = ordered.filter((a) => a.value !== null).length;
+  // 관찰 근거에서만 문장을 만든다(디자인의 예시 문장은 쓰지 않는다).
+  const summarySentence =
+    measured === 0
+      ? '아직 관찰된 기록이 없어요. 대화가 쌓이면 지표를 보여드려요.'
+      : avgDelta === null
+        ? `${isElder ? (elder?.name ?? '어르신') + ' 어르신의' : '담당 어르신의'} 관찰 지표 ${measured}개를 측정했어요. 비교할 이전 기간 기록이 아직 없어요.`
+        : `관찰 지표 ${measured}개 기준으로 직전 3개월 대비 평균 ${avgDelta > 0 ? '+' : ''}${avgDelta}%p 변화가 관찰됐어요.`;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader
-        title="인지 효과 분석"
+        title={isElder ? '인지 효과 분석' : '전체 인지 효과 분석'}
         rightIcon={iconShare}
         rightIconSize={{ width: 18, height: 20 }}
         rightIconTop={74}
@@ -282,7 +315,10 @@ export default function Observations() {
               <View
                 style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: SERIES_COLOR[k] }}
               />
-              <Text className="text-[12px] font-normal text-black" style={{ lineHeight: 30, marginLeft: 6 }}>
+              <Text
+                className="text-[12px] font-normal text-black"
+                style={{ lineHeight: 30, marginLeft: 6 }}
+              >
                 {AXIS_LABEL[k]}
               </Text>
             </View>
@@ -303,46 +339,52 @@ export default function Observations() {
         <View style={{ marginTop: 24 }}>
           <Divider />
         </View>
-        <View style={{ marginTop: 21 }}>
-          <SectionHeading>인지 효과 종합 평가</SectionHeading>
-        </View>
 
-        <View className="items-center" style={{ width: DETAIL.width, marginTop: 23 }}>
-          <Image source={iconSmileBig} style={{ width: 54, height: 54 }} resizeMode="contain" />
-          <Text
-            className="text-[20px] font-semibold text-accent"
-            style={{ lineHeight: 30, marginTop: 9 }}
-          >
-            {grade ?? NO_VALUE}
-          </Text>
-          <Text
-            className="text-[13px] font-normal text-black text-center"
-            style={{ lineHeight: 25, width: 222, marginTop: 4 }}
-          >
-            {measured === 0
-              ? '아직 관찰된 기록이 없어요. 대화가 쌓이면 지표를 보여드려요.'
-              : avgDelta === null
-                ? `${isElder ? (elder?.name ?? '어르신') + ' 어르신의' : '담당 어르신의'} 관찰 지표 ${measured}개를 측정했어요. 비교할 이전 기간 기록이 아직 없어요.`
-                : `관찰 지표 ${measured}개 기준으로 직전 3개월 대비 평균 ${avgDelta > 0 ? '+' : ''}${avgDelta}%p 변화가 관찰됐어요.`}
-          </Text>
-          {avgDelta !== null ? (
-            <View
-              className="items-center justify-center"
-              style={{
-                width: 176,
-                height: 25,
-                borderRadius: 12.5,
-                backgroundColor: DETAIL.chipBg,
-                marginTop: 16,
-              }}
-            >
-              <Text className="text-[13px] font-semibold text-black" style={{ lineHeight: 25 }}>
-                직전 기간 대비 {avgDelta > 0 ? '+' : ''}
-                {avgDelta}%p
-              </Text>
+        {/* 전체 범위는 Figma `144:201` 처럼 AI 종합 의견 블록으로 끝난다 */}
+        {!isElder ? (
+          <View style={{ marginTop: 19 }}>
+            <AiOpinion paragraphs={[summarySentence]} />
+          </View>
+        ) : (
+          <>
+            <View style={{ marginTop: 21 }}>
+              <SectionHeading>인지 효과 종합 평가</SectionHeading>
             </View>
-          ) : null}
-        </View>
+
+            <View className="items-center" style={{ width: DETAIL.width, marginTop: 23 }}>
+              <Image source={iconSmileBig} style={{ width: 54, height: 54 }} resizeMode="contain" />
+              <Text
+                className="text-[20px] font-semibold text-accent"
+                style={{ lineHeight: 30, marginTop: 9 }}
+              >
+                {grade ?? NO_VALUE}
+              </Text>
+              <Text
+                className="text-[13px] font-normal text-black text-center"
+                style={{ lineHeight: 25, width: 222, marginTop: 4 }}
+              >
+                {summarySentence}
+              </Text>
+              {avgDelta !== null ? (
+                <View
+                  className="items-center justify-center"
+                  style={{
+                    width: 176,
+                    height: 25,
+                    borderRadius: 12.5,
+                    backgroundColor: DETAIL.chipBg,
+                    marginTop: 16,
+                  }}
+                >
+                  <Text className="text-[13px] font-semibold text-black" style={{ lineHeight: 25 }}>
+                    직전 기간 대비 {avgDelta > 0 ? '+' : ''}
+                    {avgDelta}%p
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

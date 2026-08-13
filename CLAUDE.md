@@ -55,7 +55,28 @@
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-07-22)
+## 현재 위치 (2026-08-13)
+- 🎨 **Figma 디자인 v2 전면 재적용 완료(2026-08-13, `main`)** — 안드로이드 스튜디오 확인 결과
+  기존 구현이 Figma 와 전혀 달라 **16프레임 → 14화면**을 실측 기반으로 재구현했다.
+  절차·결정 기록은 `docs/runbooks/figma-app-extraction.md` §v2.
+  - **공용 규칙**: 실기기 상태바를 쓰므로 헤더는 `높이 = (114|155) - safeAreaTop`,
+    자식은 `top = Figma y - inset` → 화면 절대좌표가 Figma 와 일치(iOS·Android 공통).
+    Android `elevation` 은 그림자가 과대해 **전부 `boxShadow`** 로 통일.
+    RN 은 CSS 폰트 상속이 없어 모든 `<Text>` 에 Pretendard 굵기 클래스 필수(`check:font`).
+    Figma 가 lineHeight 를 자동보다 작게 준 텍스트는 중앙정렬이 아니어서 그대로 쓰면 3px
+    떠오른다 → lineHeight 30 + top 보정으로 잉크 위치를 맞춘다.
+  - **신설 컴포넌트**: `ScreenHeader`(114/155·탭) · `form.tsx`(프로필 폼 프리미티브) ·
+    `ProfileForm`(등록·연대기 수정 공용) · `detail.tsx`(정보카드·칩·세션카드·타일·막대·AI의견) ·
+    `charts.tsx`(레이더·꺾은선, react-native-svg). 에셋 20종 추가(@4x 크롭·알파 복원).
+  - **검증**: `pnpm check:figma`(scripts/check-figma-spec.mjs, **106항목**)로 실측 수치를 고정 +
+    Pillow 로 `assets/figma/*.png`(@4x) 와 픽셀 대조(상태바·실사진·데이터 바인딩 제외 잔차 0.6~1.4%).
+  - **자리표시자 처리(사용자 확정)**: 인지효과 5축은 실측 관찰지표로 재정의(core
+    `computeAxisObservations`), 월별 추이는 `computeMonthlyAxisTrend`/`computeMonthlyTopicTrend`
+    신설, 대화 기록 재생바는 '녹음 없음'(세션 음성 저장 미구현), 감정 분석 %는 관찰된 응답
+    분포로 대체. 비의료 카피("인지 효과 분석"·"향상")는 **보류** 결정에 따라 Figma 그대로.
+  - **스키마 추가**: `profiles.photo_path`(private 버킷 elder-photos + signed URL)·
+    `profiles.gender`(enum) — 라이브 적용 완료. 사진 입력은 `expo-image-picker`.
+  - ⏳ **잔여(사용자)**: 안드로이드 스튜디오 재실행 후 화면별 육안 대조.
 - 🐞 **기기 첫 실행 크래시 3종 진단·수정(2026-08-02, `main`)**: 앱을 Expo Go 실기기에서
   **처음 실행**(그간 Metro 번들만 검증)하며 표면화된 문제들. **(A) 의존성 중복(사용자 커밋
   `a936160`)**: pnpm 심링크로 `@giokon/data`의 react/react-query 피어가 웹 트리와 공유돼
