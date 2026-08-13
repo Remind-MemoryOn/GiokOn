@@ -18,8 +18,9 @@ import {
   type ParticipationSummary,
   type TopicShare,
 } from '@giokon/core';
+import { useMemo } from 'react';
+import { withinPeriod, type PeriodMonths } from '../lib/period';
 import {
-  useAllAnalyses,
   useAllAnalysesDated,
   useAllSessions,
   useChronicles,
@@ -39,18 +40,34 @@ export function useElderObservations(elderId: string | undefined): ElderObservat
   const sessions = useElderSessions(elderId);
   const analyses = useElderAnalyses(elderId);
   const chronicles = useChronicles(elderId);
-  return {
-    participation: computeParticipation(sessions, analyses),
-    topics: computeTopicShares(chronicles, analyses),
-  };
+  return useMemo(
+    () => ({
+      participation: computeParticipation(sessions, analyses),
+      topics: computeTopicShares(chronicles, analyses),
+    }),
+    [sessions, analyses, chronicles],
+  );
 }
 
-/** 담당 어르신 전체 관찰 요약(전체 분석·관찰지표 화면). */
-export function useOverallObservations(): OverallObservations {
+/**
+ * 담당 어르신 전체 관찰 요약(전체 분석 화면).
+ *
+ * `months` 는 기간 pill 이 고른 값 — null 이면 전체 기간. 어르신 수는 명단 크기라
+ * 기간과 무관하게 두고, 세션·분석만 기간으로 자른다.
+ */
+export function useOverallObservations(months: PeriodMonths = null): OverallObservations {
   const profiles = useElders();
   const sessions = useAllSessions();
-  const analyses = useAllAnalyses();
-  return computeOverall(profiles, sessions, analyses);
+  const analyses = useAllAnalysesDated();
+  return useMemo(
+    () =>
+      computeOverall(
+        profiles,
+        withinPeriod(sessions, (s) => s.createdAt, months),
+        withinPeriod(analyses, (a) => a.at, months),
+      ),
+    [profiles, sessions, analyses, months],
+  );
 }
 
 // ── 인지 효과 분석 화면(5축 + 기간 대비 변화) / 주제별 추이 ────────────────
@@ -62,30 +79,36 @@ export function useElderAxisObservations(
   elderId: string | undefined,
   months = 3,
 ): AxisObservation[] {
-  return computeAxisObservations(useElderAnalysesDated(elderId), months);
+  const dated = useElderAnalysesDated(elderId);
+  return useMemo(() => computeAxisObservations(dated, months), [dated, months]);
 }
 
 /** 담당 전체 관찰 5축 + 변화. */
 export function useOverallAxisObservations(months = 3): AxisObservation[] {
-  return computeAxisObservations(useAllAnalysesDated(), months);
+  const dated = useAllAnalysesDated();
+  return useMemo(() => computeAxisObservations(dated, months), [dated, months]);
 }
 
 /** 어르신 관찰 5축 월별 추이(지표별 변화 추이 그래프). */
 export function useElderAxisTrend(elderId: string | undefined, months = 3): MonthlyAxisTrend {
-  return computeMonthlyAxisTrend(useElderAnalysesDated(elderId), months);
+  const dated = useElderAnalysesDated(elderId);
+  return useMemo(() => computeMonthlyAxisTrend(dated, months), [dated, months]);
 }
 
 /** 담당 전체 관찰 5축 월별 추이. */
 export function useOverallAxisTrend(months = 3): MonthlyAxisTrend {
-  return computeMonthlyAxisTrend(useAllAnalysesDated(), months);
+  const dated = useAllAnalysesDated();
+  return useMemo(() => computeMonthlyAxisTrend(dated, months), [dated, months]);
 }
 
 /** 어르신 월별 주제 점유율 추이. */
 export function useElderTopicTrend(elderId: string | undefined, months = 6): MonthlyTopicTrend {
-  return computeMonthlyTopicTrend(useElderAnalysesDated(elderId), months);
+  const dated = useElderAnalysesDated(elderId);
+  return useMemo(() => computeMonthlyTopicTrend(dated, months), [dated, months]);
 }
 
 /** 담당 전체 월별 주제 점유율 추이. */
 export function useOverallTopicTrend(months = 6): MonthlyTopicTrend {
-  return computeMonthlyTopicTrend(useAllAnalysesDated(), months);
+  const dated = useAllAnalysesDated();
+  return useMemo(() => computeMonthlyTopicTrend(dated, months), [dated, months]);
 }

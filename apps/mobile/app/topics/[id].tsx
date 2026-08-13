@@ -14,6 +14,7 @@
 //
 // ⚠️ 79%·75회·88%·8분 45초·예시 키워드는 자리표시자다. 전부 실집계(core)와
 //   분석 결과의 실제 키워드에 바인딩하고, 근거가 없으면 '—'/빈 상태로 둔다.
+import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +37,7 @@ import {
   useOverallTopicTrend,
 } from '../../src/data/observations';
 import { metric, NO_VALUE } from '../../src/lib/format';
+import { TOPIC_PERIODS } from '../../src/lib/period';
 import iconShare from '../../assets/brand/icon-share.png';
 
 /** 주제 시계열 색(개인 인지효과분석 범례와 같은 팔레트). */
@@ -109,8 +111,10 @@ export default function Topics() {
   const overall = useOverallObservations();
   const elderAnalyses = useElderAnalyses(elderId);
   const allAnalyses = useAllAnalyses();
-  const elderTrend = useElderTopicTrend(elderId, 6);
-  const overallTrend = useOverallTopicTrend(6);
+  const [months, setMonths] = useState(6);
+  const periodLabel = TOPIC_PERIODS.find((p) => p.months === months)?.label ?? '최근 6개월';
+  const elderTrend = useElderTopicTrend(elderId, months);
+  const overallTrend = useOverallTopicTrend(months);
   const elderSessions = useElderSessions(elderId);
   const allSessions = useAllSessions();
   const logs = useElderLogs(elderId);
@@ -158,7 +162,12 @@ export default function Topics() {
       >
         <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
           <SectionHeading>종합 관심 주제 변화</SectionHeading>
-          <PeriodPill label="최근 6개월" />
+          <PeriodPill
+            label={periodLabel}
+            options={TOPIC_PERIODS.map((p) => ({ label: p.label, value: p.months as number }))}
+            onSelect={setMonths}
+            title="집계 기간"
+          />
         </View>
 
         {/* 범례 — 3열 × 2행. Figma x 가 균등하지 않아 실측 좌표로 절대 배치. */}

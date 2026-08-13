@@ -123,13 +123,15 @@ const SPECS = [
   ],
   [
     `${APP}/src/components/ScreenHeader.tsx`,
-    '헤더: 뒤로 12.7×19.5 @ (29,74) 에셋',
-    [/icon-back\.png/, /left: 29, top: 74 - shift/, /width: 12\.7, height: 19\.5/],
+    // 좌표는 터치 여유(padding)만큼 되빼서 아이콘 위치를 그대로 유지한다(tapBox).
+    '헤더: 뒤로 12.7×19.5 @ (29,74) 에셋 + 터치 박스',
+    [/icon-back\.png/, /left: 29 - TAP_PAD, \.\.\.tapBox\(74 - shift\)/, /width: 12\.7, height: 19\.5/],
   ],
   [
     `${APP}/src/components/ScreenHeader.tsx`,
-    '헤더: 제목 Medium 18 lh30 중앙 @ top 70',
-    [/text-\[18px\] font-medium/, /top: 70 - shift, lineHeight: 30/],
+    // 제목은 버튼보다 먼저 선언 + pointerEvents none View 로 감싸 터치를 넘긴다.
+    '헤더: 제목 Medium 18 lh30 중앙 @ top 70 (터치 비간섭)',
+    [/text-\[18px\] font-medium/, /top: 70 - shift, pointerEvents: 'none'/, /lineHeight: 30/],
   ],
 
   // ── 프로필 폼 프리미티브 (Figma 56:337 / 15:7) ─────────────────────────
@@ -219,7 +221,7 @@ const SPECS = [
   [
     `${APP}/src/components/ScreenHeader.tsx`,
     '상세 헤더: 탭 Regular/SemiBold 14 lh18 · 우측 아이콘 (347, 74~75)',
-    [/text-\[14px\]/, /lineHeight: 18/, /left: 347, top: rightIconTop - shift/],
+    [/text-\[14px\]/, /lineHeight: 18/, /left: 347 - TAP_PAD, \.\.\.tapBox\(rightIconTop - shift\)/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
@@ -461,7 +463,7 @@ const SPECS = [
   [
     `${APP}/app/topics/[id].tsx`,
     '주제별: 기간 pill 99 / 주제 pill 73(들여쓰기 17) · 키워드 칩 h25 r5 SemiBold 14 주황 gap 10',
-    [/<PeriodPill label="최근 6개월" \/>/, /width=\{73\} labelInset=\{17\}/, /height: 25,\s*borderRadius: 5/, /paddingHorizontal: 14/, /text-\[14px\] font-semibold text-accent/, /columnGap: 10, rowGap: 10/],
+    [/TOPIC_PERIODS\.map/, /width=\{73\} labelInset=\{17\}/, /height: 25,\s*borderRadius: 5/, /paddingHorizontal: 14/, /text-\[14px\] font-semibold text-accent/, /columnGap: 10, rowGap: 10/],
   ],
   [
     `${APP}/app/topics/[id].tsx`,
@@ -499,8 +501,21 @@ const SPECS = [
   // ── 실기기 확인에서 나온 회귀 방지(2026-08-13) ─────────────────────────
   [
     `${APP}/src/components/ScreenHeader.tsx`,
-    '헤더: 제목이 뒤로 버튼 터치를 가로채지 않는다(pointerEvents none)',
-    [/pointerEvents="none"/],
+    // 안드로이드는 나중에 선언된(위에 그려진) 뷰가 터치를 먼저 받는다.
+    // → 제목을 버튼보다 **먼저** 선언 + pointerEvents none View 로 감싸는 두 겹.
+    // 아이콘이 작아 터치는 hitSlop 이 아니라 padding(tapBox)으로 키운다.
+    '헤더: 제목이 뒤로 버튼 터치를 가로채지 않는다(선언 순서 + pointerEvents + tapBox)',
+    [/pointerEvents="none"/, /function tapBox/, /paddingBottom: TAP_PAD/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '기간 pill: 눌러서 고를 수 있다(옵션 바텀시트)',
+    [/options\?: \{ label: string; value: T \}\[\]/, /<Modal visible=\{open\}/],
+  ],
+  [
+    `${APP}/app/analytics.tsx`,
+    '전체분석: 기간 선택이 집계에 반영된다',
+    [/useOverallObservations\(period\)/, /OVERALL_PERIODS\.map/],
   ],
   [
     `${APP}/src/components/detail.tsx`,

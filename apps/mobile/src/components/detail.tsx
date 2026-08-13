@@ -21,7 +21,8 @@
 //    ∨ 8.4×5.45 @(우측 13.5, 위 10)  (전체분석·인지효과분석 3화면 공용)
 //
 // ⚠️ 수치·문장은 전부 실데이터 바인딩이다(디자인의 82%·10분·92%·AI 문장은 자리표시자).
-import { Image, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Modal, Pressable, Text, View } from 'react-native';
 import iconClock from '../../assets/brand/icon-clock.png';
 import chevronGray from '../../assets/brand/btn-chevron-gray.png';
 import avatarAi from '../../assets/brand/avatar-ai.png';
@@ -181,31 +182,42 @@ export function Divider() {
 
 // ── 공통: 기간/주제 선택 pill ─────────────────────────────────
 /**
- * 집계 기간·주제 표시 pill(선택 UI 는 후속 — 현재는 고정 표시).
+ * 집계 기간·주제 선택 pill.
  * Figma 는 99폭(기간)과 73폭(주제)에서 라벨 들여쓰기가 다르다(15 / 17) → 인자로 둔다.
+ *
+ * options 를 주면 눌러서 고를 수 있다(Figma 에는 ∨ 만 그려져 있고 동작이 없었다 —
+ * 사용자 지적 2026-08-13). 목록은 프로필 폼의 선택 필드와 같은 바텀시트를 쓴다.
  */
-export function PeriodPill({
+export function PeriodPill<T>({
   label,
   width = 99,
   labelInset = 15,
+  options,
+  onSelect,
+  title = '기간 선택',
 }: {
   label: string;
   width?: number;
   labelInset?: number;
+  /** 선택 가능한 항목. 없으면 표시 전용. */
+  options?: { label: string; value: T }[];
+  onSelect?: (value: T) => void;
+  /** 바텀시트 제목. */
+  title?: string;
 }) {
-  return (
-    <View
-      className="flex-row items-center"
-      style={{
-        width,
-        height: 25,
-        borderRadius: 5,
-        backgroundColor: '#fbfbfb',
-        borderWidth: 1,
-        borderColor: '#d5d5d5',
-        paddingLeft: labelInset,
-      }}
-    >
+  const [open, setOpen] = useState(false);
+  const box = {
+    width,
+    height: 25,
+    borderRadius: 5,
+    backgroundColor: '#fbfbfb',
+    borderWidth: 1,
+    borderColor: '#d5d5d5',
+    paddingLeft: labelInset,
+  } as const;
+
+  const face = (
+    <>
       <Text className="text-[12px] font-normal text-muted" style={{ lineHeight: 25 }}>
         {label}
       </Text>
@@ -214,7 +226,70 @@ export function PeriodPill({
         style={{ position: 'absolute', right: 13.5, top: 10, width: 8.4, height: 5.45 }}
         resizeMode="contain"
       />
-    </View>
+    </>
+  );
+
+  if (!options?.length) {
+    return (
+      <View className="flex-row items-center" style={box}>
+        {face}
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}: ${label}`}
+        // 25px 높이는 손가락에 작아서 위아래로 터치 여유를 준다(레이아웃 영향 없음).
+        hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+        className="flex-row items-center active:opacity-70"
+        style={box}
+      >
+        {face}
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+          onPress={() => setOpen(false)}
+        >
+          <View
+            className="bg-white"
+            style={{ borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12 }}
+          >
+            <Text
+              className="text-[18px] font-semibold text-black text-center"
+              style={{ lineHeight: 30, marginBottom: 8 }}
+            >
+              {title}
+            </Text>
+            {options.map((o) => (
+              <Pressable
+                key={o.label}
+                onPress={() => {
+                  onSelect?.(o.value);
+                  setOpen(false);
+                }}
+                accessibilityRole="button"
+                className="active:opacity-70"
+                style={{ height: 46, justifyContent: 'center', paddingHorizontal: DETAIL.left }}
+              >
+                <Text
+                  className={`text-[18px] font-normal ${o.label === label ? 'text-accent' : 'text-black'}`}
+                  style={{ lineHeight: 30 }}
+                >
+                  {o.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 

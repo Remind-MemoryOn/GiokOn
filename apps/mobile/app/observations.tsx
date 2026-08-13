@@ -25,6 +25,7 @@
 // ⚠️ Figma 의 "기억 회상력 23% ▲향상 / +23% / 전체 평균 대비 +17% 향상" 은 자리표시자다.
 //   사용자 확정(2026-08-13)에 따라 5축을 **실측 관찰지표**로 재정의(core computeAxisObservations)
 //   하고, "향상률"은 직전 동일 기간 대비 실제 변화량(%p)으로 계산한다. 근거가 없으면 '—'.
+import { useState } from 'react';
 import { Image, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ import {
   useOverallAxisTrend,
 } from '../src/data/observations';
 import { metric, NO_VALUE } from '../src/lib/format';
+import { TREND_PERIODS } from '../src/lib/period';
 import iconShare from '../assets/brand/icon-share.png';
 import iconSmileBig from '../assets/brand/icon-smile.png';
 import statTime from '../assets/brand/stat-time.png';
@@ -189,12 +191,15 @@ export default function Observations() {
   const { scope, id } = useLocalSearchParams<{ scope?: string; id?: string }>();
   const isElder = scope === 'elder' && Boolean(id);
   const elder = useElder(isElder ? id : undefined);
+  // 기간 pill 선택값 — 직전 동일 기간과 비교하므로 3개월 이상만 고를 수 있다.
+  const [months, setMonths] = useState(3);
+  const periodLabel = TREND_PERIODS.find((p) => p.months === months)?.label ?? '최근 3개월';
 
   // 훅은 조건 없이 모두 호출하고(규칙), 범위에 맞는 결과만 쓴다.
-  const elderAxes = useElderAxisObservations(isElder ? id : undefined, 3);
-  const overallAxes = useOverallAxisObservations(3);
-  const elderTrend = useElderAxisTrend(isElder ? id : undefined, 3);
-  const overallTrend = useOverallAxisTrend(3);
+  const elderAxes = useElderAxisObservations(isElder ? id : undefined, months);
+  const overallAxes = useOverallAxisObservations(months);
+  const elderTrend = useElderAxisTrend(isElder ? id : undefined, months);
+  const overallTrend = useOverallAxisTrend(months);
 
   const axes = isElder ? elderAxes : overallAxes;
   const trend = isElder ? elderTrend : overallTrend;
@@ -223,7 +228,7 @@ export default function Observations() {
       ? '아직 관찰된 기록이 없어요. 대화가 쌓이면 지표를 보여드려요.'
       : avgDelta === null
         ? `${isElder ? (elder?.name ?? '어르신') + ' 어르신의' : '담당 어르신의'} 관찰 지표 ${measured}개를 측정했어요. 비교할 이전 기간 기록이 아직 없어요.`
-        : `관찰 지표 ${measured}개 기준으로 직전 3개월 대비 평균 ${avgDelta > 0 ? '+' : ''}${avgDelta}%p 변화가 관찰됐어요.`;
+        : `관찰 지표 ${measured}개 기준으로 직전 동일 기간 대비 평균 ${avgDelta > 0 ? '+' : ''}${avgDelta}%p 변화가 관찰됐어요.`;
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -241,7 +246,12 @@ export default function Observations() {
       >
         <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
           <SectionHeading>인지 효과 지표</SectionHeading>
-          <PeriodPill label="최근 3개월" />
+          <PeriodPill
+            label={periodLabel}
+            options={TREND_PERIODS.map((p) => ({ label: p.label, value: p.months as number }))}
+            onSelect={setMonths}
+            title="집계 기간"
+          />
         </View>
 
         {/* 레이더 — 블록 top 185.5 (= 175 + 10.5) */}

@@ -14,6 +14,7 @@
 //
 // ⚠️ 52명·142회·12.4분·91%·79% 는 자리표시자다. 전부 computeOverall(실데이터 집계)에
 //   바인딩하고, 근거가 없으면 '—'/빈 상태로 둔다.
+import { useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +29,7 @@ import {
 } from '../src/components/detail';
 import { useOverallObservations } from '../src/data/observations';
 import { metric } from '../src/lib/format';
+import { OVERALL_PERIODS, type PeriodMonths } from '../src/lib/period';
 import iconShare from '../assets/brand/icon-share.png';
 import statElders from '../assets/brand/stat-elders.png';
 import statSmile from '../assets/brand/stat-smile.png';
@@ -73,7 +75,10 @@ function SummaryCard({
 }
 
 export default function Analytics() {
-  const o = useOverallObservations();
+  // 기간 pill 선택값 — 기본은 Figma 와 같은 '전체 기간'.
+  const [period, setPeriod] = useState<PeriodMonths>(null);
+  const periodLabel = OVERALL_PERIODS.find((p) => p.months === period)?.label ?? '전체 기간';
+  const o = useOverallObservations(period);
   const top5 = o.topTopics.slice(0, 5);
   // 라벨이 잘리지 않도록 실제 주제명 길이에 맞춰 라벨 칸/트랙을 조정한다.
   const barLayout = topicBarLayout(
@@ -98,7 +103,12 @@ export default function Analytics() {
         {/* 전체 요약 + 기간 */}
         <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
           <SectionHeading>전체 요약</SectionHeading>
-          <PeriodPill label="전체 기간" />
+          <PeriodPill
+            label={periodLabel}
+            options={OVERALL_PERIODS.map((p) => ({ label: p.label, value: p.months }))}
+            onSelect={setPeriod}
+            title="집계 기간"
+          />
         </View>
 
         <View className="flex-row" style={{ width: DETAIL.width, marginTop: 23, columnGap: 12 }}>

@@ -83,9 +83,8 @@ export default function Main() {
            */}
           <View className="flex-row items-baseline">
             <View>
-              <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
-                {caregiverName}
-              </Text>
+              {/* 밑줄을 **먼저** 선언한다 — Figma 는 글자가 밑줄 위에 그려진다(획이 밑줄에
+                  가리지 않는다). 나중에 선언하면 주황 막대가 글자 아랫부분을 덮는다. */}
               <View
                 style={{
                   position: 'absolute',
@@ -97,6 +96,9 @@ export default function Main() {
                   backgroundColor: '#e9822b',
                 }}
               />
+              <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
+                {caregiverName}
+              </Text>
             </View>
             <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
               {' '}

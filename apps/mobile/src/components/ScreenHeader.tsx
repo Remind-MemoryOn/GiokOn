@@ -22,6 +22,30 @@ export const HEADER_H = 114;
 export const HEADER_TABS_H = 155;
 /** Figma 헤더 그림자 — Android elevation 은 과대해서 쓰지 않는다. */
 export const HEADER_SHADOW = '1px 1px 10px rgba(108,101,101,0.13)';
+/**
+ * 헤더 아이콘 버튼의 터치 여유(패딩). 아이콘 자체는 12.7×19.5 로 작아서 그대로 두면
+ * 누르기 어렵다. hitSlop 이 아니라 padding 으로 키워 **터치 영역 = 실제 뷰**가 되게 한다
+ * (겹친 형제 뷰·부모 경계에 영향받지 않는다). 좌표는 padding 만큼 되빼서 보정한다.
+ */
+const TAP_PAD = 16;
+/** 탭 라벨의 터치 여유(라벨 간격이 100px 이상이라 서로 겹치지 않는다). */
+const TAB_PAD_X = 18;
+const TAB_PAD_Y = 16;
+
+/**
+ * 아이콘이 `iconTop` 에 오도록 위/아래 여유를 준 터치 박스.
+ * 안드로이드는 부모 밖으로 나간 부분의 터치를 버리므로, 헤더 위쪽으로는 넘지 않게 줄인다
+ * (인셋이 큰 기기에서 iconTop 이 TAP_PAD 보다 작아질 수 있다).
+ */
+function tapBox(iconTop: number) {
+  const padTop = Math.max(0, Math.min(TAP_PAD, iconTop));
+  return {
+    top: iconTop - padTop,
+    paddingTop: padTop,
+    paddingBottom: TAP_PAD,
+    paddingHorizontal: TAP_PAD,
+  } as const;
+}
 
 /**
  * 어르신 상세 탭 — Figma 실측 좌표(라벨 left / 활성 밑줄 left, 밑줄은 87×3).
@@ -77,30 +101,37 @@ export function ScreenHeader({
 
   return (
     <View className="bg-white" style={{ height, boxShadow: HEADER_SHADOW, zIndex: 10 }}>
+      {/*
+       * ⚠️ 제목은 left:0/right:0 로 헤더 전체 폭을 덮는다 → 뒤로·우측 버튼 위에 겹친다.
+       * 안드로이드는 터치를 **나중에 선언된(위에 그려진) 뷰**에 먼저 준다. 그래서
+       *   (1) 제목을 버튼보다 **먼저** 선언하고,
+       *   (2) 제목을 pointerEvents="none" **View 로 감싼다**
+       * 두 가지를 같이 건다. Text 에 직접 준 pointerEvents 는 안드로이드에서 무시되는 경우가
+       * 있어(사용자 재현: 아이콘보다 위를 눌러야 동작 — 제목 줄 바깥만 눌렸던 것) View 로 감싼다.
+       */}
+      <View
+        pointerEvents="none"
+        style={{ position: 'absolute', left: 0, right: 0, top: 70 - shift, pointerEvents: 'none' }}
+      >
+        <Text className="text-[18px] font-medium text-black text-center" style={{ lineHeight: 30 }}>
+          {title}
+        </Text>
+      </View>
+
+      {/*
+       * 뒤로 — 아이콘 12.7×19.5 를 Figma (29,74) 에 두고, 터치 박스는 그 주위 TAP_PAD 만큼
+       * 넓힌다. hitSlop 대신 실제 padding 을 쓰는 이유: hitSlop 은 부모 경계에서 잘릴 수 있고
+       * 겹친 형제 뷰보다 우선하지도 않는다. padding 이면 터치 영역이 곧 뷰라 확실하다.
+       */}
       <Pressable
         onPress={onBack ?? (() => router.back())}
         accessibilityRole="button"
         accessibilityLabel="뒤로"
-        hitSlop={20}
         className="absolute active:opacity-60"
-        style={{ left: 29, top: 74 - shift }}
+        style={{ left: 29 - TAP_PAD, ...tapBox(74 - shift) }}
       >
         <Image source={iconBack} style={{ width: 12.7, height: 19.5 }} resizeMode="contain" />
       </Pressable>
-
-      {/*
-       * ⚠️ 제목은 left:0/right:0 로 헤더 전체 폭을 덮는다. 뒤로·우측 아이콘보다 **뒤에**
-       * 선언돼 있어 그대로 두면 터치를 가로채 뒤로가기가 눌리지 않는다(사용자 지적
-       * 2026-08-13 "아이콘 위를 눌러야 가끔 동작"). 텍스트는 터치 대상이 아니므로
-       * pointerEvents 를 꺼서 아래의 버튼이 터치를 받게 한다.
-       */}
-      <Text
-        pointerEvents="none"
-        className="absolute text-[18px] font-medium text-black text-center"
-        style={{ left: 0, right: 0, top: 70 - shift, lineHeight: 30 }}
-      >
-        {title}
-      </Text>
 
       {/* 우측 아이콘 액션 — Figma (347, 74~75) */}
       {rightIcon ? (
@@ -108,9 +139,8 @@ export function ScreenHeader({
           onPress={onRight}
           accessibilityRole="button"
           accessibilityLabel={rightLabel}
-          hitSlop={18}
           className="absolute active:opacity-60"
-          style={{ left: 347, top: rightIconTop - shift }}
+          style={{ left: 347 - TAP_PAD, ...tapBox(rightIconTop - shift) }}
         >
           <Image source={rightIcon} style={rightIconSize ?? { width: 18, height: 18 }} resizeMode="contain" />
         </Pressable>
@@ -125,10 +155,15 @@ export function ScreenHeader({
               onPress={() => onTab?.(t.key)}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
-              hitSlop={{ top: 16, bottom: 16, left: 18, right: 18 }}
               className="absolute active:opacity-60"
-              // Figma 텍스트 박스 top 125 · lineHeight 18 기준 잉크 위치를 맞춘 값
-              style={{ left: t.x, top: 123.75 - shift }}
+              // Figma 텍스트 박스 top 125 · lineHeight 18 기준 잉크 위치를 맞춘 값에
+              // 터치 여유(padding)를 더하고 좌표에서 되뺀다(뒤로 버튼과 같은 규칙).
+              style={{
+                left: t.x - TAB_PAD_X,
+                top: 123.75 - shift - TAB_PAD_Y,
+                paddingHorizontal: TAB_PAD_X,
+                paddingVertical: TAB_PAD_Y,
+              }}
             >
               <Text
                 className={`text-[14px] ${active ? 'font-semibold text-accent' : 'font-normal text-muted'}`}

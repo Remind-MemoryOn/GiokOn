@@ -50,9 +50,7 @@ export default function SessionStart() {
             아래(잉크 기준 4px)에 붙도록 bottom 을 잡는다. */}
         <View className="flex-row items-baseline">
           <View>
-            <Text className="text-[28px] font-semibold text-black text-center" style={{ lineHeight: 42 }}>
-              {elder.name}
-            </Text>
+            {/* 밑줄을 **먼저** 선언한다 — Figma 는 글자가 밑줄 위에 그려진다. */}
             <View
               style={{
                 position: 'absolute',
@@ -64,6 +62,9 @@ export default function SessionStart() {
                 backgroundColor: '#e9822b',
               }}
             />
+            <Text className="text-[28px] font-semibold text-black text-center" style={{ lineHeight: 42 }}>
+              {elder.name}
+            </Text>
           </View>
           <Text className="text-[28px] font-semibold text-black" style={{ lineHeight: 42 }}>
             {' '}
