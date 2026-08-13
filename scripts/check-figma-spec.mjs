@@ -90,8 +90,8 @@ const SPECS = [
   // ── 공용 상세 헤더 (Figma 어르신 등록/연대기 수정 등, 0..114) ──────────
   [
     `${APP}/src/components/ScreenHeader.tsx`,
-    '헤더: 높이 114 - 안전영역 인셋 (Figma y 좌표 보존)',
-    [/HEADER_H = 114/, /height: HEADER_H - shift/],
+    '헤더: 높이 114(탭 있으면 155) - 안전영역 인셋 (Figma y 좌표 보존)',
+    [/HEADER_H = 114/, /const height = \(tabs \? HEADER_TABS_H : HEADER_H\) - shift/],
   ],
   [
     `${APP}/src/components/ScreenHeader.tsx`,
@@ -100,8 +100,8 @@ const SPECS = [
   ],
   [
     `${APP}/src/components/ScreenHeader.tsx`,
-    '헤더: 뒤로 12.7×19.5 @ (28,74) 에셋',
-    [/icon-back\.png/, /left: 28, top: 74 - shift/, /width: 12\.7, height: 19\.5/],
+    '헤더: 뒤로 12.7×19.5 @ (29,74) 에셋',
+    [/icon-back\.png/, /left: 29, top: 74 - shift/, /width: 12\.7, height: 19\.5/],
   ],
   [
     `${APP}/src/components/ScreenHeader.tsx`,
@@ -179,6 +179,84 @@ const SPECS = [
     `${APP}/app/chronicle/[id].tsx`,
     '연대기 수정 = 폼 입력 상태(같은 화면)',
     [/ProfileForm/, /title="연대기 수정"/],
+  ],
+
+  // ── 어르신 상세 (Figma 56:214 / 75:177 / 130:388) ──────────────────────
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '상세 헤더: 탭 있으면 155 · 탭 라벨/밑줄 Figma 좌표',
+    [
+      /HEADER_TABS_H = 155/,
+      /\{ key: 'profile', label: '프로필', x: 66, indicatorX: 40 \}/,
+      /\{ key: 'sessions', label: '세션 기록', x: 169, indicatorX: 151 \}/,
+      /\{ key: 'analysis', label: '종합 분석', x: 290, indicatorX: 273 \}/,
+      /width: 87,\s*height: 3/,
+    ],
+  ],
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '상세 헤더: 탭 Regular/SemiBold 14 lh18 · 우측 아이콘 (347, 74~75)',
+    [/text-\[14px\]/, /lineHeight: 18/, /left: 347, top: rightIconTop - shift/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '상세: 정보카드 336 r10 흰색 border #e3e3e3 · 라벨 SemiBold 15 left27 · 값 Regular 15 left116',
+    [/cardBorder: '#e3e3e3'/, /text-\[15px\] font-semibold text-black/, /marginLeft: 27, width: 89/, /text-\[15px\] font-normal text-black/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '상세: 구분선 283×1 #d9d9d9 (행 아래 9)',
+    [/width: 283,\s*height: 1/, /divider: '#d9d9d9'/, /marginTop: 9,\s*marginBottom: 9/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '상세: 기억 칩 h35 r10 #fdf3ea + 주황 테두리 · padding 21 · Regular 15',
+    [/height: 35,\s*borderRadius: 10,\s*backgroundColor: DETAIL\.chipBg/, /paddingHorizontal: 21/, /chipBg: '#fdf3ea'/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '상세: 세션카드 336×108 r10 + 그림자 1 1 8 .25 · 제목 SemiBold 19',
+    [/height: 108/, /boxShadow: '1px 1px 8px rgba\(106,106,106,0\.25\)'/, /text-\[19px\] font-semibold/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '상세: 세션카드 날짜/시계15/시간/화살표34 좌표',
+    [/left: 31, top: 58\.5/, /left: 137, top: 65, width: 15, height: 15/, /left: 158, top: 57\.5/, /left: 267, top: 37, width: 34, height: 34/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '분석: 타일 103×115 r5 #fefbf8 border #f8d7bb (라벨 12 / 값 16)',
+    [/width: 103,\s*height: 115,\s*borderRadius: 5/, /tileBg: '#fefbf8'/, /tileBorder: '#f8d7bb'/, /text-\[12px\] font-semibold/, /text-\[16px\] font-semibold/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '분석: 주제 막대 트랙 241×12 r6 + 순위별 농도 · 라벨/퍼센트 Regular 13',
+    [/width: 241, height: 12, borderRadius: 6/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '분석: AI 배지 37 + 제목 SemiBold 17 + 본문 Regular 13 lh25 w271',
+    [/avatar-ai\.png/, /width: 37, height: 37/, /text-\[17px\] font-semibold/, /lineHeight: 25, width: 271/],
+  ],
+  [
+    `${APP}/app/elder/[id].tsx`,
+    '상세: 3탭 통합 + 사진 124 원형 · 이름 SemiBold 22 · 메타 Medium 18',
+    [/DETAIL_TABS/, /width: 124, height: 124, borderRadius: 62/, /text-\[22px\] font-semibold/, /text-\[18px\] font-medium text-muted/],
+  ],
+  [
+    `${APP}/app/elder/[id].tsx`,
+    '상세: 프로필 세로 간격(사진 36 · 이름 16 · 카드 20.25 · 기억 23 · 버튼 38)',
+    [/paddingTop: 36/, /marginTop: 16/, /marginTop: 20\.25/, /marginTop: 23/, /marginTop: 38/],
+  ],
+  [
+    `${APP}/app/elder/[id].tsx`,
+    '상세: 세션 목록 top 44 · 카드 간격 30',
+    [/paddingTop: 44/, /marginBottom: i === sessions\.length - 1 \? 0 : 30/],
+  ],
+  [
+    `${APP}/app/elder/[id].tsx`,
+    '분석: 지표는 실데이터(metric)·주제 없으면 빈 상태·AI 근거 없으면 서술 금지',
+    [/metric\(part\.avgMinutes, '분'\)/, /metric\(part\.avgResponseRate, '%'\)/, /아직 관찰된 주제가 없어요/, /observationSummary\(elder\.name, topics\)/],
   ],
 
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
