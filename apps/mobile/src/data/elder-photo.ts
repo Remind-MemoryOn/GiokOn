@@ -33,8 +33,23 @@ export async function uploadElderPhoto(profileId: string, localUri: string): Pro
   return path;
 }
 
+/** 로컬 파일 uri 인지(목업 모드에서는 경로 대신 로컬 uri 를 그대로 보관한다). */
+function isLocalUri(path: string): boolean {
+  return /^(file|content|ph|assets-library|data):/.test(path);
+}
+
+/**
+ * 사진 저장 — 설정 시 Storage 에 올리고 경로를, 미설정(목업)이면 로컬 uri 를 그대로
+ * 돌려준다. 반환값을 `profiles.photo_path`(또는 목업 elder.photoPath)에 넣는다.
+ */
+export async function saveElderPhoto(profileId: string, localUri: string): Promise<string> {
+  if (!isSupabaseConfigured) return localUri;
+  return uploadElderPhoto(profileId, localUri);
+}
+
 /** 경로 → 표시용 signed URL(실패·미설정 시 null). */
 export async function getElderPhotoUrl(photoPath: string): Promise<string | null> {
+  if (isLocalUri(photoPath)) return photoPath;
   if (!isSupabaseConfigured) return null;
   const { data, error } = await getGiokonClient()
     .storage.from(BUCKET)

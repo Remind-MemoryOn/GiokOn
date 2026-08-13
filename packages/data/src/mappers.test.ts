@@ -26,6 +26,7 @@ const profileRow: ProfileRow = {
   guardian_name: '박민준',
   guardian_relation: '아들',
   photo_path: null,
+  gender: 'female',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
 }

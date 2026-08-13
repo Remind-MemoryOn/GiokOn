@@ -13,7 +13,8 @@
 import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Pressable, Image } from 'react-native';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HEADER_H, HEADER_SHADOW } from '../src/components/ScreenHeader';
 import { PatientCard } from '../src/components/PatientCard';
 import { useElders, useLastTalkByElder } from '../src/data/reads';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -27,24 +28,26 @@ export default function Main() {
   const { caregiverName, signOut } = useAuth();
   const elders = useElders();
   const lastTalk = useLastTalkByElder();
+  const insets = useSafeAreaInsets();
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => elders.filter((e) => e.name.includes(q.trim())), [elders, q]);
+  // 실기기 상태바를 쓰므로 Figma y 좌표에서 안전영역 인셋을 뺀다(ScreenHeader 와 동일 규칙).
+  const shift = Math.min(insets.top, 60);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      {/* 헤더 */}
+      {/* 헤더 — Figma 0..114, 워드마크 90×13.7 @ (30,78), 설정 18×19 @ (344,75) */}
       <View
-        className="flex-row items-center justify-between bg-white"
-        style={{
-          height: 56,
-          paddingHorizontal: 30,
-          // Figma: 1px 1px 10px rgba(108,101,101,0.13) — Android elevation 은 과대해서 미사용.
-          boxShadow: '1px 1px 10px rgba(108,101,101,0.13)',
-          zIndex: 10,
-        }}
+        className="bg-white"
+        style={{ height: HEADER_H - shift, boxShadow: HEADER_SHADOW, zIndex: 10 }}
       >
-        <Image source={wordmark} style={{ width: 90, height: 14 }} resizeMode="contain" accessibilityLabel="기억온" />
+        <Image
+          source={wordmark}
+          style={{ position: 'absolute', left: 30, top: 78 - shift, width: 90, height: 14 }}
+          resizeMode="contain"
+          accessibilityLabel="기억온"
+        />
         <Pressable
           onPress={async () => {
             await signOut();
@@ -52,8 +55,9 @@ export default function Main() {
           }}
           accessibilityRole="button"
           accessibilityLabel="설정"
-          hitSlop={12}
-          className="active:opacity-60"
+          hitSlop={16}
+          className="absolute active:opacity-60"
+          style={{ left: 344, top: 75 - shift }}
         >
           <Image source={iconSettings} style={{ width: 18, height: 19 }} resizeMode="contain" />
         </Pressable>

@@ -23,7 +23,11 @@ const SPECS = [
   [`${APP}/app/main.tsx`, '메인: 이름 주황 밑줄 h3', [/height: 3, backgroundColor: '#e9822b'/]],
   [`${APP}/app/main.tsx`, '메인: 검색 h46 r10 #cccdce', [/height: 46/, /borderRadius: 10/, /borderColor: '#cccdce'/]],
   [`${APP}/app/main.tsx`, '메인: 검색 안내 18px #7b7c7c', [/text-\[18px\]/, /placeholderTextColor="#7b7c7c"/]],
-  [`${APP}/app/main.tsx`, '메인: 헤더 그림자 1 1 10 .13', [/boxShadow: '1px 1px 10px rgba\(108,101,101,0\.13\)'/]],
+  [
+    `${APP}/app/main.tsx`,
+    '메인: 헤더 114-인셋 + 공용 그림자 · 워드마크 y78 / 설정 y75',
+    [/height: HEADER_H - shift, boxShadow: HEADER_SHADOW/, /top: 78 - shift/, /left: 344, top: 75 - shift/],
+  ],
   [
     `${APP}/app/main.tsx`,
     '메인: 하단바 h118 pb37 그림자 0 4 12 .25',
@@ -82,6 +86,100 @@ const SPECS = [
   [`${APP}/app/session/saved.tsx`, '저장: 일러스트 164×179 에셋', [/saved-illustration\.png/, /width: 164, height: 179/]],
   [`${APP}/app/session/saved.tsx`, '저장: 문구 SemiBold 28 lh42', [/text-\[28px\] font-semibold/, /lineHeight: 42/]],
   [`${APP}/app/session/saved.tsx`, '저장: 버튼 336×57 r10 (주황/외곽선)', [/width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
+
+  // ── 공용 상세 헤더 (Figma 어르신 등록/연대기 수정 등, 0..114) ──────────
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '헤더: 높이 114 - 안전영역 인셋 (Figma y 좌표 보존)',
+    [/HEADER_H = 114/, /height: HEADER_H - shift/],
+  ],
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '헤더: 그림자 1 1 10 .13 (elevation 미사용)',
+    [/HEADER_SHADOW = '1px 1px 10px rgba\(108,101,101,0\.13\)'/],
+  ],
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '헤더: 뒤로 12.7×19.5 @ (28,74) 에셋',
+    [/icon-back\.png/, /left: 28, top: 74 - shift/, /width: 12\.7, height: 19\.5/],
+  ],
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '헤더: 제목 Medium 18 lh30 중앙 @ top 70',
+    [/text-\[18px\] font-medium/, /top: 70 - shift, lineHeight: 30/],
+  ],
+
+  // ── 프로필 폼 프리미티브 (Figma 56:337 / 15:7) ─────────────────────────
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 입력 박스 336×46 r10 #f4f4f4 @ left 29',
+    [/left: 29/, /fieldW: 336/, /fieldH: 46/, /fieldR: 10/, /fieldBg: '#f4f4f4'/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 라벨→박스 6 · 값 inset 16 · 카운터 inset 21',
+    [/labelGap: 6/, /valueInset: 16/, /counterInset: 21/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 행 pitch 기본 25 · 주요기억 14',
+    [/rowGap: 25/, /memoryGap: 14/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 라벨 SemiBold 20 lh30 + 필수 ✱ 8×8.25 에셋',
+    [/text-\[20px\] font-semibold/, /icon-required\.png/, /width: 8, height: 8\.25/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 값 Regular 18 lh30 / 안내문구·카운터 Regular 16 (크기 다름)',
+    [/valueClass = 'text-\[18px\] font-normal text-black'/, /text-\[16px\] font-normal text-muted/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 드롭다운 ∨ 14.14×9.54 @ 우측 21.9 · 검색 19×20.31 @ 우측 21',
+    [/icon-chevron-down\.png/, /right: 21\.9, top: 18, width: 14\.14, height: 9\.54/, /icon-field-search\.png/, /width: 19, height: 20\.31/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 주요기억 삭제 X 13.7 · ＋ 16 @ 박스 내 left 18',
+    [/icon-x-small\.png/, /width: 13\.7, height: 13\.7/, /icon-plus\.png/, /left: 18, top: 8/, /width: 16, height: 16/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 사진 126×130 r14 #f5f5f5 border #e3e3e3 + 아이콘 에셋 2종',
+    [/w: 126, h: 130, r: 14, bg: '#f5f5f5', border: '#e3e3e3'/, /icon-photo-add\.png/, /icon-photo-edit\.png/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 저장하기 336×57 r10 #e9822b · SemiBold 18 lh30',
+    [/width: FORM\.fieldW, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /text-\[18px\] font-semibold text-white/],
+  ],
+  [
+    `${APP}/src/components/ProfileForm.tsx`,
+    '폼 화면: 라벨 pitch 108/107/107/107/108/107',
+    [/ROW_GAPS = \[26, 25, 25, 25, 26, 25\]/],
+  ],
+  [
+    `${APP}/src/components/ProfileForm.tsx`,
+    '폼 화면: 사진 top 150(=114+36) · 사진→라벨 26 · 마지막→저장 62 · 하단 49',
+    [/paddingLeft: 28, paddingTop: 36/, /PHOTO_TO_FIRST_LABEL = 26/, /CONTENT_TO_SAVE = 62/, /SAVE_TO_BOTTOM = 49/],
+  ],
+  [
+    `${APP}/src/components/ProfileForm.tsx`,
+    '폼 화면: 카운터 상한 10/25/30/30 (Figma 3/10·16/25·10/30·6/30)',
+    [/MAX = \{ name: 10, family: 25, job: 30, hobbies: 30 \}/],
+  ],
+  [
+    `${APP}/app/register.tsx`,
+    '어르신 등록 = 폼 빈 상태(제목·초기값만 다름)',
+    [/ProfileForm/, /title="어르신 등록"/, /initialMemories=\{\[\]\}/],
+  ],
+  [
+    `${APP}/app/chronicle/[id].tsx`,
+    '연대기 수정 = 폼 입력 상태(같은 화면)',
+    [/ProfileForm/, /title="연대기 수정"/],
+  ],
 
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
   [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],

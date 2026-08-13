@@ -1,55 +1,90 @@
-// 연대기(어르신 프로필 기록) 수정 — 프로필 필드 + 주요 기억.
-// 첫 AI 질문·주제 추천이 이 연대기를 근거로 개인화된다(core).
-import { useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+// 연대기 수정 (Figma `15:7`) — 프로필 폼의 **입력 상태**(어르신 등록과 같은 화면).
+// 첫 AI 질문·주제 추천이 이 연대기를 근거로 개인화된다(@giokon/core).
+import { useMemo, useState } from 'react';
+import { Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DetailHeader } from '../../src/components/AppHeader';
-import { Field, Button, Card, SectionTitle } from '../../src/components/ui';
-import { useElder, useChronicles } from '../../src/data/reads';
-import { useUpsertElder, useUpsertChronicle } from '../../src/data/writes';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { ProfileForm, type ProfileSubmit } from '../../src/components/ProfileForm';
+import { useChronicles, useElder } from '../../src/data/reads';
+import { useDeleteChronicle, useUpsertChronicle, useUpsertElder } from '../../src/data/writes';
+import { saveElderPhoto, useElderPhotoUrl } from '../../src/data/elder-photo';
+
+const MEMORY_TOPIC = '주요 기억';
 
 export default function ChronicleEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id);
   const chronicles = useChronicles(id);
+  const photoUrl = useElderPhotoUrl(elder?.photoPath);
   const upsertElder = useUpsertElder();
   const upsertChronicle = useUpsertChronicle();
+  const deleteChronicle = useDeleteChronicle();
   const [saving, setSaving] = useState(false);
 
-  const [hometown, setHometown] = useState(elder?.hometown ?? '');
-  const [family, setFamily] = useState(elder?.family ?? '');
-  const [job, setJob] = useState(elder?.job ?? '');
-  const [hobbies, setHobbies] = useState(elder?.hobbies ?? '');
-  const [memory, setMemory] = useState('');
+  const initial = useMemo(
+    () => ({
+      name: elder?.name ?? '',
+      birthYear: elder ? String(elder.birthYear) : '',
+      hometown: elder?.hometown ?? '',
+      family: elder?.family ?? '',
+      job: elder?.job ?? '',
+      hobbies: elder?.hobbies ?? '',
+    }),
+    [elder],
+  );
+  const memories = useMemo(
+    () => chronicles.map((c) => ({ key: c.id, text: c.content })),
+    [chronicles],
+  );
 
   if (!elder || !id) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
-        <View className="px-5">
-          <DetailHeader title="연대기 수정" />
-        </View>
-        <Text className="text-center text-muted mt-16 font-normal">어르신을 찾을 수 없어요.</Text>
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <ScreenHeader title="연대기 수정" />
+        <Text className="text-[18px] font-normal text-muted text-center" style={{ marginTop: 60 }}>
+          어르신을 찾을 수 없어요.
+        </Text>
+        <View />
       </SafeAreaView>
     );
   }
 
-  const onSave = async () => {
+  const onSubmit = async (v: ProfileSubmit) => {
     if (saving) return;
     setSaving(true);
     try {
+      const photoPath = v.pickedPhotoUri ? await saveElderPhoto(elder.id, v.pickedPhotoUri) : undefined;
       await upsertElder({
         id: elder.id,
-        name: elder.name,
-        birthYear: elder.birthYear,
-        hometown: hometown.trim() || undefined,
-        family: family.trim() || undefined,
-        job: job.trim() || undefined,
-        hobbies: hobbies.trim() || undefined,
+        name: v.name.trim(),
+        birthYear: Number(v.birthYear),
+        hometown: v.hometown.trim() || undefined,
+        family: v.family.trim() || undefined,
+        job: v.job.trim() || undefined,
+        hobbies: v.hobbies.trim() || undefined,
+        gender: elder.gender,
+        photoPath,
       });
-      if (memory.trim()) {
-        await upsertChronicle({ elderId: elder.id, topic: '주요 기억', content: memory.trim(), keywords: [] });
-        setMemory('');
+
+      // 주요 기억 = 연대기 항목. 목록에서 사라진 항목은 삭제, 내용이 바뀐 항목은 수정,
+      // 새 항목(new-*)은 추가한다.
+      const keptIds = new Set(v.memories.map((m) => m.key));
+      for (const c of chronicles) {
+        if (!keptIds.has(c.id)) await deleteChronicle({ id: c.id, elderId: elder.id });
+      }
+      for (const m of v.memories) {
+        const content = m.text.trim();
+        const existing = chronicles.find((c) => c.id === m.key);
+        if (existing) {
+          if (content && content !== existing.content) {
+            await upsertChronicle({ id: existing.id, elderId: elder.id, topic: existing.topic, content, keywords: existing.keywords });
+          } else if (!content) {
+            await deleteChronicle({ id: existing.id, elderId: elder.id });
+          }
+        } else if (content) {
+          await upsertChronicle({ elderId: elder.id, topic: MEMORY_TOPIC, content, keywords: [] });
+        }
       }
       router.back();
     } catch (e) {
@@ -60,36 +95,14 @@ export default function ChronicleEdit() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <View className="px-5">
-        <DetailHeader title="연대기 수정" />
-      </View>
-      <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
-        <View className="mt-2" />
-        <Field label="이름" value={elder.name} onChangeText={() => {}} placeholder="" />
-        <Field label="출생연도" value={String(elder.birthYear)} onChangeText={() => {}} placeholder="" />
-        <Field label="출신지" value={hometown} onChangeText={setHometown} placeholder="출신지를 입력해 주세요" />
-        <Field label="가족 구성" value={family} onChangeText={setFamily} placeholder="가족 구성을 입력해 주세요" />
-        <Field label="직업 이력" value={job} onChangeText={setJob} placeholder="직업 이력을 입력해 주세요" />
-        <Field label="취미" value={hobbies} onChangeText={setHobbies} placeholder="취미를 입력해 주세요" />
-
-        <SectionTitle>주요 기억</SectionTitle>
-        {chronicles.map((c) => (
-          <Card key={c.id} className="mb-2">
-            <Text className="text-[13px] text-accent mb-1 font-normal">{c.topic}</Text>
-            <Text className="text-[15px] text-ink leading-[22px] font-normal">{c.content}</Text>
-          </Card>
-        ))}
-        <Field
-          value={memory}
-          onChangeText={setMemory}
-          placeholder="기억에 남는 이야기를 추가해 주세요"
-          multiline
-        />
-        <View className="mt-2">
-          <Button label="저장하기" onPress={onSave} disabled={saving} />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <ProfileForm
+      title="연대기 수정"
+      sig={`${elder.id}:${elder.updatedAt}`}
+      initial={initial}
+      initialMemories={memories}
+      photoUrl={photoUrl}
+      saving={saving}
+      onSubmit={onSubmit}
+    />
   );
 }

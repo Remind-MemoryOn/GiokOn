@@ -108,6 +108,8 @@ interface AppState {
   upsertChronicle: (
     c: Omit<ChronicleEntry, 'id' | 'recordedAt' | 'updatedAt' | 'source'> & { id?: string },
   ) => ChronicleEntry;
+  /** 연대기 항목 삭제(연대기 수정 화면의 주요 기억 X 버튼). */
+  deleteChronicle: (id: string) => void;
 
   // ── 동의 게이팅(어르신별) — @giokon/core consent 카탈로그 사용 ──
   consentsByElder: Record<string, ConsentType[]>;
@@ -188,6 +190,8 @@ export const useApp = create<AppState>((set, get) => ({
       job: patch.job,
       family: patch.family,
       hobbies: patch.hobbies,
+      photoPath: patch.photoPath,
+      gender: patch.gender,
       guardian: patch.guardian,
       appearance: patch.appearance ?? DEFAULT_APPEARANCE,
       avatarColor: patch.avatarColor ?? pickAvatarColor(patch.name + ts),
@@ -219,6 +223,8 @@ export const useApp = create<AppState>((set, get) => ({
     set((s) => ({ chronicles: [created, ...s.chronicles] }));
     return created;
   },
+
+  deleteChronicle: (id) => set((s) => ({ chronicles: s.chronicles.filter((c) => c.id !== id) })),
 
   consentsByElder: {},
   grantElderConsents: (elderId, types) =>

@@ -11,6 +11,7 @@ import { useCallback } from 'react';
 import {
   useCreateChronicle,
   useCreateProfile,
+  useDeleteChronicle as useDeleteChronicleData,
   useRecordConsent,
   useUpdateChronicle,
   useUpdateProfile,
@@ -89,6 +90,23 @@ export function useUpsertChronicle(): (input: ChronicleUpsertInput) => Promise<C
       return toChronicleEntry(row);
     },
     [mockUpsert, createChronicle, updateChronicle, user],
+  );
+}
+
+/** 연대기 항목 삭제(주요 기억 목록의 X). */
+export function useDeleteChronicle(): (input: { id: string; elderId: string }) => Promise<void> {
+  const mockDelete = useApp((s) => s.deleteChronicle);
+  const deleteChronicle = useDeleteChronicleData();
+
+  return useCallback(
+    async ({ id, elderId }: { id: string; elderId: string }): Promise<void> => {
+      if (!CFG) {
+        mockDelete(id);
+        return;
+      }
+      await deleteChronicle.mutateAsync({ id, profileId: elderId });
+    },
+    [mockDelete, deleteChronicle],
   );
 }
 
