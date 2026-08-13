@@ -18,7 +18,14 @@ import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../src/components/ScreenHeader';
-import { DETAIL, Divider, PeriodPill, SectionHeading, TopicBar } from '../src/components/detail';
+import {
+  DETAIL,
+  Divider,
+  PeriodPill,
+  SectionHeading,
+  TopicBar,
+  topicBarLayout,
+} from '../src/components/detail';
 import { useOverallObservations } from '../src/data/observations';
 import { metric } from '../src/lib/format';
 import iconShare from '../assets/brand/icon-share.png';
@@ -67,6 +74,12 @@ function SummaryCard({
 
 export default function Analytics() {
   const o = useOverallObservations();
+  const top5 = o.topTopics.slice(0, 5);
+  // 라벨이 잘리지 않도록 실제 주제명 길이에 맞춰 라벨 칸/트랙을 조정한다.
+  const barLayout = topicBarLayout(
+    top5.map((t) => t.label),
+    { labelInset: 1, labelWidth: 45, percentGap: 20 },
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -144,24 +157,14 @@ export default function Analytics() {
         </View>
 
         <View style={{ marginTop: 11 }}>
-          {o.topTopics.length === 0 ? (
+          {top5.length === 0 ? (
             <Text className="text-[13px] font-normal text-muted" style={{ lineHeight: 30 }}>
               아직 관찰된 주제가 없어요.
             </Text>
           ) : (
-            o.topTopics
-              .slice(0, 5)
-              .map((t, i) => (
-                <TopicBar
-                  key={t.label}
-                  label={t.label}
-                  percent={t.percent}
-                  rank={i}
-                  labelInset={1}
-                  labelWidth={45}
-                  percentGap={20}
-                />
-              ))
+            top5.map((t, i) => (
+              <TopicBar key={t.label} label={t.label} percent={t.percent} rank={i} {...barLayout} />
+            ))
           )}
         </View>
 

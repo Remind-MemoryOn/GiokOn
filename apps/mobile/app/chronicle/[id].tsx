@@ -1,12 +1,12 @@
 // 연대기 수정 (Figma `15:7`) — 프로필 폼의 **입력 상태**(어르신 등록과 같은 화면).
 // 첫 AI 질문·주제 추천이 이 연대기를 근거로 개인화된다(@giokon/core).
 import { useMemo, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ProfileForm, type ProfileSubmit } from '../../src/components/ProfileForm';
-import { useChronicles, useElder } from '../../src/data/reads';
+import { useChronicles, useElderView } from '../../src/data/reads';
 import { useDeleteChronicle, useUpsertChronicle, useUpsertElder } from '../../src/data/writes';
 import { saveElderPhoto, useElderPhotoUrl } from '../../src/data/elder-photo';
 
@@ -14,7 +14,7 @@ const MEMORY_TOPIC = '주요 기억';
 
 export default function ChronicleEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useElder(id);
+  const { elder, loading } = useElderView(id);
   const chronicles = useChronicles(id);
   const photoUrl = useElderPhotoUrl(elder?.photoPath);
   const upsertElder = useUpsertElder();
@@ -26,6 +26,7 @@ export default function ChronicleEdit() {
     () => ({
       name: elder?.name ?? '',
       birthYear: elder ? String(elder.birthYear) : '',
+      gender: elder?.gender,
       hometown: elder?.hometown ?? '',
       family: elder?.family ?? '',
       job: elder?.job ?? '',
@@ -42,9 +43,13 @@ export default function ChronicleEdit() {
     return (
       <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
         <ScreenHeader title="연대기 수정" />
-        <Text className="text-[18px] font-normal text-muted text-center" style={{ marginTop: 60 }}>
-          어르신을 찾을 수 없어요.
-        </Text>
+        {loading ? (
+          <ActivityIndicator color="#e9822b" style={{ marginTop: 60 }} />
+        ) : (
+          <Text className="text-[18px] font-normal text-muted text-center" style={{ marginTop: 60 }}>
+            어르신을 찾을 수 없어요.
+          </Text>
+        )}
         <View />
       </SafeAreaView>
     );
@@ -54,7 +59,7 @@ export default function ChronicleEdit() {
     if (saving) return;
     setSaving(true);
     try {
-      const photoPath = v.pickedPhotoUri ? await saveElderPhoto(elder.id, v.pickedPhotoUri) : undefined;
+      const photoPath = v.pickedPhoto ? await saveElderPhoto(elder.id, v.pickedPhoto) : undefined;
       await upsertElder({
         id: elder.id,
         name: v.name.trim(),
@@ -63,7 +68,7 @@ export default function ChronicleEdit() {
         family: v.family.trim() || undefined,
         job: v.job.trim() || undefined,
         hobbies: v.hobbies.trim() || undefined,
-        gender: elder.gender,
+        gender: v.gender,
         photoPath,
       });
 

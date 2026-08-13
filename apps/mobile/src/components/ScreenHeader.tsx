@@ -88,7 +88,14 @@ export function ScreenHeader({
         <Image source={iconBack} style={{ width: 12.7, height: 19.5 }} resizeMode="contain" />
       </Pressable>
 
+      {/*
+       * ⚠️ 제목은 left:0/right:0 로 헤더 전체 폭을 덮는다. 뒤로·우측 아이콘보다 **뒤에**
+       * 선언돼 있어 그대로 두면 터치를 가로채 뒤로가기가 눌리지 않는다(사용자 지적
+       * 2026-08-13 "아이콘 위를 눌러야 가끔 동작"). 텍스트는 터치 대상이 아니므로
+       * pointerEvents 를 꺼서 아래의 버튼이 터치를 받게 한다.
+       */}
       <Text
+        pointerEvents="none"
         className="absolute text-[18px] font-medium text-black text-center"
         style={{ left: 0, right: 0, top: 70 - shift, lineHeight: 30 }}
       >

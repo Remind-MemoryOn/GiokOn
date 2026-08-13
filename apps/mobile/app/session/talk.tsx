@@ -117,25 +117,35 @@ export default function Talk() {
         </View>
       ) : null}
 
-      {/* AI 질문 카드 — 주황 테두리 + 인라인 로봇 */}
+      {/*
+       * AI 질문 카드 — 주황 테두리 + 인라인 로봇.
+       *
+       * Figma 는 카드를 336×258 로 고정했지만 그 안의 질문은 자리표시자(짧은 한 문장)다.
+       * 실제 AI 질문은 길이가 제각각이라 고정 높이면 글자가 카드를 넘쳐 나갔다
+       * (사용자 지적 2026-08-13). Figma 높이는 **최소 높이**로 두고 길면 늘어나게 한다.
+       * 질문도 absolute 대신 흐름 배치로 두어야 카드가 함께 커진다 —
+       * 좌표(로봇 18/38 · 질문 75.25/27 w251)는 padding·마진으로 같게 유지한다.
+       */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (121 / FRAME_H) * height }}>
         <View
+          className="flex-row"
           style={{
             width: 336,
-            height: 258,
+            minHeight: 258,
             borderRadius: 10,
             backgroundColor: '#fdf3ea',
             borderWidth: 1,
             borderColor: '#e9822b',
+            paddingTop: 26,
+            paddingBottom: 26,
           }}
         >
-          {/* 카드 기준 로봇 (18, 38) · 질문 (75.25, 27) w251 — Figma 절대 좌표 */}
-          <View className="absolute" style={{ left: 18, top: 38 }}>
+          <View style={{ marginLeft: 17, marginTop: 11 }}>
             <RobotInline size={46.5} />
           </View>
           <Text
-            className="absolute text-[28px] font-semibold text-black"
-            style={{ left: 75.25, top: 27, width: 251, lineHeight: 50 }}
+            className="text-[28px] font-semibold text-black"
+            style={{ marginLeft: 10.75, width: 251, lineHeight: 50 }}
           >
             {question}
           </Text>

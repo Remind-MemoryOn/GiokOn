@@ -82,6 +82,21 @@ describe('computeTopicShares', () => {
   it('근거가 없으면 예시 분포를 만들지 않고 빈 배열을 반환한다(실서비스 원칙)', () => {
     expect(computeTopicShares([], [])).toEqual([])
   })
+
+  it('대화 기록이 없으면 연대기만으로 분포를 만들지 않는다(관찰 아님)', () => {
+    const chronicles: ChronicleEntry[] = [
+      { id: 'c1', elderId: 'e1', topic: '주요 기억', content: '시장 이야기', keywords: [], source: 'Caregiver', recordedAt: '', updatedAt: '' },
+    ]
+    expect(computeTopicShares(chronicles, [])).toEqual([])
+  })
+
+  it('관찰되지 않은 연대기 주제는 목록에 새로 추가하지 않는다', () => {
+    const chronicles: ChronicleEntry[] = [
+      { id: 'c1', elderId: 'e1', topic: '노래', content: '', keywords: [], source: 'Caregiver', recordedAt: '', updatedAt: '' },
+    ]
+    const shares = computeTopicShares(chronicles, [analysis])
+    expect(shares.map((s) => s.label)).not.toContain('노래')
+  })
 })
 
 describe('observationSummary', () => {

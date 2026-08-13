@@ -270,12 +270,38 @@ const RANK_OPACITY = [1, 0.87, 0.73, 0.55, 0.35];
 /** 트랙 폭 — 두 화면 모두 242 로 실측(@4x 픽셀 대조). */
 const TRACK_W = 242;
 
+/**
+ * 주제 막대 배치값 — Figma 실측 기준값에 **실제 라벨 길이**를 반영해 돌려준다.
+ *
+ * Figma 자리표시자는 "가족"·"고향" 처럼 2글자뿐이라 라벨 칸이 41/45 로 좁다. 실데이터에는
+ * "주요 기억"·"학창 시절" 같은 4~5글자 주제가 들어와 글자가 잘렸다(사용자 지적
+ * 2026-08-13 "'주요 기'로 잘려 보임"). RN 은 동기 텍스트 측정이 없으므로 글자폭을 어림해
+ * **필요한 만큼만** 칸을 넓히고 트랙을 같은 만큼 줄인다 → 퍼센트 x(행 오른쪽 끝)는 고정,
+ * 모든 행의 트랙 시작·길이도 서로 같게 유지된다.
+ */
+export function topicBarLayout(
+  labels: string[],
+  base: { labelInset: number; labelWidth: number; percentGap: number },
+): { labelInset: number; labelWidth: number; trackWidth: number; percentGap: number } {
+  const ink = (s: string) =>
+    [...s].reduce((n, ch) => n + (ch === ' ' ? 3.7 : /[\x20-\x7e]/.test(ch) ? 7.3 : 13), 0);
+  const needed = labels.length ? Math.max(...labels.map((l) => Math.ceil(ink(l)) + 1)) : 0;
+  const labelWidth = Math.max(base.labelWidth, needed);
+  return {
+    labelInset: base.labelInset,
+    labelWidth,
+    trackWidth: TRACK_W - (labelWidth - base.labelWidth),
+    percentGap: base.percentGap,
+  };
+}
+
 export function TopicBar({
   label,
   percent,
   rank,
   labelInset = 3,
   labelWidth = 41,
+  trackWidth = TRACK_W,
   percentGap = 19,
 }: {
   label: string;
@@ -285,9 +311,11 @@ export function TopicBar({
   /**
    * 라벨 좌측 여백·폭 — 트랙 시작 x 를 Figma 에 맞춘다.
    * 어르신 종합분석은 라벨 박스 32 / 트랙 73, 전체분석은 라벨 30 / 트랙 75 다.
+   * 실제 라벨이 길면 `topicBarLayout()` 이 계산한 값을 넘긴다.
    */
   labelInset?: number;
   labelWidth?: number;
+  trackWidth?: number;
   /** 트랙 → 퍼센트 간격 (종합분석 19 / 전체분석 20). */
   percentGap?: number;
 }) {
@@ -296,11 +324,14 @@ export function TopicBar({
     <View className="flex-row items-center" style={{ height: 30, marginBottom: 2.25 }}>
       <Text
         className="text-[13px] font-normal text-black"
+        numberOfLines={1}
         style={{ lineHeight: 30, marginLeft: labelInset, width: labelWidth }}
       >
         {label}
       </Text>
-      <View style={{ width: TRACK_W, height: 12, borderRadius: 6, backgroundColor: DETAIL.chipBg }}>
+      <View
+        style={{ width: trackWidth, height: 12, borderRadius: 6, backgroundColor: DETAIL.chipBg }}
+      >
         <View
           style={{
             width: `${pct}%`,

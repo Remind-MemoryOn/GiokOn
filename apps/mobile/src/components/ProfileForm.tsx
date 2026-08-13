@@ -14,6 +14,8 @@ import { useMemo, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import type { ElderGender } from '@giokon/core';
+import type { PickedPhoto } from '../data/elder-photo';
 import { ScreenHeader } from './ScreenHeader';
 import {
   MemoryList,
@@ -41,15 +43,23 @@ const SAVE_TO_BOTTOM = 49;
 export interface ProfileValues {
   name: string;
   birthYear: string;
+  /** 미선택은 undefined — 임의값을 넣지 않는다(표기도 생략된다). */
+  gender: ElderGender | undefined;
   hometown: string;
   family: string;
   job: string;
   hobbies: string;
 }
 
+/** 성별 선택 표기 ↔ DB enum. */
+const GENDER_OPTIONS: string[] = ['여성', '남성'];
+const GENDER_LABEL: Record<ElderGender, string> = { female: '여성', male: '남성' };
+const GENDER_VALUE: Record<string, ElderGender> = { 여성: 'female', 남성: 'male' };
+
 export const EMPTY_VALUES: ProfileValues = {
   name: '',
   birthYear: '',
+  gender: undefined,
   hometown: '',
   family: '',
   job: '',
@@ -58,8 +68,8 @@ export const EMPTY_VALUES: ProfileValues = {
 
 export interface ProfileSubmit extends ProfileValues {
   memories: MemoryItem[];
-  /** 새로 고른 로컬 사진 uri(없으면 null → 사진 변경 없음). */
-  pickedPhotoUri: string | null;
+  /** 새로 고른 사진(없으면 null → 사진 변경 없음). */
+  pickedPhoto: PickedPhoto | null;
 }
 
 export function ProfileForm({
@@ -93,7 +103,7 @@ export function ProfileForm({
   const [editedMem, setEditedMem] = useState<{ sig: string; items: MemoryItem[] } | null>(null);
   const memories = editedMem?.sig === memSig ? editedMem.items : initialMemories;
 
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPicked] = useState<PickedPhoto | null>(null);
 
   // 어르신 연령대(40~110세)에 해당하는 출생연도만 최신순으로.
   const years = useMemo(() => {
@@ -107,13 +117,17 @@ export function ProfileForm({
       Alert.alert('사진 접근 권한이 필요해요', '설정에서 사진 접근을 허용해 주세요.');
       return;
     }
+    // base64 를 함께 받아 업로드에 쓴다 — RN 에서 file:// 을 fetch 하면 폴리필이
+    // status 0 으로 Response 를 만들다 터진다(elder-photo.ts 주석 참조).
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [126, 130],
       quality: 0.8,
+      base64: true,
     });
-    if (!res.canceled && res.assets[0]?.uri) setPicked(res.assets[0].uri);
+    const asset = res.canceled ? undefined : res.assets[0];
+    if (asset?.uri) setPicked({ uri: asset.uri, base64: asset.base64 ?? null });
   };
 
   const submit = () => {
@@ -121,7 +135,7 @@ export function ProfileForm({
       Alert.alert('입력 확인', '이름과 출생연도를 입력해 주세요.');
       return;
     }
-    onSubmit({ ...values, memories, pickedPhotoUri: picked });
+    onSubmit({ ...values, memories, pickedPhoto: picked });
   };
 
   return (
@@ -133,7 +147,7 @@ export function ProfileForm({
         contentContainerStyle={{ paddingLeft: 28, paddingTop: 36, paddingBottom: SAVE_TO_BOTTOM }}
         keyboardShouldPersistTaps="handled"
       >
-        <PhotoField uri={picked ?? photoUrl} onPress={pickPhoto} />
+        <PhotoField uri={picked?.uri ?? photoUrl} onPress={pickPhoto} />
 
         {/* 입력 박스는 Figma 에서 x29(사진은 x28) — 1px 차이를 그대로 둔다. */}
         <View style={{ marginLeft: 1, marginTop: PHOTO_TO_FIRST_LABEL }}>
@@ -153,6 +167,19 @@ export function ProfileForm({
             placeholder="출생연도를 선택해 주세요"
             options={years}
             onSelect={(v) => set({ birthYear: v })}
+            gap={ROW_GAPS[1]}
+          />
+          {/*
+           * 성별 — Figma 폼에는 없지만 메인 카드·상세 프로필이 "81세 l 여성"으로 성별을
+           * 표시한다(사용자 지적 2026-08-13). 입력받는 곳이 없으면 영원히 표기할 수 없어
+           * 여기서 수집한다. 다른 행과 같은 프리미티브·같은 간격이라 폼 리듬은 유지된다.
+           */}
+          <SelectField
+            label="성별"
+            value={values.gender ? GENDER_LABEL[values.gender] : ''}
+            placeholder="성별을 선택해 주세요"
+            options={GENDER_OPTIONS}
+            onSelect={(v) => set({ gender: GENDER_VALUE[v] })}
             gap={ROW_GAPS[1]}
           />
           <SearchField

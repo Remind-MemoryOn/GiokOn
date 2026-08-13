@@ -13,7 +13,7 @@
 //
 // ⚠️ 표시값은 전부 실데이터다. 근거가 없으면 '—'/빈 상태로 두고 값을 만들지 않는다.
 import { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { canStartElderSession, initial, observationSummary } from '@giokon/core';
@@ -28,6 +28,7 @@ import {
   SessionCard,
   StatTile,
   TopicBar,
+  topicBarLayout,
 } from '../../src/components/detail';
 import {
   useChronicles,
@@ -35,6 +36,7 @@ import {
   useElderConsents,
   useElderLogs,
   useElderSessions,
+  useElderView,
 } from '../../src/data/reads';
 import { useElderObservations } from '../../src/data/observations';
 import { useElderPhotoUrl } from '../../src/data/elder-photo';
@@ -53,19 +55,25 @@ const BOTTOM = 49;
 
 export default function ElderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const elder = useElder(id);
+  const { elder, loading } = useElderView(id);
   const [tab, setTab] = useState<Tab>('profile');
 
   // 우측 액션: 프로필·세션 기록 = 연필(연대기 수정) / 종합 분석 = 공유(Figma 동일)
   const isAnalysis = tab === 'analysis';
 
+  // 조회 중에는 "없음"이라고 단정하지 않는다 — 등록 직후 이동하면 상세 쿼리가 아직
+  // 비어 있어서 방금 만든 어르신이 없는 것처럼 보였다(사용자 지적 2026-08-13).
   if (!elder || !id) {
     return (
       <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
         <ScreenHeader title="어르신 상세" />
-        <Text className="text-[18px] font-normal text-muted text-center" style={{ marginTop: 60 }}>
-          어르신을 찾을 수 없어요.
-        </Text>
+        {loading ? (
+          <ActivityIndicator color={DETAIL.accent} style={{ marginTop: 60 }} />
+        ) : (
+          <Text className="text-[18px] font-normal text-muted text-center" style={{ marginTop: 60 }}>
+            어르신을 찾을 수 없어요.
+          </Text>
+        )}
       </SafeAreaView>
     );
   }
@@ -243,8 +251,13 @@ function AnalysisTab({ elderId }: { elderId: string }) {
   const obs = useElderObservations(elderId);
   if (!elder) return null;
   const part = obs.participation;
-  const topics = obs.topics;
-  const summary = observationSummary(elder.name, topics);
+  const top5 = obs.topics.slice(0, 5);
+  // 라벨이 잘리지 않도록 실제 주제명 길이에 맞춰 라벨 칸/트랙을 조정한다.
+  const barLayout = topicBarLayout(
+    top5.map((t) => t.label),
+    { labelInset: 3, labelWidth: 41, percentGap: 19 },
+  );
+  const summary = observationSummary(elder.name, obs.topics);
 
   return (
     <ScrollView
@@ -284,14 +297,14 @@ function AnalysisTab({ elderId }: { elderId: string }) {
       </View>
 
       <View style={{ marginTop: 9 }}>
-        {topics.length === 0 ? (
+        {top5.length === 0 ? (
           <Text className="text-[13px] font-normal text-muted" style={{ lineHeight: 30 }}>
             아직 관찰된 주제가 없어요.
           </Text>
         ) : (
-          topics
-            .slice(0, 5)
-            .map((t, i) => <TopicBar key={t.label} label={t.label} percent={t.percent} rank={i} />)
+          top5.map((t, i) => (
+            <TopicBar key={t.label} label={t.label} percent={t.percent} rank={i} {...barLayout} />
+          ))
         )}
       </View>
 

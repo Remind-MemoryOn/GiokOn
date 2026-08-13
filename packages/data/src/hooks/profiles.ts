@@ -63,7 +63,10 @@ export function useCreateProfile(): UseMutationResult<ProfileRow, Error, Profile
       if (error) throw new Error(error.message)
       return data
     },
-    onSuccess: () => {
+    onSuccess: (row) => {
+      // 상세 캐시를 미리 채운다 — 등록 직후 `/elder/{id}` 로 이동해도 조회를 기다리는
+      // 동안 "어르신을 찾을 수 없어요"가 보이지 않게 한다.
+      qc.setQueryData(queryKeys.profile(row.id), row)
       void qc.invalidateQueries({ queryKey: queryKeys.profiles })
     },
   })

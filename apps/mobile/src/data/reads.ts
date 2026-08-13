@@ -41,9 +41,36 @@ import type {
 
 /** 분석 + 기록 시각 — core 의 기간 집계 함수가 요구하는 형태. */
 export type DatedAnalysis = SessionAnalysis & { at: string };
+import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { isSupabaseConfigured as CFG } from '../lib/supabase';
 import { useApp } from '../store/appStore';
+
+/** 셀렉터가 매번 새 배열을 만들지 않도록 하는 빈 배열 상수(스냅샷 안정화). */
+const EMPTY_LOGS: ConversationLog[] = [];
+
+/** 라이브 행 → DatedAnalysis (셀렉터 밖에서만 호출). */
+function datedFromRows(rows: { created_at: string }[] | undefined): DatedAnalysis[] {
+  return (rows ?? [])
+    .map((row) => {
+      const a = parseSessionAnalysis(row as Parameters<typeof parseSessionAnalysis>[0]);
+      return a ? { ...a, at: row.created_at } : null;
+    })
+    .filter((x): x is DatedAnalysis => Boolean(x));
+}
+
+/** 목업 로그+분석 → DatedAnalysis (셀렉터 밖에서만 호출). */
+function datedFromMock(
+  logs: ConversationLog[],
+  analyses: Record<string, SessionAnalysis>,
+): DatedAnalysis[] {
+  return logs
+    .map((l) => {
+      const a = analyses[l.id];
+      return a ? { ...a, at: l.startedAt } : null;
+    })
+    .filter((x): x is DatedAnalysis => Boolean(x));
+}
 
 // Zustand v5는 useSyncExternalStore를 쓰므로, 셀렉터가 매 렌더 "새 배열/객체"를 반환하면
 // 스냅샷이 매번 바뀐 것으로 간주돼 무한 리렌더("getSnapshot should be cached" 경고 +
@@ -54,18 +81,39 @@ import { useApp } from '../store/appStore';
 export function useElders(): ElderProfile[] {
   const mock = useApp(useShallow((s) => s.eldersSorted()));
   const live = useProfilesData({ enabled: CFG });
-  if (!CFG) return mock;
-  return (live.data ?? [])
-    .map(toElderProfile)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const rows = live.data;
+  const mapped = useMemo(
+    () =>
+      (rows ?? []).map(toElderProfile).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [rows],
+  );
+  return CFG ? mapped : mock;
 }
 
 /** 단일 어르신. */
 export function useElder(id: string | undefined): ElderProfile | undefined {
+  return useElderView(id).elder;
+}
+
+/**
+ * 단일 어르신 + 조회 진행 여부.
+ *
+ * 화면이 "어르신을 찾을 수 없어요"를 **조회가 끝난 뒤에만** 띄우게 하려고 loading 을
+ * 함께 돌려준다. 등록 직후 상세로 이동하면 상세 쿼리는 아직 비어 있어서, 예전처럼
+ * `data` 유무만 보면 방금 만든 어르신이 "없음"으로 보였다(사용자 지적 2026-08-13).
+ */
+export function useElderView(id: string | undefined): {
+  elder: ElderProfile | undefined;
+  loading: boolean;
+} {
   const mock = useApp((s) => (id ? s.getElder(id) : undefined));
   const live = useProfileData(CFG ? id : undefined);
-  if (!CFG) return mock;
-  return live.data ? toElderProfile(live.data) : undefined;
+  if (!CFG) return { elder: mock, loading: false };
+  return {
+    elder: live.data ? toElderProfile(live.data) : undefined,
+    // 아직 한 번도 성공적으로 받아오지 못한 상태(초기 로딩·재시도 중)
+    loading: Boolean(id) && live.isPending,
+  };
 }
 
 /** 어르신 연대기(최신순). */
@@ -136,68 +184,54 @@ export function useElderAnalyses(elderId: string | undefined): SessionAnalysis[]
     ),
   );
   const live = useSessionAnalysesData(CFG ? elderId : undefined);
-  if (!CFG) return mock;
-  return (live.data ?? [])
-    .map(parseSessionAnalysis)
-    .filter((a): a is SessionAnalysis => Boolean(a));
+  const rows = live.data;
+  const mapped = useMemo(
+    () => (rows ?? []).map(parseSessionAnalysis).filter((a): a is SessionAnalysis => Boolean(a)),
+    [rows],
+  );
+  return CFG ? mapped : mock;
 }
 
 /**
  * 어르신 세션 분석 + **기록 시각**(기간 대비 변화·월별 추이 집계용).
  * 라이브는 session_analyses.created_at, 목업은 로그의 startedAt 을 쓴다.
+ *
+ * ⚠️ 파생 객체({...a, at})는 **셀렉터 밖**에서 만든다. Zustand v5 는 useSyncExternalStore
+ * 라서 셀렉터가 매 렌더 새 객체를 담은 배열을 돌려주면 useShallow(원소 참조 비교)로도
+ * 스냅샷이 매번 달라져 무한 리렌더("Maximum update depth exceeded")가 난다
+ * (사용자 기기에서 인지효과분석·주제별 분석 진입 시 재현, 2026-08-13).
+ * 셀렉터는 **원본 참조**만 고르고, 합성은 useMemo 로 한다.
  */
 export function useElderAnalysesDated(elderId: string | undefined): DatedAnalysis[] {
-  const mock = useApp(
-    useShallow((s) =>
-      elderId
-        ? s
-            .logsByElder(elderId)
-            .map((l) => {
-              const a = s.getAnalysis(l.id);
-              return a ? { ...a, at: l.startedAt } : null;
-            })
-            .filter((x): x is DatedAnalysis => Boolean(x))
-        : [],
-    ),
-  );
+  const mockLogs = useApp(useShallow((s) => (elderId ? s.logsByElder(elderId) : EMPTY_LOGS)));
+  const mockAnalyses = useApp((s) => s.analyses);
   const live = useSessionAnalysesData(CFG ? elderId : undefined);
-  if (!CFG) return mock;
-  return (live.data ?? [])
-    .map((row) => {
-      const a = parseSessionAnalysis(row);
-      return a ? { ...a, at: row.created_at } : null;
-    })
-    .filter((x): x is DatedAnalysis => Boolean(x));
+  const liveRows = live.data;
+  return useMemo(
+    () => (CFG ? datedFromRows(liveRows) : datedFromMock(mockLogs, mockAnalyses)),
+    [liveRows, mockLogs, mockAnalyses],
+  );
 }
 
 /** 담당 전체 분석 + 기록 시각(전체 인지 효과 분석·전체 주제 추이). */
 export function useAllAnalysesDated(): DatedAnalysis[] {
-  const mock = useApp(
-    useShallow((s) =>
-      s.logs
-        .map((l) => {
-          const a = s.analyses[l.id];
-          return a ? { ...a, at: l.startedAt } : null;
-        })
-        .filter((x): x is DatedAnalysis => Boolean(x)),
-    ),
-  );
+  const mockLogs = useApp((s) => s.logs);
+  const mockAnalyses = useApp((s) => s.analyses);
   const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
-  if (!CFG) return mock;
-  return (live.data ?? [])
-    .map((row) => {
-      const a = parseSessionAnalysis(row);
-      return a ? { ...a, at: row.created_at } : null;
-    })
-    .filter((x): x is DatedAnalysis => Boolean(x));
+  const liveRows = live.data;
+  return useMemo(
+    () => (CFG ? datedFromRows(liveRows) : datedFromMock(mockLogs, mockAnalyses)),
+    [liveRows, mockLogs, mockAnalyses],
+  );
 }
 
 /** 담당 전체 세션(전체 분석·관찰지표 집계용). */
 export function useAllSessions(): Session[] {
   const mock = useApp((s) => s.sessions);
   const live = useRecentSessionsData({ enabled: CFG, limit: 500 });
-  if (!CFG) return mock;
-  return (live.data ?? []).map(toSession);
+  const rows = live.data;
+  const mapped = useMemo(() => (rows ?? []).map(toSession), [rows]);
+  return CFG ? mapped : mock;
 }
 
 /**
@@ -218,8 +252,10 @@ export function useLastTalkByElder(): Record<string, string> {
 export function useAllAnalyses(): SessionAnalysis[] {
   const mock = useApp(useShallow((s) => Object.values(s.analyses)));
   const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
-  if (!CFG) return mock;
-  return (live.data ?? [])
-    .map(parseSessionAnalysis)
-    .filter((a): a is SessionAnalysis => Boolean(a));
+  const rows = live.data;
+  const mapped = useMemo(
+    () => (rows ?? []).map(parseSessionAnalysis).filter((a): a is SessionAnalysis => Boolean(a)),
+    [rows],
+  );
+  return CFG ? mapped : mock;
 }

@@ -20,7 +20,8 @@ const SPECS = [
   [`${APP}/app/main.tsx`, '메인: 헤더 워드마크 90×14', [/width: 90, height: 14/]],
   [`${APP}/app/main.tsx`, '메인: 설정 아이콘 18×19', [/width: 18, height: 19/]],
   [`${APP}/app/main.tsx`, '메인: 인사 SemiBold 24 / lh35', [/text-\[24px\] font-semibold/, /lineHeight: 35/]],
-  [`${APP}/app/main.tsx`, '메인: 이름 주황 밑줄 h3 @ y205(marginTop -9)', [/height: 3, backgroundColor: '#e9822b', marginTop: -9/]],
+  // 밑줄은 절대 배치 — 줄 높이에 영향을 주면 이름이 같은 줄에서 어긋난다(사용자 지적).
+  [`${APP}/app/main.tsx`, '메인: 이름 주황 밑줄 h3 @ y205(절대 배치)', [/bottom: 6,\s*height: 3,\s*backgroundColor: '#e9822b'/]],
   [`${APP}/app/main.tsx`, '메인: 검색 335×46 r10 #cccdce @ x30', [/width: 335/, /height: 46/, /borderRadius: 10/, /borderColor: '#cccdce'/, /marginTop: 20/, /marginBottom: 31/]],
   [`${APP}/app/main.tsx`, '메인: 검색 안내 18px #7b7c7c', [/text-\[18px\]/, /placeholderTextColor="#7b7c7c"/]],
   [
@@ -71,7 +72,7 @@ const SPECS = [
   // ── 대화 시작 전 (Figma 15:165) ────────────────────────────────────────
   [`${APP}/app/session/start.tsx`, '시작전: 로봇 195', [/RobotMascot size=\{195\}/]],
   [`${APP}/app/session/start.tsx`, '시작전: 타이틀 SemiBold 28 lh42', [/text-\[28px\] font-semibold/, /lineHeight: 42/]],
-  [`${APP}/app/session/start.tsx`, '시작전: 이름 밑줄 h4 주황', [/height: 4, backgroundColor: '#e9822b'/]],
+  [`${APP}/app/session/start.tsx`, '시작전: 이름 밑줄 h4 주황 @ y378(절대 배치)', [/bottom: 7,\s*height: 4,\s*backgroundColor: '#e9822b'/]],
   [`${APP}/app/session/start.tsx`, '시작전: 부제 Medium 20 lh40', [/text-\[20px\] font-medium/, /lineHeight: 40/]],
   [`${APP}/app/session/start.tsx`, '시작전: 버튼 336×57 r10 (주황/외곽선)', [/width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
 
@@ -79,8 +80,10 @@ const SPECS = [
   [`${APP}/app/session/talk.tsx`, '대화: X 닫기 17×17 에셋', [/icon-close\.png/, /width: 17, height: 17/]],
   [
     `${APP}/app/session/talk.tsx`,
-    '대화: 질문카드 336×258 r10 #fdf3ea + 주황 테두리 · 로봇(18,38) 46.5 · 질문(75.25,27) w251',
-    [/width: 336,\s*height: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /left: 18, top: 38/, /RobotInline size=\{46\.5\}/, /left: 75\.25, top: 27, width: 251/],
+    // 258 은 **최소** 높이 — 실제 AI 질문은 길이가 달라 카드가 늘어나야 한다(사용자 지적).
+    // 로봇 (18,38) / 질문 (75.25,27) w251 은 padding·margin 합으로 동일하게 유지.
+    '대화: 질문카드 336×min258 r10 #fdf3ea + 주황 테두리 · 로봇(18,38) 46.5 · 질문(75.25,27) w251',
+    [/width: 336,\s*minHeight: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /paddingTop: 26/, /marginLeft: 17, marginTop: 11/, /RobotInline size=\{46\.5\}/, /marginLeft: 10\.75, width: 251/],
   ],
   [`${APP}/app/session/talk.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
@@ -251,7 +254,7 @@ const SPECS = [
   [
     `${APP}/src/components/detail.tsx`,
     '분석: 주제 막대 트랙 242×12 r6 + 순위별 농도 · 라벨/퍼센트 Regular 13',
-    [/width: TRACK_W, height: 12, borderRadius: 6/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
+    [/width: trackWidth, height: 12, borderRadius: 6/, /TRACK_W = 242/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
@@ -276,7 +279,7 @@ const SPECS = [
   [
     `${APP}/app/elder/[id].tsx`,
     '분석: 지표는 실데이터(metric)·주제 없으면 빈 상태·AI 근거 없으면 서술 금지',
-    [/metric\(part\.avgMinutes, '분'\)/, /metric\(part\.avgResponseRate, '%'\)/, /아직 관찰된 주제가 없어요/, /observationSummary\(elder\.name, topics\)/],
+    [/metric\(part\.avgMinutes, '분'\)/, /metric\(part\.avgResponseRate, '%'\)/, /아직 관찰된 주제가 없어요/, /observationSummary\(elder\.name, obs\.topics\)/],
   ],
 
   // ── 대화 기록 (Figma 28:129) ───────────────────────────────────────────
@@ -367,7 +370,7 @@ const SPECS = [
   [
     `${APP}/app/analytics.tsx`,
     '전체분석: 아이콘 4종 에셋 · 막대 라벨 30 / 트랙 75 / 퍼센트 337',
-    [/stat-elders\.png/, /stat-smile\.png/, /stat-time\.png/, /stat-rate\.png/, /labelInset=\{1\}/, /labelWidth=\{45\}/, /percentGap=\{20\}/],
+    [/stat-elders\.png/, /stat-smile\.png/, /stat-time\.png/, /stat-rate\.png/, /labelInset: 1, labelWidth: 45, percentGap: 20/],
   ],
   [
     `${APP}/app/analytics.tsx`,
@@ -491,6 +494,33 @@ const SPECS = [
     `${APP}/src/components/detail.tsx`,
     'AI 종합 의견: 아바타 left −1 / 본문 열 51.75 (27·29 / 80.25·82.25 중간값)',
     [/left: -1, top: 0, width: 37, height: 37/, /marginLeft: 51\.75/],
+  ],
+
+  // ── 실기기 확인에서 나온 회귀 방지(2026-08-13) ─────────────────────────
+  [
+    `${APP}/src/components/ScreenHeader.tsx`,
+    '헤더: 제목이 뒤로 버튼 터치를 가로채지 않는다(pointerEvents none)',
+    [/pointerEvents="none"/],
+  ],
+  [
+    `${APP}/src/components/detail.tsx`,
+    '주제 막대: 실제 라벨 길이에 맞춰 라벨 칸/트랙 조정(글자 잘림 방지)',
+    [/export function topicBarLayout/, /numberOfLines=\{1\}/],
+  ],
+  [
+    `${APP}/src/data/elder-photo.ts`,
+    '사진 업로드: file:// fetch 금지 → picker base64 사용',
+    [/function base64ToBytes/, /interface PickedPhoto/],
+  ],
+  [
+    `${APP}/src/components/ProfileForm.tsx`,
+    '폼: 성별 수집(메인 카드·상세의 "81세 l 여성" 표기 근거)',
+    [/label="성별"/, /GENDER_VALUE\[v\]/, /base64: true/],
+  ],
+  [
+    `${APP}/src/data/reads.ts`,
+    '파생 객체는 Zustand 셀렉터 밖에서 합성(무한 리렌더 방지)',
+    [/function datedFromMock/, /useMemo\(\s*\(\) => \(CFG \? datedFromRows/],
   ],
 ];
 

@@ -162,6 +162,19 @@ export default function Login() {
         </Pressable>
       </View>
 
+      {/*
+       * "간편 계정 연결" — Figma 로그인 프레임에는 없는 문구지만, 소셜 3종만 덩그러니
+       * 놓이면 무엇인지 알 수 없어 사용자가 복원을 요청했다(2026-08-13).
+       * 원본 요소를 건드리지 않도록 링크행(519)과 소셜(642.75) 사이 빈 공간에
+       * 작은 회색 한 줄로만 둔다.
+       */}
+      <Text
+        className="absolute left-0 right-0 text-[13px] font-normal text-muted text-center"
+        style={{ top: top(597, height), lineHeight: 20 }}
+      >
+        간편 계정 연결
+      </Text>
+
       {/* 소셜 3종 — Figma x 89.75 / 168.35 / 246.95 (pitch 78.6), 에셋은 그림자 포함 52 */}
       {[
         { key: 'naver', src: socialNaver, label: '네이버', left: 89.75 },

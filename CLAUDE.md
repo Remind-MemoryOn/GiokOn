@@ -56,6 +56,28 @@
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
 ## 현재 위치 (2026-08-13)
+- 🐞 **실기기 육안 대조 → 오류 3종·UI 9건 수정(2026-08-13, `main`)**: 사용자가 안드로이드
+  스튜디오로 전 화면을 확인하며 잡은 항목들.
+  - **크래시 (1) `Maximum update depth exceeded`**(인지효과분석·주제별 분석 진입 즉시):
+    `reads.ts`의 `use*AnalysesDated`가 **Zustand 셀렉터 안에서 `{...a, at}` 새 객체**를
+    만들어, `useShallow`(원소 참조 비교)로도 스냅샷이 매 렌더 달라져 무한 리렌더.
+    → 셀렉터는 원본 참조만 고르고 합성은 `useMemo`로(`datedFromMock`/`datedFromRows`).
+    라이브 map 결과들도 `useMemo` 로 안정화.
+  - **크래시 (2) `Failed to construct 'Response': status 0`**: 사진 업로드가
+    `fetch('file://…')`를 썼는데 RN 폴리필(whatwg-fetch)이 file 응답 status 0 으로
+    `new Response` 를 만들다 **setTimeout 안에서 RangeError** → 잡히지 않고 업로드
+    프라미스도 안 풀림. → picker `base64: true` + 자체 `base64ToBytes()` 로 교체.
+  - **뒤로가기 버튼 미동작**: `ScreenHeader` 제목이 `left:0/right:0` 로 헤더를 덮고
+    뒤로 버튼보다 **뒤에** 선언돼 터치를 가로챘다 → 제목 `pointerEvents="none"`.
+  - **대화 없는 어르신에게 관심 주제·AI 의견 표시**: `computeTopicShares` 가 연대기
+    주제에 가중치를 줬다(입력값 ≠ 관찰값) → **분석이 0건이면 빈 배열**, 연대기는 이미
+    관찰된 주제의 동점 보조로만 사용. 실서비스 원칙 위반 수정.
+  - 그 외: 등록 직후 상세가 "찾을 수 없어요"(→ `useElderView` 로딩 구분 +
+    `useCreateProfile` 이 상세 캐시 시딩) · TOP5 라벨 잘림(→ `topicBarLayout` 로 라벨 칸/
+    트랙 자동 조정) · 메인 인사 이름 정렬(밑줄을 절대 배치) · 대화 시작 전 밑줄 위치 ·
+    TTS 질문 카드 높이 고정 → `minHeight`(질문 길이에 따라 확장) ·
+    **성별 입력 필드 신설**(Figma 폼엔 없지만 카드·상세가 "81세 l 여성"을 표시해야 함) ·
+    로그인 "간편 계정 연결" 라벨 복원(Figma 미존재 — 사용자 요청).
 - 🎨 **Figma 디자인 v2 전면 재적용 완료(2026-08-13, `main`)** — 안드로이드 스튜디오 확인 결과
   기존 구현이 Figma 와 전혀 달라 **16프레임 → 14화면**을 실측 기반으로 재구현했다.
   절차·결정 기록은 `docs/runbooks/figma-app-extraction.md` §v2.

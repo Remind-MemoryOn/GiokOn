@@ -21,6 +21,7 @@ export default function Register() {
       const base = {
         name: v.name.trim(),
         birthYear: Number(v.birthYear),
+        gender: v.gender,
         hometown: v.hometown.trim() || undefined,
         family: v.family.trim() || undefined,
         job: v.job.trim() || undefined,
@@ -29,9 +30,14 @@ export default function Register() {
       let elder = await upsertElder(base);
 
       // 사진은 어르신 id 가 있어야 저장 경로가 정해지므로 등록 직후에 올린다.
-      if (v.pickedPhotoUri) {
-        const photoPath = await saveElderPhoto(elder.id, v.pickedPhotoUri);
-        elder = await upsertElder({ ...base, id: elder.id, photoPath });
+      // 사진 업로드가 실패해도 등록 자체는 이미 끝났으므로 안내만 하고 진행한다.
+      if (v.pickedPhoto) {
+        try {
+          const photoPath = await saveElderPhoto(elder.id, v.pickedPhoto);
+          elder = await upsertElder({ ...base, id: elder.id, photoPath });
+        } catch (e) {
+          Alert.alert('사진 저장 실패', e instanceof Error ? e.message : '사진만 저장하지 못했어요.');
+        }
       }
 
       for (const m of v.memories) {

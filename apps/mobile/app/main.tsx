@@ -75,12 +75,28 @@ export default function Main() {
           <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
             안녕하세요!
           </Text>
-          <View className="flex-row items-end">
+          {/*
+           * 이름 + " 요양 보호사님"은 **한 줄의 같은 텍스트 흐름**이어야 한다.
+           * 예전에는 이름을 밑줄과 함께 별도 View 로 감싸 flex-row 로 붙였는데, 밑줄이
+           * 그 View 의 높이를 바꿔 이름만 위아래로 어긋나 보였다(사용자 지적 2026-08-13).
+           * → 밑줄은 레이아웃에 영향이 없도록 **절대 배치**하고, 텍스트는 한 줄로 흘린다.
+           */}
+          <View className="flex-row items-baseline">
             <View>
               <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
                 {caregiverName}
               </Text>
-              <View style={{ height: 3, backgroundColor: '#e9822b', marginTop: -9 }} />
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  // Figma: 밑줄 62×3 @ y205 · 이름 박스 179..214 → 아래에서 6
+                  bottom: 6,
+                  height: 3,
+                  backgroundColor: '#e9822b',
+                }}
+              />
             </View>
             <Text className="text-[24px] font-semibold text-black" style={{ lineHeight: 35 }}>
               {' '}

@@ -14,21 +14,56 @@ const BUCKET = 'elder-photos';
 /** signed URL 유효기간(초). 화면 체류 중 만료되지 않을 정도로 넉넉히. */
 const SIGNED_TTL = 60 * 60;
 
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
 /**
- * 로컬 파일(expo-image-picker 결과 uri)을 업로드하고 저장할 경로를 반환한다.
- * RN 에는 File 이 없어 fetch→ArrayBuffer 로 바이트를 만들어 올린다.
+ * base64 → 바이트.
+ *
+ * ⚠️ 예전 구현은 `fetch(file://…)` 로 바이트를 읽었는데, RN 의 fetch 폴리필
+ * (whatwg-fetch)은 file:// 응답의 `xhr.status` 가 0 이라 `new Response(body,{status:0})`
+ * 에서 RangeError 를 던진다 — 그것도 setTimeout 안이라 **잡히지 않는 Uncaught Error**
+ * ("Failed to construct 'Response': The status provided (0) is outside the range
+ * [200, 599]") 로 뜨고 업로드 프라미스는 영영 안 풀린다(사용자 기기 재현 2026-08-13).
+ * 그래서 파일을 읽지 않고 expo-image-picker 가 바로 주는 base64 를 쓴다.
  */
-export async function uploadElderPhoto(profileId: string, localUri: string): Promise<string> {
-  const ext = (localUri.split('.').pop() || 'jpg').toLowerCase().split('?')[0];
+function base64ToBytes(b64: string): Uint8Array {
+  const clean = b64.replace(/[^A-Za-z0-9+/]/g, '');
+  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+  const out = new Uint8Array((clean.length * 3) / 4 - pad);
+  let p = 0;
+  for (let i = 0; i < clean.length; i += 4) {
+    const n =
+      (B64.indexOf(clean[i]) << 18) |
+      (B64.indexOf(clean[i + 1]) << 12) |
+      (B64.indexOf(clean[i + 2] ?? 'A') << 6) |
+      B64.indexOf(clean[i + 3] ?? 'A');
+    if (p < out.length) out[p++] = (n >> 16) & 0xff;
+    if (p < out.length) out[p++] = (n >> 8) & 0xff;
+    if (p < out.length) out[p++] = n & 0xff;
+  }
+  return out;
+}
+
+/** 어르신 사진 입력 — 표시용 로컬 uri + 업로드용 base64(expo-image-picker 결과). */
+export interface PickedPhoto {
+  uri: string;
+  /** picker 가 base64 를 못 준 경우 null → 업로드를 건너뛰고 안내한다. */
+  base64: string | null;
+}
+
+/**
+ * 고른 사진을 업로드하고 저장할 경로를 반환한다.
+ * RN 에는 File 이 없어 base64 → Uint8Array 로 바이트를 만들어 올린다.
+ */
+export async function uploadElderPhoto(profileId: string, photo: PickedPhoto): Promise<string> {
+  if (!photo.base64) throw new Error('사진을 읽지 못했어요. 다시 선택해 주세요.');
+  const ext = (photo.uri.split('.').pop() || 'jpg').toLowerCase().split('?')[0];
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
   const path = `${profileId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
 
-  const res = await fetch(localUri);
-  const bytes = await res.arrayBuffer();
-
   const { error } = await getGiokonClient()
     .storage.from(BUCKET)
-    .upload(path, bytes, { contentType, upsert: false });
+    .upload(path, base64ToBytes(photo.base64), { contentType, upsert: false });
   if (error) throw new Error(error.message);
   return path;
 }
@@ -42,9 +77,9 @@ function isLocalUri(path: string): boolean {
  * 사진 저장 — 설정 시 Storage 에 올리고 경로를, 미설정(목업)이면 로컬 uri 를 그대로
  * 돌려준다. 반환값을 `profiles.photo_path`(또는 목업 elder.photoPath)에 넣는다.
  */
-export async function saveElderPhoto(profileId: string, localUri: string): Promise<string> {
-  if (!isSupabaseConfigured) return localUri;
-  return uploadElderPhoto(profileId, localUri);
+export async function saveElderPhoto(profileId: string, photo: PickedPhoto): Promise<string> {
+  if (!isSupabaseConfigured) return photo.uri;
+  return uploadElderPhoto(profileId, photo);
 }
 
 /** 경로 → 표시용 signed URL(실패·미설정 시 null). */

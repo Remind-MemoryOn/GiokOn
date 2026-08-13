@@ -45,12 +45,25 @@ export default function SessionStart() {
 
       {/* 타이틀 — 이름에 주황 밑줄 */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (347 / FRAME_H) * height }}>
-        <View className="flex-row items-end">
+        {/* 밑줄은 절대 배치 — 줄 높이에 영향을 주지 않아야 이름이 같은 줄에 정렬된다.
+            lineHeight 42 안에서 28px 잉크의 아래쪽 여백이 커서, Figma 처럼 글자 바로
+            아래(잉크 기준 4px)에 붙도록 bottom 을 잡는다. */}
+        <View className="flex-row items-baseline">
           <View>
             <Text className="text-[28px] font-semibold text-black text-center" style={{ lineHeight: 42 }}>
               {elder.name}
             </Text>
-            <View style={{ height: 4, backgroundColor: '#e9822b', marginTop: -5 }} />
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                // Figma: 밑줄 71×4 @ y378 · 타이틀 박스 347..389 → 아래에서 7
+                bottom: 7,
+                height: 4,
+                backgroundColor: '#e9822b',
+              }}
+            />
           </View>
           <Text className="text-[28px] font-semibold text-black" style={{ lineHeight: 42 }}>
             {' '}

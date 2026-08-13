@@ -61,20 +61,29 @@ export function computeParticipation(
 }
 
 /**
- * 관심 주제 TOP5(관찰 빈도 기반). 근거: 연대기 주제 + 분석의 주제 반응.
+ * 관심 주제 TOP5 — **대화에서 실제로 관찰된 반응**만 센다.
+ *
+ * ⚠️ 연대기(chronicles)는 요양보호사가 입력해 둔 *후보* 주제일 뿐 관찰 결과가 아니다.
+ * 예전 구현은 연대기 주제에 가중치 2를 줬는데, 그러면 **대화를 한 번도 하지 않은
+ * 어르신에게 "주요 기억 100%" 같은 분포가 표시**된다(사용자 지적 2026-08-13).
+ * 관찰 기록이 없는데 관찰값을 그리는 것이므로 실서비스 원칙 위반 → 세션 분석이
+ * 하나도 없으면 빈 배열을 돌려주고, 있을 때만 연대기를 **동점 정렬 보조**로 쓴다.
+ *
  * 근거가 없으면 **빈 배열**(화면은 빈 상태 표시) — 예시 분포를 만들지 않는다.
  */
 export function computeTopicShares(
   chronicles: ChronicleEntry[],
   analyses: SessionAnalysis[],
 ): TopicShare[] {
+  if (analyses.length === 0) return []
   const counts = new Map<string, number>()
   const bump = (t: string, n = 1) => counts.set(t, (counts.get(t) ?? 0) + n)
-  for (const c of chronicles) bump(c.topic, 2)
   for (const a of analyses) {
     for (const t of a.topicsEngaged) bump(t, 3)
     for (const o of a.topicOutcomes) bump(o.topic, o.elderTurns)
   }
+  // 연대기는 **이미 관찰된 주제**에만 소량 가산한다(없던 주제를 만들어내지 않는다).
+  for (const c of chronicles) if (counts.has(c.topic)) bump(c.topic, 2)
   if (counts.size === 0) return []
   const max = Math.max(...counts.values())
   return [...counts.entries()]
