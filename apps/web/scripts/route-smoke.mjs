@@ -1,10 +1,49 @@
 // 웹 라우트 스모크 — vite preview 위에서 Chromium 으로 순회한다.
 // 각 라우트: 렌더 확인(기대 텍스트) + 콘솔 에러 수집 + 가드 리다이렉트 검증.
-// 사용: pnpm build && pnpm preview (별도 셸) → pnpm smoke
-//   (BASE_URL 로 대상 변경 가능. Chromium 경로는 CHROMIUM_PATH 로 재지정.)
+//
+// 사용: pnpm -F @giokon/web smoke   (dist 가 있으면 preview 를 **스스로 띄우고** 끈다)
+//   - 이미 preview 를 띄워 뒀거나 배포본을 대상으로 하려면 BASE_URL 지정 → 그대로 사용.
+//   - Chromium 경로는 CHROMIUM_PATH 로 재지정.
 import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4173';
+const PORT = Number(process.env.PORT || 4173);
+const BASE = process.env.BASE_URL || `http://localhost:${PORT}`;
+/** BASE_URL 을 명시했으면 사용자가 띄운 서버를 존중하고, 아니면 직접 띄운다. */
+const SELF_SERVE = !process.env.BASE_URL;
+
+async function reachable(url, timeoutMs = 1500) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok || res.status < 500;
+  } catch {
+    return false;
+  }
+}
+
+/** vite preview 를 띄우고 준비될 때까지 기다린다. 실패 시 null. */
+async function startPreview() {
+  if (!existsSync(new URL('../dist/index.html', import.meta.url))) {
+    console.error('✗ dist 가 없습니다 — 먼저 `pnpm -F @giokon/web build` 를 실행하세요.');
+    process.exit(1);
+  }
+  const child = spawn(
+    'node',
+    ['./node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'],
+    { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore', detached: false },
+  );
+  for (let i = 0; i < 60; i++) {
+    if (await reachable(BASE)) return child;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  child.kill();
+  console.error(`✗ preview 가 ${BASE} 에서 뜨지 않았습니다.`);
+  process.exit(1);
+}
+
+let preview = null;
+if (SELF_SERVE && !(await reachable(BASE))) preview = await startPreview();
 
 // [경로, 기대 텍스트(렌더 확인), 설명]
 const CASES = [
@@ -33,7 +72,6 @@ const CASES = [
 ];
 
 // CHROMIUM_PATH > 사전 설치 브라우저(/opt/pw-browsers) > playwright 기본 순.
-import { existsSync } from 'node:fs';
 const executablePath =
   process.env.CHROMIUM_PATH ??
   (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -63,6 +101,7 @@ for (const [path, expected, label] of CASES) {
 }
 
 await browser.close();
+preview?.kill();
 
 if (consoleErrors.length > 0) {
   console.log('\n⚠️ 콘솔 오류:');

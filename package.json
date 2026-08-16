@@ -15,9 +15,13 @@
     "typecheck": "pnpm -r typecheck",
     "check:copy": "node scripts/check-nonmedical-copy.mjs",
     "web": "pnpm -F @giokon/web dev",
+    "web:preview": "pnpm -F @giokon/web build && pnpm -F @giokon/web preview",
+    "web:smoke": "pnpm -F @giokon/web build && pnpm -F @giokon/web smoke",
     "format": "prettier --write .",
     "check:font": "node scripts/check-font-class.mjs",
-    "check:figma": "node scripts/check-figma-spec.mjs"
+    "check:figma": "node scripts/check-figma-spec.mjs",
+    "check:design": "node scripts/check-web-design.mjs",
+    "check:web": "pnpm -F @giokon/web typecheck && pnpm -F @giokon/web lint && pnpm check:copy && pnpm check:design && pnpm -F @giokon/web build && pnpm -F @giokon/web smoke"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
