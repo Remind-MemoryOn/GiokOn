@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 버전은 package.json 의 packageManager(pnpm@10.33.0)만을 출처로 둔다.
+      # action 의 `version` 입력과 병기하면 action-setup 이 중복 지정으로 실패한다.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -32,6 +32,8 @@ jobs:
       - run: pnpm -r lint
       - name: 비의료 포지셔닝 카피 린트 (M9.6)
         run: pnpm check:copy
+      - name: 웹 디자인 스펙 대조 — 완성 디자인 고정 (docs/require/기억온_웹_디자인.md)
+        run: pnpm check:design
       - run: pnpm -r test
       - run: pnpm -r build
 
@@ -76,9 +78,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 버전은 package.json 의 packageManager(pnpm@10.33.0)만을 출처로 둔다.
+      # action 의 `version` 입력과 병기하면 action-setup 이 중복 지정으로 실패한다.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
