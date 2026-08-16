@@ -1,8 +1,9 @@
 // 설정 (M9.4 정보주체 권리 포함) — 계정 정보·내 데이터 다운로드(이동권)·
 // 계정 삭제 절차 안내·법적 문서 링크.
 //
-// 인증 개편(T17.5): 로그인=소셜 3종(구글·카카오·네이버)이라 비밀번호가 없다 —
-// 비밀번호 변경 섹션 제거, 연결된 소셜 계정 안내로 대체.
+// 인증(T17.5 + 2026-07-23 이메일 병행 재도입): 로그인 수단은 이메일(아이디)+
+// 비밀번호와 소셜 3종(구글·카카오·네이버)이다. 로그인 상태의 비밀번호 변경 UI 는
+// 디자인 스펙에 없어 두지 않고, 재설정 메일 흐름(/forgot-password)으로 안내한다.
 // 데이터 다운로드는 @giokon/core의 buildSubjectDataExport로 이식 가능한 JSON을 만든다.
 // 계정 삭제는 기관 재귀속·증빙 보존이 필요한 서버사이드 절차(buildAccountDeletionPlan)
 // 라 실행 버튼 대신 절차를 투명하게 안내한다(Edge Function 연동 후 셀프서비스 전환).
@@ -145,9 +146,14 @@ export function SettingsPage() {
               </div>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500" style={{ wordBreak: 'keep-all' }}>
-              로그인은 소셜 계정(구글·카카오·네이버)으로 이루어지며, 기억온은
-              비밀번호를 저장하지 않습니다. 비밀번호 관리(변경·분실)는 각 소셜 계정에서
-              해주세요.
+              로그인은 이메일(아이디)+비밀번호와 소셜 계정(구글·카카오·네이버)을 함께
+              지원합니다. 비밀번호는 암호화되어 저장되며 기억온이 원문을 보관하지
+              않습니다. 이메일 계정의 비밀번호 변경은 로그아웃 후{' '}
+              <Link to="/forgot-password" className="underline underline-offset-2 hover:text-slate-700">
+                비밀번호 찾기
+              </Link>
+              에서 재설정 메일로 진행하고, 소셜 계정의 비밀번호는 각 소셜 서비스에서
+              관리해 주세요.
             </div>
           </CardBody>
         </Card>

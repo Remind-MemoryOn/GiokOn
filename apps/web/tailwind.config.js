@@ -17,6 +17,9 @@ export default {
           900: '#65351d',
         },
         // 어르신 화면 전용 따뜻한 톤 (Netlify 참고 사이트 기반)
+        // ⚠️ 값은 @giokon/theme(palette) 단일 소스의 미러다 — tailwind.config 는
+        //    TS 소스를 직접 import 할 수 없어 값을 정합하고, `pnpm check:design`
+        //    이 두 곳의 동일성을 기계 검증한다.
         warm: {
           50:  '#fffaf3',
           100: '#fef3e2',
@@ -26,6 +29,7 @@ export default {
           500: '#e08e51',
           600: '#c87436',
           700: '#a35a2a',
+          800: '#854621',
         },
         cream: {
           50: '#fffefb',
