@@ -10,6 +10,7 @@
 //   글자수    Regular 16/30 #7b7c7c @ 박스 내 우측 21 ← 값이 있을 때만(빈 상태엔 없다)
 //   행 간격   라벨top 306·414·521·628·735·843·950 (pitch 108/107/107/107/108/107)
 //   드롭다운  ∨ 14.14×9.54 @ 박스 우측 21.9 · 검색 🔍 19×20.31 @ 박스 우측 21
+//   달력      🗓 19×19 @ 박스 우측 20 (생년월일 — 누르면 Figma `568:286` 캘린더)
 //   주요 기억 행 pitch 60(= 46+14) · 삭제 X 13.7 @ 우측 21 · ＋ 16 @ 박스 내 left 18
 //   사진      126×130 r14 #f5f5f5 border #e3e3e3 · 아이콘 중앙(빈=사진추가 / 채움=수정)
 //   저장하기  336×57 r10 #e9822b · 라벨 SemiBold 18/30 흰색
@@ -27,7 +28,9 @@ import {
   View,
   type KeyboardTypeOptions,
 } from 'react-native';
-import { birthLabel, birthYearFromDate, daysInMonth, isBirthDate } from '@giokon/core';
+import Svg, { Line, Rect } from 'react-native-svg';
+import { birthSlashLabel } from '@giokon/core';
+import { Calendar } from './Calendar';
 import iconRequired from '../../assets/brand/icon-required.png';
 import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 import iconFieldSearch from '../../assets/brand/icon-field-search.png';
@@ -101,6 +104,23 @@ function Placeholder({ text }: { text: string }) {
         {text}
       </Text>
     </View>
+  );
+}
+
+/**
+ * 생년월일 필드의 달력 아이콘 — Figma 19×19 벡터(`568:46`/`568:48`).
+ * egress 정책상 figma.com 에셋을 못 받아 같은 치수로 그린다. 색은 같은 필드의 검색
+ * 아이콘 에셋에서 뽑은 회색(#c8c8c8).
+ */
+function CalendarGlyph() {
+  const c = '#c8c8c8';
+  return (
+    <Svg width={19} height={19}>
+      <Rect x={1} y={3.6} width={17} height={14.4} rx={2.6} stroke={c} strokeWidth={1.4} fill="none" />
+      <Line x1={1} y1={8.2} x2={18} y2={8.2} stroke={c} strokeWidth={1.4} />
+      <Line x1={5.6} y1={1.4} x2={5.6} y2={5.2} stroke={c} strokeWidth={1.4} strokeLinecap="round" />
+      <Line x1={13.4} y1={1.4} x2={13.4} y2={5.2} stroke={c} strokeWidth={1.4} strokeLinecap="round" />
+    </Svg>
   );
 }
 
@@ -245,12 +265,14 @@ export function SelectField({
 
 // ── 날짜 선택 — 생년월일 ──────────────────────────────────────
 /**
- * 생년월일 필드. **Figma 의 드롭다운 필드 한 칸을 그대로 쓰고**(박스 336×46 · ∨ 아이콘)
- * 바텀시트만 년/월/일 3열로 바꾼다 — 필드를 3개로 쪼개면 폼의 행 리듬(Figma pitch 107/108)이
- * 깨지기 때문이다.
+ * 생년월일 필드 (Figma 어르신 등록 `56:337` / 연대기 수정 `15:7`).
  *
- * 값은 `YYYY-MM-DD`(빈 문자열 = 미선택). 표시는 "1945년 3월 12일".
- * 월 길이가 바뀌면 일을 잘라 붙인다(2월 30일 같은 값이 만들어지지 않게).
+ * Figma 실측: 라벨 "생년월일" @(29,414) · 박스 336×46 @(29,450) · 값/안내문구 @(45,458)
+ *   우측 달력 아이콘 19×19 @(326,463) = 박스 우측 20 · 세로 중앙
+ *   값 표기는 "1945 / 5 / 13" (년월일 한자 없이 슬래시 구분 — core birthSlashLabel)
+ *
+ * 누르면 Figma `568:286` 캘린더가 뜬다(사용자 변경 2026-08-17: 스크롤 목록 → 캘린더).
+ * 아이콘만이 아니라 필드 전체가 눌린다 — 19px 아이콘만 대상으로 두면 누르기 어렵다.
  */
 export function DateField({
   label,
@@ -273,140 +295,57 @@ export function DateField({
   gap?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const valid = isBirthDate(value);
-  // 시트를 열 때의 시작값 — 값이 없으면 목록 중간쯤(가장 흔한 연령대)에서 시작한다.
-  const [draft, setDraft] = useState({ y: 0, m: 1, d: 1 });
-
-  const years = useMemo(
-    () => Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i),
-    [minYear, maxYear],
-  );
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
-  const days = useMemo(
-    () =>
-      Array.from(
-        { length: daysInMonth(draft.y || maxYear, draft.m) },
-        (_, i) => i + 1,
-      ),
-    [draft.y, draft.m, maxYear],
-  );
-
-  const openSheet = () => {
-    if (valid) {
-      const [y, m, d] = value.split('-').map(Number);
-      setDraft({ y, m, d });
-    } else {
-      setDraft({ y: 0, m: 1, d: 1 });
-    }
-    setOpen(true);
-  };
-
-  const pick = (part: 'y' | 'm' | 'd', n: number) => {
-    setDraft((cur) => {
-      const next = { ...cur, [part]: n };
-      // 월이 짧아지면 일을 잘라 붙인다(예: 3/31 → 2월 선택 시 2/28).
-      const max = daysInMonth(next.y || maxYear, next.m);
-      if (next.d > max) next.d = max;
-      return next;
-    });
-  };
-
-  const confirm = () => {
-    if (!draft.y) return;
-    const iso = `${draft.y}-${String(draft.m).padStart(2, '0')}-${String(draft.d).padStart(2, '0')}`;
-    onSelect(iso);
-    setOpen(false);
-  };
-
-  const column = (
-    items: number[],
-    suffix: string,
-    selected: number,
-    part: 'y' | 'm' | 'd',
-  ) => (
-    <FlatList
-      data={items}
-      keyExtractor={(n) => `${part}-${n}`}
-      style={{ flex: 1 }}
-      initialNumToRender={24}
-      renderItem={({ item }) => {
-        const on = item === selected;
-        return (
-          <Pressable
-            onPress={() => pick(part, item)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-            className="active:opacity-70"
-            style={{ height: 42, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text
-              className={`text-[18px] ${on ? 'font-semibold text-accent' : 'font-normal text-black'}`}
-              style={{ lineHeight: 30 }}
-            >
-              {item}
-              {suffix}
-            </Text>
-          </Pressable>
-        );
-      }}
-    />
-  );
+  const shown = birthSlashLabel(value);
 
   return (
     <View style={{ marginBottom: gap }}>
       <FieldLabel label={label} required={required} />
       <View style={boxWrapStyle}>
-        <FieldBox onPress={openSheet}>
-          {valid ? (
+        <FieldBox onPress={() => setOpen(true)}>
+          {shown.length > 0 ? (
             <Text
               className={`absolute ${valueClass}`}
               style={{ ...valueStyle, left: FORM.valueInset, top: 8 }}
             >
-              {birthLabel({ birthYear: birthYearFromDate(value), birthDate: value })}
+              {shown}
             </Text>
           ) : (
             <Placeholder text={placeholder} />
           )}
-          <Image
-            source={iconChevronDown}
-            style={{ position: 'absolute', right: 21.9, top: 18, width: 14.14, height: 9.54 }}
-            resizeMode="contain"
-          />
+          {/* 달력 아이콘 — Figma 19×19, 박스 우측 20 · 세로 중앙(박스 46) */}
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', right: 20, top: (FORM.fieldH - 19) / 2 }}
+          >
+            <CalendarGlyph />
+          </View>
         </FieldBox>
       </View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable
-          className="flex-1 justify-end"
+          className="flex-1 items-center justify-center"
           style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
           onPress={() => setOpen(false)}
         >
-          {/* 시트 내부 탭이 배경 닫힘으로 전파되지 않게 Pressable 로 감싼다 */}
-          <Pressable
-            onPress={() => {}}
-            className="bg-white"
-            style={{ borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12 }}
-          >
-            <Text
-              className="text-[18px] font-semibold text-black text-center"
-              style={{ lineHeight: 30, marginBottom: 8 }}
-            >
-              {label}
-            </Text>
-            <View className="flex-row" style={{ height: 210, paddingHorizontal: FORM.left }}>
-              {column(years, '년', draft.y, 'y')}
-              {column(months, '월', draft.m, 'm')}
-              {column(days, '일', draft.d, 'd')}
-            </View>
-            <View style={{ paddingHorizontal: FORM.left, paddingTop: 12 }}>
-              <SaveButton label="선택 완료" onPress={confirm} disabled={!draft.y} />
-            </View>
+          {/* 카드 내부 탭이 배경 닫힘으로 전파되지 않게 감싼다 */}
+          <Pressable onPress={() => {}}>
+            <Calendar
+              value={value.length > 0 ? value : null}
+              minYear={minYear}
+              maxYear={maxYear}
+              onSelect={(iso) => {
+                onSelect(iso);
+                setOpen(false);
+              }}
+            />
           </Pressable>
         </Pressable>
       </Modal>
     </View>
   );
 }
+
 
 // ── 검색형 — 출신지 ──────────────────────────────────────────
 export function SearchField({

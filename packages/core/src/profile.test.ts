@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { birthLabel, birthYearFromDate, daysInMonth, elderAge, isBirthDate } from './profile'
+import {
+  birthLabel,
+  birthSlashLabel,
+  birthYearFromDate,
+  daysInMonth,
+  elderAge,
+  isBirthDate,
+} from './profile'
 
 describe('isBirthDate', () => {
   it('실제 존재하는 날짜만 통과시킨다', () => {
@@ -54,5 +61,17 @@ describe('birthLabel', () => {
   it('월·일을 모르면 아는 만큼만 표기한다(임의값 금지)', () => {
     expect(birthLabel({ birthYear: 1945 })).toBe('1945년')
     expect(birthLabel({ birthYear: 1945, birthDate: 'invalid' })).toBe('1945년')
+  })
+})
+
+describe('birthSlashLabel', () => {
+  it('폼 필드 표기는 `1945 / 5 / 13`(0 채우지 않음)', () => {
+    expect(birthSlashLabel('1945-05-13')).toBe('1945 / 5 / 13')
+    expect(birthSlashLabel('1945-11-01')).toBe('1945 / 11 / 1')
+  })
+
+  it('값이 없거나 형식이 아니면 빈 문자열', () => {
+    expect(birthSlashLabel('')).toBe('')
+    expect(birthSlashLabel('1945-02-30')).toBe('')
   })
 })

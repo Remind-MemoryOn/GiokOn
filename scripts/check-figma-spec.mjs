@@ -558,13 +558,40 @@ const SPECS = [
     `${APP}/src/components/ProfileForm.tsx`,
     // 생년월일은 Figma 드롭다운 필드 한 칸을 그대로 쓰고 시트만 년/월/일 3열로 바꾼다
     // (필드를 3개로 쪼개면 폼 행 pitch 107/108 이 깨진다).
-    '폼: 생년월일 = 드롭다운 필드 1칸 + 년/월/일 3열 시트',
+    '폼: 생년월일 = 드롭다운 필드 1칸 + 캘린더',
     [/label="생년월일"/, /minYear=\{minYear\}/, /maxYear=\{maxYear\}/, /isBirthDate\(values\.birthDate\)/],
   ],
   [
     `${APP}/src/components/form.tsx`,
-    '폼: DateField 는 월 길이에 맞춰 일을 자른다(2월 30일 방지)',
-    [/export function DateField/, /daysInMonth\(next\.y \|\| maxYear, next\.m\)/],
+    '폼: 생년월일 값 "1945 / 5 / 13" · 달력 아이콘 19×19 @ 박스 우측 20',
+    [/export function DateField/, /birthSlashLabel\(value\)/, /function CalendarGlyph/, /right: 20, top: \(FORM\.fieldH - 19\) \/ 2/, /<Calendar$/m],
+  ],
+
+  // ── 캘린더 (Figma 568:286, 318×308 — 2026-08-17 사용자 변경) ────────────
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 카드 318 pad16 r16 border #d9d9d9 · 내부 286',
+    [/width: 318/, /pad: 16/, /inner: 286/, /border: '#d9d9d9'/, /borderRadius: 16/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 헤더 36 gap16 · 선택그룹 182 gap8 · 필드 pad6 r8',
+    [/headerH: 36/, /headerGap: 16/, /selectGroupW: 182/, /selectGap: 8/, /fieldPad: 6/, /fieldR: 8/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 칸 40×40 r8 gap1 · Thead 20 · 테이블 pt16',
+    [/cell: 40/, /cellGap: 1/, /cellR: 8/, /theadH: 20/, /tablePadTop: 16/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 상태별 색 — 기본 #1e1e1e / 선택 #e9822b+#f5f5f5 / 다음달 #b3b3b3 / 요일 #757575',
+    [/text: '#1e1e1e'/, /active: '#e9822b'/, /onActive: '#f5f5f5'/, /disabled: '#b3b3b3'/, /weekday: '#757575'/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 일요일 시작 · 앞은 빈 칸(Hidden) · 뒤는 다음 달 숫자(Disabled, 선택 불가)',
+    [/WEEKDAYS = \['일', '월', '화', '수', '목', '금', '토'\]/, /state: 'hidden'/, /state: 'disabled'/, /disabled=\{off\}/],
   ],
   [
     `${APP}/app/elder/[id].tsx`,

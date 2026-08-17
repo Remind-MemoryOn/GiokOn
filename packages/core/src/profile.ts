@@ -46,6 +46,16 @@ export function elderAge(elder: BirthFields, now = new Date()): number {
 }
 
 /**
+ * 폼 입력 필드 표기 — `1945 / 5 / 13` (Figma 어르신 등록/연대기 수정).
+ * 값이 없거나 형식이 아니면 빈 문자열(호출부가 안내문구를 띄운다).
+ */
+export function birthSlashLabel(iso: string): string {
+  if (!isBirthDate(iso)) return ''
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${y} / ${m} / ${d}`
+}
+
+/**
  * 생년월일 표기 — `1945년 3월 12일`. 월·일을 모르면 아는 만큼만 `1945년`.
  * (화면 라벨이 "생년월일"이어도 없는 월·일을 만들어 붙이지 않는다.)
  */
