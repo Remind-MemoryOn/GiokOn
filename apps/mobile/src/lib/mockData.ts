@@ -46,6 +46,7 @@ export const ELDER_LAST_TALK: Record<string, string> = {
 
 export const MOCK_ELDERS: ElderProfile[] = [
   elder('eld_lee', '이순자', 83, {
+    birthDate: '1943-03-12',
     gender: 'female',
     hometown: '전라북도 전주시',
     family: '2녀, 사위 2명, 손자 3명',
@@ -53,10 +54,10 @@ export const MOCK_ELDERS: ElderProfile[] = [
     hobbies: '텃밭 가꾸기',
     updatedAt: '2026-06-24T09:20:00.000Z',
   }),
-  elder('eld_park', '박만수', 79, { gender: 'male', hometown: '경상남도 진주시', job: '농사', hobbies: '바둑' }),
-  elder('eld_kim', '김영희', 71, { gender: 'female', hometown: '서울', family: '아들 하나', hobbies: '노래' }),
-  elder('eld_choio', '최옥순', 86, { gender: 'female', hometown: '충청북도 청주시', hobbies: '뜨개질' }),
-  elder('eld_choise', '최성호', 73, { gender: 'male', hometown: '강원도 강릉시', job: '어부' }),
+  elder('eld_park', '박만수', 79, { birthDate: '1947-08-05', gender: 'male', hometown: '경상남도 진주시', job: '농사', hobbies: '바둑' }),
+  elder('eld_kim', '김영희', 71, { birthDate: '1955-01-22', gender: 'female', hometown: '서울', family: '아들 하나', hobbies: '노래' }),
+  elder('eld_choio', '최옥순', 86, { birthDate: '1940-06-30', gender: 'female', hometown: '충청북도 청주시', hobbies: '뜨개질' }),
+  elder('eld_choise', '최성호', 73, { birthDate: '1953-11-17', gender: 'male', hometown: '강원도 강릉시', job: '어부' }),
 ];
 
 export const MOCK_CHRONICLES: ChronicleEntry[] = [
@@ -143,11 +144,6 @@ export const MOCK_LOGS: ConversationLog[] = [
     ],
   },
 ];
-
-/** 나이 표시(현재 연도 기준). */
-export function ageOf(birthYear: number): number {
-  return YEAR - birthYear;
-}
 
 /** 시드 로그의 관찰 분석을 미리 계산(단일 분석 화면 시연용) — core.analyzeSession 재사용. */
 export function seedAnalyses(): Record<string, SessionAnalysis> {

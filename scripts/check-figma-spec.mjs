@@ -556,6 +556,23 @@ const SPECS = [
   ],
   [
     `${APP}/src/components/ProfileForm.tsx`,
+    // 생년월일은 Figma 드롭다운 필드 한 칸을 그대로 쓰고 시트만 년/월/일 3열로 바꾼다
+    // (필드를 3개로 쪼개면 폼 행 pitch 107/108 이 깨진다).
+    '폼: 생년월일 = 드롭다운 필드 1칸 + 년/월/일 3열 시트',
+    [/label="생년월일"/, /minYear=\{minYear\}/, /maxYear=\{maxYear\}/, /isBirthDate\(values\.birthDate\)/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: DateField 는 월 길이에 맞춰 일을 자른다(2월 30일 방지)',
+    [/export function DateField/, /daysInMonth\(next\.y \|\| maxYear, next\.m\)/],
+  ],
+  [
+    `${APP}/app/elder/[id].tsx`,
+    '상세: 정보카드 첫 행 = 생년월일(연도만 알면 연도만 표기)',
+    [/label: '생년월일', value: birthLabel\(elder\)/, /elderAge\(elder\)/],
+  ],
+  [
+    `${APP}/src/components/ProfileForm.tsx`,
     '폼: 성별 수집(메인 카드·상세의 "81세 l 여성" 표기 근거)',
     [/label="성별"/, /GENDER_VALUE\[v\]/, /base64: true/],
   ],

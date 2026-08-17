@@ -186,6 +186,7 @@ export const useApp = create<AppState>((set, get) => ({
       id: patch.id ?? uid('eld_'),
       name: patch.name,
       birthYear: patch.birthYear,
+      birthDate: patch.birthDate,
       hometown: patch.hometown,
       job: patch.job,
       family: patch.family,

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { birthYearFromDate } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ProfileForm, type ProfileSubmit } from '../../src/components/ProfileForm';
 import { useChronicles, useElderView } from '../../src/data/reads';
@@ -25,7 +26,7 @@ export default function ChronicleEdit() {
   const initial = useMemo(
     () => ({
       name: elder?.name ?? '',
-      birthYear: elder ? String(elder.birthYear) : '',
+      birthDate: elder?.birthDate ?? '',
       gender: elder?.gender,
       hometown: elder?.hometown ?? '',
       family: elder?.family ?? '',
@@ -63,7 +64,8 @@ export default function ChronicleEdit() {
       await upsertElder({
         id: elder.id,
         name: v.name.trim(),
-        birthYear: Number(v.birthYear),
+        birthDate: v.birthDate,
+        birthYear: birthYearFromDate(v.birthDate),
         hometown: v.hometown.trim() || undefined,
         family: v.family.trim() || undefined,
         job: v.job.trim() || undefined,

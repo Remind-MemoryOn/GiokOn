@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
+import { birthYearFromDate } from '@giokon/core';
 import { EMPTY_VALUES, ProfileForm, type ProfileSubmit } from '../src/components/ProfileForm';
 import { useUpsertChronicle, useUpsertElder } from '../src/data/writes';
 import { saveElderPhoto } from '../src/data/elder-photo';
@@ -20,7 +21,8 @@ export default function Register() {
     try {
       const base = {
         name: v.name.trim(),
-        birthYear: Number(v.birthYear),
+        birthDate: v.birthDate,
+        birthYear: birthYearFromDate(v.birthDate),
         gender: v.gender,
         hometown: v.hometown.trim() || undefined,
         family: v.family.trim() || undefined,

@@ -16,7 +16,13 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { canStartElderSession, initial, observationSummary } from '@giokon/core';
+import {
+  birthLabel,
+  canStartElderSession,
+  elderAge,
+  initial,
+  observationSummary,
+} from '@giokon/core';
 import { DETAIL_TABS, ScreenHeader } from '../../src/components/ScreenHeader';
 import {
   AiOpinion,
@@ -41,7 +47,6 @@ import {
 import { useElderObservations } from '../../src/data/observations';
 import { useElderPhotoUrl } from '../../src/data/elder-photo';
 import { genderLabel, metric, NO_VALUE } from '../../src/lib/format';
-import { ageOf } from '../../src/lib/mockData';
 import iconEdit from '../../assets/brand/icon-edit.png';
 import iconShare from '../../assets/brand/icon-share.png';
 import statTime from '../../assets/brand/stat-time.png';
@@ -111,10 +116,10 @@ function ProfileTab({ elderId }: { elderId: string }) {
   if (!elder) return null;
 
   const gender = genderLabel(elder.gender);
-  const meta = gender ? `${ageOf(elder.birthYear)}세   l   ${gender}` : `${ageOf(elder.birthYear)}세`;
+  const meta = gender ? `${elderAge(elder)}세   l   ${gender}` : `${elderAge(elder)}세`;
   // 값이 없는 항목은 '—'(미입력) — 임의값을 만들지 않는다.
   const rows = [
-    { label: '출생연도', value: `${elder.birthYear}년` },
+    { label: '생년월일', value: birthLabel(elder) },
     { label: '출신지', value: elder.hometown ?? NO_VALUE },
     { label: '가족 구성', value: elder.family ?? NO_VALUE },
     { label: '직업 이력', value: elder.job ?? NO_VALUE },

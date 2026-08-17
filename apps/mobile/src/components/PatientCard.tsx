@@ -9,8 +9,7 @@
 //   - 성별은 profiles.gender(선택) → 미입력이면 표기 생략(임의값 표시 금지).
 //   - 사진은 profiles.photo_path(private Storage) → signed URL. 없으면 이니셜 아바타.
 import { Image, Pressable, Text, View } from 'react-native';
-import { initial, type ElderProfile } from '@giokon/core';
-import { ageOf } from '../lib/mockData';
+import { elderAge, initial, type ElderProfile } from '@giokon/core';
 import { genderLabel, lastTalkLabel } from '../lib/format';
 import { useElderPhotoUrl } from '../data/elder-photo';
 import chevron from '../../assets/brand/btn-chevron.png';
@@ -26,7 +25,7 @@ export function PatientCard({
   onPress: () => void;
 }) {
   const gender = genderLabel(elder.gender);
-  const meta = gender ? `${ageOf(elder.birthYear)}세   l   ${gender}` : `${ageOf(elder.birthYear)}세`;
+  const meta = gender ? `${elderAge(elder)}세   l   ${gender}` : `${elderAge(elder)}세`;
   const photoUrl = useElderPhotoUrl(elder.photoPath);
 
   return (

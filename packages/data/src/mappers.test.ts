@@ -18,6 +18,7 @@ const profileRow: ProfileRow = {
   org_id: 'o1',
   name: '이순자',
   birth_year: 1945,
+  birth_date: '1945-03-12',
   hometown: '전북 전주',
   job: '식당 운영, 30년',
   family: '딸 둘, 사위 둘',
@@ -38,6 +39,7 @@ describe('toElderProfile', () => {
       id: 'p1',
       name: '이순자',
       birthYear: 1945,
+      birthDate: '1945-03-12',
       hometown: '전북 전주',
       job: '식당 운영, 30년',
       family: '딸 둘, 사위 둘',
@@ -202,6 +204,27 @@ describe('toConversationLog', () => {
     expect(conv.endedAt).toBeUndefined()
     expect(conv.status).toBe('active')
     expect(conv.turns).toEqual([])
+  })
+})
+
+describe('toProfileInsert / toProfileUpdate — 생년월일', () => {
+  const base = { name: '이순자', birthYear: 1945 }
+
+  it('birthDate 를 주면 birth_year 를 거기서 파생한다(DB 연도 일치 제약)', () => {
+    // 입력의 birthYear 가 어긋나 있어도 날짜가 이긴다.
+    const ins = toProfileInsert({ ...base, birthYear: 1950, birthDate: '1945-03-12' }, 'u1')
+    expect(ins.birth_date).toBe('1945-03-12')
+    expect(ins.birth_year).toBe(1945)
+
+    const upd = toProfileUpdate({ ...base, birthYear: 1950, birthDate: '1945-03-12' })
+    expect(upd.birth_date).toBe('1945-03-12')
+    expect(upd.birth_year).toBe(1945)
+  })
+
+  it('birthDate 가 없으면 birth_date 는 null(월·일 미상 — 임의값 금지)', () => {
+    expect(toProfileInsert(base, 'u1').birth_date).toBeNull()
+    expect(toProfileInsert(base, 'u1').birth_year).toBe(1945)
+    expect(toProfileUpdate(base).birth_date).toBeNull()
   })
 })
 

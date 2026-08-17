@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog } from './ui/Dialog';
 import { Field, Input, Textarea } from './ui/Input';
 import { Button } from './ui/Button';
+import { birthYearFromDate, isBirthDate } from '@giokon/core';
 import {
   useCreateProfile,
   useUpdateProfile,
@@ -21,7 +22,8 @@ interface Props {
 
 const empty = {
   name: '',
-  birthYear: '' as number | '',
+  /** 생년월일 `YYYY-MM-DD`. DB 가 birth_year 와 연도 일치를 강제하므로 날짜로 받는다. */
+  birthDate: '',
   hometown: '',
   job: '',
   family: '',
@@ -49,7 +51,7 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
       initial
         ? {
             name: initial.name,
-            birthYear: initial.birthYear,
+            birthDate: initial.birthDate ?? '',
             hometown: initial.hometown || '',
             job: initial.job || '',
             family: initial.family || '',
@@ -71,8 +73,10 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
   async function submit() {
     const next: typeof errors = {};
     if (!form.name.trim()) next.name = '이름을 입력해 주세요.';
-    if (!form.birthYear || Number(form.birthYear) < 1900 || Number(form.birthYear) > 2010) {
-      next.birthYear = '1900 ~ 2010 사이의 연도를 입력해 주세요.';
+    if (!isBirthDate(form.birthDate)) {
+      next.birthDate = '생년월일을 선택해 주세요.';
+    } else if (form.birthDate < '1900-01-01' || form.birthDate > '2006-12-31') {
+      next.birthDate = '1900 ~ 2006 사이의 생년월일을 선택해 주세요.';
     }
     setErrors(next);
     if (Object.keys(next).length > 0) return;
@@ -84,7 +88,8 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
 
     const input: ElderWriteInput = {
       name: form.name.trim(),
-      birthYear: Number(form.birthYear),
+      birthDate: form.birthDate,
+      birthYear: birthYearFromDate(form.birthDate),
       hometown: form.hometown.trim() || undefined,
       job: form.job.trim() || undefined,
       family: form.family.trim() || undefined,
@@ -131,12 +136,13 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
             placeholder="예: 이순자"
           />
         </Field>
-        <Field label="출생연도" required error={errors.birthYear}>
+        <Field label="생년월일" required error={errors.birthDate}>
           <Input
-            type="number"
-            value={form.birthYear}
-            onChange={(e) => update('birthYear', e.target.value === '' ? '' : Number(e.target.value))}
-            placeholder="예: 1945"
+            type="date"
+            min="1900-01-01"
+            max="2006-12-31"
+            value={form.birthDate}
+            onChange={(e) => update('birthDate', e.target.value)}
           />
         </Field>
         <Field label="출신지">

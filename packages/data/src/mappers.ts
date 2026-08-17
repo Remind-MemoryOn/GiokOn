@@ -8,6 +8,7 @@
 
 import {
   DEFAULT_APPEARANCE,
+  birthYearFromDate,
   pickAvatarColor,
   type ChronicleEntry,
   type ChronicleSource,
@@ -37,6 +38,7 @@ export function toElderProfile(row: ProfileRow): ElderProfile {
     id: row.id,
     name: row.name,
     birthYear: row.birth_year,
+    birthDate: row.birth_date ?? undefined,
     hometown: row.hometown ?? undefined,
     job: row.job ?? undefined,
     family: row.family ?? undefined,
@@ -121,7 +123,10 @@ export function toConversationLog(session: SessionRow, logs: SessionLogRow[]): C
 /** 어르신 등록/수정 입력(꾸미기 필드 제외 — v1 스키마에 없음). */
 export interface ElderWriteInput {
   name: string
+  /** 출생연도. `birthDate` 를 주면 그 연도와 같아야 한다(DB 제약). */
   birthYear: number
+  /** 생년월일 `YYYY-MM-DD`. 월·일을 모르면 생략 → DB 에 null 로 저장한다. */
+  birthDate?: string
   hometown?: string
   job?: string
   family?: string
@@ -133,11 +138,24 @@ export interface ElderWriteInput {
   guardian?: Guardian
 }
 
+/**
+ * 저장할 출생연도 — 생년월일이 있으면 **거기서 파생**한다.
+ * DB 가 두 컬럼의 연도 일치를 강제하므로(profiles_birth_date_year_check) 여기서 맞춘다.
+ */
+function birthYearOf(input: ElderWriteInput): number {
+  if (input.birthDate) {
+    const y = birthYearFromDate(input.birthDate)
+    if (!Number.isNaN(y)) return y
+  }
+  return input.birthYear
+}
+
 export function toProfileInsert(input: ElderWriteInput, userId: string): TablesInsert<'profiles'> {
   return {
     user_id: userId,
     name: input.name,
-    birth_year: input.birthYear,
+    birth_year: birthYearOf(input),
+    birth_date: input.birthDate ?? null,
     hometown: input.hometown ?? null,
     job: input.job ?? null,
     family: input.family ?? null,
@@ -156,7 +174,8 @@ export function toProfileInsert(input: ElderWriteInput, userId: string): TablesI
 export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'> {
   const patch: TablesUpdate<'profiles'> = {
     name: input.name,
-    birth_year: input.birthYear,
+    birth_year: birthYearOf(input),
+    birth_date: input.birthDate ?? null,
     hometown: input.hometown ?? null,
     job: input.job ?? null,
     family: input.family ?? null,

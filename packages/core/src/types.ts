@@ -87,7 +87,16 @@ export type ElderGender = 'female' | 'male';
 export interface ElderProfile {
   id: string;
   name: string;
+  /**
+   * 출생연도. `birthDate` 가 있으면 그 연도와 항상 같다(DB 제약으로 강제).
+   * 월·일을 모르는 기존 데이터가 있어 연도만 따로 보관한다.
+   */
   birthYear: number;
+  /**
+   * 생년월일 `YYYY-MM-DD`. 폼 입력의 단일 근거.
+   * 월·일이 입력되지 않았으면 undefined — 화면은 연도만 표기한다(임의값 금지).
+   */
+  birthDate?: string;
   hometown?: string;
   job?: string;
   family?: string;

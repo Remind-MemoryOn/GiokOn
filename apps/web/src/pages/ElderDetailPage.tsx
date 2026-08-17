@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Pencil, Plus, Smartphone, MessageSquareHeart, Trash2, Clock, Siren,
 } from 'lucide-react';
+import { elderAge } from '@giokon/core';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -79,7 +80,7 @@ export function ElderDetailPage() {
     <>
       <PageHeader
         title={elder.name}
-        description={`${elder.birthYear}년생 · 만 ${new Date().getFullYear() - elder.birthYear}세`}
+        description={`${elder.birthYear}년생 · 만 ${elderAge(elder)}세`}
         actions={
           <>
             <Button variant="ghost" onClick={() => navigate('/caregiver/elders')}>

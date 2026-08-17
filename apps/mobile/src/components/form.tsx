@@ -27,6 +27,7 @@ import {
   View,
   type KeyboardTypeOptions,
 } from 'react-native';
+import { birthLabel, birthYearFromDate, daysInMonth, isBirthDate } from '@giokon/core';
 import iconRequired from '../../assets/brand/icon-required.png';
 import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 import iconFieldSearch from '../../assets/brand/icon-field-search.png';
@@ -157,7 +158,7 @@ export function TextField({
   );
 }
 
-// ── 선택(드롭다운) — 출생연도 ─────────────────────────────────
+// ── 선택(드롭다운) — 성별 등 단일 목록 ────────────────────────
 export function SelectField({
   label,
   required = false,
@@ -236,6 +237,171 @@ export function SelectField({
               )}
             />
           </View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+// ── 날짜 선택 — 생년월일 ──────────────────────────────────────
+/**
+ * 생년월일 필드. **Figma 의 드롭다운 필드 한 칸을 그대로 쓰고**(박스 336×46 · ∨ 아이콘)
+ * 바텀시트만 년/월/일 3열로 바꾼다 — 필드를 3개로 쪼개면 폼의 행 리듬(Figma pitch 107/108)이
+ * 깨지기 때문이다.
+ *
+ * 값은 `YYYY-MM-DD`(빈 문자열 = 미선택). 표시는 "1945년 3월 12일".
+ * 월 길이가 바뀌면 일을 잘라 붙인다(2월 30일 같은 값이 만들어지지 않게).
+ */
+export function DateField({
+  label,
+  required = false,
+  value,
+  placeholder,
+  onSelect,
+  minYear,
+  maxYear,
+  gap = FORM.rowGap,
+}: {
+  label: string;
+  required?: boolean;
+  /** `YYYY-MM-DD` 또는 빈 문자열. */
+  value: string;
+  placeholder: string;
+  onSelect: (iso: string) => void;
+  minYear: number;
+  maxYear: number;
+  gap?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const valid = isBirthDate(value);
+  // 시트를 열 때의 시작값 — 값이 없으면 목록 중간쯤(가장 흔한 연령대)에서 시작한다.
+  const [draft, setDraft] = useState({ y: 0, m: 1, d: 1 });
+
+  const years = useMemo(
+    () => Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i),
+    [minYear, maxYear],
+  );
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
+  const days = useMemo(
+    () =>
+      Array.from(
+        { length: daysInMonth(draft.y || maxYear, draft.m) },
+        (_, i) => i + 1,
+      ),
+    [draft.y, draft.m, maxYear],
+  );
+
+  const openSheet = () => {
+    if (valid) {
+      const [y, m, d] = value.split('-').map(Number);
+      setDraft({ y, m, d });
+    } else {
+      setDraft({ y: 0, m: 1, d: 1 });
+    }
+    setOpen(true);
+  };
+
+  const pick = (part: 'y' | 'm' | 'd', n: number) => {
+    setDraft((cur) => {
+      const next = { ...cur, [part]: n };
+      // 월이 짧아지면 일을 잘라 붙인다(예: 3/31 → 2월 선택 시 2/28).
+      const max = daysInMonth(next.y || maxYear, next.m);
+      if (next.d > max) next.d = max;
+      return next;
+    });
+  };
+
+  const confirm = () => {
+    if (!draft.y) return;
+    const iso = `${draft.y}-${String(draft.m).padStart(2, '0')}-${String(draft.d).padStart(2, '0')}`;
+    onSelect(iso);
+    setOpen(false);
+  };
+
+  const column = (
+    items: number[],
+    suffix: string,
+    selected: number,
+    part: 'y' | 'm' | 'd',
+  ) => (
+    <FlatList
+      data={items}
+      keyExtractor={(n) => `${part}-${n}`}
+      style={{ flex: 1 }}
+      initialNumToRender={24}
+      renderItem={({ item }) => {
+        const on = item === selected;
+        return (
+          <Pressable
+            onPress={() => pick(part, item)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            className="active:opacity-70"
+            style={{ height: 42, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text
+              className={`text-[18px] ${on ? 'font-semibold text-accent' : 'font-normal text-black'}`}
+              style={{ lineHeight: 30 }}
+            >
+              {item}
+              {suffix}
+            </Text>
+          </Pressable>
+        );
+      }}
+    />
+  );
+
+  return (
+    <View style={{ marginBottom: gap }}>
+      <FieldLabel label={label} required={required} />
+      <View style={boxWrapStyle}>
+        <FieldBox onPress={openSheet}>
+          {valid ? (
+            <Text
+              className={`absolute ${valueClass}`}
+              style={{ ...valueStyle, left: FORM.valueInset, top: 8 }}
+            >
+              {birthLabel({ birthYear: birthYearFromDate(value), birthDate: value })}
+            </Text>
+          ) : (
+            <Placeholder text={placeholder} />
+          )}
+          <Image
+            source={iconChevronDown}
+            style={{ position: 'absolute', right: 21.9, top: 18, width: 14.14, height: 9.54 }}
+            resizeMode="contain"
+          />
+        </FieldBox>
+      </View>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable
+          className="flex-1 justify-end"
+          style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+          onPress={() => setOpen(false)}
+        >
+          {/* 시트 내부 탭이 배경 닫힘으로 전파되지 않게 Pressable 로 감싼다 */}
+          <Pressable
+            onPress={() => {}}
+            className="bg-white"
+            style={{ borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12 }}
+          >
+            <Text
+              className="text-[18px] font-semibold text-black text-center"
+              style={{ lineHeight: 30, marginBottom: 8 }}
+            >
+              {label}
+            </Text>
+            <View className="flex-row" style={{ height: 210, paddingHorizontal: FORM.left }}>
+              {column(years, '년', draft.y, 'y')}
+              {column(months, '월', draft.m, 'm')}
+              {column(days, '일', draft.d, 'd')}
+            </View>
+            <View style={{ paddingHorizontal: FORM.left, paddingTop: 12 }}>
+              <SaveButton label="선택 완료" onPress={confirm} disabled={!draft.y} />
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
