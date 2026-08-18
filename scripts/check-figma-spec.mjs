@@ -608,6 +608,29 @@ const SPECS = [
     '파생 객체는 Zustand 셀렉터 밖에서 합성(무한 리렌더 방지)',
     [/function datedFromMock/, /useMemo\(\s*\(\) => \(CFG \? datedFromRows/],
   ],
+
+  // ── 설정 (Figma 584:470, 프레임 393×1072) / 담당 어르신 관리 (584:559, 393×852) ────
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 336 r10 border #e3e3e3', [/cardW: 336/, /cardR: 10/, /cardBorder: '#e3e3e3'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 구분선 283×1 #d9d9d9 @ x55', [/dividerW: 283/, /dividerLeft: 55/, /divider: '#d9d9d9'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 어르신 카드 113 bg #fdf6f0 pitch 134', [/elderCardH: 113/, /elderCardBg: '#fdf6f0'/, /elderGap: 21/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 어르신 카드 그림자 1 1 8 .25', [/elderCardShadow: '1px 1px 8px rgba\(106,106,106,0\.25\)'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 사진 73 원형 @(+27,+20)', [/left: 27,\s*top: 20,\s*width: 73,\s*height: 73,\s*borderRadius: 36\.5/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 이름 SemiBold 18/30 @(+124,+16)', [/text-\[18px\] font-semibold text-black/, /left: 124, top: 16, lineHeight: 30/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 생년/성별 Medium 14/25 #7b7c7c', [/left: 124, top: 46, lineHeight: 25/, /left: 124, top: 71, lineHeight: 25/, /muted: '#7b7c7c'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 휴지통 21 @(+269,+46)', [/width=\{21\} height=\{21\}/, /left: 269 - 12, top: 46 - 12/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 행 chevron 8.75×13.25 / 작은 chevron 6×7 #404040', [/width=\{8\.75\} height=\{13\.25\}/, /width=\{6\} height=\{7\}/, /strong: '#404040'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 로그아웃 글리프 13', [/width=\{13\} height=\{13\}/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 헤더 아래 34 · 좌 29 · 하단 49', [/paddingLeft: SETTINGS\.left, paddingTop: 34, paddingBottom: 49/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 프로필 카드 336×260 @ 라벨 아래 15', [/height: 260,\s*marginTop: 15/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 아바타 79 원 @(+26,+22)', [/left: 26,\s*top: 22,\s*width: 79,\s*height: 79,\s*borderRadius: 39\.5/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 이름 SemiBold 20/24 · 기관 Medium 16/21 #404040', [/text-\[20px\] font-semibold/, /left: 123, top: 33, lineHeight: 24/, /left: 123, top: 68, lineHeight: 21, color: SETTINGS\.strong/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 구분선 top 120 / 183 · 아이디 SemiBold 14 값 Regular 15', [/Divider top=\{120\}/, /Divider top=\{183\}/, /text-\[15px\] font-normal/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 소셜 41.4/41.4/41(구글 42) top 198', [/left: 161, w: 41\.4/, /left: 217\.2, w: 41\.4/, /left: 273, w: 41, h: 42/, /top: 198/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 정보 카드 336×204 @ 라벨 아래 13 · 구분선 69/132', [/height: 204,\s*marginTop: 13/, /Divider top=\{69\}/, /Divider top=\{132\}/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 어르신 미리보기 2장 · 라벨 아래 18', [/PREVIEW_ELDERS = 2/, /marginTop: i === 0 \? 18 : SETTINGS\.elderGap/]],
+  [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 첫 카드 top 146(헤더+32)', [/paddingLeft: SETTINGS\.left, paddingTop: 32/]],
+  [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 카드 간격 21', [/marginTop: i === 0 \? 0 : SETTINGS\.elderGap/]],
+  [`${APP}/app/main.tsx`, '메인: 톱니바퀴 → 설정 화면', [/router\.push\('\/settings'\)/]],
 ];
 
 let ok = 0;

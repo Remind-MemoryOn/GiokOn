@@ -13,6 +13,7 @@ import {
   useCreateChronicle,
   useCreateProfile,
   useDeleteChronicle as useDeleteChronicleData,
+  useDeleteProfile as useDeleteProfileData,
   useRecordConsent,
   useUpdateChronicle,
   useUpdateProfile,
@@ -134,6 +135,30 @@ export function useDeleteChronicle(): (input: { id: string; elderId: string }) =
       await deleteChronicle.mutateAsync({ id, profileId: elderId });
     },
     [mockDelete, deleteChronicle],
+  );
+}
+
+/**
+ * 어르신 삭제(설정 → 담당 어르신 관리).
+ *
+ * 라이브에서는 `useDeleteProfile` 이 **Storage 사진을 먼저 파기하고** 행을 지운다
+ * (행을 먼저 지우면 Storage 정책이 기관을 확인할 수 없어 파일이 남는다). 나머지
+ * 연대기·세션·대화·분석·동의·안전 이벤트는 DB 의 FK cascade 로 함께 사라진다.
+ * 목업 모드도 같은 결과가 되도록 스토어에서 딸린 기록을 함께 비운다.
+ */
+export function useDeleteElder(): (id: string) => Promise<void> {
+  const mockDelete = useApp((s) => s.deleteElder);
+  const deleteProfile = useDeleteProfileData();
+
+  return useCallback(
+    async (id: string): Promise<void> => {
+      if (!CFG) {
+        mockDelete(id);
+        return;
+      }
+      await deleteProfile.mutateAsync(id);
+    },
+    [mockDelete, deleteProfile],
   );
 }
 

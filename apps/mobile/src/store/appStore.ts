@@ -149,6 +149,8 @@ interface AppState {
   ) => ChronicleEntry;
   /** 연대기 항목 삭제(연대기 수정 화면의 주요 기억 X 버튼). */
   deleteChronicle: (id: string) => void;
+  /** 어르신 삭제(설정 → 담당 어르신 관리). 딸린 기록도 함께 지운다. */
+  deleteElder: (id: string) => void;
 
   // ── 동의 게이팅(어르신별) — @giokon/core consent 카탈로그 사용 ──
   consentsByElder: Record<string, ConsentType[]>;
@@ -280,6 +282,25 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   deleteChronicle: (id) => set((s) => ({ chronicles: s.chronicles.filter((c) => c.id !== id) })),
+
+  // 라이브에서는 DB 가 FK cascade 로 지운다(useDeleteProfile). 목업도 같은 결과가 되도록
+  // 어르신에 딸린 연대기·세션·대화·분석·동의를 함께 비운다.
+  deleteElder: (id) =>
+    set((st) => {
+      const logIds = new Set(st.logs.filter((l) => l.elderId === id).map((l) => l.id));
+      const analyses = { ...st.analyses };
+      for (const lid of logIds) delete analyses[lid];
+      const consents = { ...st.consentsByElder };
+      delete consents[id];
+      return {
+        elders: st.elders.filter((e) => e.id !== id),
+        chronicles: st.chronicles.filter((c) => c.elderId !== id),
+        sessions: st.sessions.filter((x) => x.elderId !== id),
+        logs: st.logs.filter((l) => l.elderId !== id),
+        analyses,
+        consentsByElder: consents,
+      };
+    }),
 
   consentsByElder: {},
   grantElderConsents: (elderId, types) =>
