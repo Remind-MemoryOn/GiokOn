@@ -9,7 +9,7 @@ import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ProfileForm, type ProfileSubmit } from '../../src/components/ProfileForm';
 import { useChronicles, useElderView } from '../../src/data/reads';
 import { useDeleteChronicle, useUpsertChronicle, useUpsertElder } from '../../src/data/writes';
-import { saveElderPhoto, useElderPhotoUrl } from '../../src/data/elder-photo';
+import { removeElderPhoto, saveElderPhoto, useElderPhotoUrl } from '../../src/data/elder-photo';
 
 const MEMORY_TOPIC = '주요 기억';
 
@@ -60,6 +60,7 @@ export default function ChronicleEdit() {
     if (saving) return;
     setSaving(true);
     try {
+      const previousPhoto = elder.photoPath;
       const photoPath = v.pickedPhoto ? await saveElderPhoto(elder.id, v.pickedPhoto) : undefined;
       await upsertElder({
         id: elder.id,
@@ -73,6 +74,16 @@ export default function ChronicleEdit() {
         gender: v.gender,
         photoPath,
       });
+
+      // 사진을 바꿨으면 이전 파일을 지운다 — 프로필 저장이 끝난 뒤에 지워야
+      // 저장이 실패했을 때 예전 사진이 사라지지 않는다. 정리 실패는 저장을 막지 않는다.
+      if (photoPath && previousPhoto && previousPhoto !== photoPath) {
+        try {
+          await removeElderPhoto(previousPhoto);
+        } catch (e) {
+          console.warn('[giokon] 이전 사진을 지우지 못했습니다.', e);
+        }
+      }
 
       // 주요 기억 = 연대기 항목. 목록에서 사라진 항목은 삭제, 내용이 바뀐 항목은 수정,
       // 새 항목(new-*)은 추가한다.

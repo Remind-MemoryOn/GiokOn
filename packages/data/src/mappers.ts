@@ -119,6 +119,44 @@ export function toConversationLog(session: SessionRow, logs: SessionLogRow[]): C
   }
 }
 
+/** session_logs 행을 만들 때 필요한 소유자 식별자. */
+export interface SessionLogOwner {
+  sessionId: string
+  profileId: string
+  userId: string
+}
+
+/**
+ * 대화 턴 → `session_logs` insert 행.
+ *
+ * - `turn_index` 는 **1-기반**(DB check `turn_index >= 1`).
+ * - `original_content` 는 요양보호사가 STT 결과를 고친 경우에만 남기고, DB 제약상
+ *   어르신 턴에만 허용된다(`session_logs_correction_role_check`).
+ * - `switch_topic` 은 **직전 턴과 주제가 달라졌는지** — AI 가 화제를 옮긴 지점이다.
+ * - `audio_url`·`audio_expires_at`·`duration_ms` 는 녹음 저장·발화 길이 측정을 아직
+ *   구현하지 않아 비운다(없는 값을 만들지 않는다).
+ */
+export function toSessionLogInsert(
+  turns: ConversationTurn[],
+  index: number,
+  owner: SessionLogOwner,
+): TablesInsert<'session_logs'> {
+  const turn = turns[index]
+  const prevTopic = turns[index - 1]?.topic ?? null
+  return {
+    session_id: owner.sessionId,
+    profile_id: owner.profileId,
+    user_id: owner.userId,
+    turn_index: index + 1,
+    role: turn.speaker === 'AI' ? 'ai' : 'user',
+    content: turn.text,
+    original_content: turn.speaker === 'AI' ? null : (turn.originalText ?? null),
+    topic: turn.topic ?? null,
+    switch_topic: turn.topic != null && turn.topic !== prevTopic,
+    spoken_at: turn.timestamp,
+  }
+}
+
 // ── 도메인/폼 입력 → DB 쓰기 페이로드 ────────────────────────────────────
 
 /** 어르신 등록/수정 입력(꾸미기 필드 제외 — v1 스키마에 없음). */

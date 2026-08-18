@@ -38,7 +38,7 @@ export default function Talk() {
   const confirm = useApp((s) => s.confirmUtterance);
   const discard = useApp((s) => s.discardUtterance);
   const acknowledge = useApp((s) => s.acknowledgeSafety);
-  const { finishAndPersist, retrySave, discardUnsaved } = useSessionPersistence();
+  const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
   const { height } = useWindowDimensions();
   const finishing = useRef(false);
 
@@ -143,7 +143,11 @@ export default function Talk() {
           <CrisisBanner
             message={active.safety.caregiverAlert as string}
             level={active.safety.level}
-            onAcknowledge={acknowledge}
+            onAcknowledge={() => {
+              acknowledge();
+              // 확인 시각을 safety_events 에 반영한다(웹 안전 알림 대시보드와 동기).
+              void syncProgress();
+            }}
           />
         </View>
       ) : null}
@@ -300,6 +304,9 @@ export default function Talk() {
               onPress={() => {
                 confirm(draft.trim() || (pending ?? ''));
                 setEdited(null);
+                // 확정된 턴을 곧바로 DB 에 남긴다(진행 중 저장). 실패해도 대화는 막지
+                // 않고 다음 턴·종료 때 다시 시도한다.
+                void syncProgress();
                 // 다음 질문 생성 대기 화면(Figma `28:37`)을 거쳐 대화로 돌아온다.
                 router.push('/session/loading');
               }}

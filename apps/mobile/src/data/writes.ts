@@ -9,6 +9,7 @@
 
 import { useCallback } from 'react';
 import {
+  getGiokonClient,
   useCreateChronicle,
   useCreateProfile,
   useDeleteChronicle as useDeleteChronicleData,
@@ -136,7 +137,13 @@ export function useDeleteChronicle(): (input: { id: string; elderId: string }) =
   );
 }
 
-/** 어르신 동의 부여(필수 동의 일괄). 라이브에서는 타입별 1건씩 기록한다. */
+/**
+ * 어르신 동의 부여(필수 동의 일괄). 라이브에서는 타입별 1건씩 기록한다.
+ *
+ * 이미 유효한 동의는 다시 넣지 않는다 — 동의 화면을 두 번 통과하면 같은 동의가
+ * 여러 줄 쌓여, 나중에 "언제 받은 동의인지" 를 가리기 어려워진다(감사 지적).
+ * 철회된 동의(revoked_at)는 유효하지 않으므로 다시 받는 것이 맞다.
+ */
 export function useGrantConsents(): (elderId: string, types: ConsentType[]) => Promise<void> {
   const { user, userRow } = useAuth();
   const mockGrant = useApp((s) => s.grantElderConsents);
@@ -149,7 +156,20 @@ export function useGrantConsents(): (elderId: string, types: ConsentType[]) => P
         return;
       }
       const userId = requireWriteIdentity(user, userRow);
+
+      const { data: existing, error } = await getGiokonClient()
+        .from('consents')
+        .select('consent_type, granted, revoked_at, version')
+        .eq('profile_id', elderId);
+      if (error) throw new Error(error.message);
+      const active = new Set(
+        (existing ?? [])
+          .filter((c) => c.granted && !c.revoked_at && c.version === CONSENT_VERSION)
+          .map((c) => c.consent_type),
+      );
+
       for (const t of types) {
+        if (active.has(t)) continue;
         // 어르신 세션 게이팅 동의는 모두 DB consent_type 열거에 속한다(필수 4종).
         await recordConsent.mutateAsync({
           profile_id: elderId,

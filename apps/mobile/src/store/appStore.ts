@@ -50,7 +50,13 @@ export type SessionPhase = 'idle' | 'ai_speaking' | 'mic_ready' | 'processing' |
  * 대시보드에서 앱에서 이미 확인한 알림이 미확인으로 보였다. 확인 시각을 이벤트에
  * 붙여 종료 저장 때 함께 기록한다(DB 제약: at/by 는 둘 다 있거나 둘 다 없어야 한다).
  */
-export type SessionSafetyEvent = SafetyEventDraft & { acknowledgedAt: string | null };
+export interface SessionSafetyEvent extends SafetyEventDraft {
+  acknowledgedAt: string | null;
+  /** DB safety_events.id — 아직 기록 전이면 null. */
+  remoteId: string | null;
+  /** 확인 시각까지 DB 에 반영됐는지(중복 update 방지). */
+  ackSynced: boolean;
+}
 
 export interface ActiveSession {
   elder: ElderProfile;
@@ -73,6 +79,16 @@ export interface ActiveSession {
   phase: SessionPhase;
   safety: RuntimeSafety;
   events: SessionSafetyEvent[];
+  /**
+   * DB `sessions.id` — 대화를 **시작할 때** 만든다(status='active').
+   *
+   * 예전에는 종료 시점에 한 번만 썼기 때문에, 앱이 강제 종료되거나 배터리가 나가면
+   * 대화 전체가 사라졌고 웹에서 진행 상황을 볼 수도 없었다(감사 지적).
+   * 생성에 실패하면(오프라인 등) null 로 두고 종료 시 일괄 저장으로 폴백한다.
+   */
+  remoteId: string | null;
+  /** 이미 DB(session_logs)에 기록한 턴 수 — 다음 동기화의 시작점. */
+  syncedTurns: number;
 }
 
 /**
@@ -90,6 +106,10 @@ export interface FinishedSessionBundle {
   endedAt: string;
   durationSeconds: number;
   currentTopic: string;
+  /** 진행 중에 만들어 둔 DB 세션 id(없으면 종료 시 새로 만든다). */
+  remoteId: string | null;
+  /** 이미 기록한 턴 수 — 나머지만 이어서 쓴다. */
+  syncedTurns: number;
 }
 
 const SAFE_INITIAL: RuntimeSafety = {
@@ -153,6 +173,16 @@ interface AppState {
   confirmUtterance: (finalText: string) => void;
   acknowledgeSafety: () => void;
   cancelSession: () => void;
+
+  // ── 진행 중 DB 동기화(영속화 계층이 호출) ──
+  /** 시작 시 만든 DB 세션 id 를 런타임에 붙인다. */
+  attachRemoteSession: (remoteId: string) => void;
+  /**
+   * DB 반영 결과를 되돌려 받는다.
+   * `events` 는 **앞에서부터 index 로 맞춰** 병합한다 — 동기화 중에 새 이벤트가
+   * 뒤에 붙을 수 있으므로 배열을 통째로 갈아끼우지 않는다.
+   */
+  markSynced: (patch: { turns: number; events: SessionSafetyEvent[] }) => void;
   /** 종료 → 로그·분석 저장, logId 반환. lastFinished도 채운다(라이브 영속화용). */
   finishSession: () => string | null;
 
@@ -291,6 +321,8 @@ export const useApp = create<AppState>((set, get) => ({
         phase: 'ai_speaking',
         safety: { ...SAFE_INITIAL },
         events: [],
+        remoteId: null,
+        syncedTurns: 0,
       },
     });
   },
@@ -317,7 +349,10 @@ export const useApp = create<AppState>((set, get) => ({
     if (!a) return;
     // 요양보호사가 STT 결과를 고쳤으면 원문을 함께 남긴다(session_logs.original_content).
     const original = a.pendingStt && a.pendingStt !== finalText ? a.pendingStt : undefined;
-    const elderTurn = makeTurn('Elderly', finalText, undefined, original);
+    // 어르신 턴에도 **직전 AI 질문의 주제**를 붙인다 — 분석은 앞선 AI 턴에서 주제를
+    // 이어받으므로 계산 결과는 같지만, DB 의 session_logs.topic 이 비어 있으면 나중에
+    // 기록만 보고는 어떤 주제에 대한 대답인지 알 수 없다(감사 지적).
+    const elderTurn = makeTurn('Elderly', finalText, a.currentTopic, original);
     const history = [...a.turns, elderTurn];
     const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
     const aiTurn = makeTurn('AI', guarded.response.question, guarded.response.topic);
@@ -341,7 +376,7 @@ export const useApp = create<AppState>((set, get) => ({
         phase: 'ai_speaking',
         safety,
         events: guarded.event
-          ? [...a.events, { ...guarded.event, acknowledgedAt: null }]
+          ? [...a.events, { ...guarded.event, acknowledgedAt: null, remoteId: null, ackSynced: false }]
           : a.events,
       },
     });
@@ -357,6 +392,24 @@ export const useApp = create<AppState>((set, get) => ({
       i === a.events.length - 1 && ev.acknowledgedAt === null ? { ...ev, acknowledgedAt: at } : ev,
     );
     set({ active: { ...a, events, safety: { ...a.safety, acknowledged: true } } });
+  },
+
+  attachRemoteSession: (remoteId) => {
+    const a = get().active;
+    if (!a) return;
+    set({ active: { ...a, remoteId } });
+  },
+
+  markSynced: ({ turns, events }) => {
+    const a = get().active;
+    if (!a) return;
+    set({
+      active: {
+        ...a,
+        syncedTurns: Math.max(a.syncedTurns, turns),
+        events: a.events.map((ev, i) => events[i] ?? ev),
+      },
+    });
   },
 
   cancelSession: () => set({ active: null }),
@@ -398,6 +451,8 @@ export const useApp = create<AppState>((set, get) => ({
         endedAt,
         durationSeconds: Math.max(0, Math.round(durationMs / 1000)),
         currentTopic: a.currentTopic,
+        remoteId: a.remoteId,
+        syncedTurns: a.syncedTurns,
       },
       active: null,
     }));

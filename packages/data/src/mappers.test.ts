@@ -8,8 +8,10 @@ import {
   toProfileInsert,
   toProfileUpdate,
   toSession,
+  toSessionLogInsert,
 } from './mappers'
 import { queryKeys } from './query'
+import type { ConversationTurn } from '@giokon/core'
 import type { ChronicleRow, ProfileRow, SessionLogRow, SessionRow } from './database.types'
 
 const profileRow: ProfileRow = {
@@ -22,7 +24,6 @@ const profileRow: ProfileRow = {
   hometown: '전북 전주',
   job: '식당 운영, 30년',
   family: '딸 둘, 사위 둘',
-  memories: ['남편과 처음 만난 장터'],
   hobbies: '텃밭 가꾸기',
   guardian_name: '박민준',
   guardian_relation: '아들',
@@ -355,5 +356,48 @@ describe('toConversationTurn — STT 보정 원문', () => {
 
   it('보정하지 않은 턴은 undefined', () => {
     expect(toConversationTurn(userLog).originalText).toBeUndefined()
+  })
+})
+
+describe('toSessionLogInsert — 진행 중 턴 기록', () => {
+  const owner = { sessionId: 's1', profileId: 'p1', userId: 'u1' }
+  const turns: ConversationTurn[] = [
+    { id: 't1', speaker: 'AI', text: '고향이 어디세요?', timestamp: '2026-01-04T00:00:00Z', topic: '고향' },
+    { id: 't2', speaker: 'Elderly', text: '전주요', timestamp: '2026-01-04T00:00:30Z', topic: '고향' },
+    { id: 't3', speaker: 'AI', text: '가족은요?', timestamp: '2026-01-04T00:01:00Z', topic: '가족' },
+    {
+      id: 't4',
+      speaker: 'Elderly',
+      text: '딸이 둘이에요',
+      timestamp: '2026-01-04T00:01:30Z',
+      topic: '가족',
+      originalText: '딸이 둘이여',
+    },
+  ]
+
+  it('turn_index 는 1-기반이다(DB check turn_index >= 1)', () => {
+    expect(toSessionLogInsert(turns, 0, owner).turn_index).toBe(1)
+    expect(toSessionLogInsert(turns, 3, owner).turn_index).toBe(4)
+  })
+
+  it('주제가 바뀐 턴에만 switch_topic 이 true 다', () => {
+    expect(toSessionLogInsert(turns, 0, owner).switch_topic).toBe(true) // 첫 주제
+    expect(toSessionLogInsert(turns, 1, owner).switch_topic).toBe(false) // 같은 주제
+    expect(toSessionLogInsert(turns, 2, owner).switch_topic).toBe(true) // 고향 → 가족
+    expect(toSessionLogInsert(turns, 3, owner).switch_topic).toBe(false)
+  })
+
+  it('보정 원문은 어르신 턴에만 실린다(DB 제약)', () => {
+    expect(toSessionLogInsert(turns, 3, owner).original_content).toBe('딸이 둘이여')
+    expect(toSessionLogInsert(turns, 1, owner).original_content).toBeNull()
+    // AI 턴은 originalText 가 있어도 null 로 보낸다.
+    const aiWithOriginal = [{ ...turns[0], originalText: '엉뚱한 값' }]
+    expect(toSessionLogInsert(aiWithOriginal, 0, owner).original_content).toBeNull()
+  })
+
+  it('녹음·발화 길이는 구현 전이라 값을 만들지 않는다', () => {
+    const row = toSessionLogInsert(turns, 1, owner)
+    expect(row.audio_url).toBeUndefined()
+    expect(row.duration_ms).toBeUndefined()
   })
 })

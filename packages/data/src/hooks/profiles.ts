@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-query'
 import { getGiokonClient } from '../client'
 import { queryKeys } from '../query'
+import { purgeElderFiles } from '../storage'
 import type { ProfileRow, TablesInsert, TablesUpdate } from '../database.types'
 
 export type ProfileInsert = TablesInsert<'profiles'>
@@ -97,17 +98,28 @@ export function useUpdateProfile(): UseMutationResult<
   })
 }
 
-/** 연대기 삭제. */
+/**
+ * 어르신 삭제 — 그 어르신에 딸린 **모든 정보**를 함께 파기한다.
+ *
+ * DB 는 profiles 를 지우면 연대기·세션·대화·분석·동의·안전 이벤트·요양일지·코드·
+ * 배정·공유가 FK cascade 로 함께 사라진다. 하지만 **Storage 객체는 cascade 되지
+ * 않아** 사진만 남았다(감사 지적). 그래서 파일을 먼저 지운다.
+ *
+ * ⚠️ 순서를 바꾸면 안 된다: Storage 삭제 정책이 경로의 profile_id 로 profiles 를
+ * 조회해 기관을 확인하므로, 행을 먼저 지우면 파일을 지울 권한이 사라진다.
+ */
 export function useDeleteProfile(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
+      await purgeElderFiles(id)
       const { error } = await getGiokonClient().from('profiles').delete().eq('id', id)
       if (error) throw new Error(error.message)
       return id
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       void qc.invalidateQueries({ queryKey: queryKeys.profiles })
+      void qc.invalidateQueries({ queryKey: queryKeys.profile(id) })
     },
   })
 }

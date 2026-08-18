@@ -82,6 +82,23 @@
     (`src/lib/queryFocus.ts`, 앱 복귀 시 stale 재조회).
     ⑥ **온보딩 미완료 계정이 날 DB 오류** — 기관 없는 계정의 등록은 org_id 스탬프가 채울 값이
     없어 not-null 위반이 그대로 Alert 에 떴다 → `requireWriteIdentity` 로 안내 후 차단.
+  - ✅ **후속 처리 완료(2026-08-18, 마이그레이션 25번째 `20260818000000_app_db_sync`)**:
+    **진행 중 세션 DB 저장**(시작 시 `sessions` insert(active) → 턴마다 `session_logs`
+    upsert((session_id,turn_index) 유니크 신설로 멱등) + `turn_count`/`current_topic`
+    갱신 → 위기 발생 시 `safety_events` 즉시 insert·확인 시 `acknowledged_at` update →
+    종료 시 ended 갱신 + 분석 upsert. 시작 시 생성 실패하면 remoteId=null 로 두고 예전
+    일괄 저장으로 폴백하며, 재시도를 포기하면 세션을 'active' 로 방치하지 않고 ended 로
+    닫는다) · **사진 파기**(교체 시 이전 파일 삭제, 어르신 삭제 시 `purgeElderFiles` 로
+    두 버킷 전량 파기 — ⚠️ Storage 정책이 경로의 profile_id 로 `profiles` 를 조회하므로
+    **행보다 파일을 먼저** 지워야 한다. `journal-photos` 에 update/delete 정책 신설) ·
+    **Realtime 확장**(publication 에 `profiles`·`chronicle_entries`·`session_logs` 추가 →
+    웹 수정이 앱에 즉시 반영, 진행 중 대화를 웹에서 관전 가능) · **`profiles.memories`
+    제거**(값 있는 행 0건 확인 후 드롭) · **동의 중복 방지**(이미 유효한 동의는 재기록
+    안 함) · **어르신 턴 `topic` 기록**·**`switch_topic` 산출**(`toSessionLogInsert` 매퍼로
+    이관·테스트) · **목업 모드 1회 안내**(미설정이면 예시 데이터임을 Alert 로 고지) ·
+    **마이그레이션 이력 baseline**(`schema_migrations` 를 저장소 파일명 기준 25건으로
+    정리 → `db push` 사용 가능. 앞으로 MCP `apply_migration` 을 쓰면 적용 시각으로
+    기록되므로 파일명 버전으로 맞춰 준다).
   - ⏳ **남은 결정 사항(사용자)**: (a) **앱 동의 기록이 `subject_type`/`capacity` 를 항상 DB
     기본값(`self`/`unknown`)으로 남긴다** — 화면 문구는 "어르신 또는 보호자·대리인"인데
     대리동의·의사능력 선택 UI 가 없다(웹 `ConsentDialog` 에는 있다). 정부심사 기준상 가장

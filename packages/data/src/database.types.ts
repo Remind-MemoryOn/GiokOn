@@ -95,7 +95,6 @@ export type Database = {
           hometown: string | null
           job: string | null
           family: string | null
-          memories: string[]
           hobbies: string | null
           guardian_name: string | null
           guardian_relation: string | null
@@ -116,7 +115,6 @@ export type Database = {
           hometown?: string | null
           job?: string | null
           family?: string | null
-          memories?: string[]
           hobbies?: string | null
           guardian_name?: string | null
           guardian_relation?: string | null
@@ -135,7 +133,6 @@ export type Database = {
           hometown?: string | null
           job?: string | null
           family?: string | null
-          memories?: string[]
           hobbies?: string | null
           guardian_name?: string | null
           guardian_relation?: string | null
