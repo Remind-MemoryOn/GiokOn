@@ -290,3 +290,70 @@ describe('queryKeys', () => {
     expect(queryKeys.sessionLogs('s1')).toEqual(['session_logs', 's1'])
   })
 })
+
+describe('toProfileUpdate — 화면마다 다른 필드의 부분 갱신', () => {
+  // 앱 폼에는 성별이 있고 보호자가 없다. 웹 폼은 그 반대다. 전부 덮어쓰면 상대 화면이
+  // 입력한 값이 지워지므로(실제로 웹 수정 시 성별이 날아갔다) undefined = 미변경이다.
+  const base = { name: '이순자', birthYear: 1945, birthDate: '1945-03-12' }
+
+  it('gender/guardian 이 undefined 면 해당 컬럼을 아예 넣지 않는다', () => {
+    const upd = toProfileUpdate(base)
+    expect('gender' in upd).toBe(false)
+    expect('guardian_name' in upd).toBe(false)
+    expect('guardian_relation' in upd).toBe(false)
+    expect('photo_path' in upd).toBe(false)
+  })
+
+  it('값을 주면 그대로, null 을 주면 지운다', () => {
+    const set = toProfileUpdate({
+      ...base,
+      gender: 'female',
+      guardian: { name: '박민준', relation: '아들' },
+    })
+    expect(set.gender).toBe('female')
+    expect(set.guardian_name).toBe('박민준')
+    expect(set.guardian_relation).toBe('아들')
+
+    const cleared = toProfileUpdate({ ...base, gender: null, guardian: null })
+    expect(cleared.gender).toBeNull()
+    expect(cleared.guardian_name).toBeNull()
+    expect(cleared.guardian_relation).toBeNull()
+  })
+
+  it('신규 등록(insert)은 부분 갱신이 아니라 없는 값을 null 로 채운다', () => {
+    const ins = toProfileInsert(base, 'u1')
+    expect(ins.gender).toBeNull()
+    expect(ins.guardian_name).toBeNull()
+  })
+})
+
+describe('toConversationTurn — STT 보정 원문', () => {
+  const userLog: SessionLogRow = {
+    id: 'l9',
+    session_id: 's1',
+    profile_id: 'p1',
+    user_id: 'u1',
+    org_id: 'o1',
+    turn_index: 2,
+    role: 'user',
+    content: '아버지가 지어 주신 이름이에요',
+    original_content: null,
+    topic: '이름',
+    switch_topic: false,
+    audio_url: null,
+    audio_expires_at: null,
+    duration_ms: null,
+    spoken_at: '2026-01-04T00:01:00Z',
+    created_at: '2026-01-04T00:01:00Z',
+    updated_at: '2026-01-04T00:01:00Z',
+  }
+
+  it('original_content 를 originalText 로 옮긴다(보정 근거 보존)', () => {
+    const corrected = { ...userLog, original_content: '아버지가 지어준 이름이에요' }
+    expect(toConversationTurn(corrected).originalText).toBe('아버지가 지어준 이름이에요')
+  })
+
+  it('보정하지 않은 턴은 undefined', () => {
+    expect(toConversationTurn(userLog).originalText).toBeUndefined()
+  })
+})

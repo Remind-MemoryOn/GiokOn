@@ -42,9 +42,28 @@ export interface RuntimeSafety {
 
 export type SessionPhase = 'idle' | 'ai_speaking' | 'mic_ready' | 'processing' | 'ended';
 
+/**
+ * 세션 중 발생한 안전 이벤트 + **요양보호사 확인 시각**.
+ *
+ * 위기 배너의 "확인"은 지금까지 화면 상태로만 남고 DB 에 가지 않았다 —
+ * `safety_events.acknowledged_at/by` 컬럼이 있는데도 항상 null 이라 웹 안전 알림
+ * 대시보드에서 앱에서 이미 확인한 알림이 미확인으로 보였다. 확인 시각을 이벤트에
+ * 붙여 종료 저장 때 함께 기록한다(DB 제약: at/by 는 둘 다 있거나 둘 다 없어야 한다).
+ */
+export type SessionSafetyEvent = SafetyEventDraft & { acknowledgedAt: string | null };
+
 export interface ActiveSession {
   elder: ElderProfile;
   session: Session;
+  /**
+   * 세션 시작 시 넘겨받은 어르신 연대기(대화 개인화·종료 분석의 근거).
+   *
+   * ⚠️ 종료 분석이 `chroniclesByElder()`(목업 스토어)를 다시 읽으면 **라이브 모드에서
+   * 빈 배열**이 된다 — 라이브 어르신 id 는 목업 배열에 없다. 그러면 대화는 실제
+   * 연대기로 열어 놓고 저장되는 분석의 추천 주제만 근거 없이 계산된다.
+   * 시작 시점의 연대기를 그대로 들고 있다가 분석에 쓴다.
+   */
+  chronicles: ChronicleEntry[];
   turns: ConversationTurn[];
   startedAt: string;
   currentQuestion: string;
@@ -53,7 +72,7 @@ export interface ActiveSession {
   pendingStt: string | null;
   phase: SessionPhase;
   safety: RuntimeSafety;
-  events: SafetyEventDraft[];
+  events: SessionSafetyEvent[];
 }
 
 /**
@@ -65,7 +84,7 @@ export interface FinishedSessionBundle {
   logId: string;
   elder: ElderProfile;
   turns: ConversationTurn[];
-  events: SafetyEventDraft[];
+  events: SessionSafetyEvent[];
   analysis: SessionAnalysis;
   startedAt: string;
   endedAt: string;
@@ -142,8 +161,13 @@ interface AppState {
   clearLastFinished: () => void;
 }
 
-function makeTurn(speaker: ConversationTurn['speaker'], text: string, topic?: string): ConversationTurn {
-  return { id: uid('turn_'), speaker, text, timestamp: nowIso(), topic };
+function makeTurn(
+  speaker: ConversationTurn['speaker'],
+  text: string,
+  topic?: string,
+  originalText?: string,
+): ConversationTurn {
+  return { id: uid('turn_'), speaker, text, timestamp: nowIso(), topic, originalText };
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -258,6 +282,7 @@ export const useApp = create<AppState>((set, get) => ({
       active: {
         elder,
         session,
+        chronicles,
         turns: [aiTurn],
         startedAt: ts,
         currentQuestion: guarded.response.question,
@@ -290,7 +315,9 @@ export const useApp = create<AppState>((set, get) => ({
   confirmUtterance: (finalText) => {
     const a = get().active;
     if (!a) return;
-    const elderTurn = makeTurn('Elderly', finalText);
+    // 요양보호사가 STT 결과를 고쳤으면 원문을 함께 남긴다(session_logs.original_content).
+    const original = a.pendingStt && a.pendingStt !== finalText ? a.pendingStt : undefined;
+    const elderTurn = makeTurn('Elderly', finalText, undefined, original);
     const history = [...a.turns, elderTurn];
     const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
     const aiTurn = makeTurn('AI', guarded.response.question, guarded.response.topic);
@@ -313,7 +340,9 @@ export const useApp = create<AppState>((set, get) => ({
         pendingStt: null,
         phase: 'ai_speaking',
         safety,
-        events: guarded.event ? [...a.events, guarded.event] : a.events,
+        events: guarded.event
+          ? [...a.events, { ...guarded.event, acknowledgedAt: null }]
+          : a.events,
       },
     });
   },
@@ -321,7 +350,13 @@ export const useApp = create<AppState>((set, get) => ({
   acknowledgeSafety: () => {
     const a = get().active;
     if (!a) return;
-    set({ active: { ...a, safety: { ...a.safety, acknowledged: true } } });
+    // 배너가 보여 주는 것은 **가장 최근** 안전 이벤트다 → 그 이벤트에 확인 시각을 남긴다
+    // (종료 저장 때 safety_events.acknowledged_at/by 로 기록된다).
+    const at = nowIso();
+    const events = a.events.map((ev, i) =>
+      i === a.events.length - 1 && ev.acknowledgedAt === null ? { ...ev, acknowledgedAt: at } : ev,
+    );
+    set({ active: { ...a, events, safety: { ...a.safety, acknowledged: true } } });
   },
 
   cancelSession: () => set({ active: null }),
@@ -331,8 +366,7 @@ export const useApp = create<AppState>((set, get) => ({
     if (!a) return null;
     const endedAt = nowIso();
     const durationMs = new Date(endedAt).getTime() - new Date(a.startedAt).getTime();
-    const chronicle = get().chroniclesByElder(a.elder.id);
-    const analysis = analyzeSession(a.elder, a.turns, chronicle);
+    const analysis = analyzeSession(a.elder, a.turns, a.chronicles);
     const logId = uid('log_');
     const log: ConversationLog = {
       id: logId,

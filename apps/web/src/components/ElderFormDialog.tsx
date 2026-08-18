@@ -94,9 +94,12 @@ export function ElderFormDialog({ open, onClose, initial }: Props) {
       job: form.job.trim() || undefined,
       family: form.family.trim() || undefined,
       hobbies: form.hobbies.trim() || undefined,
+      // 보호자는 웹 폼이 소유하는 필드 → 비우면 명시적으로 null(지움)을 보낸다.
+      // (undefined 로 두면 매퍼가 "건드리지 않음"으로 해석해 지울 수 없다.)
       guardian: form.guardianName.trim()
         ? { name: form.guardianName.trim(), relation: form.guardianRelation.trim() || '자녀' }
-        : undefined,
+        : null,
+      // 성별은 앱 폼에만 있다 → undefined(=건드리지 않음)로 두어 앱이 넣은 값을 보존한다.
     };
 
     try {

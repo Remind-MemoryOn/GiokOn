@@ -80,6 +80,7 @@ export function toConversationTurn(row: SessionLogRow): ConversationTurn {
     speaker: toSpeaker(row.role),
     text: row.content,
     timestamp: row.spoken_at,
+    originalText: row.original_content ?? undefined,
     topic: row.topic ?? undefined,
   }
 }
@@ -133,9 +134,17 @@ export interface ElderWriteInput {
   hobbies?: string
   /** Storage elder-photos 내 경로(업로드 후 반환값). 미변경 시 undefined. */
   photoPath?: string
-  /** 성별(선택). 미입력이면 저장하지 않는다. */
-  gender?: ElderGender
-  guardian?: Guardian
+  /**
+   * 성별. **앱 폼에만 있는 필드**라 부분 갱신 규약을 따른다:
+   * `undefined` = 건드리지 않음(웹에서 수정해도 앱이 넣은 값이 유지된다),
+   * `null` = 지움.
+   */
+  gender?: ElderGender | null
+  /**
+   * 보호자. **웹 폼에만 있는 필드**라 성별과 같은 규약을 따른다:
+   * `undefined` = 건드리지 않음(앱에서 수정해도 웹이 넣은 값이 유지된다), `null` = 지움.
+   */
+  guardian?: Guardian | null
 }
 
 /**
@@ -168,8 +177,13 @@ export function toProfileInsert(input: ElderWriteInput, userId: string): TablesI
 }
 
 /**
- * 어르신 수정 페이로드. `photoPath` 가 undefined 면 **사진 필드를 건드리지 않는다**
- * (기존 사진 유지). 사진을 지우려면 명시적으로 null 을 넣도록 호출부에서 처리한다.
+ * 어르신 수정 페이로드.
+ *
+ * ⚠️ **부분 갱신 필드**(`photoPath`·`gender`·`guardian`)는 `undefined` 면 그 컬럼을
+ * 아예 건드리지 않는다. 앱 폼(성별 O·보호자 X)과 웹 폼(성별 X·보호자 O)이 서로 다른
+ * 필드를 가지므로, 전부 덮어쓰면 **다른 화면에서 입력한 값이 지워진다**
+ * (웹에서 연대기 수정 → 앱이 넣은 성별 소실 / 앱에서 수정 → 웹이 넣은 보호자 소실).
+ * 지우려면 호출부가 명시적으로 `null` 을 넘긴다.
  */
 export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'> {
   const patch: TablesUpdate<'profiles'> = {
@@ -180,11 +194,13 @@ export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'
     job: input.job ?? null,
     family: input.family ?? null,
     hobbies: input.hobbies ?? null,
-    gender: input.gender ?? null,
-    guardian_name: input.guardian?.name ?? null,
-    guardian_relation: input.guardian?.relation ?? null,
   }
   if (input.photoPath !== undefined) patch.photo_path = input.photoPath
+  if (input.gender !== undefined) patch.gender = input.gender
+  if (input.guardian !== undefined) {
+    patch.guardian_name = input.guardian?.name ?? null
+    patch.guardian_relation = input.guardian?.relation ?? null
+  }
   return patch
 }
 

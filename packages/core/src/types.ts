@@ -198,6 +198,12 @@ export interface ConversationTurn {
   speaker: Speaker;
   text: string;
   timestamp: string;
+  /**
+   * 요양보호사가 고치기 **전** STT 원문(고치지 않았으면 undefined).
+   * DB `session_logs.original_content` 와 1:1 — 어떤 발화가 보정됐는지의 근거를 남긴다.
+   * (DB 제약상 어르신 턴에만 존재할 수 있다.)
+   */
+  originalText?: string;
   topic?: string;
   extractedKeywords?: string[];
 }

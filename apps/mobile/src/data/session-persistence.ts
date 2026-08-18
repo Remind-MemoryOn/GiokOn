@@ -72,6 +72,8 @@ async function persistCompletedSession(
         turn_index: i + 1, // DB 제약: turn_index >= 1 (1-기반)
         role: t.speaker === 'AI' ? ('ai' as const) : ('user' as const),
         content: t.text,
+        // 보정 전 STT 원문(고친 경우만). DB 제약상 어르신 턴에만 허용된다.
+        original_content: t.speaker === 'AI' ? null : (t.originalText ?? null),
         topic: t.topic ?? null,
         spoken_at: t.timestamp,
       })),
@@ -104,6 +106,10 @@ async function persistCompletedSession(
         matched_terms: ev.matchedTerms,
         excerpt: ev.excerpt,
         caregiver_alert: ev.caregiverAlert,
+        // 세션 중 요양보호사가 배너에서 확인한 이벤트는 확인 상태로 저장한다.
+        // (DB 제약 safety_events_ack_pair_check: at/by 는 둘 다 또는 둘 다 없음)
+        acknowledged_at: ev.acknowledgedAt,
+        acknowledged_by: ev.acknowledgedAt ? userId : null,
       })),
     );
     if (eErr) throw new Error(eErr.message);

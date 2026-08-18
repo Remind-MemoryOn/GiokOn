@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { View } from 'react-native';
 import { useGiokonRealtime } from '@giokon/data';
 import { initSupabase, isSupabaseConfigured, queryClient } from '../src/lib/supabase';
+import { useAppStateRefetch } from '../src/lib/queryFocus';
 import { AuthProvider } from '../src/auth/AuthProvider';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { FONT_MAP } from '../src/lib/fonts';
@@ -21,6 +22,9 @@ initSupabase();
  */
 function RealtimeBridge() {
   useGiokonRealtime({ enabled: isSupabaseConfigured });
+  // Realtime publication 에 없는 테이블(profiles·chronicle_entries)은 이벤트가 오지
+  // 않으므로, 앱 복귀 시 재조회로 웹 수정 사항을 따라잡는다.
+  useAppStateRefetch();
   return null;
 }
 
