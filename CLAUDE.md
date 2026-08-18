@@ -55,7 +55,45 @@
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-08-13)
+## 현재 위치 (2026-08-18)
+- 🔍 **앱 ↔ Supabase 동기화 전수 감사(2026-08-18, `main` `195bb59`)**: 라이브 서울
+  `MemoryOn`(`ufkbzpdjomtmxjipmwub`) 스키마를 MCP 로 덤프해 저장소 마이그레이션 24종 +
+  앱/웹 코드와 3자 대조했다.
+  - ✅ **스키마는 완전 일치**: 16테이블·컬럼 전량(`database.types.ts` 와 1:1)·enum 14종
+    (라벨까지)·public 함수 8종·트리거 41종·RLS 정책 52종·Storage 2버킷(elder-photos·
+    journal-photos, 둘 다 private)+정책 6종·Realtime publication 4테이블
+    (sessions·session_analyses·guardian_shares·safety_events). 라이브에만 있거나
+    마이그레이션에만 있는 객체는 **0건**. (⚠️ `list_migrations` 는 3건만 보인다 — 초기
+    21종을 SQL Editor 로 적용해 `supabase_migrations.schema_migrations` 에 기록이 없다.
+    스키마는 일치하므로 무해하지만, 앞으로 `db push` 를 쓰려면 baseline 기록이 필요하다.)
+  - 🐞 **어긋난 곳은 전부 "앱이 DB 를 쓰는 방식"** → 6종 수정:
+    ① **화면 간 값 소실** — 앱 폼엔 성별이 있고 보호자가 없다(웹은 반대)인데
+    `toProfileUpdate` 가 두 컬럼을 항상 덮어써서 서로의 입력을 null 로 지웠다 →
+    **부분 갱신 규약**(undefined=미변경 · null=지움), 웹은 빈 보호자를 명시적 null 로 전송.
+    ② **라이브 종료 분석이 목업 연대기로 계산** — `finishSession` 이 `chroniclesByElder()`
+    (목업)를 다시 읽어 라이브 uuid 로는 항상 `[]` → 저장되는 `recommendedTopics` 가 근거
+    없이 산출. 시작 시 받은 연대기를 `ActiveSession.chronicles` 에 보관해 사용.
+    ③ **STT 보정 원문 유실** — `session_logs.original_content` 가 항상 null 이었다 →
+    고친 경우만 보정 전 원문 기록(코어 `ConversationTurn.originalText`, DB 제약상 어르신 턴 한정).
+    ④ **안전 이벤트 '확인' 미기록** — `acknowledged_at/by` 가 항상 null 이라 앱에서 확인한
+    알림이 웹 대시보드에 미확인으로 보였다 → 확인 시각을 이벤트에 붙여 종료 저장 시 기록.
+    ⑤ **웹→앱 반영 경로 없음** — publication 에 `profiles`·`chronicle_entries` 가 없고
+    RN 에서는 `refetchOnWindowFocus` 가 무동작 → `AppState`→`focusManager` 연결
+    (`src/lib/queryFocus.ts`, 앱 복귀 시 stale 재조회).
+    ⑥ **온보딩 미완료 계정이 날 DB 오류** — 기관 없는 계정의 등록은 org_id 스탬프가 채울 값이
+    없어 not-null 위반이 그대로 Alert 에 떴다 → `requireWriteIdentity` 로 안내 후 차단.
+  - ⏳ **남은 결정 사항(사용자)**: (a) **앱 동의 기록이 `subject_type`/`capacity` 를 항상 DB
+    기본값(`self`/`unknown`)으로 남긴다** — 화면 문구는 "어르신 또는 보호자·대리인"인데
+    대리동의·의사능력 선택 UI 가 없다(웹 `ConsentDialog` 에는 있다). 정부심사 기준상 가장
+    시급 — Figma 에 선택 컨트롤 추가 필요. (b) `profiles.memories` 컬럼은 아무도 안 쓴다
+    (앱은 주요 기억을 `chronicle_entries`(topic='주요 기억')로 저장) → 유지/삭제 결정.
+    (c) `session_logs.audio_url`·`audio_expires_at`·`duration_ms`·`switch_topic` 미사용
+    (녹음 저장 미구현). (d) 진행 중 세션은 DB 에 없다(종료 시 1회 배치 저장) — 중단 시 유실·
+    웹에서 진행 상황 조회 불가. (e) 앱에 UI 가 없는 DB 기능: `care_journals`·`guardian_shares`·
+    `guardian_invites`·`profile_guardians`·`elder_codes`·`profile_caregivers`(합류 승인)·
+    `organizations`·`audit_log` — 전부 웹 담당(설계대로).
+
+## 이전 위치 (2026-08-13)
 - 🗓 **생년월일 입력 = 캘린더로 교체(Figma `568:286`, 2026-08-17 사용자 변경)**: 스크롤
   3열 시트 → **달력 아이콘 + 캘린더 카드**. 필드는 Figma 그대로(박스 336×46, 값
   `1945 / 5 / 13` = core `birthSlashLabel`, 달력 아이콘 19×19 @ 박스 우측 20).
