@@ -217,7 +217,7 @@ export function useElderAnalysesDated(elderId: string | undefined): DatedAnalysi
 export function useAllAnalysesDated(): DatedAnalysis[] {
   const mockLogs = useApp((s) => s.logs);
   const mockAnalyses = useApp((s) => s.analyses);
-  const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
+  const live = useOrgSessionAnalysesData({ enabled: CFG, fetchAll: true });
   const liveRows = live.data;
   return useMemo(
     () => (CFG ? datedFromRows(liveRows) : datedFromMock(mockLogs, mockAnalyses)),
@@ -228,7 +228,7 @@ export function useAllAnalysesDated(): DatedAnalysis[] {
 /** 담당 전체 세션(전체 분석·관찰지표 집계용). */
 export function useAllSessions(): Session[] {
   const mock = useApp((s) => s.sessions);
-  const live = useRecentSessionsData({ enabled: CFG, limit: 500 });
+  const live = useRecentSessionsData({ enabled: CFG, fetchAll: true });
   const rows = live.data;
   const mapped = useMemo(() => (rows ?? []).map(toSession), [rows]);
   return CFG ? mapped : mock;
@@ -251,7 +251,7 @@ export function useLastTalkByElder(): Record<string, string> {
 /** 담당 전체 세션 분석(전체 관찰지표 집계용). */
 export function useAllAnalyses(): SessionAnalysis[] {
   const mock = useApp(useShallow((s) => Object.values(s.analyses)));
-  const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
+  const live = useOrgSessionAnalysesData({ enabled: CFG, fetchAll: true });
   const rows = live.data;
   const mapped = useMemo(
     () => (rows ?? []).map(parseSessionAnalysis).filter((a): a is SessionAnalysis => Boolean(a)),

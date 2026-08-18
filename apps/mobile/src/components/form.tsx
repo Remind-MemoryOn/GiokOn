@@ -39,6 +39,13 @@ import iconPlus from '../../assets/brand/icon-plus.png';
 import iconPhotoAdd from '../../assets/brand/icon-photo-add.png';
 import iconPhotoEdit from '../../assets/brand/icon-photo-edit.png';
 
+/**
+ * 주요 기억 한 항목의 최대 길이 — DB `chronicle_entries_content_check`(2000자)와 같다.
+ * 다른 필드(이름 10·가족 25·직업 30·취미 30)와 달리 Figma 에 카운터가 없어 상한 표시는
+ * 하지 않지만, 넘겨서 입력하면 저장 시 날것의 DB 오류가 뜨므로 입력 단계에서 막는다.
+ */
+export const MEMORY_MAX = 2000;
+
 /** Figma 폼 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다. */
 export const FORM = {
   left: 29,
@@ -472,7 +479,8 @@ export function MemoryList({
             <FieldBox>
               <TextInput
                 value={it.text}
-                onChangeText={(t) => change(it.key, t)}
+                onChangeText={(t) => change(it.key, t.slice(0, MEMORY_MAX))}
+                maxLength={MEMORY_MAX}
                 accessibilityLabel={`${label} ${i + 1}`}
                 className={`absolute ${valueClass}`}
                 style={{ ...valueStyle, left: FORM.valueInset, right: showControls ? 48 : FORM.valueInset, top: 8, height: 30 }}

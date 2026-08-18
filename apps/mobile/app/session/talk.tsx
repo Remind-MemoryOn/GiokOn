@@ -14,14 +14,17 @@
 // 흐름(사용자 지적 반영): 마이크를 눌러도 **다른 페이지로 이동하지 않는다**. 인식이 끝나면
 // 화면 하단에 인식된 텍스트가 인라인으로 나타나고, 거기서 확인·수정한다.
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
+import { Alert, View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MicButton, RobotInline, Waveform, type MicState } from '../../src/components/brand';
 import { AiDisclosureBanner, CrisisBanner } from '../../src/components/banners';
 import { ExpoSpeechProvider } from '../../src/lib/speech';
 import { useApp } from '../../src/store/appStore';
-import { useSessionPersistence } from '../../src/data/session-persistence';
+import {
+  useSessionPersistence,
+  type SessionSaveResult,
+} from '../../src/data/session-persistence';
 import iconClose from '../../assets/brand/icon-close.png';
 import iconSpeaker from '../../assets/brand/icon-speaker.png';
 
@@ -35,7 +38,7 @@ export default function Talk() {
   const confirm = useApp((s) => s.confirmUtterance);
   const discard = useApp((s) => s.discardUtterance);
   const acknowledge = useApp((s) => s.acknowledgeSafety);
-  const { finishAndPersist } = useSessionPersistence();
+  const { finishAndPersist, retrySave, discardUnsaved } = useSessionPersistence();
   const { height } = useWindowDimensions();
   const finishing = useRef(false);
 
@@ -74,11 +77,39 @@ export default function Talk() {
 
   if (!active) return <SafeAreaView className="flex-1 bg-white" />;
 
+  // 저장 결과 처리 — 실패를 삼키고 "저장되었습니다" 화면으로 넘어가면 요양보호사가
+  // 대화 전량이 사라진 걸 알 수 없다(감사 지적). 실패하면 재시도/포기를 묻는다.
+  async function retryAndPresent() {
+    presentResult(await retrySave());
+  }
+
+  function presentResult(res: SessionSaveResult) {
+    if (res.status !== 'failed') {
+      router.replace(`/session/saved${res.logId ? `?logId=${res.logId}` : ''}`);
+      return;
+    }
+    Alert.alert(
+      '대화를 저장하지 못했어요',
+      `${res.message}\n\n지금 나가면 이번 대화 기록이 사라집니다. 다시 시도해 주세요.`,
+      [
+        { text: '다시 시도', onPress: () => void retryAndPresent() },
+        {
+          text: '기록 없이 나가기',
+          style: 'destructive',
+          onPress: () => {
+            discardUnsaved();
+            router.replace('/main');
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  }
+
   const endAndSave = async () => {
     finishing.current = true;
     ExpoSpeechProvider.cancelSpeak();
-    const logId = await finishAndPersist();
-    router.replace(`/session/saved${logId ? `?logId=${logId}` : ''}`);
+    presentResult(await finishAndPersist());
   };
 
   const onMic = () => {

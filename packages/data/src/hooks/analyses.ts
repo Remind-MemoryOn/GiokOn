@@ -14,6 +14,7 @@ import {
 import type { SessionAnalysis } from '@giokon/core'
 import { getGiokonClient } from '../client'
 import { queryKeys } from '../query'
+import { fetchAllPages } from '../paging'
 import type { SessionAnalysisRow, TablesInsert } from '../database.types'
 
 export type SessionAnalysisInsert = TablesInsert<'session_analyses'>
@@ -27,23 +28,40 @@ export function parseSessionAnalysis(row: SessionAnalysisRow): SessionAnalysis |
   return value as unknown as SessionAnalysis
 }
 
-/** 기관 전체 최근 분석(분석 페이지 목록·대시보드 배지). */
+/**
+ * 기관 전체 최근 분석(분석 페이지 목록·대시보드 배지).
+ *
+ * `fetchAll` 을 주면 limit 대신 **전량**을 페이징으로 받는다 — 앱의 전체 분석·인지
+ * 효과 분석·주제별 추이는 이 배열로 비율과 추이를 계산하므로, 잘린 데이터면 화면이
+ * 조용히 틀린 값을 보여 준다.
+ */
 export function useOrgSessionAnalyses(options?: {
   limit?: number
   enabled?: boolean
+  fetchAll?: boolean
 }): UseQueryResult<SessionAnalysisRow[]> {
   const limit = options?.limit ?? 100
+  const fetchAll = options?.fetchAll ?? false
   return useQuery({
-    queryKey: [...queryKeys.orgSessionAnalyses, limit],
+    queryKey: [...queryKeys.orgSessionAnalyses, fetchAll ? 'all' : limit],
     enabled: options?.enabled ?? true,
     queryFn: async () => {
-      const { data, error } = await getGiokonClient()
-        .from('session_analyses')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit)
-      if (error) throw new Error(error.message)
-      return data
+      const base = () =>
+        getGiokonClient()
+          .from('session_analyses')
+          .select('*')
+          .order('created_at', { ascending: false })
+      if (!fetchAll) {
+        const { data, error } = await base().limit(limit)
+        if (error) throw new Error(error.message)
+        return data
+      }
+      const { rows } = await fetchAllPages<SessionAnalysisRow>(async (from, to) => {
+        const { data, error } = await base().order('id', { ascending: true }).range(from, to)
+        if (error) throw new Error(error.message)
+        return data
+      })
+      return rows
     },
   })
 }

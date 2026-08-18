@@ -14,6 +14,7 @@ import {
 } from '@tanstack/react-query'
 import { getGiokonClient } from '../client'
 import { queryKeys } from '../query'
+import { fetchAllPages } from '../paging'
 import type { SessionLogRow, SessionRow, TablesInsert, TablesUpdate } from '../database.types'
 
 export type SessionInsert = TablesInsert<'sessions'>
@@ -91,23 +92,37 @@ export function useSessionLogs(sessionId: string | undefined): UseQueryResult<Se
   })
 }
 
-/** 최근 세션(전 어르신, RLS 범위 — 세션 기록 목록·대시보드용). */
+/**
+ * 최근 세션(전 어르신, RLS 범위 — 세션 기록 목록·대시보드용).
+ *
+ * `fetchAll` 을 주면 limit 대신 **전량**을 페이징으로 받는다(집계 화면용 — 잘린
+ * 데이터로 비율·추이를 계산하지 않기 위해서다). 목록 화면은 기본 limit 을 그대로 쓴다.
+ */
 export function useRecentSessions(options?: {
   limit?: number
   enabled?: boolean
+  fetchAll?: boolean
 }): UseQueryResult<SessionRow[]> {
   const limit = options?.limit ?? 50
+  const fetchAll = options?.fetchAll ?? false
   return useQuery({
-    queryKey: [...queryKeys.recentSessions, limit],
+    queryKey: [...queryKeys.recentSessions, fetchAll ? 'all' : limit],
     enabled: options?.enabled ?? true,
     queryFn: async () => {
-      const { data, error } = await getGiokonClient()
-        .from('sessions')
-        .select('*')
-        .order('started_at', { ascending: false })
-        .limit(limit)
-      if (error) throw new Error(error.message)
-      return data
+      const base = () =>
+        getGiokonClient().from('sessions').select('*').order('started_at', { ascending: false })
+      if (!fetchAll) {
+        const { data, error } = await base().limit(limit)
+        if (error) throw new Error(error.message)
+        return data
+      }
+      // 정렬 동률로 페이지가 흔들리지 않도록 id 를 보조 정렬로 고정한다.
+      const { rows } = await fetchAllPages<SessionRow>(async (from, to) => {
+        const { data, error } = await base().order('id', { ascending: true }).range(from, to)
+        if (error) throw new Error(error.message)
+        return data
+      })
+      return rows
     },
   })
 }
