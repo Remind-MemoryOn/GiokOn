@@ -14,15 +14,13 @@
 // 라벨 뒤 "(필수, 별도)" 대신 앞의 "[필수,별도]" 배지로 뒀을 뿐이라, 문자열을 새로
 // 박지 않고 카탈로그 라벨에서 파생한다(법무 문구가 바뀌면 화면도 함께 바뀐다).
 //
-// ⚠️ 체크박스는 Figma 컴포넌트(`463:57`)지만 이 컨테이너의 egress 정책상 figma.com
-//   에셋 URL을 받을 수 없어 react-native-svg 로 같은 형태를 그린다(17×17 라운드 사각,
-//   미선택=회색 외곽선 / 선택=검정 채움 + 흰 체크). 에셋을 assets/figma 에 넣어 주시면
-//   이미지로 교체한다.
+// 체크박스는 Figma 컴포넌트(`463:57`)를 사용자가 내보낸 에셋(`assets/figma/Vector2.png`
+// → checkbox-off/on 17×17)으로 쓴다. 선택 상태는 **흰 바탕 + 검정 테두리 + 검정 체크**다
+// (임시 구현은 검정 채움 + 흰 체크였다 — 실제 디자인과 달랐다).
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path, Rect } from 'react-native-svg';
 import {
   CONSENT_CATALOG,
   CONSENT_VERSION,
@@ -33,6 +31,8 @@ import {
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { NonMedicalFootnote } from '../../src/components/banners';
 import { useElderView } from '../../src/data/reads';
+import checkboxOff from '../../assets/brand/checkbox-off.png';
+import checkboxOn from '../../assets/brand/checkbox-on.png';
 import { useGrantConsents } from '../../src/data/writes';
 
 /** Figma 콘텐츠 열. 카드만 335(우측 끝 364), 버튼은 336(우측 끝 365) — 원본 그대로. */
@@ -52,36 +52,14 @@ function cardTitle(def: ConsentDefinition): string {
   return `${badge} ${base}`;
 }
 
-/** 체크박스 17×17 — 미선택은 회색 외곽선, 선택은 검정 채움 + 흰 체크(사용자 디자인). */
+/** 체크박스 17×17 — Figma 에셋(미선택 회색 외곽선 / 선택 검정 테두리 + 검정 체크). */
 function CheckBox({ checked }: { checked: boolean }) {
-  const sw = 1.6;
   return (
-    <Svg width={BOX} height={BOX}>
-      {checked ? (
-        <>
-          <Rect x={0} y={0} width={BOX} height={BOX} rx={3} fill="#111111" />
-          <Path
-            d="M4.3 8.9 L7.1 11.7 L12.7 5.7"
-            stroke="#ffffff"
-            strokeWidth={1.9}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-        </>
-      ) : (
-        <Rect
-          x={sw / 2}
-          y={sw / 2}
-          width={BOX - sw}
-          height={BOX - sw}
-          rx={3}
-          stroke="#7b7c7c"
-          strokeWidth={sw}
-          fill="none"
-        />
-      )}
-    </Svg>
+    <Image
+      source={checked ? checkboxOn : checkboxOff}
+      style={{ width: BOX, height: BOX }}
+      resizeMode="contain"
+    />
   );
 }
 

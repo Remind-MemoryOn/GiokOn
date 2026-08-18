@@ -10,11 +10,13 @@
 //     휴지통 21 잉크(노드 19) #7b7c7c @(+269,+46)
 //   행 chevron     8.75×13.25 #404040 · "전체보기" chevron 6×7 #404040
 //
-// ⚠️ 휴지통·로그아웃 글리프는 Figma 벡터지만 이 컨테이너의 egress 정책이 figma.com 을
-//   막아 에셋을 받을 수 없다 → react-native-svg 로 **실측 치수 그대로** 구현한다
-//   (위 ASCII 픽셀맵에서 뽑은 좌표). 에셋을 assets/figma 에 넣어 주면 이미지로 교체.
+// 휴지통·로그아웃 글리프는 사용자가 내보낸 Figma 에셋을 쓴다
+// (`assets/figma/Group2.png` → icon-trash 21 · `Group 160.png` 좌측 13열 → icon-logout 13).
+// chevron 두 종은 대응 에셋이 없어 계속 react-native-svg 로 실측 치수대로 그린다.
 import { Image, Pressable, Text, View } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
+import iconTrash from '../../assets/brand/icon-trash.png';
+import iconLogout from '../../assets/brand/icon-logout.png';
 import { elderAge, initial, type ElderProfile } from '@giokon/core';
 import { genderLabel } from '../lib/format';
 import { useElderPhotoUrl } from '../data/elder-photo';
@@ -106,64 +108,14 @@ export function SmallChevron() {
   );
 }
 
-/** 로그아웃 글리프 — 13×13 #7b7c7c (대괄호 + 오른쪽 화살표). */
+/** 로그아웃 글리프 — 13×13 (Figma `Group 160` 좌측 아이콘). */
 export function LogoutGlyph() {
-  return (
-    <Svg width={13} height={13} viewBox="0 0 13 13">
-      <Path
-        d="M7.6 1.3 L3 1.3 Q1.3 1.3 1.3 3 L1.3 10 Q1.3 11.7 3 11.7 L7.6 11.7"
-        stroke={SETTINGS.muted}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <Path
-        d="M5.8 6.5 L11.6 6.5 M9 3.9 L11.9 6.5 L9 9.1"
-        stroke={SETTINGS.muted}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </Svg>
-  );
+  return <Image source={iconLogout} style={{ width: 13, height: 13 }} resizeMode="contain" />;
 }
 
-/**
- * 휴지통 글리프 — 잉크 21×21(노드 19×19) #7b7c7c.
- * 좌표는 @4x 픽셀맵 실측: 뚜껑 손잡이 아치 → 뚜껑 라운드 사각 → 아래로 좁아지는 몸통 →
- * 안쪽 세로 막대 2개.
- */
+/** 휴지통 글리프 — 잉크 21×21(노드 19×19), Figma `Group2`. */
 export function TrashGlyph() {
-  const c = SETTINGS.muted;
-  return (
-    <Svg width={21} height={21} viewBox="0 0 21 21">
-      <Path
-        d="M7.2 4 Q7.4 1 10.5 1 Q13.6 1 13.8 4"
-        stroke={c}
-        strokeWidth={2}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <Rect x={1} y={3} width={19} height={3.6} rx={1.8} stroke={c} strokeWidth={2} fill="none" />
-      <Path
-        d="M3.5 8.4 L5.7 18.9 Q5.95 20 7 20 L14 20 Q15.05 20 15.3 18.9 L17.5 8.4"
-        stroke={c}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <Path
-        d="M8 11 L8 15 M13 11 L13 15"
-        stroke={c}
-        strokeWidth={2}
-        strokeLinecap="round"
-        fill="none"
-      />
-    </Svg>
-  );
+  return <Image source={iconTrash} style={{ width: 21, height: 21 }} resizeMode="contain" />;
 }
 
 /**

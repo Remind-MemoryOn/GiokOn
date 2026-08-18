@@ -12,7 +12,8 @@ import wordmarkAsset from '../../assets/brand/wordmark.png';
 import robotAsset from '../../assets/brand/robot-mascot.png';
 import robotInlineAsset from '../../assets/brand/robot-inline.png';
 import waveformAsset from '../../assets/brand/waveform.png';
-import micAsset from '../../assets/brand/btn-mic.png';
+import micWait from '../../assets/brand/btn-mic-wait.png';
+import micReady from '../../assets/brand/btn-mic-ready.png';
 
 // ── 워드마크 GIEOK-ON ─────────────────────────────────────────
 // 원본 208×31.8 → 6.54:1. height 기준으로 폭을 맞춘다.
@@ -75,7 +76,6 @@ export function Waveform({ active = true, width = 228 }: { active?: boolean; wid
 
 // ── 마이크 버튼 ───────────────────────────────────────────────
 // Figma 원본 125×114 **회색** 원형 버튼(주황이 아니다).
-const MIC_RATIO = 125 / 114;
 
 /**
  * 마이크 상태 — 사용자 지적("TTS 끝나거나 응답할 때 마이크가 그대로다")을 반영해
@@ -97,10 +97,16 @@ export function MicButton({
   state?: MicState;
   size?: number;
 }) {
+  // 어르신은 기기를 만지지 않는 것이 기본이므로(사용자 확정) 상태는 **말할 차례인지**로
+  // 나뉜다: AI 음성(TTS)이 나오는 동안은 회색, 끝나면 주황으로 바뀌어 말씀을 청한다.
+  // 인식 결과를 정리하는 동안도 누를 수 없으므로 회색이다.
   const disabled = state === 'speaking' || state === 'processing';
-  const opacity = disabled ? 0.4 : 1;
   const label =
-    state === 'listening' ? '듣는 중' : state === 'processing' ? '인식 중' : '마이크';
+    state === 'speaking'
+      ? '안내 음성 재생 중'
+      : state === 'processing'
+        ? '인식 중'
+        : '말씀 입력';
 
   return (
     <Pressable
@@ -109,16 +115,11 @@ export function MicButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
-      style={{
-        borderRadius: 999,
-        borderWidth: state === 'listening' ? 3 : 0,
-        borderColor: '#e9822b',
-        opacity,
-      }}
+      style={{ borderRadius: 999 }}
     >
       <Image
-        source={micAsset}
-        style={{ width: size, height: size / MIC_RATIO }}
+        source={disabled ? micWait : micReady}
+        style={{ width: size, height: size }}
         resizeMode="contain"
       />
     </Pressable>

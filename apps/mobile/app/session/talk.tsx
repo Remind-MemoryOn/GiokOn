@@ -56,6 +56,9 @@ export default function Talk() {
   // 재생 완료한 질문을 기록하고 speaking 은 **파생**한다(effect 내 동기 setState 회피 —
   // 동기 setState 는 연쇄 렌더를 유발한다).
   const [spokenDone, setSpokenDone] = useState<string | null>(null);
+  // "다시 듣기" 3상태(기본 / 누르는 중 / 재생 중)
+  const [replaying, setReplaying] = useState(false);
+  const [replayPressed, setReplayPressed] = useState(false);
   const speaking = Boolean(question) && spokenDone !== question;
 
   // AI 질문 자동 재생(노인 대상: 느린 속도). 재생 중에는 마이크를 잠근다.
@@ -212,11 +215,15 @@ export default function Talk() {
               className="text-[23px] font-medium text-black text-center"
               style={{ lineHeight: 42, marginTop: 3 }}
             >
+              {/*
+               * Figma `Frame 5` 의 짝: 회색 마이크 ↔ "듣고 있어요..."(어르신이 AI 안내
+               * 음성을 듣는 중) · 주황 마이크 ↔ "말씀해 주세요."(TTS 가 끝나 말할 차례).
+               */}
               {micState === 'speaking'
-                ? '잠시만 기다려 주세요...'
+                ? '듣고 있어요...'
                 : micState === 'processing'
                   ? '말씀을 정리하고 있어요...'
-                  : '듣고 있어요...'}
+                  : '말씀해 주세요.'}
             </Text>
           </>
         )}
@@ -226,21 +233,57 @@ export default function Talk() {
       {!shouldEnd && pending === null ? (
         <View className="absolute left-0 right-0 items-center" style={{ top: (743 / FRAME_H) * height }}>
           <AiDisclosureBanner />
+          {/*
+           * 다시 듣기 3상태(Figma `Frame 3` 실측):
+           *   기본     흰 바탕 · 테두리 #cccdce · 라벨 #7b7c7c
+           *   누르는 중 rgba(233,130,43,0.10) 바탕 · 테두리 #e9822b · 라벨 흰색
+           *   재생 중   #e9822b 채움 · 라벨 흰색
+           * 라벨은 이미지로 굽지 않고 텍스트로 둔다 — 어르신 대상 글자 확대·스크린리더가
+           * 살아 있어야 한다(색·치수는 위 실측 그대로).
+           */}
           <Pressable
-            onPress={() => question && ExpoSpeechProvider.speak(question)}
+            onPress={async () => {
+              if (!question || replaying) return;
+              setReplaying(true);
+              try {
+                await ExpoSpeechProvider.speak(question);
+              } finally {
+                setReplaying(false);
+              }
+            }}
+            onPressIn={() => setReplayPressed(true)}
+            onPressOut={() => setReplayPressed(false)}
             accessibilityRole="button"
-            className="flex-row items-center justify-center active:opacity-70"
+            accessibilityLabel="다시 듣기"
+            accessibilityState={{ busy: replaying }}
+            className="flex-row items-center justify-center"
             style={{
               width: 336,
               height: 57,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: '#cccdce',
+              borderColor: replaying || replayPressed ? '#e9822b' : '#cccdce',
+              backgroundColor: replaying
+                ? '#e9822b'
+                : replayPressed
+                  ? 'rgba(233,130,43,0.10)'
+                  : '#ffffff',
               marginTop: 4,
             }}
           >
-            <Image source={iconSpeaker} style={{ width: 20, height: 20 }} resizeMode="contain" />
-            <Text className="text-[18px] font-semibold text-muted" style={{ lineHeight: 30, marginLeft: 8 }}>
+            <Image
+              source={iconSpeaker}
+              style={{ width: 20, height: 20, tintColor: replaying || replayPressed ? '#ffffff' : undefined }}
+              resizeMode="contain"
+            />
+            <Text
+              className="text-[18px] font-semibold"
+              style={{
+                lineHeight: 30,
+                marginLeft: 8,
+                color: replaying || replayPressed ? '#ffffff' : '#7b7c7c',
+              }}
+            >
               다시 듣기
             </Text>
           </Pressable>

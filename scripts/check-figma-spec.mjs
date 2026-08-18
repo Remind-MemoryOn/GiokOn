@@ -89,7 +89,21 @@ const SPECS = [
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
   [`${APP}/app/session/talk.tsx`, '대화: 마이크 123 + 상태', [/MicButton onPress=\{onMic\} state=\{micState\} size=\{123\}/]],
   [`${APP}/app/session/talk.tsx`, '대화: 라벨 Medium 23 lh42', [/text-\[23px\] font-medium/, /lineHeight: 42/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 다시듣기 336×57 + 스피커 에셋 20', [/icon-speaker\.png/, /width: 20, height: 20/]],
+  [
+    `${APP}/app/session/talk.tsx`,
+    '대화: 다시듣기 336×57 3상태(기본 #cccdce / 누름 rgba(233,130,43,0.10) / 재생 #e9822b)',
+    [/icon-speaker\.png/, /width: 20, height: 20/, /'rgba\(233,130,43,0\.10\)'/, /backgroundColor: replaying\s*\n\s*\? '#e9822b'/, /borderColor: replaying \|\| replayPressed \? '#e9822b' : '#cccdce'/],
+  ],
+  [
+    `${APP}/app/session/talk.tsx`,
+    '대화: 마이크 라벨 짝(회색=듣고 있어요… / 주황=말씀해 주세요.)',
+    [/\? '듣고 있어요\.\.\.'/, /: '말씀해 주세요\.'/],
+  ],
+  [
+    `${APP}/src/components/brand.tsx`,
+    '대화: 마이크 2상태 에셋 123(회색=TTS 중·인식 중 / 주황=말할 차례)',
+    [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{disabled \? micWait : micReady\}/, /width: size, height: size/],
+  ],
   [`${APP}/app/session/talk.tsx`, '대화: 인식결과 인라인(페이지 이동 없음)', [/AI가 이렇게 이해했어요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
 
   // ── 질문 로딩 (Figma 28:37) ───────────────────────────────────────────
@@ -477,7 +491,7 @@ const SPECS = [
   ],
 
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
-  [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],
+  [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic-wait\.png/, /btn-mic-ready\.png/, /wordmark\.png/]],
   [`${APP}/src/components/brand.tsx`, '브랜드: 인라인 로봇 비율 46.5:29.5(재크롭)', [/ROBOT_INLINE_RATIO = 46\.5 \/ 29\.5/]],
   [`${APP}/app/session/start.tsx`, '시작전: 로봇 left 98(중앙 아님)', [/left: 98/]],
 
@@ -617,9 +631,10 @@ const SPECS = [
   [`${APP}/src/components/settings.tsx`, '설정: 카드 사진 73 원형 @(+27,+20)', [/left: 27,\s*top: 20,\s*width: 73,\s*height: 73,\s*borderRadius: 36\.5/]],
   [`${APP}/src/components/settings.tsx`, '설정: 카드 이름 SemiBold 18/30 @(+124,+16)', [/text-\[18px\] font-semibold text-black/, /left: 124, top: 16, lineHeight: 30/]],
   [`${APP}/src/components/settings.tsx`, '설정: 카드 생년/성별 Medium 14/25 #7b7c7c', [/left: 124, top: 46, lineHeight: 25/, /left: 124, top: 71, lineHeight: 25/, /muted: '#7b7c7c'/]],
-  [`${APP}/src/components/settings.tsx`, '설정: 휴지통 21 @(+269,+46)', [/width=\{21\} height=\{21\}/, /left: 269 - 12, top: 46 - 12/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 휴지통 에셋 21 @(+269,+46)', [/iconTrash/, /width: 21, height: 21/, /left: 269 - 12, top: 46 - 12/]],
   [`${APP}/src/components/settings.tsx`, '설정: 행 chevron 8.75×13.25 / 작은 chevron 6×7 #404040', [/width=\{8\.75\} height=\{13\.25\}/, /width=\{6\} height=\{7\}/, /strong: '#404040'/]],
-  [`${APP}/src/components/settings.tsx`, '설정: 로그아웃 글리프 13', [/width=\{13\} height=\{13\}/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 로그아웃 에셋 13', [/iconLogout/, /width: 13, height: 13/]],
+  [`${APP}/app/consent/[id].tsx`, '동의: 체크박스 에셋 17 (미선택/선택)', [/checkboxOff/, /checkboxOn/, /BOX = 17/]],
   [`${APP}/app/settings/index.tsx`, '설정: 헤더 아래 34 · 좌 29 · 하단 49', [/paddingLeft: SETTINGS\.left, paddingTop: 34, paddingBottom: 49/]],
   [`${APP}/app/settings/index.tsx`, '설정: 프로필 카드 336×260 @ 라벨 아래 15', [/height: 260,\s*marginTop: 15/]],
   [`${APP}/app/settings/index.tsx`, '설정: 아바타 79 원 @(+26,+22)', [/left: 26,\s*top: 22,\s*width: 79,\s*height: 79,\s*borderRadius: 39\.5/]],
