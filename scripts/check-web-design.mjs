@@ -217,6 +217,30 @@ const SCREENS = [
     /담당 어르신/, /최근 대화/, /전체 보기/,
   ]],
 
+  // ── 서비스 소개 1:13 ───────────────────────────────────────────────────
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 히어로 밴드 953 · 그라데이션 흰→#f7d3b4 54.6%', [
+    /height: 953/, /linear-gradient\(180deg, #ffffff 0%, #ffffff 54\.6%, #f7d3b4 100%\)/,
+    /const Y = \(v: number\) => v - 122/,
+  ]],
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: h1 Bold48/70 @118,355 · 워드마크 263×41 @515 · 히어로아트 410×261 @828,325', [
+    /text-\[48px\] font-bold leading-\[70px\]/, /top: Y\(355\)/,
+    /width: 263, height: 41/, /top: Y\(515\)/, /width: 410, height: 261/, /top: Y\(325\)/,
+  ]],
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 기능 카드 4종 268×318 r10 shadow-card @1941 (x 113/427/741/1055)', [
+    /h-\[318px\] w-\[268px\] rounded-\[10px\] bg-white shadow-card/, /top: Y\(1941\)/,
+    /left: 113/, /left: 427/, /left: 741/, /left: 1055/,
+  ]],
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 카드 내부 순서 제목(1990)→아이콘(2052)→설명(2157)', [
+    /top: Y\(1990\)/, /top: Y\(2052\)/, /top: Y\(2157\)/,
+  ]],
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 하단 회색 섹션 #f8f8f8 @1539 h992 + 노치', [
+    /top: Y\(1539\), height: 992/, /bg-\[#f8f8f8\]/, /landingNotch/,
+  ]],
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 카피(Figma 문구 그대로)', [
+    /AI 회상 대화와/, /요양일지를 더 쉽게 관리하는,/, /을 이용해보세요!/,
+    /AI 회상 기록부터 요양일지,/, /어르신 관리/, /AI 회상 기록/, /AI 분석/, /보호자 공유/,
+  ], 'copy'],
+
   // ── 어르신 관리 161:207 ────────────────────────────────────────────────
   [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 카드 329×146 r10 accent7% shadow-card · 3열 gap33 · 사진 101', [
     /h-\[146px\] w-\[329px\]/, /rounded-\[10px\] bg-accent\/\[0\.07\] shadow-card/,

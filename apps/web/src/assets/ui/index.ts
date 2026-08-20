@@ -34,6 +34,20 @@ import markKakao from './mark-kakao.png';
 import markGoogle from './mark-google.png';
 import iconEye from './icon-eye.png';
 import iconCheckbox from './icon-checkbox.png';
+import landingHero from './landing-hero.png';
+import landingWordmarkHero from './landing-wordmark-hero.png';
+import landingSpot1 from './landing-spot-1.png';
+import landingSpot2 from './landing-spot-2.png';
+import landingSpot3 from './landing-spot-3.png';
+import landingWordmarkCta from './landing-wordmark-cta.png';
+import landingWordmarkSub from './landing-wordmark-sub.png';
+import landingIllustShare from './landing-illust-share.png';
+import landingFeatElders from './landing-feat-elders.png';
+import landingFeatRecords from './landing-feat-records.png';
+import landingFeatAnalysis from './landing-feat-analysis.png';
+import landingFeatShare from './landing-feat-share.png';
+import landingNotch from './landing-notch.png';
+import landingBars from './landing-bars.png';
 
 export const asset = {
   wordmark,
@@ -52,6 +66,20 @@ export const asset = {
   markGoogle,
   iconEye,
   iconCheckbox,
+  landingHero,
+  landingWordmarkHero,
+  landingSpot1,
+  landingSpot2,
+  landingSpot3,
+  landingWordmarkCta,
+  landingWordmarkSub,
+  landingIllustShare,
+  landingFeatElders,
+  landingFeatRecords,
+  landingFeatAnalysis,
+  landingFeatShare,
+  landingNotch,
+  landingBars,
 } as const;
 
 /** 사이드바 아이콘 — [비활성, 활성] 쌍. */

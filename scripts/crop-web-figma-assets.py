@@ -25,6 +25,7 @@ SHARES = "요양보호사 페이지_공개 관리.png"
 ORG = "요양보호사 페이지_기관 관리.png"
 SETTINGS = "요양보호사 페이지_설정.png"
 LOGIN = "회원가입 페이지1.png"
+LANDING = "서비스 소개 페이지.png"
 
 # (출력이름, 원본, x1, y1, x2, y2)  — 1440 캔버스 좌표
 CROPS = [
@@ -69,6 +70,21 @@ CROPS = [
     ("mark-google",     LOGIN, 870.0,  780.0,  893.0,  804.0),
     ("icon-eye",        LOGIN, 939.0,  455.0,  971.0,  477.0),
     ("icon-checkbox",   LOGIN, 435.0,  538.0,  458.0,  561.0),
+    # 서비스 소개 (1:13) — 일러스트·장식은 SVG 를 받을 수 없어 화면에서 잘라 쓴다
+    ("landing-hero",        LANDING,  828.0,  325.0, 1238.0,  586.0),
+    ("landing-wordmark-hero", LANDING, 118.0,  515.0,  381.0,  556.0),
+    ("landing-spot-1",      LANDING,  227.0, 1096.0,  394.0, 1217.0),
+    ("landing-spot-2",      LANDING,  672.0, 1096.0,  783.0, 1218.0),
+    ("landing-spot-3",      LANDING, 1078.0, 1110.0, 1186.0, 1219.0),
+    ("landing-wordmark-cta", LANDING, 483.0, 1390.0,  688.0, 1423.0),
+    ("landing-wordmark-sub", LANDING, 314.0, 1807.0,  578.0, 1849.0),
+    ("landing-illust-share", LANDING, 1051.0, 1675.0, 1319.0, 1846.0),
+    ("landing-feat-elders",  LANDING,  221.0, 2051.0,  274.0, 2130.0),
+    ("landing-feat-records", LANDING,  521.0, 2053.0,  598.0, 2129.0),
+    ("landing-feat-analysis",LANDING,  842.0, 2058.0,  908.0, 2119.0),
+    ("landing-feat-share",   LANDING, 1159.0, 2055.0, 1219.0, 2126.0),
+    ("landing-notch",        LANDING,  630.0, 1528.0,  820.0, 1626.0),
+    ("landing-bars",         LANDING,   19.0,  616.0, 1440.0,  884.0),
 ]
 
 
@@ -119,7 +135,72 @@ CIRCLE = {"stat-elders", "stat-sessions", "stat-chronicles", "stat-ai", "avatar-
 MIRROR = {"icon-bell"}
 # 다색 에셋 — 단색 알파 추출을 하면 색이 뭉개진다. 흰 배경 그대로 둔다
 # (구글 마크는 흰 칩 위에 놓이므로 배경이 보이지 않는다).
-KEEP_BG = {"mark-google"}
+KEEP_BG = {
+    "mark-google",
+    # 랜딩 일러스트·장식 — 다색·그라데이션이라 단색 알파 추출이 불가.
+    # 배경(흰색/그라데이션) 위 같은 좌표에 얹으므로 배경째 잘라 쓴다.
+    "landing-hero", "landing-wordmark-hero", "landing-spot-1", "landing-spot-2",
+    "landing-spot-3", "landing-wordmark-cta", "landing-wordmark-sub",
+    "landing-illust-share", "landing-feat-elders", "landing-feat-records",
+    "landing-feat-analysis", "landing-feat-share", "landing-notch", "landing-bars",
+}
+
+
+def flood_transparent(im: Image.Image, tol: int = 12) -> Image.Image:
+    """가장자리에서 번져 들어가며 **바깥 배경만** 투명화한다.
+
+    로고·일러스트는 안쪽에도 흰색이 있어(로봇 얼굴) 단순 색상 키로는 속까지 뚫린다.
+    테두리에서 flood fill 하면 글리프 내부 흰색은 보존된다. 히어로 로봇처럼
+    그라데이션 위에 놓이는 에셋에 쓴다.
+    """
+    im = im.convert("RGBA")
+    w, h = im.size
+    px = im.load()
+    ref = px[0, 0][:3]
+    seen = bytearray(w * h)
+    stack = [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)]
+    stack += [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
+    while stack:
+        x, y = stack.pop()
+        i = y * w + x
+        if seen[i]:
+            continue
+        seen[i] = 1
+        c = px[x, y][:3]
+        if max(abs(a - b) for a, b in zip(c, ref)) > tol:
+            continue
+        px[x, y] = (*c, 0)
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx]:
+                stack.append((nx, ny))
+    return im
+
+
+BAR_RGB = (233, 130, 43)
+BAR_ALPHA = 51  # rgba(233,130,43,0.2)
+
+
+def bars_alpha(crop: Image.Image, full: Image.Image, bg_x: int, y0: int) -> Image.Image:
+    """히어로 장식 바를 배경에서 분리해 투명 PNG 로 만든다.
+
+    바는 그라데이션 배경 위에 얹힌 20% 주황이라 배경째 잘라 쓰면 CSS 그라데이션과
+    미세하게 어긋나 상자 경계가 보인다. 같은 행의 바 없는 열(bg_x)을 배경 기준으로
+    삼아 커버리지를 구하고, 색은 원본 토큰(#e9822b 20%)으로 되돌린다.
+    """
+    w, h = crop.size
+    src = crop.load()
+    out = Image.new("RGBA", (w, h))
+    dst = out.load()
+    for y in range(h):
+        bg = full.getpixel((bg_x, y0 + y))[:3]
+        # 배경 위에 20% 주황을 얹었을 때의 색(완전 커버리지 기준값)
+        full_cov = tuple(round(b + (c - b) * 0.2) for b, c in zip(bg, BAR_RGB))
+        denom = sum(abs(a - b) for a, b in zip(full_cov, bg)) or 1
+        for x in range(w):
+            c = src[x, y][:3]
+            cov = min(1.0, sum(abs(a - b) for a, b in zip(c, bg)) / denom)
+            dst[x, y] = (*BAR_RGB, round(BAR_ALPHA * cov))
+    return out
 
 
 def main() -> None:
@@ -139,6 +220,11 @@ def main() -> None:
             full.paste(half, (0, 0))
             full.paste(half.transpose(Image.FLIP_LEFT_RIGHT), (half.size[0], 0))
             cropped = full
+        if name == "landing-hero":  # 그라데이션 위에 놓여 흰 배경이 상자로 보인다
+            cropped = flood_transparent(cropped)
+        if name == "landing-bars":
+            cropped = bars_alpha(cropped, im, round(10 * scale), round(616 * scale))
+            cropped = cropped.resize((cropped.size[0] // 2, cropped.size[1] // 2), Image.LANCZOS)
         cropped.save(OUT / f"{name}.png")
         print(f"{name:22s} {box}  ({box[2]-box[0]}×{box[3]-box[1]}px @{scale:g}x)")
 
