@@ -1,6 +1,7 @@
 // 로그인 (Figma 15:443 — 1440×1084 실측)
 //   콘텐츠 열 568 @ x436 · 필드 그룹 높이 110(라벨 22 + 간격 + 입력 68)
 //   아이디 254 · 비밀번호 389 · 아이디 저장 537 · 로그인 600(568×71) · 또는 706 · 소셜 758
+// ⚠️ 라인박스는 Figma auto(≈1.2) — 토큰 기본값(28/30)을 쓰면 잉크가 2~3px 내려간다.
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { signInWithEmail, signInWithProvider, buildNaverAuthUrl, type NativeSocialProvider } from '@giokon/data';
@@ -13,9 +14,9 @@ import { isSupabaseConfigured, supabaseUrl } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 
 const SOCIAL = [
-  { key: 'naver', label: '네이버', chip: 'bg-naver', mark: asset.markNaver, left: 436 },
-  { key: 'kakao', label: '카카오톡', chip: 'bg-kakao', mark: asset.markKakao, left: 629 },
-  { key: 'google', label: '구글', chip: 'bg-white shadow-chip', mark: asset.markGoogle, left: 824 },
+  { key: 'naver', label: '네이버', chip: 'bg-naver', mark: asset.markNaver, left: 436, fx: '72:836', fxChip: '72:847' },
+  { key: 'kakao', label: '카카오톡', chip: 'bg-kakao', mark: asset.markKakao, left: 629, fx: '72:855', fxChip: '72:867' },
+  { key: 'google', label: '구글', chip: 'bg-white shadow-chip', mark: asset.markGoogle, left: 824, fx: '72:872', fxChip: '72:833' },
 ] as const;
 
 export function LoginPage() {
@@ -77,12 +78,15 @@ export function LoginPage() {
       <PublicHeader />
       {/* 좌표는 1440 캔버스 기준값에서 헤더 높이(122)를 뺀 값이다. */}
       <main className="relative mx-auto h-[962px] w-full max-w-[1440px]">
-        <h1 className="absolute left-[607px] top-[72px] whitespace-nowrap text-w-nav font-semibold text-ink-500">
+        <h1
+          data-fx="72:958"
+          className="absolute left-[607px] top-[72px] whitespace-nowrap text-w-nav font-semibold leading-[26px] text-ink-500"
+        >
           계정으로 로그인해 주세요.
         </h1>
 
         {/* 아이디 */}
-        <div className="absolute left-[436px] top-[132px] w-[568px]">
+        <div data-fx="23:146" className="absolute left-[436px] top-[132px] w-[568px]">
           <label className="block text-w-nav font-semibold text-ink-500" htmlFor="login-email">
             아이디
           </label>
@@ -99,7 +103,7 @@ export function LoginPage() {
         </div>
 
         {/* 비밀번호 */}
-        <div className="absolute left-[436px] top-[267px] w-[568px]">
+        <div data-fx="23:150" className="absolute left-[436px] top-[267px] w-[568px]">
           <label className="block text-w-nav font-semibold text-ink-500" htmlFor="login-password">
             비밀번호
           </label>
@@ -130,20 +134,22 @@ export function LoginPage() {
           type="button"
           onClick={() => setRemember((v) => !v)}
           aria-pressed={remember}
+          data-fx="23:168"
           className="absolute left-[436px] top-[415px] flex h-[24px] items-center gap-[7px]"
         >
-          <img
-            src={asset.iconCheckbox}
-            alt=""
-            width={21}
-            height={21}
-            className={cn('block', remember ? 'opacity-100' : 'opacity-60')}
-          />
+          {/* 체크박스 틀은 Figma 에셋 그대로(21) — 선택 표시는 안쪽 accent 사각형 */}
+          <span className="relative block h-[21px] w-[21px]">
+            <img src={asset.iconCheckbox} alt="" width={21} height={21} className="block" />
+            {remember ? (
+              <span className="absolute inset-[5px] rounded-[2px] bg-accent" />
+            ) : null}
+          </span>
           <span className="text-w-body text-ink-500">아이디 저장</span>
         </button>
         <Link
           to="/find-id"
-          className="absolute left-[836px] top-[416px] whitespace-nowrap text-w-body text-ink-500 underline"
+          data-fx="22:39"
+          className="absolute left-[836px] top-[416px] whitespace-nowrap text-w-body leading-[24px] text-ink-500 underline"
         >
           아이디/비밀번호 찾기
         </Link>
@@ -153,31 +159,42 @@ export function LoginPage() {
           type="button"
           onClick={submit}
           disabled={submitting || !isSupabaseConfigured}
+          data-fx="22:32"
           className="absolute left-[436px] top-[478px] h-[71px] w-[568px] rounded-[10px] bg-accent text-w-cta font-semibold text-white transition hover:brightness-95 disabled:opacity-50"
         >
           {submitting ? '로그인 중...' : '로그인'}
         </button>
 
         {/* 회원가입 유도 */}
-        <p className="absolute left-[587px] top-[772px] whitespace-nowrap text-w-body font-medium text-ink-500">
+        <p
+          data-fx="22:52"
+          className="absolute left-[587px] top-[772px] whitespace-nowrap text-w-body font-medium leading-[24px] text-ink-500"
+        >
           계정이 없으신가요?
         </p>
         <Link
           to="/signup"
-          className="absolute left-[749px] top-[772px] whitespace-nowrap text-w-body font-medium text-accent"
+          data-fx="22:54"
+          className="absolute left-[749px] top-[772px] whitespace-nowrap text-w-body font-medium leading-[24px] text-accent"
         >
           회원가입
         </Link>
 
         {/* 또는 */}
-        <div className="absolute left-[436px] top-[596px] h-px w-[250px] bg-line-strong" />
-        <span className="absolute left-[703px] top-[584px] text-w-body font-medium text-ink-500">또는</span>
-        <div className="absolute left-[754px] top-[596px] h-px w-[250px] bg-line-strong" />
+        <div data-fx="72:723" className="absolute left-[436px] top-[596px] h-px w-[250px] bg-line-strong" />
+        <span
+          data-fx="72:726"
+          className="absolute left-[703px] top-[584px] text-w-body font-medium leading-[24px] text-ink-500"
+        >
+          또는
+        </span>
+        <div data-fx="72:731" className="absolute left-[754px] top-[596px] h-px w-[250px] bg-line-strong" />
 
         {/* 소셜 로그인 — 네이버 · 카카오톡 · 구글 (180×68 r10) */}
         {SOCIAL.map((s) => (
           <button
             key={s.key}
+            data-fx={s.fx}
             type="button"
             onClick={() => social(s.key)}
             disabled={pending !== null || !isSupabaseConfigured}
@@ -185,6 +202,7 @@ export function LoginPage() {
             className="absolute top-[636px] flex h-[68px] w-[180px] items-center rounded-[10px] border border-line bg-white disabled:opacity-50"
           >
             <span
+              data-fx={s.fxChip}
               className={cn(
                 'ml-[39px] flex h-[34px] w-[36px] items-center justify-center rounded-[5px]',
                 s.chip,
@@ -199,10 +217,24 @@ export function LoginPage() {
         ))}
 
         {/* 법적 문서 */}
-        <div className="absolute left-[590px] top-[870px] flex items-center gap-4 text-w-sub text-ink-500">
-          <Link to="/guide#privacy" className="hover:underline">개인정보처리방침</Link>
-          <span className="h-[14px] w-px bg-ink-500" />
-          <Link to="/guide#terms" className="hover:underline">이용약관</Link>
+        {/* 법적 문서 — Figma 실측 좌표(처리방침 590 · 구분 731 · 약관 754 @ 992) */}
+        <div className="absolute inset-x-0 top-[870px] text-w-sub leading-[21px] text-ink-500">
+          <Link
+            to="/guide#privacy"
+            data-fx="22:56"
+            className="absolute left-[590px] whitespace-nowrap hover:underline"
+          >
+            개인정보처리방침
+          </Link>
+          {/* 구분자는 1px 선이 아니라 4×21 굵은 막대다(Figma 22:58 실측) */}
+          <span className="absolute left-[731px] top-0 h-[21px] w-[4px] bg-ink-500" />
+          <Link
+            to="/guide#terms"
+            data-fx="22:57"
+            className="absolute left-[754px] whitespace-nowrap hover:underline"
+          >
+            이용약관
+          </Link>
         </div>
       </main>
     </div>

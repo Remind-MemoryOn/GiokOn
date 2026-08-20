@@ -143,15 +143,15 @@ check('에셋', 'Pretendard 자체 호스팅 폰트 존재',
 const SCREENS = [
   // ── 공용 셸 ────────────────────────────────────────────────────────────
   [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: h122 · shadow-topbar · 워드마크 153×23 @63', [
-    /h-\[122px\][^"]*shadow-topbar/, /left-\[63px\] top-\[70px\]/, /width=\{153\} height=\{23\}/,
+    /h-\[122px\][^"]*shadow-topbar/, /left-\[63px\] top-\[70px\]/, /width=\{153\}/, /height=\{23\}/,
   ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: 검색 466×40 r-pill @561 · 아이콘 21×22', [
     /left-\[561px\] top-\[62px\]/, /h-\[40px\] w-\[466px\]/, /rounded-pill bg-mute-field/,
-    /width=\{21\} height=\{22\}/,
+    /width=\{21\}/, /height=\{22\}/,
   ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: 벨 @1045 + 배지 18원 · 아바타 40 @1105', [
     /left-\[1045px\] top-\[69px\]/, /h-\[18px\] min-w-\[18px\][^"]*rounded-full bg-accent/,
-    /left-\[1105px\] top-\[62px\]/, /width=\{40\} height=\{40\}/,
+    /left-\[1105px\] top-\[62px\]/, /width=\{40\}/, /height=\{40\}/,
   ]],
   [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 폭 296 · 활성 pill 208×57 r10 accent-soft', [
     /w-\[296px\]/, /h-\[57px\] w-\[208px\]/, /rounded-\[10px\]/, /bg-accent-soft/, /ml-\[44px\]/,
@@ -203,13 +203,14 @@ const SCREENS = [
   // 세 화면은 골격이 완전히 같다(실측): 돌아가기 187 · 제목 287 · 부제 325 ·
   // 입력 576×57 @431/560 · CTA 576×71 @672 · 하단 링크 793.
   [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 공통 골격 좌표(187/287/325/431·560/672/793)', [
-    /top: Y\(187\)/, /top: Y\(287\)/, /top: Y\(325\)/, /top: Y\(672\)/, /top: Y\(793\)/,
+    /top: Y\(187\)/, /top: Y\(287\)/, /top: Y\(325\)/, /top: Y\(672\)/,
+    /footerLink\.top \?\? 793/, /const STAR_TOP = \[386, 517\]/,
     /const FIELD_TOP = \[395, 524\]/, /const INPUT_TOP = \[431, 560\]/,
   ]],
   [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 입력 576×57 r10 · CTA 576×71 accent · 필수 별표', [
     /h-\[57px\] w-\[576px\] rounded-\[10px\] border border-line/,
     /h-\[71px\] w-\[576px\] rounded-\[10px\] bg-accent/,
-    /text-\[12px\] text-accent/,
+    /text-\[12px\] font-medium leading-\[30px\] text-accent/,
   ]],
   [`${WEB}/src/pages/public/FindIdPage.tsx`, '아이디 찾기: 카피·필드', [
     /아이디\(이메일\) 찾기/, /가입 시 입력한 이름과 전화번호로 이메일 일부를 확인할 수 있어요\./,
@@ -232,7 +233,9 @@ const SCREENS = [
   ]],
   [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 입력 576×57 @ 이름508·전화652·기관798 + 필수 별표 accent', [
     /h-\[57px\] w-\[576px\] rounded-\[10px\] border border-line/,
-    /top=\{464\}/, /top=\{609\}/, /top=\{756\}/,
+    /at=\{\[473\.38, 468, 464, 508\.41, 573\.46\]\}/,
+    /at=\{\[616\.49, 504, 609, 651\.52, 716\.57\]\}/,
+    /at=\{\[763\.61, 529, 756, 797\.64, 862\.69\]\}/,
     /text-\[12px\] font-medium leading-\[30px\] text-accent/,
   ]],
   [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 동의 박스 576×151 @916 · CTA 576×71 @1106', [
@@ -247,7 +250,7 @@ const SCREENS = [
   // ── 대시보드 118:300 ───────────────────────────────────────────────────
   [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 4카드 243×107 r10 shadow-card · 아이콘 50', [
     /h-\[107px\] w-\[243px\][^"]*rounded-\[10px\] bg-white px-6 shadow-card/,
-    /gap-\[27px\]/, /width=\{50\} height=\{50\}/,
+    /gap-\[27px\]/, /width=\{50\}/, /height=\{50\}/,
     /text-w-stat font-semibold/, /text-w-label text-ink-500/,
   ]],
   [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 4종 라벨(디자인 순서)', [
@@ -269,17 +272,17 @@ const SCREENS = [
   ]],
   [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: h1 Bold48/70 @118,355 · 워드마크 263×41 @515 · 히어로아트 410×261 @828,325', [
     /text-\[48px\] font-bold leading-\[70px\]/, /top: Y\(355\)/,
-    /width: 263, height: 41/, /top: Y\(515\)/, /width: 410, height: 261/, /top: Y\(325\)/,
+    /width: 263, height: 41/, /top: Y\(515 \+ \(40\.117 - 41\) \/ 2\)/, /width: 410, height: 261/, /top: Y\(325\)/,
   ]],
   [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 기능 카드 4종 268×318 r10 shadow-card @1941 (x 113/427/741/1055)', [
     /h-\[318px\] w-\[268px\] rounded-\[10px\] bg-white shadow-card/, /top: Y\(1941\)/,
     /left: 113/, /left: 427/, /left: 741/, /left: 1055/,
   ]],
   [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 카드 내부 순서 제목(1990)→아이콘(2052)→설명(2157)', [
-    /top: Y\(1990\)/, /top: Y\(2052\)/, /top: Y\(2157\)/,
+    /top: Y\(1990\)/, /top: Y\(f\.box\[1\] \+ \(f\.box\[3\] - f\.iconH\) \/ 2\)/, /top: Y\(2157\)/,
   ]],
   [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 하단 회색 섹션 #f8f8f8 @1539 h992 + 노치', [
-    /top: Y\(1539\), height: 992/, /bg-\[#f8f8f8\]/, /landingNotch/,
+    /top: Y\(1542\), height: 989/, /bg-\[#f8f8f8\]/, /landingNotch/,
   ]],
   [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 카피(Figma 문구 그대로)', [
     /AI 회상 대화와/, /요양일지를 더 쉽게 관리하는,/, /을 이용해보세요!/,
@@ -289,10 +292,10 @@ const SCREENS = [
   // ── 어르신 관리 161:207 ────────────────────────────────────────────────
   [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 카드 329×146 r10 accent7% shadow-card · 3열 gap33 · 사진 101', [
     /h-\[146px\] w-\[329px\]/, /rounded-\[10px\] bg-accent\/\[0\.07\] shadow-card/,
-    /gap-\[33px\]/, /h-\[101px\] w-\[101px\]/,
+    /gap-\[33px\]/, /px=\{101\}/,
   ]],
   [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 검색 335×57 @mt26 · 이름 SemiBold19/30 · 메타 Medium16', [
-    /mt-\[26px\] h-\[57px\] w-\[335px\]/, /text-\[19px\] font-semibold leading-\[30px\]/,
+    /mt-\[29px\] h-\[57px\] w-\[335px\]/, /text-\[19px\] font-semibold leading-\[30px\]/,
     /text-w-label font-medium leading-\[30px\] text-ink-400/,
   ]],
   [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 액션 2버튼(205×57 outline · 177×57 accent)', [
@@ -303,6 +306,48 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 합류 대기 배너 1054×56 accent10%', [
     /h-\[56px\] w-\[1054px\][^"]*border border-accent bg-accent\/10/,
     /기관 합류 승인 대기 중이에요/,
+  ]],
+
+  // ── 정밀 대조(figma-audit)로 확정한 실측 규칙 ─────────────────────────
+  // 이 값들은 `pnpm -F @giokon/web figma:audit` 이 Figma 좌표와 1:1로 재서 확정했다.
+  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 라벨 x=118(아이콘 28+26+20) · 로그아웃 하단 86', [
+    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /mb-\[86px\]/,
+  ]],
+  [`${WEB}/src/components/Layout.tsx`, '셸: 본문 세로 flex(하단 고정) · 하단 여백 88', [
+    /flex min-w-0 flex-1 flex-col pb-\[88px\]/,
+  ]],
+  [`${WEB}/src/components/Layout.tsx`, '페이지 헤더: 설명 -3(제목 라인박스와 겹침) · 액션 @188 gap24', [
+    /-mt-\[3px\] max-w-\[640px\]/, /gap-\[24px\] pt-\[19px\]/,
+  ]],
+  [`${WEB}/src/components/ui/Badge.tsx`, '배지 폭: 기본 px16 · 큰 배지 px18 · 상태 배지 고정 82', [
+    /h-\[32px\] px-\[18px\]/, /h-\[25px\] px-\[16px\]/, /fixed && 'w-\[82px\] px-0'/,
+  ]],
+  [`${WEB}/src/components/ui/Card.tsx`, '카드 구분선: 좌우 51 → 375~1325(950)', [
+    /mx-\[51px\] h-px bg-line/,
+  ]],
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 배너 1054 @-ml-px · px51 · pt20/pb32 · 구분선 mt19', [
+    /-ml-px mb-\[54px\] mt-\[51px\] w-\[1054px\]/, /px-\[51px\] pb-\[32px\] pt-\[20px\]/,
+    /mt-\[19px\] h-px bg-alert-line/,
+  ]],
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 카드 = 라벨(위) → 값(아래) · 아이콘 간격 21', [
+    /gap-\[21px\] rounded-\[10px\] bg-white px-6 shadow-card/,
+    /data-fx=\{s\.fx\[2\]\} className="text-w-label text-ink-500"/,
+    /-mt-\[4px\] text-w-stat font-semibold/,
+  ]],
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 담당 행(pt13/pb36·사진 mt26) · 최근 행(pt13/pb29·사진 mt12·배지 mt41)', [
+    /pb-\[36px\] pt-\[13px\]/, /size="xl"[\s\S]{0,200}?className="mt-\[26px\]"/,
+    /gap-\[14px\] px-\[52px\] pb-\[29px\] pt-\[13px\]/, /className="mt-\[41px\]"/,
+  ]],
+  [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 카드 3번째 줄 -4 · 열쇠 아이콘 · 대기 배너 하단 고정', [
+    /-mt-\[4px\] text-w-label font-medium leading-\[30px\]/,
+    /asset\.iconKey/, /mt-auto flex h-\[56px\] w-\[1054px\]/,
+  ]],
+  [`${WEB}/src/pages/public/LoginPage.tsx`, '로그인: 라인박스 26/24/21 · 정책 구분자 4×21 @731', [
+    /leading-\[26px\] text-ink-500/, /left-\[731px\] top-0 h-\[21px\] w-\[4px\]/,
+  ]],
+  [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 라인박스 실측(돌아가기·라벨 24 · 부제 21)', [
+    /leading-\[24px\] text-ink-700/, /text-w-sub leading-\[21px\] text-ink-500/,
+    /leading-\[24px\] text-ink-900/,
   ]],
 
   // ── 프리미티브 ─────────────────────────────────────────────────────────

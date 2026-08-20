@@ -34,6 +34,7 @@ import markKakao from './mark-kakao.png';
 import markGoogle from './mark-google.png';
 import iconEye from './icon-eye.png';
 import iconCheckbox from './icon-checkbox.png';
+import iconKey from './icon-key.png';
 import landingHero from './landing-hero.png';
 import landingWordmarkHero from './landing-wordmark-hero.png';
 import landingSpot1 from './landing-spot-1.png';
@@ -55,6 +56,7 @@ export const asset = {
   iconBell,
   iconChevronDown,
   iconChevronRight,
+  iconKey,
   avatarDefault,
   navLogout,
   statElders,

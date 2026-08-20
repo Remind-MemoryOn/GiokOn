@@ -17,70 +17,80 @@ import { cn } from '../../lib/utils';
 
 type Role = 'caregiver' | 'guardian';
 
-const ROLES: { key: Role; title: string; lines: [string, string]; left: number }[] = [
+const ROLES: { key: Role; title: string; lines: [string, string]; left: number; fx: string }[] = [
   {
     key: 'caregiver',
     title: '요양보호사',
     lines: ['어르신·세션·일지를 관리해요.', '소속 기관명을 입력합니다.'],
     left: 432,
+    fx: '25:382',
   },
   {
     key: 'guardian',
     title: '보호자',
     lines: ['공개된 부모님 소식을 확인해요.', '어르신 코드로 연결합니다.'],
     left: 733,
+    fx: '25:389',
   },
 ];
 
 const Y = (v: number) => v - 122;
 
-/** 라벨 + 별표 + 입력 + 힌트 — 실측 좌표로 배치한다. */
+/** 라벨 + 별표 + 입력 + 도움말 — 넷 다 Figma 실측 좌표를 그대로 받는다.
+ *  (Figma 가 넷을 각각 옮겨 놔 오프셋으로 유도할 수 없다. 라인박스도 실측: 라벨 24 · 도움말 19) */
 function FieldAt({
   label,
-  top,
-  starLeft,
+  at,
   value,
   onChange,
   placeholder,
   hint,
   inputProps,
+  fx,
 }: {
   label: string;
-  top: number;
-  starLeft: number;
+  /** [라벨 top, (미사용) 별표 left, 별표 top, 입력 top, 도움말 top] — Figma 실측 */
+  at: [number, number, number, number, number];
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
   hint: string;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  /** [라벨, 입력, 도움말] Figma 노드 id — 실측 감사 앵커. */
+  fx: [string, string, string];
 }) {
+  const [labelTop, , starTop, inputTop, hintTop] = at;
   return (
     <>
       <label
-        className="absolute left-[432px] text-[20px] font-medium leading-[30px] text-ink-900"
-        style={{ top: Y(top) }}
+        data-fx={fx[0]}
+        className="absolute left-[432px] text-[20px] font-medium leading-[24px] text-ink-900"
+        style={{ top: Y(labelTop) }}
       >
         {label}
+        {/* 별표는 라벨 바로 뒤에 붙고 라인박스만 30(Figma 실측: 라벨보다 위로 올라온다) */}
+        <span
+          className="absolute left-full text-[12px] font-medium leading-[30px] text-accent"
+          style={{ top: starTop - labelTop }}
+          aria-hidden
+        >
+          ✱
+        </span>
       </label>
-      <span
-        className="absolute text-[12px] font-medium leading-[30px] text-accent"
-        style={{ left: starLeft, top: Y(top) }}
-        aria-hidden
-      >
-        ✱
-      </span>
       <input
+        data-fx={fx[1]}
         {...inputProps}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={label}
         className="absolute left-[432px] h-[57px] w-[576px] rounded-[10px] border border-line bg-white px-[29px] text-w-sub text-ink-700 placeholder:text-ink-500 focus:border-accent focus:outline-none"
-        style={{ top: Y(top + 44) }}
+        style={{ top: Y(inputTop) }}
       />
       <p
-        className="absolute left-[433px] text-w-label text-ink-500"
-        style={{ top: Y(top + 109) }}
+        data-fx={fx[2]}
+        className="absolute left-[433px] text-w-label leading-[19px] text-ink-500"
+        style={{ top: Y(hintTop) }}
       >
         {hint}
       </p>
@@ -146,16 +156,22 @@ export function OnboardingPage() {
       <PublicHeader />
       <main className="relative mx-auto h-[1126px] w-full max-w-[1440px]">
         <h1
+          data-fx="25:250"
           className="absolute left-[591px] whitespace-nowrap text-w-section font-semibold leading-[30px] text-ink-900"
           style={{ top: Y(194) }}
         >
           기본 정보를 입력해 주세요
         </h1>
-        <p className="absolute left-[481px] w-[477px] text-w-sub text-ink-500" style={{ top: Y(232) }}>
+        <p
+          data-fx="25:227"
+          className="absolute left-[481px] w-[477px] text-w-sub leading-[21px] text-ink-500"
+          style={{ top: Y(232) }}
+        >
           소셜 로그인은 완료됐어요. 서비스 이용에 필요한 정보만 확인합니다.
         </p>
 
         <p
+          data-fx="25:256"
           className="absolute left-[432px] text-[20px] font-medium leading-[30px] text-ink-900"
           style={{ top: Y(274) }}
         >
@@ -166,6 +182,7 @@ export function OnboardingPage() {
           return (
             <button
               key={r.key}
+              data-fx={r.fx}
               type="button"
               onClick={() => setRole(r.key)}
               aria-pressed={on}
@@ -205,56 +222,61 @@ export function OnboardingPage() {
 
         <FieldAt
           label="이름"
-          top={464}
-          starLeft={468}
+          at={[473.38, 468, 464, 508.41, 573.46]}
           value={name}
           onChange={setNameDraft}
           placeholder="이름을 입력해주세요"
           hint="소셜 계정 이름이 자동 입력됩니다."
+          fx={['25:252', '25:253', '25:327']}
           inputProps={{ autoComplete: 'name' }}
         />
         <FieldAt
           label="전화번호"
-          top={609}
-          starLeft={504}
+          at={[616.49, 504, 609, 651.52, 716.57]}
           value={phone}
           onChange={setPhoneDraft}
           placeholder="010-1234-5678"
           hint="소셜 본인인증 정보가 있으면 자동 입력됩니다. 긴급 연락·계정 확인에만 사용됩니다."
+          fx={['25:404', '25:405', '25:407']}
           inputProps={{ type: 'tel', autoComplete: 'tel' }}
         />
         {role === 'caregiver' ? (
           <FieldAt
             label="소속 기관명"
-            top={756}
-            starLeft={529}
+            at={[763.61, 529, 756, 797.64, 862.69]}
             value={orgName}
             onChange={setOrgName}
             placeholder="예: 햇살 요양원"
             hint="근무하시는 기관(요양원·복지관) 이름을 입력해 주세요."
+            fx={['25:415', '25:416', '25:418']}
           />
         ) : (
           <FieldAt
             label="어르신 코드"
-            top={756}
-            starLeft={529}
+            at={[763.61, 529, 756, 797.64, 862.69]}
             value={elderCode}
             onChange={(v) => setElderCode(v.toUpperCase())}
             placeholder="예: K7M2Q9RXTV"
             hint="요양보호사에게 받은 코드를 입력하면 연결 요청까지 함께 진행됩니다. 나중에 입력해도 돼요."
+            fx={['25:415', '25:416', '25:418']}
           />
         )}
 
         {/* 필수 동의 2건 */}
         <div
+          data-fx="25:421"
           className="absolute left-[432px] h-[151px] w-[576px] rounded-[10px] border border-line bg-white"
           style={{ top: Y(916) }}
         />
         {[
           {
-            top: 948,
+            fx: ['25:602', '25:422'],
+            checkTop: 952,
+            textTop: 948.76,
+            leading: 21,
             checked: privacyAgreed,
             set: setPrivacyAgreed,
+            label: '개인정보 수집·이용 동의(필수)',
             body: (
               <>
                 <span className="font-semibold text-ink-900">[필수]</span> 개인정보 수집·이용에
@@ -263,9 +285,13 @@ export function OnboardingPage() {
             ),
           },
           {
-            top: 985,
+            fx: ['25:605', '25:468'],
+            checkTop: 990,
+            textTop: 984.79,
+            leading: 25,
             checked: socialAgreed,
             set: setSocialAgreed,
+            label: '소셜 계정 정보 제공 확인(필수)',
             body: (
               <>
                 <span className="font-semibold text-ink-900">[필수]</span> 소셜
@@ -276,25 +302,33 @@ export function OnboardingPage() {
             ),
           },
         ].map((c) => (
-          <label
-            key={c.top}
-            className="absolute left-[458px] flex cursor-pointer items-start gap-[12px]"
-            style={{ top: Y(c.top + 4) }}
-          >
+          <div key={c.fx[0]}>
             <input
+              id={`consent-${c.fx[0]}`}
+              data-fx={c.fx[0]}
               type="checkbox"
               checked={c.checked}
               onChange={(e) => c.set(e.target.checked)}
-              className="mt-[3px] h-[17px] w-[17px] shrink-0 accent-accent"
+              aria-label={c.label}
+              className="absolute left-[458px] h-[17px] w-[17px] cursor-pointer accent-accent"
+              style={{ top: Y(c.checkTop) }}
             />
-            <span className="text-w-sub leading-[25px] text-ink-500">{c.body}</span>
-          </label>
+            <label
+              htmlFor={`consent-${c.fx[0]}`}
+              data-fx={c.fx[1]}
+              className="absolute left-[487px] cursor-pointer text-w-sub text-ink-500"
+              style={{ top: Y(c.textTop), lineHeight: `${c.leading}px` }}
+            >
+              {c.body}
+            </label>
+          </div>
         ))}
         <Link
+          data-fx="25:428"
           to="/guide#privacy"
           target="_blank"
-          className="absolute left-[779px] text-w-sub text-[#aeaeae] underline"
-          style={{ top: Y(947) }}
+          className="absolute left-[779px] text-w-sub leading-[21px] text-[#aeaeae] underline"
+          style={{ top: Y(946.76) }}
         >
           처리방침 보기
         </Link>
@@ -303,6 +337,7 @@ export function OnboardingPage() {
           type="button"
           onClick={submit}
           disabled={submitting || !isConfigured}
+          data-fx="41:117"
           className="absolute left-[432px] h-[71px] w-[576px] rounded-[10px] bg-accent text-w-cta font-semibold text-white transition hover:brightness-95 disabled:opacity-50"
           style={{ top: Y(1106) }}
         >

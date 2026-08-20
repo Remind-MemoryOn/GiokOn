@@ -2,7 +2,9 @@
 //   제목 Bold 30 black @169 · 설명 Regular 20/30 @236
 //   검색 335×57 r10 border #cccdce @ (322,295) · 액션 2버튼 @ top188 (205×57 / 177×57)
 //   카드 329×146 r10 bg accent 7% shadow-card · 3열 gap 33 · 사진 101 r63
-//   합류 승인 대기 배너 1054×56 r10 accent 10% (대기 건이 있을 때만)
+//   카드 글줄 라인박스 30 · 라인 top 425.4/455.4/481.5(3번째만 4px 당겨져 있다)
+//   합류 승인 대기 배너 1054×56 r10 accent 10% — Figma 는 화면 하단(881)에 붙여 놨다
+//   (카드 끝 541 과 340px 떨어져 있다) → 본문 세로 flex 의 mt-auto 로 하단 고정
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -25,6 +27,13 @@ import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 
 const GENDER_LABEL: Record<string, string> = { female: '여성', male: '남성' };
+
+/** Figma 실측 감사 앵커 — 카드 3장(161:210/216/222)의 노드 id. */
+const ELDER_FX = [
+  { card: '161:211', photo: '161:212', name: '161:213', meta: '161:214', org: '161:215' },
+  { card: '161:217', photo: '161:218', name: '161:219', meta: '161:220', org: '161:221' },
+  { card: '161:223', photo: '161:224', name: '161:225', meta: '161:226', org: '161:227' },
+];
 
 export function EldersPage() {
   const { isConfigured } = useAuth();
@@ -73,13 +82,16 @@ export function EldersPage() {
             <button
               type="button"
               onClick={() => setClaimOpen(true)}
-              className="h-[57px] w-[205px] rounded-[10px] border border-accent bg-white text-[18px] font-semibold leading-[30px] text-accent transition hover:bg-accent-soft"
+              data-fx="161:298"
+              className="flex h-[57px] w-[205px] items-center justify-center gap-[9px] rounded-[10px] border border-accent bg-white text-[18px] font-semibold leading-[30px] text-accent transition hover:bg-accent-soft"
             >
+              <img src={asset.iconKey} alt="" width={18} height={19} className="block" />
               코드로 담당 추가
             </button>
             <Link
               to="/caregiver/elders/new"
-              className="flex h-[57px] w-[177px] items-center justify-center gap-2 rounded-[10px] border border-accent bg-accent text-[18px] font-semibold leading-[30px] text-white transition hover:brightness-95"
+              data-fx="161:301"
+              className="flex h-[57px] w-[177px] items-center justify-center gap-[7px] rounded-[10px] border border-accent bg-accent text-[18px] font-semibold leading-[30px] text-white transition hover:brightness-95"
             >
               <span className="text-[25px] leading-none">+</span> 새 어르신 등록
             </Link>
@@ -88,12 +100,13 @@ export function EldersPage() {
       />
 
       {/* 이름 검색 */}
-      <div className="relative mt-[26px] h-[57px] w-[335px]">
+      <div className="relative mt-[29px] h-[57px] w-[335px]">
         <img
           src={asset.iconSearch}
           alt=""
           width={21}
           height={22}
+          data-fx="161:231"
           className="pointer-events-none absolute left-[19px] top-1/2 -translate-y-1/2"
         />
         <input
@@ -101,6 +114,7 @@ export function EldersPage() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="이름을 검색하세요"
           aria-label="어르신 이름 검색"
+          data-fx="161:230"
           className="h-full w-full rounded-[10px] border border-line bg-white pl-[47px] pr-4 text-w-sub text-ink-700 placeholder:text-ink-500 focus:border-accent focus:outline-none"
         />
       </div>
@@ -116,9 +130,10 @@ export function EldersPage() {
                 : '아직 등록된 어르신이 없어요.'}
           </p>
         ) : (
-          shown.map((e) => (
+          shown.map((e, i) => (
             <Link
               key={e.id}
+              data-fx={ELDER_FX[i]?.card}
               to={`/caregiver/elders/${e.id}`}
               className="relative flex h-[146px] w-[329px] items-center rounded-[10px] bg-accent/[0.07] shadow-card transition hover:brightness-[0.98]"
             >
@@ -126,16 +141,24 @@ export function EldersPage() {
                 src={e.photoPath ? photos.data?.[e.photoPath] : undefined}
                 name={e.name}
                 size="xl"
-                className="ml-[18px] h-[101px] w-[101px]"
+                px={101}
+                data-fx={ELDER_FX[i]?.photo}
+                className="ml-[18px]"
               />
               <div className="ml-[15px]">
-                <div className="text-[19px] font-semibold leading-[30px] text-ink-900">
+                <div data-fx={ELDER_FX[i]?.name} className="text-[19px] font-semibold leading-[30px] text-ink-900">
                   {e.name} 어르신
                 </div>
-                <div className="text-w-label font-medium leading-[30px] text-ink-400">
-                  {elderAge(e)}세{e.gender ? `   l   ${GENDER_LABEL[e.gender] ?? e.gender}` : ''}
+                <div data-fx={ELDER_FX[i]?.meta} className="text-w-label font-medium leading-[30px] text-ink-400">
+                  {elderAge(e)}세
+                  {e.gender ? (
+                    <span className="whitespace-pre">{`   l   ${GENDER_LABEL[e.gender] ?? e.gender}`}</span>
+                  ) : null}
                 </div>
-                <div className="text-w-label font-medium leading-[30px] text-ink-400">
+                <div
+                  data-fx={ELDER_FX[i]?.org}
+                  className="-mt-[4px] text-w-label font-medium leading-[30px] text-ink-400"
+                >
                   {org.data?.name ?? '—'}
                 </div>
               </div>
@@ -153,7 +176,10 @@ export function EldersPage() {
 
       {/* 기관 합류 승인 대기 */}
       {pendingCount > 0 ? (
-        <div className="mt-[52px] flex h-[56px] w-[1054px] items-center rounded-[10px] border border-accent bg-accent/10 px-[51px]">
+        <div
+          data-fx="161:322"
+          className="mt-auto flex h-[56px] w-[1054px] shrink-0 items-center rounded-[10px] border border-accent bg-accent/10 px-[51px]"
+        >
           <p className="text-w-sub leading-[28px] tracking-[-0.18px] text-accent">
             기관 합류 승인 대기 중이에요 ({pendingCount}건). 기관 담당자가 승인하면 담당 어르신의
             기록을 볼 수 있어요.

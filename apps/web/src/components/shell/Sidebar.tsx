@@ -7,7 +7,7 @@ import { cn } from '../../lib/utils';
 
 // 신규 디자인 실측(Figma 118:300):
 //   활성 pill 208×57 r10 배경 accent 20% @ left 44
-//   아이콘 left 72~77 · 라벨 left 118 SemiBold 22/30
+//   아이콘 left 72~77 · 라벨 left 118 SemiBold 22/30 (아이콘 28 + 26 + 20)
 //   항목 간격 79 (대시보드 186 → 어르신 관리 265 → … → 설정 739)
 //   로그아웃 하단 고정(bottom 84)
 export function Sidebar({ items }: { items: NavItem[] }) {
@@ -29,6 +29,7 @@ export function Sidebar({ items }: { items: NavItem[] }) {
           <NavLink key={item.to} to={item.to} end={item.end} className="block">
             {({ isActive }) => (
               <span
+                data-fx={isActive ? 'sidebar-active' : undefined}
                 className={cn(
                   'relative ml-[44px] flex h-[57px] w-[208px] items-center rounded-[10px]',
                   isActive && 'bg-accent-soft',
@@ -42,8 +43,9 @@ export function Sidebar({ items }: { items: NavItem[] }) {
                   className="ml-[28px] block h-[26px] w-[26px] object-contain"
                 />
                 <span
+                  data-fx={`nav-${item.to}`}
                   className={cn(
-                    'ml-[18px] text-w-nav font-semibold',
+                    'ml-[20px] text-w-nav font-semibold',
                     isActive ? 'text-accent' : 'text-ink-500',
                   )}
                 >
@@ -58,10 +60,10 @@ export function Sidebar({ items }: { items: NavItem[] }) {
       <button
         type="button"
         onClick={handleLogout}
-        className="mb-[84px] ml-[72px] mt-auto flex items-center gap-[14px] text-w-nav font-semibold text-ink-500 transition hover:text-accent"
+        className="mb-[86px] ml-[72px] mt-auto flex items-center gap-[14px] text-w-nav font-semibold text-ink-500 transition hover:text-accent"
       >
         <img src={asset.navLogout} alt="" width={28} height={28} className="block" />
-        로그아웃
+        <span data-fx="sidebar-logout">로그아웃</span>
       </button>
     </aside>
   );

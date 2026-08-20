@@ -7,17 +7,22 @@ import { cn } from '../../lib/utils';
 const SIZE = { sm: 40, md: 50, lg: 76, xl: 99 } as const;
 
 interface Props {
+  /** 실측 감사 앵커(data-fx) 등 통과 속성. */
+  'data-fx'?: string;
   /** Storage signed URL. 없으면 기본 아바타. */
   src?: string | null;
   name?: string;
   size?: keyof typeof SIZE;
+  /** 실측이 표준 단계와 다를 때(예: 어르신 카드 101). */
+  px?: number;
   className?: string;
 }
 
-export function Avatar({ src, name, size = 'md', className }: Props) {
-  const px = SIZE[size];
+export function Avatar({ src, name, size = 'md', px: pxProp, className, ...rest }: Props) {
+  const px = pxProp ?? SIZE[size];
   return (
     <img
+      {...rest}
       src={src || asset.avatarDefault}
       alt={name ? `${name} 어르신 사진` : ''}
       width={px}

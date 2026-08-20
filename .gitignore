@@ -64,3 +64,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Figma 실측 감사 빌드(pnpm -F @giokon/web audit)
+dist-audit/

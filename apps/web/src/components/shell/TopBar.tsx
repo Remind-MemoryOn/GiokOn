@@ -9,7 +9,7 @@ import { cn } from '../../lib/utils';
 //   바   h122 · 흰 배경 · shadow 1px 1px 10px rgba(108,101,101,.13)
 //   워드마크 152×23 @ (63, 70)
 //   검색 466×40 r100 배경 rgba(217,217,217,.3) @ (561, 62), 아이콘 21×22 @ (585,71)
-//   벨   25×26 @ (1045, 69) + 카운트 배지 18 원 @ (1059, 60)
+//   벨   23×25 @ (1045, 69) + 카운트 배지 18 원 @ (1059, 60)
 //   아바타 40 @ (1105, 62) · 이름 SemiBold 22 @ (1164, 67) · 펼침 화살표 @ (1359, 76)
 interface Props {
   /** 어르신 검색 — 목록형 화면에서만 노출된다(디자인 기준). */
@@ -43,16 +43,34 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
     <header className="sticky top-0 z-40 h-[122px] shrink-0 bg-white shadow-topbar">
       <div className="relative mx-auto h-full w-full max-w-[1440px]">
         <Link to="/" className="absolute left-[63px] top-[70px]" aria-label="기억온 홈">
-          <img src={asset.wordmark} alt="기억온" width={153} height={23} className="block" />
+          <img
+            src={asset.wordmark}
+            alt="기억온"
+            width={153}
+            height={23}
+            className="block"
+            data-fx="topbar-wordmark"
+          />
         </Link>
 
         {search ? (
-          <div className="absolute left-[561px] top-[62px] flex h-[40px] w-[466px] items-center rounded-pill bg-mute-field">
-            <img src={asset.iconSearch} alt="" width={21} height={22} className="ml-[24px]" />
+          <div
+            className="absolute left-[561px] top-[62px] flex h-[40px] w-[466px] items-center rounded-pill bg-mute-field"
+            data-fx="topbar-search"
+          >
+            <img
+              src={asset.iconSearch}
+              alt=""
+              width={21}
+              height={22}
+              className="ml-[24px]"
+              data-fx="topbar-search-icon"
+            />
             <input
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
-              placeholder={search.placeholder ?? '이름을 검색하세요'}
+              /* Figma 탑바 검색은 안내문 없이 돋보기만 둔다 */
+              placeholder={search.placeholder ?? ''}
               className="ml-3 h-full flex-1 bg-transparent pr-6 text-w-body text-ink-700 placeholder:text-ink-500 focus:outline-none"
             />
           </div>
@@ -67,9 +85,12 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
             aria-label={`알림${notificationCount > 0 ? ` ${notificationCount}건` : ''}`}
             className="relative block"
           >
-            <img src={asset.iconBell} alt="" width={25} height={26} className="block" />
+            <img src={asset.iconBell} alt="" width={23} height={25} className="block" data-fx="topbar-bell" />
             {notificationCount > 0 ? (
-              <span className="absolute -right-[11px] -top-[9px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[14px] font-semibold tracking-[-0.14px] text-white">
+              <span
+                className="absolute -right-[11px] -top-[9px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[14px] font-semibold tracking-[-0.14px] text-white"
+                data-fx="topbar-badge"
+              >
                 {notificationCount}
               </span>
             ) : null}
@@ -92,14 +113,23 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
         </div>
 
         <div className="absolute left-[1105px] top-[62px] flex items-center gap-[19px]">
-          <img src={asset.avatarDefault} alt="" width={40} height={40} className="block rounded-full" />
+          <img
+            src={asset.avatarDefault}
+            alt=""
+            width={40}
+            height={40}
+            className="block rounded-full"
+            data-fx="topbar-avatar"
+          />
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
             className="text-w-nav font-semibold text-ink-900"
           >
-            <span className="whitespace-nowrap">{displayName}</span>
+            <span className="whitespace-nowrap" data-fx="topbar-name">
+              {displayName}
+            </span>
             {/* 펼침 화살표는 이름 길이와 무관하게 Figma 실측 위치(1359,76)에 고정된다 */}
             <img
               src={asset.iconChevronDown}

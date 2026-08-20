@@ -77,11 +77,50 @@
 ## 절차 (화면 1개당)
 
 1. `mcp__Figma__get_metadata`(nodeId) 로 하위 구조·좌표를 뜬다.
-2. 필요 시 `mcp__Figma__get_design_context` 로 색·타이포·간격 실측값을 받는다.
+2. `mcp__Figma__get_design_context` 로 **색·글자크기·굵기·lineHeight** 를 받는다(아래 §좌표 함정).
 3. `apps/web/assets/figma/<화면>.png` 을 눈으로 대조하며 구현한다.
-4. `scripts/check-web-design.mjs` 의 `SCREENS` 에 실측 항목을 추가한다.
-5. `apps/web/scripts/route-smoke.mjs` 에 라우트 케이스를 추가한다.
-6. `pnpm check:web` 통과 확인.
+4. 재는 요소에 `data-fx="<노드id>"` 를 붙이고 `apps/web/scripts/figma-audit.spec.mjs` 에 실측을 적는다.
+5. `pnpm check:figma-web` 으로 **DOM 좌표 + 잉크 위치**를 Figma 와 1:1 대조한다(±1.5px).
+6. 확정된 값은 `scripts/check-web-design.mjs` 의 `SCREENS` 에 정규식으로 못 박는다(상시 게이트).
+7. `apps/web/scripts/route-smoke.mjs` 에 라우트 케이스를 추가하고 `pnpm check:web` 통과 확인.
+
+## 정밀 대조 장치 (`pnpm check:figma-web`)
+
+모바일 `check:figma` 의 웹판. 두 가지를 잰다.
+
+| 도구 | 무엇을 | 방법 |
+|---|---|---|
+| `apps/web/scripts/figma-audit.mjs` | 요소 **박스**(left/top/w/h·radius·색) | Chromium 1440 폭에서 `getBoundingClientRect` ↔ Figma 좌표 |
+| `apps/web/scripts/figma-ink.py` | 텍스트 **잉크 위치** | 구현 렌더(@4x) ↔ export PNG(@4x) 행·열 잉크 프로파일 상호상관 |
+
+- 실측표는 `apps/web/scripts/figma-audit.spec.mjs` 한 곳(두 도구가 함께 읽는다).
+- 가드 뒤 화면은 `FIGMA_AUDIT=1` 빌드에서 `src/audit/auth-stub.tsx` 가 로그인 상태 + 시안과 같은
+  데모 데이터를 캐시에 심는다(제품 번들에는 들어가지 않는다 — `vite.config.ts` 의 alias).
+- 프로브 옵션: `center`(가운데 정렬 → 중심 비교) · `right`(우측 정렬 → 오른끝 비교) ·
+  `accept`/`acceptInk`(수용된 차이, 이유를 함께 출력) · `pending`(미배선 기능).
+- 텍스트는 **잉크 중심**으로 비교한다. line-height 가 달라도 중심이 맞으면 눈에 같은 자리다.
+
+## ⚠️ 좌표 함정 (실측으로 확인)
+
+1. **텍스트 노드의 `y` 는 라인박스 top 이다.** 잉크 중심 = `y + lineHeight/2`.
+   `get_metadata` 의 `h` 는 **라인박스가 아니라 렌더 bbox** 라 그대로 쓰면 안 된다
+   (예: 161:214 `h=23.02` 인데 실제 라인박스는 30 — export 잉크로 확인).
+   높이는 `get_design_context` 의 `leading-[…]` × 줄 수로 계산한다.
+2. **수동 리사이즈된 텍스트 프레임**은 `h` 가 줄 수×lineHeight 보다 크다(1:13 h1 = 160 vs 140).
+   이때도 잉크는 위에서부터 채워지므로 **줄 수×lineHeight** 가 맞다.
+3. **반전·회전 노드는 `get_metadata` 좌표가 렌더 위치가 아니다.**
+   (161:322 합류 배너 metadata y=937 → 실제 881 · 어르신 카드 chevron metadata x=1278 → 실제 1266)
+   `get_design_context` 의 명시 `top/left`, 또는 export PNG 잉크 실측을 믿는다.
+4. **Figma 는 대부분의 텍스트에 lineHeight 를 지정하지 않는다(auto ≈ 1.17~1.21).**
+   토큰 기본값(`text-w-sub`=18/28 등)을 그대로 쓰면 라인박스가 커져 **잉크가 2~3px 내려간다.**
+   실측 라인박스(24·21·19·26 …)를 `leading-[…]` 로 명시한다.
+5. **Figma 자체 드리프트**가 흔하다(같은 폼의 입력 x 가 432/433/434, 통계 카드 y 656/657,
+   최근 대화 행 pitch 130/144/150). 코드에서는 통일하고, `accept` 사유로 남긴다.
+
+## 이관 8화면 정밀 검증 결과 (2026-08-20)
+
+`pnpm check:figma-web` = **DOM 181 프로브 · 잉크 98 텍스트 전부 ±1.5px 이내**.
+수용/미배선 9건은 실행 로그에 사유와 함께 출력된다.
 
 ## 주의
 

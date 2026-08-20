@@ -9,7 +9,10 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
-    "smoke": "node scripts/route-smoke.mjs"
+    "smoke": "node scripts/route-smoke.mjs",
+    "figma:build": "FIGMA_AUDIT=1 vite build --outDir dist-audit",
+    "figma:audit": "pnpm figma:build && pnpm figma:shots && node scripts/figma-audit.mjs && python3 scripts/figma-ink.py",
+    "figma:shots": "node scripts/figma-shots.mjs"
   },
   "dependencies": {
     "@giokon/core": "workspace:*",

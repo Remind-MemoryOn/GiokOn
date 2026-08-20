@@ -21,8 +21,14 @@
 - **구 디자인(2026-08 이전)은 폐기**됐다. 구 스펙 문서(`docs/require/기억온_웹_디자인.md`)는 삭제됐고,
   구 화면·구 토큰·구 카피를 근거로 삼지 않는다. git 이력에만 남는다.
 - 새 디자인에 **없는 기능은 제거**하고, **있는 기능은 추가**한다. 임의 재디자인은 하지 않는다.
-- `pnpm check:design` 이 이관 완료 화면을 실측 대조한다. 화면을 옮길 때마다 `SCREENS` 표에 항목을
-  추가한다(런북 §절차).
+- **검사 2단**:
+  - `pnpm check:design` — 소스 정규식 상시 게이트(브라우저 없이 빠르게, CI 포함).
+  - `pnpm check:figma-web` — **DOM 좌표 + 잉크 위치를 Figma 와 ±1.5px 로 대조**(Chromium + export PNG).
+    재는 요소에 `data-fx="<노드id>"` 를 달고 `apps/web/scripts/figma-audit.spec.mjs` 에 실측을 적는다.
+- 화면을 옮길 때마다 두 표에 항목을 추가한다(런북 §절차).
+- ⚠️ **좌표 함정**(런북 §좌표 함정): `get_metadata` 의 텍스트 `h` 는 라인박스가 아니다 ·
+  반전/회전 노드는 metadata 좌표가 렌더 위치가 아니다 · Figma 는 lineHeight 를 대부분 auto(≈1.2)로
+  두므로 토큰 기본 라인높이(28/30/35)를 쓰면 **잉크가 2~3px 내려간다** → 실측 `leading-[…]` 명시.
 
 ### 자리표시자 금지(실서비스 원칙)
 Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 값**이다. 실데이터에 바인딩하고, 근거가
@@ -73,7 +79,8 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 pnpm web                 # 개발 서버
 pnpm web:preview         # 빌드 + 프리뷰
 pnpm web:smoke           # 빌드 + 라우트 스모크(preview 를 스스로 띄우고 끔)
-pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (이관 완료 화면만)
+pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (소스 정규식, 이관 완료 화면만)
+pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px)
 pnpm check:copy          # 비의료 카피 린트
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
 ```

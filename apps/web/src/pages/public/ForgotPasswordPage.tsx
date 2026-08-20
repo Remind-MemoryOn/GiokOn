@@ -45,7 +45,7 @@ export function ForgotPasswordPage() {
       onSubmit={submit}
       submitting={submitting}
       disabled={!isSupabaseConfigured}
-      footerLink={{ to: '/find-id', label: '아이디(이메일) 찾기' }}
+      footerLink={{ to: '/find-id', label: '아이디(이메일) 찾기', top: 796.78 }}
     />
   );
 }

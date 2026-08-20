@@ -37,7 +37,10 @@ function AppShell({ nav }: { nav: NavItem[] }) {
       <TopBar search={{ value: search, onChange: setSearch }} />
       <div className="mx-auto flex w-full max-w-[1440px] min-h-[calc(100vh-122px)]">
         <Sidebar items={nav} />
-        <main id="main-content" className="min-w-0 flex-1 pb-24 pl-[27px] pr-[63px]">
+        <main
+          id="main-content"
+          className="flex min-w-0 flex-1 flex-col pb-[88px] pl-[27px] pr-[63px]"
+        >
           <Outlet context={{ search }} />
         </main>
       </div>
@@ -53,7 +56,9 @@ export function GuardianLayout() {
   return <AppShell nav={GUARDIAN_NAV} />;
 }
 
-/** 화면 제목 — Bold 30 @ (322,169) + 설명 Regular 20/30 #404040 @ 236.
+/** 화면 제목 — Bold 30/70 @ (322,169) + 설명 Regular 20/30 @ 236.2(제목 라인박스와 3px 겹침)
+ *  액션 버튼은 @188 · 버튼 간격 24 (Figma 161:207 실측).
+
  *  제목 색은 화면마다 다르다(대시보드=accent, 어르신 관리=black) → Figma 실측대로 지정. */
 export function PageHeader({
   title,
@@ -70,6 +75,7 @@ export function PageHeader({
     <header className="flex items-start justify-between gap-8 pt-[47px]">
       <div>
         <h1
+          data-fx="page-title"
           className={cn(
             'text-w-page font-bold leading-[70px]',
             tone === 'accent' ? 'text-accent' : 'text-ink-900',
@@ -78,10 +84,19 @@ export function PageHeader({
           {title}
         </h1>
         {description ? (
-          <div className="max-w-[640px] text-w-body leading-[30px] text-ink-700">{description}</div>
+          <div
+            data-fx="page-desc"
+            className="-mt-[3px] max-w-[640px] text-w-body leading-[30px] text-ink-700"
+          >
+            {description}
+          </div>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-3 pt-6">{actions}</div> : null}
+      {actions ? (
+        <div data-fx="page-actions" className="flex shrink-0 items-center gap-[24px] pt-[19px]">
+          {actions}
+        </div>
+      ) : null}
     </header>
   );
 }

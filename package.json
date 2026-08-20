@@ -21,7 +21,8 @@
     "check:font": "node scripts/check-font-class.mjs",
     "check:figma": "node scripts/check-figma-spec.mjs",
     "check:design": "node scripts/check-web-design.mjs",
-    "check:web": "pnpm -F @giokon/web typecheck && pnpm -F @giokon/web lint && pnpm check:copy && pnpm check:design && pnpm -F @giokon/web build && pnpm -F @giokon/web smoke"
+    "check:web": "pnpm -F @giokon/web typecheck && pnpm -F @giokon/web lint && pnpm check:copy && pnpm check:design && pnpm -F @giokon/web build && pnpm -F @giokon/web smoke",
+    "check:figma-web": "pnpm -F @giokon/web figma:audit"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

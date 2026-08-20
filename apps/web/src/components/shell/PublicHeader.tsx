@@ -23,7 +23,14 @@ export function PublicHeader() {
     <header className="h-[122px] w-full bg-white shadow-topbar">
       <div className="relative mx-auto h-full w-full max-w-[1440px]">
         <Link to="/" className="absolute left-[130px] top-[71px]" aria-label="기억온 홈">
-          <img src={asset.wordmark} alt="기억온" width={153} height={23} className="block" />
+          <img
+            src={asset.wordmark}
+            alt="기억온"
+            width={153}
+            height={23}
+            className="block"
+            data-fx="ph-wordmark"
+          />
         </Link>
         <nav>
           {NAV.map((n, i) => {
@@ -32,6 +39,7 @@ export function PublicHeader() {
               <Link
                 key={n.label}
                 to={n.to}
+                data-fx={`ph-nav-${i}`}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'absolute top-[68px] whitespace-nowrap text-w-nav font-semibold',

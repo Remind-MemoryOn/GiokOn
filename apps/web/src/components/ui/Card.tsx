@@ -23,7 +23,7 @@ export function CardBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>)
   return <div {...rest} className={cn('px-[52px] py-6', className)} />;
 }
 
-/** 리스트 행 구분선 — 카드 안에서 좌우 52px 안쪽으로 들어간 1px 라인. */
-export function RowDivider({ className }: { className?: string }) {
-  return <div className={cn('mx-[52px] h-px bg-line', className)} />;
+/** 리스트 행 구분선 — 카드(테두리 1px) 안에서 375~1325(950)에 놓이는 1px 라인. */
+export function RowDivider({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
+  return <div {...rest} className={cn('mx-[51px] h-px bg-line', className)} />;
 }
