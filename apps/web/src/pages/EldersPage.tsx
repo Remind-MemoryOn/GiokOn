@@ -11,6 +11,7 @@ import {
   useRecentSessions,
   toElderProfile,
 } from '@giokon/data';
+import { elderAge } from '@giokon/core';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardBody } from '../components/ui/Card';
 import { Avatar } from '../components/ui/Avatar';
@@ -148,7 +149,7 @@ export function EldersPage() {
                         <Avatar name={e.name} color={e.avatarColor} size="xl" />
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-base text-slate-900">{e.name}</div>
-                          <div className="text-xs text-slate-500">{e.birthYear}년생 · 만 {new Date().getFullYear() - e.birthYear}세</div>
+                          <div className="text-xs text-slate-500">{e.birthYear}년생 · 만 {elderAge(e)}세</div>
                         </div>
                         <ArrowRight
                           size={16}

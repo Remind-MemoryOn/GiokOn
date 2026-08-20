@@ -1,6 +1,7 @@
 // @giokon/core — 플랫폼 무관 도메인 레이어 (웹·모바일 공유)
 //
 //   - 도메인 타입 (types)
+//   - 어르신 프로필 파생값(만 나이·생년월일 표기) (profile)
 //   - 순수 유틸 (utils)
 //   - AI 도메인 규칙 + AIProvider/MockAIProvider (ai)
 //   - 노인 특화 대화 안전 엔진(상황 분류·관여도·가드레일·투명성) (safety)
@@ -15,6 +16,7 @@
 // 앱(apps/web)·@giokon/data에서 이 코어를 사용한다. DOM/RN 의존을 두지 않는다.
 
 export * from './types'
+export * from './profile'
 export * from './utils'
 export * from './ai'
 export * from './safety'

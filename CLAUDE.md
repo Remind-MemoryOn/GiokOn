@@ -55,7 +55,92 @@
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-08-16)
+## 현재 위치 (2026-08-18)
+- 🔍 **앱 ↔ Supabase 동기화 전수 감사(2026-08-18, `main` `195bb59`)**: 라이브 서울
+  `MemoryOn`(`ufkbzpdjomtmxjipmwub`) 스키마를 MCP 로 덤프해 저장소 마이그레이션 24종 +
+  앱/웹 코드와 3자 대조했다.
+  - ✅ **스키마는 완전 일치**: 16테이블·컬럼 전량(`database.types.ts` 와 1:1)·enum 14종
+    (라벨까지)·public 함수 8종·트리거 41종·RLS 정책 52종·Storage 2버킷(elder-photos·
+    journal-photos, 둘 다 private)+정책 6종·Realtime publication 4테이블
+    (sessions·session_analyses·guardian_shares·safety_events). 라이브에만 있거나
+    마이그레이션에만 있는 객체는 **0건**. (⚠️ `list_migrations` 는 3건만 보인다 — 초기
+    21종을 SQL Editor 로 적용해 `supabase_migrations.schema_migrations` 에 기록이 없다.
+    스키마는 일치하므로 무해하지만, 앞으로 `db push` 를 쓰려면 baseline 기록이 필요하다.)
+  - 🐞 **어긋난 곳은 전부 "앱이 DB 를 쓰는 방식"** → 6종 수정:
+    ① **화면 간 값 소실** — 앱 폼엔 성별이 있고 보호자가 없다(웹은 반대)인데
+    `toProfileUpdate` 가 두 컬럼을 항상 덮어써서 서로의 입력을 null 로 지웠다 →
+    **부분 갱신 규약**(undefined=미변경 · null=지움), 웹은 빈 보호자를 명시적 null 로 전송.
+    ② **라이브 종료 분석이 목업 연대기로 계산** — `finishSession` 이 `chroniclesByElder()`
+    (목업)를 다시 읽어 라이브 uuid 로는 항상 `[]` → 저장되는 `recommendedTopics` 가 근거
+    없이 산출. 시작 시 받은 연대기를 `ActiveSession.chronicles` 에 보관해 사용.
+    ③ **STT 보정 원문 유실** — `session_logs.original_content` 가 항상 null 이었다 →
+    고친 경우만 보정 전 원문 기록(코어 `ConversationTurn.originalText`, DB 제약상 어르신 턴 한정).
+    ④ **안전 이벤트 '확인' 미기록** — `acknowledged_at/by` 가 항상 null 이라 앱에서 확인한
+    알림이 웹 대시보드에 미확인으로 보였다 → 확인 시각을 이벤트에 붙여 종료 저장 시 기록.
+    ⑤ **웹→앱 반영 경로 없음** — publication 에 `profiles`·`chronicle_entries` 가 없고
+    RN 에서는 `refetchOnWindowFocus` 가 무동작 → `AppState`→`focusManager` 연결
+    (`src/lib/queryFocus.ts`, 앱 복귀 시 stale 재조회).
+    ⑥ **온보딩 미완료 계정이 날 DB 오류** — 기관 없는 계정의 등록은 org_id 스탬프가 채울 값이
+    없어 not-null 위반이 그대로 Alert 에 떴다 → `requireWriteIdentity` 로 안내 후 차단.
+  - ✅ **후속 처리 완료(2026-08-18, 마이그레이션 25번째 `20260818000000_app_db_sync`)**:
+    **진행 중 세션 DB 저장**(시작 시 `sessions` insert(active) → 턴마다 `session_logs`
+    upsert((session_id,turn_index) 유니크 신설로 멱등) + `turn_count`/`current_topic`
+    갱신 → 위기 발생 시 `safety_events` 즉시 insert·확인 시 `acknowledged_at` update →
+    종료 시 ended 갱신 + 분석 upsert. 시작 시 생성 실패하면 remoteId=null 로 두고 예전
+    일괄 저장으로 폴백하며, 재시도를 포기하면 세션을 'active' 로 방치하지 않고 ended 로
+    닫는다) · **사진 파기**(교체 시 이전 파일 삭제, 어르신 삭제 시 `purgeElderFiles` 로
+    두 버킷 전량 파기 — ⚠️ Storage 정책이 경로의 profile_id 로 `profiles` 를 조회하므로
+    **행보다 파일을 먼저** 지워야 한다. `journal-photos` 에 update/delete 정책 신설) ·
+    **Realtime 확장**(publication 에 `profiles`·`chronicle_entries`·`session_logs` 추가 →
+    웹 수정이 앱에 즉시 반영, 진행 중 대화를 웹에서 관전 가능) · **`profiles.memories`
+    제거**(값 있는 행 0건 확인 후 드롭) · **동의 중복 방지**(이미 유효한 동의는 재기록
+    안 함) · **어르신 턴 `topic` 기록**·**`switch_topic` 산출**(`toSessionLogInsert` 매퍼로
+    이관·테스트) · **목업 모드 1회 안내**(미설정이면 예시 데이터임을 Alert 로 고지) ·
+    **마이그레이션 이력 baseline**(`schema_migrations` 를 저장소 파일명 기준 25건으로
+    정리 → `db push` 사용 가능. 앞으로 MCP `apply_migration` 을 쓰면 적용 시각으로
+    기록되므로 파일명 버전으로 맞춰 준다).
+  - ✅ **설정(환경설정) 화면 신설(2026-08-18, Figma `584:470`·`584:559`)**: 메인 톱니바퀴가
+    곧바로 로그아웃이었는데 **설정 화면으로 이동**하도록 바꾸고 두 화면을 실측 구현했다.
+    `app/settings/index.tsx`(393×1072 스크롤 — 프로필 카드 336×260 r10 border `#e3e3e3` ·
+    담당 어르신 미리보기 2장 + 전체보기 · 정보 카드 336×204) · `app/settings/elders.tsx`
+    (담당 어르신 관리, 카드 336×113 pitch 134) · 프리미티브 `src/components/settings.tsx`
+    (어르신 카드 배경 `#fdf6f0` · 휴지통 21 · 로그아웃 13 · chevron 8.75×13.25 / 6×7 —
+    ⚠️ egress 가 figma.com 을 막아 글리프는 @4x 픽셀맵 실측대로 react-native-svg 구현).
+    **어르신 삭제**를 여기서 한다(확인 후 `useDeleteElder` → Storage 파기 + 행 삭제 → cascade).
+    자리표시자 금지 원칙대로 **아이디=로그인 이메일 · 기관=organizations.name ·
+    버전=app.json · 간편 로그인=실제 연결된 provider 만 진하게**(미연결은 흐리게) 바인딩했다.
+    검증: 폰트 메트릭으로 잉크 위치를 예측해 @4x 내보내기와 대조 — 21항목 최대 편차
+    **≤1.13px**(로그아웃 라벨만 Figma 박스와 잉크가 4px 어긋나 있어 박스를 4 내려 Δ0).
+    `check:figma` 에 21항목 추가(총 161). 어르신 코드 인계·기관 합류 승인·동의 철회는
+    **웹 전용**(사용자 확정) — 앱에는 만들지 않는다.
+  - ✅ **사용자 내보내기 에셋으로 코드 드로잉 교체(2026-08-18)**: 그간 egress 차단으로
+    react-native-svg 로 그렸던 글리프를 실제 에셋으로 바꿨다 — **휴지통**(`Group2` → 21) ·
+    **로그아웃**(`Group 160` 좌측 13열 → 13) · **동의 체크박스**(`Vector2` → 17 2상태).
+    ⚠️ 체크박스 **선택 상태가 실제 디자인과 달랐다**(임시 구현은 검정 채움+흰 체크,
+    실제는 **흰 바탕+검정 테두리+검정 체크**) — 에셋 교체로 함께 바로잡았다.
+    **마이크**는 `Frame 5` 의 2상태(123×123)로 교체하고 의미를 사용자 확정대로 붙였다:
+    **회색=TTS 재생 중**("듣고 있어요…" — 어르신이 안내 음성을 듣는 중)·인식 정리 중,
+    **주황=말할 차례**("말씀해 주세요."). 마이크를 누르면 예전처럼 타자 입력이다.
+    **"다시 듣기"** 는 `Frame 3` 실측 3상태(기본 `#cccdce` / 누르는 중
+    `rgba(233,130,43,0.10)`+주황 테두리 / 재생 중 `#e9822b` 채움, 라벨 흰색)로 구현했다 —
+    라벨은 이미지로 굽지 않고 텍스트로 뒀다(글자 확대·스크린리더 유지).
+    `Vector`(연필)·`Group 67`(원형 chevron)은 같은 아이콘이 이미 @4x 로 있어 교체하지 않았다.
+    ⚠️ 사용자 내보내기가 **1x** 이고 `Vector`·`Group 67`·`Frame *` 에는 Figma 선택
+    테두리(보라 점선)가 찍혀 있어 제거 후 잘라 썼다 — **@3x/@4x 재추출 예정**(같은 파일명
+    `assets/brand/{icon-trash,icon-logout,checkbox-off,checkbox-on,btn-mic-wait,btn-mic-ready}.png`
+    를 덮어쓰면 된다).
+  - ⏳ **남은 결정 사항(사용자)**: (a) **앱 동의 기록이 `subject_type`/`capacity` 를 항상 DB
+    기본값(`self`/`unknown`)으로 남긴다** — 화면 문구는 "어르신 또는 보호자·대리인"인데
+    대리동의·의사능력 선택 UI 가 없다(웹 `ConsentDialog` 에는 있다). 정부심사 기준상 가장
+    시급 — Figma 에 선택 컨트롤 추가 필요. (b) `profiles.memories` 컬럼은 아무도 안 쓴다
+    (앱은 주요 기억을 `chronicle_entries`(topic='주요 기억')로 저장) → 유지/삭제 결정.
+    (c) `session_logs.audio_url`·`audio_expires_at`·`duration_ms`·`switch_topic` 미사용
+    (녹음 저장 미구현). (d) 진행 중 세션은 DB 에 없다(종료 시 1회 배치 저장) — 중단 시 유실·
+    웹에서 진행 상황 조회 불가. (e) 앱에 UI 가 없는 DB 기능: `care_journals`·`guardian_shares`·
+    `guardian_invites`·`profile_guardians`·`elder_codes`·`profile_caregivers`(합류 승인)·
+    `organizations`·`audit_log` — 전부 웹 담당(설계대로).
+
+## 이전 위치 (2026-08-16)
 - 🖥️ **웹 개발 세션 정비 + 완성 디자인 고정(2026-08-16, 브랜치 `claude/web-development-session-6mb8mk`)**:
   이 저장소의 **웹 디자인은 이미 완성**(외주 핸드오프 스펙 `docs/require/기억온_웹_디자인.md`,
   20화면·1,150줄)이라 앞으로의 웹 작업이 그 디자인에서 **드리프트하지 않게** 만드는 것이 핵심.
@@ -83,6 +168,37 @@
     가 21건 뜬다 — 폰트 CDN 차단이며 앱 결함이 아니다(여기 렌더는 폰트 폴백이라 타이포 눈대중 금지).
 
 ## 이전 위치 (2026-08-13)
+- 🗓 **생년월일 입력 = 캘린더로 교체(Figma `568:286`, 2026-08-17 사용자 변경)**: 스크롤
+  3열 시트 → **달력 아이콘 + 캘린더 카드**. 필드는 Figma 그대로(박스 336×46, 값
+  `1945 / 5 / 13` = core `birthSlashLabel`, 달력 아이콘 19×19 @ 박스 우측 20).
+  캘린더는 shadcn Simple Design System 기반 사용자 배치 컴포넌트를 실측 이식
+  (`src/components/Calendar.tsx`): 카드 318 pad16 r16 border `#d9d9d9` · 헤더 36 gap16
+  (‹ · 연도∨ 182/2 · 월∨ · ›) · 테이블 pt16 · Thead 20(요일 12/20 `#757575`) ·
+  칸 40×40 r8 gap1 · 상태 기본 `#1e1e1e` / 선택 `#e9822b`+`#f5f5f5` /
+  다음달 `#b3b3b3`(선택 불가) / 1일 이전 빈 칸.
+  높이·폭 검산 일치(5행 308 · 318 · 헤더 내부 286 · 행 286).
+  ⚠️ **Figma 컴포넌트는 5행이지만 6행 필요한 달이 있어 필요한 행 수만큼 그린다**(날짜를
+  버리면 못 고르는 날이 생긴다 — 카드가 41 커질 뿐 디자인은 동일).
+  ⚠️ 화살표·∨·달력 글리프는 Figma 벡터지만 컨테이너 egress 가 `www.figma.com` 을 막아
+  **react-native-svg 로 실측 치수 그대로 구현**(∨ 16박스/글리프 8×4, ‹› 20박스/글리프 5×10,
+  달력 19×19 `#c8c8c8`). 폰트는 디자인의 Inter/Geist 대신 앱 전역 Pretendard.
+- 📅 **출생연도 → 생년월일 전환(마이그레이션 `20260813000000`, 22번째)**: 사용자 요청으로
+  어르신 등록 폼이 **년·월·일**을 받는다. `profiles.birth_date date` 추가 + `birth_year` 유지
+  (기존 행 보존·프롬프트·집계 호환) + **DB 가 연도 일치를 강제**
+  (`profiles_birth_date_year_check`) → 두 컬럼 드리프트 불가. **기존 행에 1월 1일을 채우지
+  않는다**(월·일 근거 없음 → null, 화면은 "1943년"처럼 아는 만큼만).
+  core 신설 `profile.ts`(`elderAge`·`birthLabel`·`isBirthDate`·`daysInMonth`·
+  `birthYearFromDate`, 테스트 8건) — 만 나이는 **생일 경과 여부까지 반영**하고 연도만 알면
+  연도 차이로 폴백. 앱·웹이 같은 함수를 쓴다(웹의 중복 나이 계산식 제거).
+  폼은 **Figma 드롭다운 필드 한 칸을 그대로 쓰고 시트만 년/월/일 3열**로 바꿨다
+  (`form.tsx` `DateField` — 필드를 3개로 쪼개면 행 pitch 107/108 이 깨진다. 월 길이에 맞춰
+  일을 자동 절삭). 상세 정보카드 첫 행 라벨도 `생년월일`. 웹 폼도 `type="date"` 로 전환
+  (DB 제약 때문에 연도만 쓰면 갱신이 실패한다).
+  ✅ **라이브 적용 완료(2026-08-17, Claude MCP)**: 서울 `MemoryOn`(`ufkbzpdjomtmxjipmwub`)에
+  `birth_date` 컬럼 + 제약 2종 생성 확인, 기존 2행은 `birth_date` null(설계대로 백필 없음),
+  PostgREST 스키마 캐시 리로드(`notify pgrst`)까지 수행. DB 기록 version `20260817132019`
+  (저장소 파일명 `20260813000000_...` 과 타임스탬프가 다르지만 **마이그레이션이 멱등**해서
+  `db push` 재적용도 무해).
 - 🎨 **동의 확인 화면 = 사용자 신규 Figma 디자인으로 교체(`463:62`, 393×852)**: 그전에는
   Figma 에 없어 임시 구현이었다. 헤더 114(공용 ScreenHeader) · 제목 SemiBold 19/30 @144 ·
   부제 Regular 14/25 @208 · 동의 카드 335×97 r10 `#d9d9d9` @(29, 273/389/505, pitch 116,

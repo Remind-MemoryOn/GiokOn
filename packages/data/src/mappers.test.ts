@@ -8,8 +8,10 @@ import {
   toProfileInsert,
   toProfileUpdate,
   toSession,
+  toSessionLogInsert,
 } from './mappers'
 import { queryKeys } from './query'
+import type { ConversationTurn } from '@giokon/core'
 import type { ChronicleRow, ProfileRow, SessionLogRow, SessionRow } from './database.types'
 
 const profileRow: ProfileRow = {
@@ -18,10 +20,10 @@ const profileRow: ProfileRow = {
   org_id: 'o1',
   name: '이순자',
   birth_year: 1945,
+  birth_date: '1945-03-12',
   hometown: '전북 전주',
   job: '식당 운영, 30년',
   family: '딸 둘, 사위 둘',
-  memories: ['남편과 처음 만난 장터'],
   hobbies: '텃밭 가꾸기',
   guardian_name: '박민준',
   guardian_relation: '아들',
@@ -38,6 +40,7 @@ describe('toElderProfile', () => {
       id: 'p1',
       name: '이순자',
       birthYear: 1945,
+      birthDate: '1945-03-12',
       hometown: '전북 전주',
       job: '식당 운영, 30년',
       family: '딸 둘, 사위 둘',
@@ -205,6 +208,27 @@ describe('toConversationLog', () => {
   })
 })
 
+describe('toProfileInsert / toProfileUpdate — 생년월일', () => {
+  const base = { name: '이순자', birthYear: 1945 }
+
+  it('birthDate 를 주면 birth_year 를 거기서 파생한다(DB 연도 일치 제약)', () => {
+    // 입력의 birthYear 가 어긋나 있어도 날짜가 이긴다.
+    const ins = toProfileInsert({ ...base, birthYear: 1950, birthDate: '1945-03-12' }, 'u1')
+    expect(ins.birth_date).toBe('1945-03-12')
+    expect(ins.birth_year).toBe(1945)
+
+    const upd = toProfileUpdate({ ...base, birthYear: 1950, birthDate: '1945-03-12' })
+    expect(upd.birth_date).toBe('1945-03-12')
+    expect(upd.birth_year).toBe(1945)
+  })
+
+  it('birthDate 가 없으면 birth_date 는 null(월·일 미상 — 임의값 금지)', () => {
+    expect(toProfileInsert(base, 'u1').birth_date).toBeNull()
+    expect(toProfileInsert(base, 'u1').birth_year).toBe(1945)
+    expect(toProfileUpdate(base).birth_date).toBeNull()
+  })
+})
+
 describe('toProfileInsert / toProfileUpdate — 사진 경로', () => {
   const base = { name: '이순자', birthYear: 1945 }
 
@@ -265,5 +289,115 @@ describe('queryKeys', () => {
     expect(queryKeys.sessions('p1')).toEqual(['sessions', 'p1'])
     expect(queryKeys.session('s1')).toEqual(['sessions', 'detail', 's1'])
     expect(queryKeys.sessionLogs('s1')).toEqual(['session_logs', 's1'])
+  })
+})
+
+describe('toProfileUpdate — 화면마다 다른 필드의 부분 갱신', () => {
+  // 앱 폼에는 성별이 있고 보호자가 없다. 웹 폼은 그 반대다. 전부 덮어쓰면 상대 화면이
+  // 입력한 값이 지워지므로(실제로 웹 수정 시 성별이 날아갔다) undefined = 미변경이다.
+  const base = { name: '이순자', birthYear: 1945, birthDate: '1945-03-12' }
+
+  it('gender/guardian 이 undefined 면 해당 컬럼을 아예 넣지 않는다', () => {
+    const upd = toProfileUpdate(base)
+    expect('gender' in upd).toBe(false)
+    expect('guardian_name' in upd).toBe(false)
+    expect('guardian_relation' in upd).toBe(false)
+    expect('photo_path' in upd).toBe(false)
+  })
+
+  it('값을 주면 그대로, null 을 주면 지운다', () => {
+    const set = toProfileUpdate({
+      ...base,
+      gender: 'female',
+      guardian: { name: '박민준', relation: '아들' },
+    })
+    expect(set.gender).toBe('female')
+    expect(set.guardian_name).toBe('박민준')
+    expect(set.guardian_relation).toBe('아들')
+
+    const cleared = toProfileUpdate({ ...base, gender: null, guardian: null })
+    expect(cleared.gender).toBeNull()
+    expect(cleared.guardian_name).toBeNull()
+    expect(cleared.guardian_relation).toBeNull()
+  })
+
+  it('신규 등록(insert)은 부분 갱신이 아니라 없는 값을 null 로 채운다', () => {
+    const ins = toProfileInsert(base, 'u1')
+    expect(ins.gender).toBeNull()
+    expect(ins.guardian_name).toBeNull()
+  })
+})
+
+describe('toConversationTurn — STT 보정 원문', () => {
+  const userLog: SessionLogRow = {
+    id: 'l9',
+    session_id: 's1',
+    profile_id: 'p1',
+    user_id: 'u1',
+    org_id: 'o1',
+    turn_index: 2,
+    role: 'user',
+    content: '아버지가 지어 주신 이름이에요',
+    original_content: null,
+    topic: '이름',
+    switch_topic: false,
+    audio_url: null,
+    audio_expires_at: null,
+    duration_ms: null,
+    spoken_at: '2026-01-04T00:01:00Z',
+    created_at: '2026-01-04T00:01:00Z',
+    updated_at: '2026-01-04T00:01:00Z',
+  }
+
+  it('original_content 를 originalText 로 옮긴다(보정 근거 보존)', () => {
+    const corrected = { ...userLog, original_content: '아버지가 지어준 이름이에요' }
+    expect(toConversationTurn(corrected).originalText).toBe('아버지가 지어준 이름이에요')
+  })
+
+  it('보정하지 않은 턴은 undefined', () => {
+    expect(toConversationTurn(userLog).originalText).toBeUndefined()
+  })
+})
+
+describe('toSessionLogInsert — 진행 중 턴 기록', () => {
+  const owner = { sessionId: 's1', profileId: 'p1', userId: 'u1' }
+  const turns: ConversationTurn[] = [
+    { id: 't1', speaker: 'AI', text: '고향이 어디세요?', timestamp: '2026-01-04T00:00:00Z', topic: '고향' },
+    { id: 't2', speaker: 'Elderly', text: '전주요', timestamp: '2026-01-04T00:00:30Z', topic: '고향' },
+    { id: 't3', speaker: 'AI', text: '가족은요?', timestamp: '2026-01-04T00:01:00Z', topic: '가족' },
+    {
+      id: 't4',
+      speaker: 'Elderly',
+      text: '딸이 둘이에요',
+      timestamp: '2026-01-04T00:01:30Z',
+      topic: '가족',
+      originalText: '딸이 둘이여',
+    },
+  ]
+
+  it('turn_index 는 1-기반이다(DB check turn_index >= 1)', () => {
+    expect(toSessionLogInsert(turns, 0, owner).turn_index).toBe(1)
+    expect(toSessionLogInsert(turns, 3, owner).turn_index).toBe(4)
+  })
+
+  it('주제가 바뀐 턴에만 switch_topic 이 true 다', () => {
+    expect(toSessionLogInsert(turns, 0, owner).switch_topic).toBe(true) // 첫 주제
+    expect(toSessionLogInsert(turns, 1, owner).switch_topic).toBe(false) // 같은 주제
+    expect(toSessionLogInsert(turns, 2, owner).switch_topic).toBe(true) // 고향 → 가족
+    expect(toSessionLogInsert(turns, 3, owner).switch_topic).toBe(false)
+  })
+
+  it('보정 원문은 어르신 턴에만 실린다(DB 제약)', () => {
+    expect(toSessionLogInsert(turns, 3, owner).original_content).toBe('딸이 둘이여')
+    expect(toSessionLogInsert(turns, 1, owner).original_content).toBeNull()
+    // AI 턴은 originalText 가 있어도 null 로 보낸다.
+    const aiWithOriginal = [{ ...turns[0], originalText: '엉뚱한 값' }]
+    expect(toSessionLogInsert(aiWithOriginal, 0, owner).original_content).toBeNull()
+  })
+
+  it('녹음·발화 길이는 구현 전이라 값을 만들지 않는다', () => {
+    const row = toSessionLogInsert(turns, 1, owner)
+    expect(row.audio_url).toBeUndefined()
+    expect(row.duration_ms).toBeUndefined()
   })
 })

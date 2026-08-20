@@ -10,14 +10,15 @@
 //
 // ⚠️ 값은 전부 실데이터 바인딩이다. 디자인의 "이순자 / 1945 / 전라북도 전주시" 등은
 // 자리표시자이므로 코드에 넣지 않는다(실서비스 원칙).
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import type { ElderGender } from '@giokon/core';
+import { isBirthDate, type ElderGender } from '@giokon/core';
 import type { PickedPhoto } from '../data/elder-photo';
 import { ScreenHeader } from './ScreenHeader';
 import {
+  DateField,
   MemoryList,
   PhotoField,
   SaveButton,
@@ -42,7 +43,8 @@ const SAVE_TO_BOTTOM = 49;
 
 export interface ProfileValues {
   name: string;
-  birthYear: string;
+  /** 생년월일 `YYYY-MM-DD`(미선택은 빈 문자열). */
+  birthDate: string;
   /** 미선택은 undefined — 임의값을 넣지 않는다(표기도 생략된다). */
   gender: ElderGender | undefined;
   hometown: string;
@@ -58,7 +60,7 @@ const GENDER_VALUE: Record<string, ElderGender> = { 여성: 'female', 남성: 'm
 
 export const EMPTY_VALUES: ProfileValues = {
   name: '',
-  birthYear: '',
+  birthDate: '',
   gender: undefined,
   hometown: '',
   family: '',
@@ -105,11 +107,10 @@ export function ProfileForm({
 
   const [picked, setPicked] = useState<PickedPhoto | null>(null);
 
-  // 어르신 연령대(40~110세)에 해당하는 출생연도만 최신순으로.
-  const years = useMemo(() => {
-    const now = new Date().getFullYear();
-    return Array.from({ length: 71 }, (_, i) => String(now - 40 - i));
-  }, []);
+  // 어르신 연령대(40~110세)에 해당하는 출생연도 범위.
+  const nowYear = new Date().getFullYear();
+  const maxYear = nowYear - 40;
+  const minYear = nowYear - 110;
 
   const pickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -131,8 +132,8 @@ export function ProfileForm({
   };
 
   const submit = () => {
-    if (values.name.trim().length === 0 || !/^\d{4}$/.test(values.birthYear.trim())) {
-      Alert.alert('입력 확인', '이름과 출생연도를 입력해 주세요.');
+    if (values.name.trim().length === 0 || !isBirthDate(values.birthDate)) {
+      Alert.alert('입력 확인', '이름과 생년월일을 입력해 주세요.');
       return;
     }
     onSubmit({ ...values, memories, pickedPhoto: picked });
@@ -160,13 +161,14 @@ export function ProfileForm({
             maxLength={MAX.name}
             gap={ROW_GAPS[0]}
           />
-          <SelectField
-            label="출생연도"
+          <DateField
+            label="생년월일"
             required
-            value={values.birthYear}
-            placeholder="출생연도를 선택해 주세요"
-            options={years}
-            onSelect={(v) => set({ birthYear: v })}
+            value={values.birthDate}
+            placeholder="생년월일을 선택해 주세요"
+            minYear={minYear}
+            maxYear={maxYear}
+            onSelect={(v) => set({ birthDate: v })}
             gap={ROW_GAPS[1]}
           />
           {/*

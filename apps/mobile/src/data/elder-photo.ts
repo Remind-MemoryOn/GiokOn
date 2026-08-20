@@ -7,7 +7,7 @@
 // 미설정(목업) 모드에서는 Supabase 를 호출하지 않고 null 을 돌려 이니셜 아바타로 폴백한다.
 
 import { useEffect, useState } from 'react';
-import { getGiokonClient } from '@giokon/data';
+import { getGiokonClient, removeStorageObject } from '@giokon/data';
 import { isSupabaseConfigured } from '../lib/supabase';
 
 const BUCKET = 'elder-photos';
@@ -80,6 +80,18 @@ function isLocalUri(path: string): boolean {
 export async function saveElderPhoto(profileId: string, photo: PickedPhoto): Promise<string> {
   if (!isSupabaseConfigured) return photo.uri;
   return uploadElderPhoto(profileId, photo);
+}
+
+/**
+ * 이전 사진 파기 — 사진을 **교체한 뒤** 호출한다.
+ *
+ * 업로드는 매번 새 경로를 만들기 때문에, 지우지 않으면 바꾼 만큼 옛 사진이 Storage 에
+ * 계속 쌓인다(감사 지적). 얼굴 사진은 민감정보라 남겨 두면 안 된다.
+ * 목업 모드의 로컬 uri 나 빈 값은 지울 대상이 아니다.
+ */
+export async function removeElderPhoto(photoPath: string | null | undefined): Promise<void> {
+  if (!photoPath || isLocalUri(photoPath) || !isSupabaseConfigured) return;
+  await removeStorageObject(BUCKET, photoPath);
 }
 
 /** 경로 → 표시용 signed URL(실패·미설정 시 null). */

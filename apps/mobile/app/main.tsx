@@ -11,7 +11,8 @@
 // 세로 간격은 @4x 내보내기 픽셀 대조로 확정: 인사행→검색 20, 검색→카드 31, 밑줄 marginTop -9.
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 //
-// 기능은 기존과 동일(로그아웃·검색·등록·전체분석 이동). "최근 대화"는 실제 세션에서 파생.
+// 기능: 설정(톱니바퀴 → 설정 화면. 예전에는 곧바로 로그아웃이었다)·검색·등록·전체분석 이동.
+// "최근 대화"는 실제 세션에서 파생.
 import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Pressable, Image } from 'react-native';
 import { router } from 'expo-router';
@@ -27,7 +28,7 @@ import iconRegister from '../assets/brand/icon-register.png';
 import iconAnalytics from '../assets/brand/icon-analytics.png';
 
 export default function Main() {
-  const { caregiverName, signOut } = useAuth();
+  const { caregiverName } = useAuth();
   const elders = useElders();
   const lastTalk = useLastTalkByElder();
   const insets = useSafeAreaInsets();
@@ -51,10 +52,7 @@ export default function Main() {
           accessibilityLabel="기억온"
         />
         <Pressable
-          onPress={async () => {
-            await signOut();
-            router.replace('/');
-          }}
+          onPress={() => router.push('/settings')}
           accessibilityRole="button"
           accessibilityLabel="설정"
           hitSlop={16}

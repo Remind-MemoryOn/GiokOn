@@ -14,14 +14,17 @@
 // 흐름(사용자 지적 반영): 마이크를 눌러도 **다른 페이지로 이동하지 않는다**. 인식이 끝나면
 // 화면 하단에 인식된 텍스트가 인라인으로 나타나고, 거기서 확인·수정한다.
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
+import { Alert, View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MicButton, RobotInline, Waveform, type MicState } from '../../src/components/brand';
 import { AiDisclosureBanner, CrisisBanner } from '../../src/components/banners';
 import { ExpoSpeechProvider } from '../../src/lib/speech';
 import { useApp } from '../../src/store/appStore';
-import { useSessionPersistence } from '../../src/data/session-persistence';
+import {
+  useSessionPersistence,
+  type SessionSaveResult,
+} from '../../src/data/session-persistence';
 import iconClose from '../../assets/brand/icon-close.png';
 import iconSpeaker from '../../assets/brand/icon-speaker.png';
 
@@ -35,7 +38,7 @@ export default function Talk() {
   const confirm = useApp((s) => s.confirmUtterance);
   const discard = useApp((s) => s.discardUtterance);
   const acknowledge = useApp((s) => s.acknowledgeSafety);
-  const { finishAndPersist } = useSessionPersistence();
+  const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
   const { height } = useWindowDimensions();
   const finishing = useRef(false);
 
@@ -53,6 +56,9 @@ export default function Talk() {
   // 재생 완료한 질문을 기록하고 speaking 은 **파생**한다(effect 내 동기 setState 회피 —
   // 동기 setState 는 연쇄 렌더를 유발한다).
   const [spokenDone, setSpokenDone] = useState<string | null>(null);
+  // "다시 듣기" 3상태(기본 / 누르는 중 / 재생 중)
+  const [replaying, setReplaying] = useState(false);
+  const [replayPressed, setReplayPressed] = useState(false);
   const speaking = Boolean(question) && spokenDone !== question;
 
   // AI 질문 자동 재생(노인 대상: 느린 속도). 재생 중에는 마이크를 잠근다.
@@ -74,11 +80,39 @@ export default function Talk() {
 
   if (!active) return <SafeAreaView className="flex-1 bg-white" />;
 
+  // 저장 결과 처리 — 실패를 삼키고 "저장되었습니다" 화면으로 넘어가면 요양보호사가
+  // 대화 전량이 사라진 걸 알 수 없다(감사 지적). 실패하면 재시도/포기를 묻는다.
+  async function retryAndPresent() {
+    presentResult(await retrySave());
+  }
+
+  function presentResult(res: SessionSaveResult) {
+    if (res.status !== 'failed') {
+      router.replace(`/session/saved${res.logId ? `?logId=${res.logId}` : ''}`);
+      return;
+    }
+    Alert.alert(
+      '대화를 저장하지 못했어요',
+      `${res.message}\n\n지금 나가면 이번 대화 기록이 사라집니다. 다시 시도해 주세요.`,
+      [
+        { text: '다시 시도', onPress: () => void retryAndPresent() },
+        {
+          text: '기록 없이 나가기',
+          style: 'destructive',
+          onPress: () => {
+            discardUnsaved();
+            router.replace('/main');
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  }
+
   const endAndSave = async () => {
     finishing.current = true;
     ExpoSpeechProvider.cancelSpeak();
-    const logId = await finishAndPersist();
-    router.replace(`/session/saved${logId ? `?logId=${logId}` : ''}`);
+    presentResult(await finishAndPersist());
   };
 
   const onMic = () => {
@@ -112,7 +146,11 @@ export default function Talk() {
           <CrisisBanner
             message={active.safety.caregiverAlert as string}
             level={active.safety.level}
-            onAcknowledge={acknowledge}
+            onAcknowledge={() => {
+              acknowledge();
+              // 확인 시각을 safety_events 에 반영한다(웹 안전 알림 대시보드와 동기).
+              void syncProgress();
+            }}
           />
         </View>
       ) : null}
@@ -177,11 +215,15 @@ export default function Talk() {
               className="text-[23px] font-medium text-black text-center"
               style={{ lineHeight: 42, marginTop: 3 }}
             >
+              {/*
+               * Figma `Frame 5` 의 짝: 회색 마이크 ↔ "듣고 있어요..."(어르신이 AI 안내
+               * 음성을 듣는 중) · 주황 마이크 ↔ "말씀해 주세요."(TTS 가 끝나 말할 차례).
+               */}
               {micState === 'speaking'
-                ? '잠시만 기다려 주세요...'
+                ? '듣고 있어요...'
                 : micState === 'processing'
                   ? '말씀을 정리하고 있어요...'
-                  : '듣고 있어요...'}
+                  : '말씀해 주세요.'}
             </Text>
           </>
         )}
@@ -191,21 +233,57 @@ export default function Talk() {
       {!shouldEnd && pending === null ? (
         <View className="absolute left-0 right-0 items-center" style={{ top: (743 / FRAME_H) * height }}>
           <AiDisclosureBanner />
+          {/*
+           * 다시 듣기 3상태(Figma `Frame 3` 실측):
+           *   기본     흰 바탕 · 테두리 #cccdce · 라벨 #7b7c7c
+           *   누르는 중 rgba(233,130,43,0.10) 바탕 · 테두리 #e9822b · 라벨 흰색
+           *   재생 중   #e9822b 채움 · 라벨 흰색
+           * 라벨은 이미지로 굽지 않고 텍스트로 둔다 — 어르신 대상 글자 확대·스크린리더가
+           * 살아 있어야 한다(색·치수는 위 실측 그대로).
+           */}
           <Pressable
-            onPress={() => question && ExpoSpeechProvider.speak(question)}
+            onPress={async () => {
+              if (!question || replaying) return;
+              setReplaying(true);
+              try {
+                await ExpoSpeechProvider.speak(question);
+              } finally {
+                setReplaying(false);
+              }
+            }}
+            onPressIn={() => setReplayPressed(true)}
+            onPressOut={() => setReplayPressed(false)}
             accessibilityRole="button"
-            className="flex-row items-center justify-center active:opacity-70"
+            accessibilityLabel="다시 듣기"
+            accessibilityState={{ busy: replaying }}
+            className="flex-row items-center justify-center"
             style={{
               width: 336,
               height: 57,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: '#cccdce',
+              borderColor: replaying || replayPressed ? '#e9822b' : '#cccdce',
+              backgroundColor: replaying
+                ? '#e9822b'
+                : replayPressed
+                  ? 'rgba(233,130,43,0.10)'
+                  : '#ffffff',
               marginTop: 4,
             }}
           >
-            <Image source={iconSpeaker} style={{ width: 20, height: 20 }} resizeMode="contain" />
-            <Text className="text-[18px] font-semibold text-muted" style={{ lineHeight: 30, marginLeft: 8 }}>
+            <Image
+              source={iconSpeaker}
+              style={{ width: 20, height: 20, tintColor: replaying || replayPressed ? '#ffffff' : undefined }}
+              resizeMode="contain"
+            />
+            <Text
+              className="text-[18px] font-semibold"
+              style={{
+                lineHeight: 30,
+                marginLeft: 8,
+                color: replaying || replayPressed ? '#ffffff' : '#7b7c7c',
+              }}
+            >
               다시 듣기
             </Text>
           </Pressable>
@@ -269,6 +347,9 @@ export default function Talk() {
               onPress={() => {
                 confirm(draft.trim() || (pending ?? ''));
                 setEdited(null);
+                // 확정된 턴을 곧바로 DB 에 남긴다(진행 중 저장). 실패해도 대화는 막지
+                // 않고 다음 턴·종료 때 다시 시도한다.
+                void syncProgress();
                 // 다음 질문 생성 대기 화면(Figma `28:37`)을 거쳐 대화로 돌아온다.
                 router.push('/session/loading');
               }}

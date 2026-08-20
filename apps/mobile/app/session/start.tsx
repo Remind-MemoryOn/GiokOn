@@ -16,6 +16,7 @@ import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
 import { useElder, useChronicles } from '../../src/data/reads';
+import { useSessionPersistence } from '../../src/data/session-persistence';
 
 const FRAME_H = 852;
 
@@ -24,6 +25,7 @@ export default function SessionStart() {
   const elder = useElder(id);
   const chronicles = useChronicles(id);
   const begin = useApp((s) => s.beginSession);
+  const { openRemoteSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
 
   if (!elder || !id) {
@@ -33,6 +35,9 @@ export default function SessionStart() {
   const onStart = () => {
     const topic = recommendNextTopics(elder, chronicles)[0] ?? '오늘';
     begin(elder, chronicles, { title: `${topic} 이야기`, therapyType: 'reminiscence' });
+    // 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
+    // 웹에서 진행 상황을 볼 수 있다. 실패해도 대화는 시작하고 종료 시 일괄 저장한다.
+    void openRemoteSession();
     router.replace('/session/talk');
   };
 

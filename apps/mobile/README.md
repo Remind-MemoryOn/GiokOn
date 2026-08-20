@@ -36,4 +36,7 @@ pnpm -F @giokon/mobile lint         # eslint
 ```
 실 STT/TTS/LLM·Supabase 연동은 서울 리전 프로젝트 + 키가 있어야 한다.
 `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 설정 시
-코드 변경 없이 실데이터로 전환된다(미설정 시 목업).
+코드 변경 없이 실데이터로 전환된다(미설정 시 목업 — 실행 시 예시 데이터임을 1회 안내한다).
+
+`EXPO_PUBLIC_WEB_URL` (선택): 설정 화면의 개인정보처리방침·이용약관을 여는 웹 주소.
+법적 문서 화면은 웹이 담당하므로 앱에는 없다 — 미설정이면 "웹에서 확인" 안내만 띄운다.

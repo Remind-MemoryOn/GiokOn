@@ -16,6 +16,8 @@ import { queryKeys } from '../query'
 
 /** 실시간 감시 대상 테이블. */
 export type RealtimeTable =
+  | 'profiles'
+  | 'chronicle_entries'
   | 'sessions'
   | 'session_logs'
   | 'session_analyses'
@@ -36,8 +38,19 @@ export interface UseGiokonRealtimeOptions {
   onEvent?: (event: RealtimeEvent) => void
 }
 
+/**
+ * 기본 구독 대상.
+ *
+ * profiles·chronicle_entries 는 **웹에서 고친 내용이 앱에 반영되는 유일한 실시간
+ * 경로**다(2026-08-18 추가). 이전에는 publication 에 없어 앱이 복귀 시 재조회로만
+ * 따라잡았고, 화면을 켜 둔 채로는 영영 반영되지 않았다.
+ * session_logs 는 진행 중 대화를 다른 화면(웹 대시보드)에서 지켜보기 위한 것이다.
+ */
 const DEFAULT_TABLES: RealtimeTable[] = [
+  'profiles',
+  'chronicle_entries',
   'sessions',
+  'session_logs',
   'session_analyses',
   'guardian_shares',
   'safety_events',
@@ -50,6 +63,17 @@ function invalidateFor(
   const profileId =
     typeof event.row?.profile_id === 'string' ? (event.row.profile_id as string) : undefined
   switch (event.table) {
+    case 'profiles': {
+      // profiles 는 자기 자신이 id — profile_id 컬럼이 없다.
+      const id = typeof event.row?.id === 'string' ? (event.row.id as string) : undefined
+      void qc.invalidateQueries({ queryKey: queryKeys.profiles })
+      if (id) void qc.invalidateQueries({ queryKey: queryKeys.profile(id) })
+      break
+    }
+    case 'chronicle_entries':
+      void qc.invalidateQueries({ queryKey: queryKeys.chronicleCounts })
+      if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.chronicles(profileId) })
+      break
     case 'sessions':
       void qc.invalidateQueries({ queryKey: queryKeys.recentSessions })
       void qc.invalidateQueries({ queryKey: queryKeys.sessionCounts })

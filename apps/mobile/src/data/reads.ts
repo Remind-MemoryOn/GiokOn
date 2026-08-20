@@ -8,9 +8,9 @@
 // 라이브 쿼리는 미설정 시 유휴화한다(getGiokonClient 미초기화 throw 방지):
 // id 인자 훅은 undefined로, 목록 훅은 enabled:false로 끈다.
 //
-// 스코프(2026-07-31 사용자 확정 "핵심 양방향만"): 어르신·연대기·세션기록·로그·분석
-// 상세까지 라이브. 관찰지표 집계(observations/analytics/topics·elder 종합분석 탭)는
-// analytics.ts가 목업 스토어에 결합돼 있어 이번 범위 밖(후속) — 계속 목업으로 동작.
+// 스코프: 어르신·연대기·세션기록·로그·분석 상세에 더해 **관찰지표 집계까지 라이브**다
+// (T1 에서 목업 결합 analytics.ts 를 걷어내고 @giokon/core 순수함수 + 아래 어댑터로
+// 대체했다 — src/data/observations.ts). 즉 앱의 모든 조회 화면이 같은 경로를 탄다.
 
 import {
   useChronicles as useChroniclesData,
@@ -217,7 +217,7 @@ export function useElderAnalysesDated(elderId: string | undefined): DatedAnalysi
 export function useAllAnalysesDated(): DatedAnalysis[] {
   const mockLogs = useApp((s) => s.logs);
   const mockAnalyses = useApp((s) => s.analyses);
-  const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
+  const live = useOrgSessionAnalysesData({ enabled: CFG, fetchAll: true });
   const liveRows = live.data;
   return useMemo(
     () => (CFG ? datedFromRows(liveRows) : datedFromMock(mockLogs, mockAnalyses)),
@@ -228,7 +228,7 @@ export function useAllAnalysesDated(): DatedAnalysis[] {
 /** 담당 전체 세션(전체 분석·관찰지표 집계용). */
 export function useAllSessions(): Session[] {
   const mock = useApp((s) => s.sessions);
-  const live = useRecentSessionsData({ enabled: CFG, limit: 500 });
+  const live = useRecentSessionsData({ enabled: CFG, fetchAll: true });
   const rows = live.data;
   const mapped = useMemo(() => (rows ?? []).map(toSession), [rows]);
   return CFG ? mapped : mock;
@@ -251,7 +251,7 @@ export function useLastTalkByElder(): Record<string, string> {
 /** 담당 전체 세션 분석(전체 관찰지표 집계용). */
 export function useAllAnalyses(): SessionAnalysis[] {
   const mock = useApp(useShallow((s) => Object.values(s.analyses)));
-  const live = useOrgSessionAnalysesData({ enabled: CFG, limit: 500 });
+  const live = useOrgSessionAnalysesData({ enabled: CFG, fetchAll: true });
   const rows = live.data;
   const mapped = useMemo(
     () => (rows ?? []).map(parseSessionAnalysis).filter((a): a is SessionAnalysis => Boolean(a)),

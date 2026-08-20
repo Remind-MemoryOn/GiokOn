@@ -89,7 +89,21 @@ const SPECS = [
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
   [`${APP}/app/session/talk.tsx`, '대화: 마이크 123 + 상태', [/MicButton onPress=\{onMic\} state=\{micState\} size=\{123\}/]],
   [`${APP}/app/session/talk.tsx`, '대화: 라벨 Medium 23 lh42', [/text-\[23px\] font-medium/, /lineHeight: 42/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 다시듣기 336×57 + 스피커 에셋 20', [/icon-speaker\.png/, /width: 20, height: 20/]],
+  [
+    `${APP}/app/session/talk.tsx`,
+    '대화: 다시듣기 336×57 3상태(기본 #cccdce / 누름 rgba(233,130,43,0.10) / 재생 #e9822b)',
+    [/icon-speaker\.png/, /width: 20, height: 20/, /'rgba\(233,130,43,0\.10\)'/, /backgroundColor: replaying\s*\n\s*\? '#e9822b'/, /borderColor: replaying \|\| replayPressed \? '#e9822b' : '#cccdce'/],
+  ],
+  [
+    `${APP}/app/session/talk.tsx`,
+    '대화: 마이크 라벨 짝(회색=듣고 있어요… / 주황=말씀해 주세요.)',
+    [/\? '듣고 있어요\.\.\.'/, /: '말씀해 주세요\.'/],
+  ],
+  [
+    `${APP}/src/components/brand.tsx`,
+    '대화: 마이크 2상태 에셋 123(회색=TTS 중·인식 중 / 주황=말할 차례)',
+    [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{disabled \? micWait : micReady\}/, /width: size, height: size/],
+  ],
   [`${APP}/app/session/talk.tsx`, '대화: 인식결과 인라인(페이지 이동 없음)', [/AI가 이렇게 이해했어요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
 
   // ── 질문 로딩 (Figma 28:37) ───────────────────────────────────────────
@@ -477,7 +491,7 @@ const SPECS = [
   ],
 
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
-  [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic\.png/, /wordmark\.png/]],
+  [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic-wait\.png/, /btn-mic-ready\.png/, /wordmark\.png/]],
   [`${APP}/src/components/brand.tsx`, '브랜드: 인라인 로봇 비율 46.5:29.5(재크롭)', [/ROBOT_INLINE_RATIO = 46\.5 \/ 29\.5/]],
   [`${APP}/app/session/start.tsx`, '시작전: 로봇 left 98(중앙 아님)', [/left: 98/]],
 
@@ -556,6 +570,50 @@ const SPECS = [
   ],
   [
     `${APP}/src/components/ProfileForm.tsx`,
+    // 생년월일은 Figma 드롭다운 필드 한 칸을 그대로 쓰고 시트만 년/월/일 3열로 바꾼다
+    // (필드를 3개로 쪼개면 폼 행 pitch 107/108 이 깨진다).
+    '폼: 생년월일 = 드롭다운 필드 1칸 + 캘린더',
+    [/label="생년월일"/, /minYear=\{minYear\}/, /maxYear=\{maxYear\}/, /isBirthDate\(values\.birthDate\)/],
+  ],
+  [
+    `${APP}/src/components/form.tsx`,
+    '폼: 생년월일 값 "1945 / 5 / 13" · 달력 아이콘 19×19 @ 박스 우측 20',
+    [/export function DateField/, /birthSlashLabel\(value\)/, /function CalendarGlyph/, /right: 20, top: \(FORM\.fieldH - 19\) \/ 2/, /<Calendar$/m],
+  ],
+
+  // ── 캘린더 (Figma 568:286, 318×308 — 2026-08-17 사용자 변경) ────────────
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 카드 318 pad16 r16 border #d9d9d9 · 내부 286',
+    [/width: 318/, /pad: 16/, /inner: 286/, /border: '#d9d9d9'/, /borderRadius: 16/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 헤더 36 gap16 · 선택그룹 182 gap8 · 필드 pad6 r8',
+    [/headerH: 36/, /headerGap: 16/, /selectGroupW: 182/, /selectGap: 8/, /fieldPad: 6/, /fieldR: 8/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 칸 40×40 r8 gap1 · Thead 20 · 테이블 pt16',
+    [/cell: 40/, /cellGap: 1/, /cellR: 8/, /theadH: 20/, /tablePadTop: 16/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 상태별 색 — 기본 #1e1e1e / 선택 #e9822b+#f5f5f5 / 다음달 #b3b3b3 / 요일 #757575',
+    [/text: '#1e1e1e'/, /active: '#e9822b'/, /onActive: '#f5f5f5'/, /disabled: '#b3b3b3'/, /weekday: '#757575'/],
+  ],
+  [
+    `${APP}/src/components/Calendar.tsx`,
+    '캘린더: 일요일 시작 · 앞은 빈 칸(Hidden) · 뒤는 다음 달 숫자(Disabled, 선택 불가)',
+    [/WEEKDAYS = \['일', '월', '화', '수', '목', '금', '토'\]/, /state: 'hidden'/, /state: 'disabled'/, /disabled=\{off\}/],
+  ],
+  [
+    `${APP}/app/elder/[id].tsx`,
+    '상세: 정보카드 첫 행 = 생년월일(연도만 알면 연도만 표기)',
+    [/label: '생년월일', value: birthLabel\(elder\)/, /elderAge\(elder\)/],
+  ],
+  [
+    `${APP}/src/components/ProfileForm.tsx`,
     '폼: 성별 수집(메인 카드·상세의 "81세 l 여성" 표기 근거)',
     [/label="성별"/, /GENDER_VALUE\[v\]/, /base64: true/],
   ],
@@ -564,6 +622,30 @@ const SPECS = [
     '파생 객체는 Zustand 셀렉터 밖에서 합성(무한 리렌더 방지)',
     [/function datedFromMock/, /useMemo\(\s*\(\) => \(CFG \? datedFromRows/],
   ],
+
+  // ── 설정 (Figma 584:470, 프레임 393×1072) / 담당 어르신 관리 (584:559, 393×852) ────
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 336 r10 border #e3e3e3', [/cardW: 336/, /cardR: 10/, /cardBorder: '#e3e3e3'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 구분선 283×1 #d9d9d9 @ x55', [/dividerW: 283/, /dividerLeft: 55/, /divider: '#d9d9d9'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 어르신 카드 113 bg #fdf6f0 pitch 134', [/elderCardH: 113/, /elderCardBg: '#fdf6f0'/, /elderGap: 21/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 어르신 카드 그림자 1 1 8 .25', [/elderCardShadow: '1px 1px 8px rgba\(106,106,106,0\.25\)'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 사진 73 원형 @(+27,+20)', [/left: 27,\s*top: 20,\s*width: 73,\s*height: 73,\s*borderRadius: 36\.5/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 이름 SemiBold 18/30 @(+124,+16)', [/text-\[18px\] font-semibold text-black/, /left: 124, top: 16, lineHeight: 30/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 생년/성별 Medium 14/25 #7b7c7c', [/left: 124, top: 46, lineHeight: 25/, /left: 124, top: 71, lineHeight: 25/, /muted: '#7b7c7c'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 휴지통 에셋 21 @(+269,+46)', [/iconTrash/, /width: 21, height: 21/, /left: 269 - 12, top: 46 - 12/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 행 chevron 8.75×13.25 / 작은 chevron 6×7 #404040', [/width=\{8\.75\} height=\{13\.25\}/, /width=\{6\} height=\{7\}/, /strong: '#404040'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 로그아웃 에셋 13', [/iconLogout/, /width: 13, height: 13/]],
+  [`${APP}/app/consent/[id].tsx`, '동의: 체크박스 에셋 17 (미선택/선택)', [/checkboxOff/, /checkboxOn/, /BOX = 17/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 헤더 아래 34 · 좌 29 · 하단 49', [/paddingLeft: SETTINGS\.left, paddingTop: 34, paddingBottom: 49/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 프로필 카드 336×260 @ 라벨 아래 15', [/height: 260,\s*marginTop: 15/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 아바타 79 원 @(+26,+22)', [/left: 26,\s*top: 22,\s*width: 79,\s*height: 79,\s*borderRadius: 39\.5/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 이름 SemiBold 20/24 · 기관 Medium 16/21 #404040', [/text-\[20px\] font-semibold/, /left: 123, top: 33, lineHeight: 24/, /left: 123, top: 68, lineHeight: 21, color: SETTINGS\.strong/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 구분선 top 120 / 183 · 아이디 SemiBold 14 값 Regular 15', [/Divider top=\{120\}/, /Divider top=\{183\}/, /text-\[15px\] font-normal/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 소셜 41.4/41.4/41(구글 42) top 198', [/left: 161, w: 41\.4/, /left: 217\.2, w: 41\.4/, /left: 273, w: 41, h: 42/, /top: 198/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 정보 카드 336×204 @ 라벨 아래 13 · 구분선 69/132', [/height: 204,\s*marginTop: 13/, /Divider top=\{69\}/, /Divider top=\{132\}/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 어르신 미리보기 2장 · 라벨 아래 18', [/PREVIEW_ELDERS = 2/, /marginTop: i === 0 \? 18 : SETTINGS\.elderGap/]],
+  [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 첫 카드 top 146(헤더+32)', [/paddingLeft: SETTINGS\.left, paddingTop: 32/]],
+  [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 카드 간격 21', [/marginTop: i === 0 \? 0 : SETTINGS\.elderGap/]],
+  [`${APP}/app/main.tsx`, '메인: 톱니바퀴 → 설정 화면', [/router\.push\('\/settings'\)/]],
 ];
 
 let ok = 0;

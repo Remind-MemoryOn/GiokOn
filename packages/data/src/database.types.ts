@@ -90,10 +90,11 @@ export type Database = {
           org_id: string
           name: string
           birth_year: number
+          /** 생년월일. 입력의 단일 근거(birth_year 는 파생). 월·일 미상이면 null. */
+          birth_date: string | null
           hometown: string | null
           job: string | null
           family: string | null
-          memories: string[]
           hobbies: string | null
           guardian_name: string | null
           guardian_relation: string | null
@@ -110,10 +111,10 @@ export type Database = {
           org_id?: string
           name: string
           birth_year: number
+          birth_date?: string | null
           hometown?: string | null
           job?: string | null
           family?: string | null
-          memories?: string[]
           hobbies?: string | null
           guardian_name?: string | null
           guardian_relation?: string | null
@@ -128,10 +129,10 @@ export type Database = {
           org_id?: string
           name?: string
           birth_year?: number
+          birth_date?: string | null
           hometown?: string | null
           job?: string | null
           family?: string | null
-          memories?: string[]
           hobbies?: string | null
           guardian_name?: string | null
           guardian_relation?: string | null
