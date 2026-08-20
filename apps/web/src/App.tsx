@@ -4,6 +4,7 @@ import { ToastShelf } from './components/ui/Toast';
 import { Pending } from './pages/Pending';
 import { LandingPage } from './pages/public/LandingPage';
 import { LoginPage } from './pages/public/LoginPage';
+import { OnboardingPage } from './pages/public/OnboardingPage';
 import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { EldersPage } from './pages/caregiver/EldersPage';
 import { useAuth } from './auth/AuthProvider';
@@ -40,8 +41,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/guide" element={<Pending title="이용안내" node="1:17" />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<Pending title="회원가입" node="15:444" />} />
-        <Route path="/onboarding" element={<Pending title="기본 정보 입력" node="15:444" />} />
+        {/* 디자인에는 이메일 가입 폼이 없다 — 회원가입 = 소셜 로그인 후 기본 정보 입력 */}
+        <Route path="/signup" element={<OnboardingPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/find-id" element={<Pending title="아이디 찾기" node="111:148" />} />
         <Route path="/forgot-password" element={<Pending title="비밀번호 찾기" node="111:170" />} />
         <Route path="/reset-password" element={<Pending title="비밀번호 재설정" node="114:247" />} />

@@ -199,6 +199,26 @@ const SCREENS = [
     /계정이 없으신가요\?/,
   ], 'copy'],
 
+  // ── 온보딩(회원가입 페이지2) 15:444 ────────────────────────────────────
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 역할 카드 275×128 r10 @ (432/733,320) + 라디오 25/13', [
+    /h-\[128px\] w-\[275px\] rounded-\[10px\]/, /left: r\.left, top: Y\(320\)/,
+    /left: 432/, /left: 733/, /h-\[25px\] w-\[25px\] items-center justify-center rounded-full border-2/,
+    /h-\[13px\] w-\[13px\] rounded-full/,
+  ]],
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 입력 576×57 @ 이름508·전화652·기관798 + 필수 별표 accent', [
+    /h-\[57px\] w-\[576px\] rounded-\[10px\] border border-line/,
+    /top=\{464\}/, /top=\{609\}/, /top=\{756\}/,
+    /text-\[12px\] font-medium leading-\[30px\] text-accent/,
+  ]],
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 동의 박스 576×151 @916 · CTA 576×71 @1106', [
+    /h-\[151px\] w-\[576px\] rounded-\[10px\] border border-line/, /top: Y\(916\)/,
+    /h-\[71px\] w-\[576px\] rounded-\[10px\] bg-accent/, /top: Y\(1106\)/,
+  ]],
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 카피(Figma 문구 그대로)', [
+    /기본 정보를 입력해 주세요/, /소셜 로그인은 완료됐어요\./, /어떤 역할로 이용하시나요\?/,
+    /\[필수\]<\/span> 개인정보 수집·이용에 동의합니다\./, /가입 완료/,
+  ], 'copy'],
+
   // ── 대시보드 118:300 ───────────────────────────────────────────────────
   [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 4카드 243×107 r10 shadow-card · 아이콘 50', [
     /h-\[107px\] w-\[243px\][^"]*rounded-\[10px\] bg-white px-6 shadow-card/,
