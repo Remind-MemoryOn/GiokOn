@@ -1,3 +1,14 @@
+/* Pretendard 자체 호스팅 — 컨테이너·오프라인에서 CDN(jsdelivr)이 막혀 폰트가
+   폴백되던 문제 해소. 가변 폰트 1개로 100~900 전 굵기를 덮는다.
+   원본: apps/web/assets/fonts/Pretendard-1.3.9 (OFL, LICENSE.txt 동봉) */
+@font-face {
+  font-family: 'Pretendard';
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('../assets/fonts/Pretendard-1.3.9/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
