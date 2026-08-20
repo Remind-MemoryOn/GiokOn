@@ -199,6 +199,31 @@ const SCREENS = [
     /계정이 없으신가요\?/,
   ], 'copy'],
 
+  // ── 아이디/비밀번호 찾기·재설정 111:148 / 111:170 / 114:247 ────────────
+  // 세 화면은 골격이 완전히 같다(실측): 돌아가기 187 · 제목 287 · 부제 325 ·
+  // 입력 576×57 @431/560 · CTA 576×71 @672 · 하단 링크 793.
+  [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 공통 골격 좌표(187/287/325/431·560/672/793)', [
+    /top: Y\(187\)/, /top: Y\(287\)/, /top: Y\(325\)/, /top: Y\(672\)/, /top: Y\(793\)/,
+    /const FIELD_TOP = \[395, 524\]/, /const INPUT_TOP = \[431, 560\]/,
+  ]],
+  [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 입력 576×57 r10 · CTA 576×71 accent · 필수 별표', [
+    /h-\[57px\] w-\[576px\] rounded-\[10px\] border border-line/,
+    /h-\[71px\] w-\[576px\] rounded-\[10px\] bg-accent/,
+    /text-\[12px\] text-accent/,
+  ]],
+  [`${WEB}/src/pages/public/FindIdPage.tsx`, '아이디 찾기: 카피·필드', [
+    /아이디\(이메일\) 찾기/, /가입 시 입력한 이름과 전화번호로 이메일 일부를 확인할 수 있어요\./,
+    /이름을 입력해주세요/, /010-1234-5678/,
+  ], 'copy'],
+  [`${WEB}/src/pages/public/ForgotPasswordPage.tsx`, '비밀번호 찾기: 카피·필드', [
+    /비밀번호 찾기/, /가입한 이메일로 비밀번호 재설정 링크를 보내드려요\./,
+    /가입한 이메일을 입력해주세요/, /재설정 메일 보내기/,
+  ], 'copy'],
+  [`${WEB}/src/pages/public/ResetPasswordPage.tsx`, '비밀번호 재설정: 카피·필드', [
+    /비밀번호 재설정/, /메일 링크로 들어오셨다면 새 비밀번호를 설정할 수 있어요\./,
+    /새 비밀번호를 입력해주세요/, /새 비밀번호 다시 입력해주세요/, /비밀번호 변경/,
+  ], 'copy'],
+
   // ── 온보딩(회원가입 페이지2) 15:444 ────────────────────────────────────
   [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 역할 카드 275×128 r10 @ (432/733,320) + 라디오 25/13', [
     /h-\[128px\] w-\[275px\] rounded-\[10px\]/, /left: r\.left, top: Y\(320\)/,

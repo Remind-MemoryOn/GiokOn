@@ -5,6 +5,9 @@ import { Pending } from './pages/Pending';
 import { LandingPage } from './pages/public/LandingPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { OnboardingPage } from './pages/public/OnboardingPage';
+import { FindIdPage } from './pages/public/FindIdPage';
+import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/public/ResetPasswordPage';
 import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { EldersPage } from './pages/caregiver/EldersPage';
 import { useAuth } from './auth/AuthProvider';
@@ -44,9 +47,9 @@ function App() {
         {/* 디자인에는 이메일 가입 폼이 없다 — 회원가입 = 소셜 로그인 후 기본 정보 입력 */}
         <Route path="/signup" element={<OnboardingPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/find-id" element={<Pending title="아이디 찾기" node="111:148" />} />
-        <Route path="/forgot-password" element={<Pending title="비밀번호 찾기" node="111:170" />} />
-        <Route path="/reset-password" element={<Pending title="비밀번호 재설정" node="114:247" />} />
+        <Route path="/find-id" element={<FindIdPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* ── 요양보호사 ── */}
         <Route
