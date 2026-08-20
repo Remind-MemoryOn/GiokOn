@@ -1,128 +1,76 @@
-import { useCallback } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Brain, ChartColumn, Home, NotebookPen, Share2, Users, FileText, LogOut, Building2, Settings } from 'lucide-react';
-import { signOut, useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
-import { cn } from '../lib/utils';
+import { useCallback, useState, type ReactNode } from 'react';
+import { Outlet } from 'react-router-dom';
+import { useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
+import { TopBar } from './shell/TopBar';
+import { Sidebar } from './shell/Sidebar';
+import { CAREGIVER_NAV, GUARDIAN_NAV, type NavItem } from './shell/nav';
 import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
-import { AgentPanel } from './AgentPanel';
 
-const NAV = [
-  { to: '/caregiver',          label: '대시보드',    icon: Home, end: true },
-  { to: '/caregiver/elders',   label: '어르신 관리', icon: Users },
-  { to: '/caregiver/logs',     label: '세션 기록',   icon: FileText },
-  { to: '/caregiver/analysis', label: '분석',        icon: ChartColumn },
-  { to: '/caregiver/journal',  label: '요양일지',    icon: NotebookPen },
-  { to: '/caregiver/shares',   label: '공개 관리',   icon: Share2 },
-  { to: '/caregiver/org',      label: '기관 관리',   icon: Building2 },
-  { to: '/caregiver/settings', label: '설정',        icon: Settings },
-];
-
-export function CaregiverLayout() {
-  const { user, userRow, isConfigured } = useAuth();
-  const navigate = useNavigate();
+// 신규 디자인의 공용 셸: 상단 바(122) + 좌측 사이드바(296) + 콘텐츠 열(1054 @ x323).
+// 요양보호사·보호자 모두 같은 셸을 쓰고 사이드바 항목만 다르다.
+function AppShell({ nav }: { nav: NavItem[] }) {
+  const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
+  const [search, setSearch] = useState('');
 
-  // 앱 대화 종료 → sessions/분석/공개 변경을 실시간 반영(T-E3, 폴링 대체).
-  // 새 분석 도착은 인앱 알림으로 표시(F-27).
+  // 앱 대화 종료 → 세션·분석·공개 변경을 실시간 반영.
   const onRealtimeEvent = useCallback(
     (event: RealtimeEvent) => {
       if (event.table === 'session_analyses' && event.eventType === 'INSERT') {
-        toast('info', '새 세션 분석이 도착했어요 — 분석 페이지에서 확인하세요.');
+        toast('info', '새 세션 분석이 도착했어요 — 분석에서 확인하세요.');
       }
     },
     [toast],
   );
   useGiokonRealtime({ enabled: isConfigured, onEvent: onRealtimeEvent });
 
-  const name = (userRow?.name ?? (user?.user_metadata?.name as string | undefined))?.trim();
-  const displayName = name || user?.email || '요양보호사';
-  const avatarText = name ? name.slice(-2) : displayName.slice(0, 2).toUpperCase();
-  const roleLabel = userRow?.role === 'org_admin' ? '기관 관리자' : '요양보호사';
-
-  async function handleLogout() {
-    try {
-      await signOut();
-    } catch {
-      /* 로그아웃 실패해도 화면은 이동 */
-    }
-    navigate('/', { replace: true });
-  }
-
   return (
-    <div className="min-h-full flex">
-      {/* 접근성: 키보드 사용자를 위한 본문 바로가기 (KWCAG) */}
+    <div className="min-h-screen bg-white">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-warm-500 focus:text-white focus:px-4 focus:py-2 focus:rounded-lg"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-[10px] focus:bg-accent focus:px-4 focus:py-2 focus:text-white"
       >
         본문으로 바로가기
       </a>
-      <aside className="w-60 shrink-0 border-r border-slate-200 bg-white flex flex-col">
-        <div className="px-5 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-warm-500 flex items-center justify-center shadow-warm">
-              <Brain size={20} className="text-white" />
-            </div>
-            <div>
-              <div className="text-base font-semibold tracking-tight">기억온</div>
-              <div className="text-[11px] text-slate-500">요양보호사 화면</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-5 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center text-sm font-bold">
-              {avatarText}
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{displayName}</div>
-              <div className="text-[11px] text-slate-500">{roleLabel}</div>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-3 space-y-1">
-          {NAV.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition',
-                  isActive
-                    ? 'bg-warm-50 text-warm-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                )
-              }
-            >
-              <n.icon size={17} />
-              {n.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="p-3 border-t border-slate-100 space-y-2">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition"
-          >
-            <LogOut size={16} /> 로그아웃
-          </button>
-          <div className="px-3 pt-1 text-[10px] text-slate-400 space-x-2">
-            <Link to="/privacy" className="hover:text-slate-600">처리방침</Link>
-            <Link to="/terms" className="hover:text-slate-600">약관</Link>
-          </div>
-        </div>
-      </aside>
-      <main id="main-content" className="flex-1 min-w-0 flex flex-col">
-        <Outlet />
-      </main>
-
-      {/* AI 에이전트 패널 (SCR-W11 — 일지 초안·공개 대행, 실행 전 사람 확인) */}
-      <AgentPanel role="caregiver" />
+      <TopBar search={{ value: search, onChange: setSearch }} />
+      <div className="mx-auto flex w-full max-w-[1440px]">
+        <Sidebar items={nav} />
+        <main id="main-content" className="min-w-0 flex-1 pb-24 pl-[27px] pr-[63px]">
+          <Outlet context={{ search }} />
+        </main>
+      </div>
     </div>
+  );
+}
+
+export function CaregiverLayout() {
+  return <AppShell nav={CAREGIVER_NAV} />;
+}
+
+export function GuardianLayout() {
+  return <AppShell nav={GUARDIAN_NAV} />;
+}
+
+/** 화면 제목 — Bold 30 accent @ (322,169) + 설명 Regular 20/30 #404040 @ 236. */
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <header className="flex items-start justify-between gap-8 pb-8 pt-[47px]">
+      <div>
+        <h1 className="text-w-page font-bold leading-[70px] text-accent">{title}</h1>
+        {description ? (
+          <div className="max-w-[640px] text-w-body leading-[30px] text-ink-700">{description}</div>
+        ) : null}
+      </div>
+      {actions ? <div className="flex shrink-0 items-center gap-3 pt-6">{actions}</div> : null}
+    </header>
   );
 }

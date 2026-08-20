@@ -1,8 +1,13 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '../../lib/utils';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
-export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+// 신규 디자인 실측(Figma 15:443 로그인 CTA · 각 화면 액션 버튼):
+//   주 버튼 = 배경 accent(#e9822b) · 흰 글자 · r10 · SemiBold
+//   size lg = h71 / text 24  (인증 화면 전폭 CTA)
+//   size md = h57 / text 22  (화면 상단 액션)
+//   size sm = h44 / text 20  (카드 내 액션)
+export type ButtonVariant = 'primary' | 'outline' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -10,23 +15,16 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary:
-    'bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-sm shadow-brand-500/20',
-  secondary:
-    'bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-950 shadow-sm',
-  ghost:
-    'bg-transparent text-slate-700 hover:bg-slate-100 active:bg-slate-200',
-  danger:
-    'bg-red-500 text-white hover:bg-red-600 active:bg-red-700',
-  outline:
-    'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 active:bg-slate-100',
+  primary: 'bg-accent text-white hover:brightness-95 active:brightness-90',
+  outline: 'bg-white text-ink-500 border border-line hover:bg-mute/40',
+  ghost: 'bg-transparent text-ink-700 hover:bg-mute/60',
+  danger: 'bg-alert text-white hover:brightness-95',
 };
 
 const SIZES: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-sm rounded-md gap-1.5',
-  md: 'h-10 px-4 text-sm rounded-lg gap-2',
-  lg: 'h-12 px-5 text-base rounded-lg gap-2',
-  xl: 'h-14 px-7 text-lg rounded-xl gap-2.5',
+  sm: 'h-[44px] px-5 text-w-body',
+  md: 'h-[57px] px-6 text-w-nav',
+  lg: 'h-[71px] px-7 text-w-cta',
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(
@@ -35,14 +33,16 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
       ref={ref}
       {...rest}
       className={cn(
-        'inline-flex items-center justify-center font-medium transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2',
+        'inline-flex items-center justify-center gap-2 rounded-[10px] font-semibold transition',
+        'disabled:opacity-50 disabled:cursor-not-allowed',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
         VARIANTS[variant],
         SIZES[size],
-        className
+        className,
       )}
     >
       {children}
     </button>
-  )
+  ),
 );
 Button.displayName = 'Button';

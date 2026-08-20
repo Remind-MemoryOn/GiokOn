@@ -1,7 +1,9 @@
 // @giokon/theme — 디자인 토큰 단일 소스 (웹 Tailwind + 모바일 NativeWind 공용)
 //
-// 여기 값들은 기존 apps/web의 Tailwind 설정에서 승격한 "현재 디자인" 토큰이다.
-// Figma 핸드오프가 도착하면 변수명·값을 Figma Variables와 1:1로 정합한다(M4 확정).
+// 두 디자인 트랙이 각자의 토큰을 갖는다.
+//   - `palette`/`figma`/`elderFontSize` … 어르신 대화 앱(apps/mobile) — 파일 nLfWkg2H7dFfDH1pehcH5I
+//   - `webPalette`/`webTokens`          … 관리 웹(apps/web) — 파일 4iU6Zw4MhLAMZWlnPFgsCI (2026-08 전면 교체)
+// 두 파일 모두 Figma Variables 를 쓰지 않아 **fill 실측값**을 토큰으로 승격했다.
 // 어르신 화면 접근성 기본값(본문 ≥ 18pt, 터치 타깃 ≥ 60px)을 토큰에 내장한다.
 
 // ── 색 팔레트 ──────────────────────────────────────────────────────────
@@ -61,6 +63,71 @@ export const figma = {
   radius: { card: 10, button: 5, input: 5, pill: 999 },
   // 화면 표준 폭(디자인 프레임 393px 기준). 모바일은 반응형이지만 카드 여백 근거로 사용.
   frameWidth: 393,
+} as const
+
+// ── 관리 웹 디자인 토큰 (Figma 4iU6Zw4MhLAMZWlnPFgsCI, 2026-08-18 전면 교체) ──
+// 실측 출처: 로그인 `15:443` · 대시보드 `118:300` 의 get_design_context.
+// 화면↔노드 맵과 절차는 docs/runbooks/figma-web-extraction.md.
+export const webPalette = {
+  // 브랜드 주황 — 앱과 같은 계열(#e9822b). soft = 사이드바 활성 배경(20% 틴트).
+  accent: {
+    DEFAULT: '#e9822b',
+    soft: '#e9822b33',
+  },
+  // 텍스트 계층: 제목=black, 본문=#404040, 보조=#7b7c7c, 뱃지 회색=#6e6e6e
+  ink: {
+    900: '#000000',
+    700: '#404040',
+    500: '#7b7c7c',
+    400: '#6e6e6e',
+  },
+  // 선: 카드 테두리·리스트 구분선 #d9d9d9, 로그인 구분선 #707070
+  line: {
+    DEFAULT: '#d9d9d9',
+    strong: '#707070',
+  },
+  // 상태색 — 각 10% 틴트를 배경으로 쓴다(뱃지·배너).
+  alert: { DEFAULT: '#ff0004', soft: '#ff000408', line: '#ff000480' },
+  info: { DEFAULT: '#1cb2d0', soft: '#1cb2d01a' },
+  chronicle: { DEFAULT: '#d5379b', soft: '#d5379b1a' },
+  live: { DEFAULT: '#60bd66', soft: '#60bd661a' },
+  mute: { DEFAULT: '#f2f1f1', strong: '#efefef', field: '#d9d9d94d' },
+  // 소셜 로그인 브랜드 고정색
+  naver: { DEFAULT: '#48b034' },
+  kakao: { DEFAULT: '#f4df2a' },
+} as const
+
+/** 웹 그림자·치수·타이포 — 1440 캔버스 실측. */
+export const webTokens = {
+  /** 디자인 캔버스 폭. 콘텐츠 치수의 기준. */
+  frameWidth: 1440,
+  layout: {
+    topBarHeight: 122,
+    sidebarWidth: 296, // 콘텐츠 열 시작(323) 직전까지
+    sidebarItemGap: 79, // 대시보드 186 → 어르신 관리 265 → …
+    sidebarActive: { width: 208, height: 57, radius: 10, left: 44 },
+    contentLeft: 323,
+    contentWidth: 1054, // 1440 - 323 - 63
+    listInset: 52, // 카드 안 리스트 좌우 여백(375 - 323)
+    authColumnWidth: 568,
+  },
+  radius: { card: 10, field: 10, button: 10, chip: 5, pill: 100, avatar: 63 },
+  shadow: {
+    topBar: '1px 1px 10px 0px rgba(108,101,101,0.13)',
+    card: '1px 1px 8px 0px rgba(106,106,106,0.25)',
+    chip: '1px 1px 10px 0px rgba(0,0,0,0.05)',
+  },
+  /** [fontSize, lineHeight] px — Figma 실측 그대로. */
+  fontSize: {
+    'w-page': ['30px', '70px'], // 페이지 제목 Bold
+    'w-section': ['25px', '70px'], // 섹션 제목·어르신 이름 Bold
+    'w-stat': ['35px', '35px'], // 통계 숫자 SemiBold
+    'w-cta': ['24px', 'normal'], // 주 버튼 SemiBold
+    'w-nav': ['22px', '30px'], // 사이드바·탑바·폼 라벨 SemiBold
+    'w-body': ['20px', '28px'], // 본문·플레이스홀더
+    'w-sub': ['18px', '28px'], // 뱃지·보조 설명
+    'w-label': ['16px', '35px'], // 통계 라벨
+  },
 } as const
 
 export const fontFamily = {
@@ -162,3 +229,5 @@ export type Palette = typeof palette
 export type Tokens = typeof tokens
 export type TailwindExtend = typeof tailwindExtend
 export type FigmaTokens = typeof figma
+export type WebPalette = typeof webPalette
+export type WebTokens = typeof webTokens

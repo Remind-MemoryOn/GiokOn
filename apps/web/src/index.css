@@ -18,7 +18,8 @@
     height: 100%;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    /* 신규 디자인: 흰 배경 · 본문 #404040 (Figma 실측) */
+    @apply bg-white text-ink-700 antialiased;
     font-feature-settings: 'ss01';
   }
 }

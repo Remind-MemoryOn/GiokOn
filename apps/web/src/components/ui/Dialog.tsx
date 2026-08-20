@@ -1,6 +1,13 @@
 import { useEffect, type ReactNode } from 'react';
-import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
+
+// 신규 디자인 실측(연대기 추가 196:271 · 회상 세션 설계 196:272 · 어르신 등록 Frame 19):
+//   패널 폭 1054(lg) · r10 · 흰 배경 · 그림자 card
+//   제목 Bold 25 · 푸터는 취소(outline) / 저장(primary) 우측 정렬
+const SIZE = {
+  md: 'max-w-[700px]',
+  lg: 'max-w-[1054px]',
+} as const;
 
 interface Props {
   open: boolean;
@@ -9,14 +16,8 @@ interface Props {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'md' | 'lg' | 'xl';
+  size?: keyof typeof SIZE;
 }
-
-const SIZE: Record<NonNullable<Props['size']>, string> = {
-  md: 'max-w-md',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
-};
 
 export function Dialog({ open, onClose, title, description, children, footer, size = 'lg' }: Props) {
   useEffect(() => {
@@ -35,35 +36,26 @@ export function Dialog({ open, onClose, title, description, children, footer, si
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-fade-in-up"
-        onClick={onClose}
-      />
-      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className={cn(
-          'relative w-full bg-white rounded-2xl shadow-xl border border-slate-200 animate-fade-in-up',
-          SIZE[size]
+          'relative flex max-h-[86vh] w-full flex-col rounded-[10px] bg-white shadow-card',
+          SIZE[size],
         )}
       >
-        <header className="flex items-start justify-between p-5 border-b border-slate-100">
-          <div>
-            {title ? <h2 className="text-lg font-semibold text-slate-900">{title}</h2> : null}
-            {description ? <p className="text-sm text-slate-500 mt-1">{description}</p> : null}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition p-1 rounded-md hover:bg-slate-100"
-            aria-label="닫기"
-          >
-            <X size={18} />
-          </button>
-        </header>
-        <div className="p-5 max-h-[70vh] overflow-y-auto">{children}</div>
+        {title ? (
+          <header className="px-[52px] pb-4 pt-9">
+            <h2 className="text-w-section font-bold text-ink-900">{title}</h2>
+            {description ? <p className="mt-1 text-w-sub text-ink-700">{description}</p> : null}
+          </header>
+        ) : null}
+        <div className="flex-1 overflow-y-auto px-[52px] pb-2">{children}</div>
         {footer ? (
-          <footer className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100 bg-slate-50/60 rounded-b-2xl">
-            {footer}
-          </footer>
+          <footer className="flex justify-end gap-3 px-[52px] pb-9 pt-6">{footer}</footer>
         ) : null}
       </div>
     </div>

@@ -1,30 +1,29 @@
-import { cn, initial } from '../../lib/utils';
+import { asset } from '../../assets/ui';
+import { cn } from '../../lib/utils';
+
+// 신규 디자인은 어르신 사진을 원형으로 노출한다(실측 r63).
+//   xl 99 (담당 어르신 리스트) · lg 76 (최근 대화) · md 50 · sm 40 (탑바)
+// 사진이 없으면 Figma 기본 아바타 에셋을 그대로 쓴다(코드로 그리지 않는다).
+const SIZE = { sm: 40, md: 50, lg: 76, xl: 99 } as const;
 
 interface Props {
-  name: string;
-  color?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Storage signed URL. 없으면 기본 아바타. */
+  src?: string | null;
+  name?: string;
+  size?: keyof typeof SIZE;
   className?: string;
 }
 
-const SIZE = {
-  sm: 'w-8 h-8 text-xs',
-  md: 'w-10 h-10 text-sm',
-  lg: 'w-12 h-12 text-base',
-  xl: 'w-16 h-16 text-xl',
-};
-
-export function Avatar({ name, color = '#fbb78c', size = 'md', className }: Props) {
+export function Avatar({ src, name, size = 'md', className }: Props) {
+  const px = SIZE[size];
   return (
-    <div
-      className={cn(
-        'rounded-full flex items-center justify-center font-semibold text-slate-900 shrink-0',
-        SIZE[size],
-        className
-      )}
-      style={{ background: color }}
-    >
-      {initial(name)}
-    </div>
+    <img
+      src={src || asset.avatarDefault}
+      alt={name ? `${name} 어르신 사진` : ''}
+      width={px}
+      height={px}
+      className={cn('shrink-0 rounded-full object-cover', className)}
+      style={{ width: px, height: px }}
+    />
   );
 }

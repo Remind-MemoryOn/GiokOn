@@ -1,30 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { CaregiverLayout } from './components/Layout';
+import { CaregiverLayout, GuardianLayout } from './components/Layout';
 import { ToastShelf } from './components/ui/Toast';
-import { LandingPage } from './pages/LandingPage';
-import { LoginPage } from './pages/LoginPage';
-import { FindIdPage } from './pages/FindIdPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
-import { OnboardingPage } from './pages/OnboardingPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { EldersPage } from './pages/EldersPage';
-import { ElderDetailPage } from './pages/ElderDetailPage';
-import { LogsPage } from './pages/LogsPage';
-import { LogDetailPage } from './pages/LogDetailPage';
-import { AnalysisPage } from './pages/AnalysisPage';
-import { CareJournalPage } from './pages/CareJournalPage';
-import { SharesPage } from './pages/SharesPage';
-import { OrgPage } from './pages/OrgPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { PrivacyPolicyPage, TermsPage } from './pages/LegalPages';
-import { GuardianDashboardPage } from './pages/GuardianDashboardPage';
+import { Pending } from './pages/Pending';
+import { LandingPage } from './pages/public/LandingPage';
+import { LoginPage } from './pages/public/LoginPage';
+import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { useAuth } from './auth/AuthProvider';
 
-// 인증(T17.4 + 2026-07-23 이메일 병행): 로그인=이메일(아이디)+비밀번호 및 소셜
-// 3종(/login) · 아이디 찾기(/find-id) · 비밀번호 찾기(/forgot-password) · 재설정
-// (/reset-password) → 온보딩 게이트(/onboarding) → 역할 기반 자동 라우팅
-// (caregiver·org_admin→/caregiver, guardian→/guardian).
+// 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
+// 화면↔노드 맵: docs/runbooks/figma-web-extraction.md
+//   공개      서비스 소개 · 이용안내 · 로그인 · 회원가입 · 아이디/비번 찾기 · 재설정
+//   요양보호사 대시보드 · 어르신 관리 · 세션 기록 · 분석 · 요양일지 · 공개 관리 · 기관 관리 · 설정
+//   보호자    어르신 연결 · 공개된 소식 · 분석 · 설정
 
 function CaregiverGuard({ children }: { children: React.ReactNode }) {
   const { session, userRow, loading } = useAuth();
@@ -48,20 +35,17 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ── 공개 ── */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/guide" element={<Pending title="이용안내" node="1:17" />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/find-id" element={<FindIdPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/signup" element={<Pending title="회원가입" node="15:444" />} />
+        <Route path="/onboarding" element={<Pending title="기본 정보 입력" node="15:444" />} />
+        <Route path="/find-id" element={<Pending title="아이디 찾기" node="111:148" />} />
+        <Route path="/forgot-password" element={<Pending title="비밀번호 찾기" node="111:170" />} />
+        <Route path="/reset-password" element={<Pending title="비밀번호 재설정" node="114:247" />} />
 
-        {/* 구 로그인 경로 → 통합 로그인으로 */}
-        <Route path="/caregiver/login" element={<Navigate to="/login" replace />} />
-        <Route path="/guardian/login" element={<Navigate to="/login" replace />} />
-
-        {/* 요양보호사 영역 */}
+        {/* ── 요양보호사 ── */}
         <Route
           path="/caregiver"
           element={
@@ -71,28 +55,46 @@ function App() {
           }
         >
           <Route index element={<DashboardPage />} />
-          <Route path="elders" element={<EldersPage />} />
-          <Route path="elders/:elderId" element={<ElderDetailPage />} />
-          <Route path="logs" element={<LogsPage />} />
-          <Route path="logs/:logId" element={<LogDetailPage />} />
-          <Route path="analysis" element={<AnalysisPage />} />
-          <Route path="journal" element={<CareJournalPage />} />
-          <Route path="shares" element={<SharesPage />} />
-          <Route path="org" element={<OrgPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="elders" element={<Pending title="어르신 관리" node="161:207" />} />
+          <Route path="elders/:elderId" element={<Pending title="어르신 상세" node="161:373" />} />
+          <Route path="elders/:elderId/edit" element={<Pending title="기본 정보 수정" node="178:486" />} />
+          <Route path="elders/:elderId/chronicles" element={<Pending title="연대기 목록" node="198:506" />} />
+          <Route path="sessions" element={<Pending title="세션 기록" node="178:787" />} />
+          <Route path="sessions/:elderId" element={<Pending title="세션 목록" node="178:877" />} />
+          <Route path="sessions/:elderId/:sessionId" element={<Pending title="대화 기록" node="178:1052" />} />
+          <Route path="analysis" element={<Pending title="분석" node="225:1669" />} />
+          <Route path="analysis/:elderId" element={<Pending title="개인별 분석" node="228:3722" />} />
+          <Route path="analysis/:elderId/overall" element={<Pending title="종합 분석" node="228:4091" />} />
+          <Route path="analysis/:elderId/sessions" element={<Pending title="대화 분석 목록" node="228:4628" />} />
+          <Route path="analysis/:elderId/sessions/:sessionId" element={<Pending title="대화 분석" node="228:4430" />} />
+          <Route path="journal" element={<Pending title="요양일지" node="205:1039" />} />
+          <Route path="journal/:elderId" element={<Pending title="요양일지 목록" node="207:1147" />} />
+          <Route path="journal/:elderId/new" element={<Pending title="요양일지 작성" node="221:283" />} />
+          <Route path="shares" element={<Pending title="공개 관리" node="135:1288" />} />
+          <Route path="shares/:elderId" element={<Pending title="공개 관리" node="140:121" />} />
+          <Route path="shares/:elderId/history" element={<Pending title="공개 이력" node="146:1067" />} />
+          <Route path="org" element={<Pending title="기관 관리" node="131:959" />} />
+          <Route path="settings" element={<Pending title="설정" node="121:598" />} />
         </Route>
 
-        {/* 어르신 대화(TTS/STT)는 모바일 앱 담당 — 웹에는 없음 */}
-
-        {/* 보호자 영역 (실계정 + 승인된 연결만) */}
+        {/* ── 보호자 ── */}
         <Route
           path="/guardian"
           element={
             <GuardianGuard>
-              <GuardianDashboardPage />
+              <GuardianLayout />
             </GuardianGuard>
           }
-        />
+        >
+          <Route index element={<Pending title="어르신 연결" node="31:616" />} />
+          <Route path="feed" element={<Pending title="공개된 소식" node="50:543" />} />
+          <Route path="feed/journal/:itemId" element={<Pending title="요양일지" node="50:1102" />} />
+          <Route path="feed/summary/:itemId" element={<Pending title="대화 요약" node="55:1258" />} />
+          <Route path="analysis" element={<Pending title="종합 분석" node="96:94" />} />
+          <Route path="analysis/sessions" element={<Pending title="대화 분석" node="104:1041" />} />
+          <Route path="analysis/sessions/:sessionId" element={<Pending title="대화 분석" node="104:1830" />} />
+          <Route path="settings" element={<Pending title="설정" node="334:697" />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -56,9 +56,9 @@ function colorMap(text, group) {
   }
   return out;
 }
-/** theme 의 palette 안에 정의된 색 그룹 이름들. */
+/** theme 의 webPalette(웹 디자인 토큰) 안에 정의된 색 그룹 이름들. */
 function paletteGroups(text) {
-  const head = /export const palette = \{/.exec(text ?? '');
+  const head = /export const webPalette = \{/.exec(text ?? '');
   if (!head) return [];
   const start = text.indexOf('{', head.index);
   let depth = 0, end = -1;
@@ -76,7 +76,7 @@ check('토큰', '테마 토큰 파일 존재', Boolean(themeSrc), THEME);
 check('토큰', '웹 tailwind.config 존재', Boolean(twSrc), `${WEB}/tailwind.config.js`);
 
 const groups = paletteGroups(themeSrc);
-check('토큰', 'theme palette 에 색 그룹이 정의돼 있다', groups.length > 0);
+check('토큰', 'theme 에 webPalette(웹 디자인 토큰)가 정의돼 있다', groups.length > 0);
 const defined = {};
 for (const g of groups) {
   const inTheme = colorMap(themeSrc, g);
@@ -85,6 +85,20 @@ for (const g of groups) {
   check('토큰', `${g}: @giokon/theme = 웹 tailwind.config (미러 동일성)`,
     inTheme && inTailwind && JSON.stringify(inTheme) === JSON.stringify(inTailwind),
     `theme ${JSON.stringify(inTheme)} / tailwind ${JSON.stringify(inTailwind)}`);
+}
+
+// 그림자·타이포 실측값도 두 곳이 같은지 본다.
+for (const [key, value] of [
+  ['topBar', '1px 1px 10px 0px rgba(108,101,101,0.13)'],
+  ['card', '1px 1px 8px 0px rgba(106,106,106,0.25)'],
+  ['chip', '1px 1px 10px 0px rgba(0,0,0,0.05)'],
+]) {
+  check('토큰', `shadow ${key} 실측값 = theme·tailwind 양쪽`,
+    (themeSrc ?? '').includes(`'${value}'`) && (twSrc ?? '').includes(`'${value}'`), value);
+}
+for (const size of ['w-page', 'w-section', 'w-stat', 'w-cta', 'w-nav', 'w-body', 'w-sub', 'w-label']) {
+  check('토큰', `타이포 ${size} 정의(theme·tailwind)`,
+    (themeSrc ?? '').includes(`'${size}'`) && (twSrc ?? '').includes(`'${size}'`));
 }
 
 // ── 2) 팔레트에 없는 shade 사용 차단 ─────────────────────────────────────
@@ -126,7 +140,99 @@ check('에셋', 'Pretendard 자체 호스팅 폰트 존재',
 // ── 4) 이관 완료 화면 실측 대조 ──────────────────────────────────────────
 // [파일, 항목명, [정규식 …], 'code'|'copy']  — 'copy' 는 공백을 접어서 비교한다.
 // 화면을 옮길 때마다 여기에 실측값을 추가한다(런북 §절차 4).
-const SCREENS = [];
+const SCREENS = [
+  // ── 공용 셸 ────────────────────────────────────────────────────────────
+  [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: h122 · shadow-topbar · 워드마크 153×23 @63', [
+    /h-\[122px\][^"]*shadow-topbar/, /left-\[63px\] top-\[70px\]/, /width=\{153\} height=\{23\}/,
+  ]],
+  [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: 검색 466×40 r-pill @561 · 아이콘 21×22', [
+    /left-\[561px\] top-\[62px\]/, /h-\[40px\] w-\[466px\]/, /rounded-pill bg-mute-field/,
+    /width=\{21\} height=\{22\}/,
+  ]],
+  [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: 벨 @1045 + 배지 18원 · 아바타 40 @1105', [
+    /left-\[1045px\] top-\[69px\]/, /h-\[18px\] min-w-\[18px\][^"]*rounded-full bg-accent/,
+    /left-\[1105px\] top-\[62px\]/, /width=\{40\} height=\{40\}/,
+  ]],
+  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 폭 296 · 활성 pill 208×57 r10 accent-soft', [
+    /w-\[296px\]/, /h-\[57px\] w-\[208px\]/, /rounded-\[10px\]/, /bg-accent-soft/, /ml-\[44px\]/,
+  ]],
+  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 아이콘 26 · 라벨 SemiBold 22 · 활성 accent', [
+    /width=\{26\}/, /height=\{26\}/, /text-w-nav font-semibold/,
+    /isActive \? 'text-accent' : 'text-ink-500'/,
+  ]],
+  [`${WEB}/src/components/shell/nav.ts`, '사이드바: 요양보호사 8항목 · 보호자 4항목(디자인 순서)', [
+    /'\/caregiver', label: '대시보드'/, /'\/caregiver\/elders', label: '어르신 관리'/,
+    /'\/caregiver\/sessions', label: '세션 기록'/, /'\/caregiver\/analysis', label: '분석'/,
+    /'\/caregiver\/journal', label: '요양일지'/, /'\/caregiver\/shares', label: '공개 관리'/,
+    /'\/caregiver\/org', label: '기관 관리'/, /'\/caregiver\/settings', label: '설정'/,
+    /'\/guardian', label: '어르신 연결'/, /'\/guardian\/feed', label: '공개된 소식'/,
+  ]],
+  [`${WEB}/src/components/shell/PublicHeader.tsx`, '공개 헤더: 워드마크 @130 · 내비 4항목 좌표 · 활성 밑줄 3px', [
+    /left-\[130px\] top-\[71px\]/, /left: 720/, /left: 898/, /left: 1052/, /left: 1168/,
+    /h-\[3px\] w-full bg-accent/,
+  ]],
+  [`${WEB}/src/components/Layout.tsx`, '셸: 콘텐츠 열 1054(pl27/pr63) · 스킵 링크', [
+    /pl-\[27px\] pr-\[63px\]/, /본문으로 바로가기/, /id="main-content"/,
+  ]],
+  [`${WEB}/src/components/Layout.tsx`, '페이지 제목 Bold 30 accent lh70 · 설명 20/30', [
+    /text-w-page font-bold leading-\[70px\] text-accent/, /text-w-body leading-\[30px\] text-ink-700/,
+  ]],
+
+  // ── 로그인 15:443 ──────────────────────────────────────────────────────
+  [`${WEB}/src/pages/public/LoginPage.tsx`, '로그인: 열 568 @436 · 입력 h68 r10 · CTA 568×71', [
+    /left-\[436px\] top-\[132px\] w-\[568px\]/, /left-\[436px\] top-\[267px\] w-\[568px\]/,
+    /h-\[68px\] w-full rounded-\[10px\] border border-line/,
+    /left-\[436px\] top-\[478px\] h-\[71px\] w-\[568px\] rounded-\[10px\] bg-accent/,
+    /text-w-cta font-semibold text-white/,
+  ]],
+  [`${WEB}/src/pages/public/LoginPage.tsx`, '로그인: 소셜 3종 180×68 · 칩 36×34 r5 · 좌표 436/629/824', [
+    /h-\[68px\] w-\[180px\]/, /rounded-\[10px\] border border-line/,
+    /h-\[34px\] w-\[36px\] items-center justify-center rounded-\[5px\]/,
+    /left: 436/, /left: 629/, /left: 824/, /bg-naver/, /bg-kakao/,
+  ]],
+  [`${WEB}/src/pages/public/LoginPage.tsx`, '로그인: 또는 구분선 250×1 · 아이디 저장 · 찾기 링크', [
+    /h-px w-\[250px\] bg-line-strong/, /아이디 저장/, /아이디\/비밀번호 찾기/,
+  ]],
+  [`${WEB}/src/pages/public/LoginPage.tsx`, '로그인: 카피(Figma 문구 그대로)', [
+    /계정으로 로그인해 주세요\./, /이메일을 입력해주세요/, /비밀번호를 입력해주세요/,
+    /계정이 없으신가요\?/,
+  ], 'copy'],
+
+  // ── 대시보드 118:300 ───────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 4카드 243×107 r10 shadow-card · 아이콘 50', [
+    /h-\[107px\] w-\[243px\][^"]*rounded-\[10px\] bg-white px-6 shadow-card/,
+    /gap-\[27px\]/, /width=\{50\} height=\{50\}/,
+    /text-w-stat font-semibold/, /text-w-label text-ink-500/,
+  ]],
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 4종 라벨(디자인 순서)', [
+    /'등록된 어르신'/, /'준비된 세션'/, /'연대기 항목'/, /'AI 자동 축적'/,
+  ]],
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 안전 알림 배너(alert 테두리·3% 배경) + 비의료 고지', [
+    /border border-alert bg-alert-soft/, /text-w-section font-bold leading-\[70px\] text-alert/,
+    /키워드 기반 안전장치이며 의학적 판단이 아닙니다/, /role="alert"/, /aria-live="assertive"/,
+  ]],
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 담당 어르신(아바타 99·배지 세션/연대기) · 최근 대화(아바타 76)', [
+    /size="xl"/, /size="lg"/, /tone="info" large/, /tone="chronicle" large/,
+    /담당 어르신/, /최근 대화/, /전체 보기/,
+  ]],
+
+  // ── 프리미티브 ─────────────────────────────────────────────────────────
+  [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
+    /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,
+    /info: 'bg-info-soft text-info'/, /chronicle: 'bg-chronicle-soft text-chronicle'/,
+    /live: 'bg-live-soft text-live'/,
+  ]],
+  [`${WEB}/src/components/ui/Button.tsx`, '버튼: r10 · size sm44/md57/lg71 · primary=accent', [
+    /rounded-\[10px\] font-semibold/, /sm: 'h-\[44px\]/, /md: 'h-\[57px\]/, /lg: 'h-\[71px\]/,
+    /primary: 'bg-accent text-white/,
+  ]],
+  [`${WEB}/src/components/ui/Avatar.tsx`, '아바타: 원형 40/50/76/99 · 사진 없으면 Figma 기본 에셋', [
+    /sm: 40, md: 50, lg: 76, xl: 99/, /rounded-full object-cover/, /asset\.avatarDefault/,
+  ]],
+  [`${WEB}/src/index.css`, '전역: Pretendard 자체 호스팅 · 흰 배경 · ink 본문', [
+    /@font-face/, /PretendardVariable\.woff2/, /bg-white text-ink-700 antialiased/,
+  ]],
+];
 
 for (const [file, name, patterns, mode = 'code'] of SCREENS) {
   const text = mode === 'copy' ? flat(file) : src(file);
@@ -145,6 +251,5 @@ if (fails.length > 0) {
   console.error(`\n일치 ${ok} / 불일치 ${fails.length}\n기준: ${RUNBOOK}`);
   process.exit(1);
 }
-console.log(
-  `✓ 웹 디자인 대조 통과 (${ok}개 항목 · 이관 완료 화면 ${SCREENS.length}/48)`,
-);
+const migrated = new Set(SCREENS.map(([file]) => file)).size;
+console.log(`✓ 웹 디자인 대조 통과 (${ok}개 항목 · 이관 파일 ${migrated}개)`);

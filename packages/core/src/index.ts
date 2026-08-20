@@ -8,6 +8,7 @@
 //   - 안전 가드 통합 대화 오케스트레이션·세션 권고 (conversation)
 //   - 실 LLM 시스템 프롬프트 + Structured Outputs 스키마 (prompt)
 //   - 세션 자동 요약·분석(비의료 관찰 지표·주제 반응·추천) (analysis)
+//   - (AI 에이전트 agent.ts 는 신규 웹 디자인에서 기능이 제거돼 삭제됨)
 //   - 동의 카탈로그(필수/민감/국외이전·온보딩 게이팅) (consent)
 //   - 정보주체 권리(이동권 산출물·삭제 계획) (subject-rights)
 //   - 음성 입출력 계약 SpeechProvider (speech)
@@ -25,7 +26,6 @@ export * from './prompt'
 export * from './analysis'
 export * from './observations'
 export * from './journal'
-export * from './agent'
 export * from './consent'
 export * from './subject-rights'
 export * from './speech'
