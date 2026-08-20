@@ -5,6 +5,7 @@ import { Pending } from './pages/Pending';
 import { LandingPage } from './pages/public/LandingPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { DashboardPage } from './pages/caregiver/DashboardPage';
+import { EldersPage } from './pages/caregiver/EldersPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -55,7 +56,8 @@ function App() {
           }
         >
           <Route index element={<DashboardPage />} />
-          <Route path="elders" element={<Pending title="어르신 관리" node="161:207" />} />
+          <Route path="elders" element={<EldersPage />} />
+          <Route path="elders/new" element={<Pending title="새 어르신 등록" node="172:330" />} />
           <Route path="elders/:elderId" element={<Pending title="어르신 상세" node="161:373" />} />
           <Route path="elders/:elderId/edit" element={<Pending title="기본 정보 수정" node="178:486" />} />
           <Route path="elders/:elderId/chronicles" element={<Pending title="연대기 목록" node="198:506" />} />

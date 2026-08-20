@@ -23,7 +23,7 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
-import { formatRelative } from '../../lib/utils';
+import { cn, formatRelative } from '../../lib/utils';
 
 export function DashboardPage() {
   const { isConfigured } = useAuth();
@@ -54,6 +54,7 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="대시보드"
+        tone="accent"
         description={
           <>
             기억온은 요양보호사가 설계한 세션을 AI가 어르신과 대화로 진행하고,
@@ -67,7 +68,7 @@ export function DashboardPage() {
         <section
           role="alert"
           aria-live="assertive"
-          className="mb-[68px] rounded-[10px] border border-alert bg-alert-soft px-[52px] pb-8 pt-6"
+          className="mb-[68px] mt-[43px] rounded-[10px] border border-alert bg-alert-soft px-[52px] pb-8 pt-6"
         >
           <h2 className="text-w-section font-bold leading-[70px] text-alert">
             확인이 필요한 안전 알림 {events.length}건
@@ -124,7 +125,7 @@ export function DashboardPage() {
       ) : null}
 
       {/* 통계 4카드 */}
-      <section className="flex gap-[27px]">
+      <section className={cn('flex gap-[27px]', events.length === 0 && 'mt-[43px]')}>
         {stats.map((s) => (
           <div
             key={s.label}

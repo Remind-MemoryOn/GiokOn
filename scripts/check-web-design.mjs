@@ -175,7 +175,8 @@ const SCREENS = [
     /pl-\[27px\] pr-\[63px\]/, /본문으로 바로가기/, /id="main-content"/,
   ]],
   [`${WEB}/src/components/Layout.tsx`, '페이지 제목 Bold 30 accent lh70 · 설명 20/30', [
-    /text-w-page font-bold leading-\[70px\] text-accent/, /text-w-body leading-\[30px\] text-ink-700/,
+    /text-w-page font-bold leading-\[70px\]/, /tone === 'accent' \? 'text-accent' : 'text-ink-900'/,
+    /text-w-body leading-\[30px\] text-ink-700/,
   ]],
 
   // ── 로그인 15:443 ──────────────────────────────────────────────────────
@@ -214,6 +215,25 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 담당 어르신(아바타 99·배지 세션/연대기) · 최근 대화(아바타 76)', [
     /size="xl"/, /size="lg"/, /tone="info" large/, /tone="chronicle" large/,
     /담당 어르신/, /최근 대화/, /전체 보기/,
+  ]],
+
+  // ── 어르신 관리 161:207 ────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 카드 329×146 r10 accent7% shadow-card · 3열 gap33 · 사진 101', [
+    /h-\[146px\] w-\[329px\]/, /rounded-\[10px\] bg-accent\/\[0\.07\] shadow-card/,
+    /gap-\[33px\]/, /h-\[101px\] w-\[101px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 검색 335×57 @mt26 · 이름 SemiBold19/30 · 메타 Medium16', [
+    /mt-\[26px\] h-\[57px\] w-\[335px\]/, /text-\[19px\] font-semibold leading-\[30px\]/,
+    /text-w-label font-medium leading-\[30px\] text-ink-400/,
+  ]],
+  [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 액션 2버튼(205×57 outline · 177×57 accent)', [
+    /h-\[57px\] w-\[205px\][^"]*border border-accent bg-white/,
+    /h-\[57px\] w-\[177px\][^"]*border border-accent bg-accent/,
+    /코드로 담당 추가/, /새 어르신 등록/,
+  ]],
+  [`${WEB}/src/pages/caregiver/EldersPage.tsx`, '어르신 관리: 합류 대기 배너 1054×56 accent10%', [
+    /h-\[56px\] w-\[1054px\][^"]*border border-accent bg-accent\/10/,
+    /기관 합류 승인 대기 중이에요/,
   ]],
 
   // ── 프리미티브 ─────────────────────────────────────────────────────────

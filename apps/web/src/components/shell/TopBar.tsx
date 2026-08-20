@@ -97,15 +97,19 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
-            className="flex items-center gap-[60px] text-w-nav font-semibold text-ink-900"
+            className="text-w-nav font-semibold text-ink-900"
           >
             <span className="whitespace-nowrap">{displayName}</span>
+            {/* 펼침 화살표는 이름 길이와 무관하게 Figma 실측 위치(1359,76)에 고정된다 */}
             <img
               src={asset.iconChevronDown}
               alt=""
               width={18}
               height={12}
-              className={cn('block transition', menuOpen && 'rotate-180')}
+              className={cn(
+                'absolute left-[254px] top-[14px] block transition',
+                menuOpen && 'rotate-180',
+              )}
             />
           </button>
 
