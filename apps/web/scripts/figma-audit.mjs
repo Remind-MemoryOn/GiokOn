@@ -128,10 +128,11 @@ for (const screen of SCREENS) {
     };
     if (p.kind === 'text') {
       // 가운데 정렬 텍스트는 박스 폭이 달라도 되므로 중심 X 로 본다.
+      if (p.topEdge) cmp('첫줄y', g.top, f.y);
       if (p.center) cmp('중심x', g.left + g.width / 2, f.x + f.w / 2);
       else if (p.right) cmp('오른끝x', g.left + g.width, f.x + f.w);
       else cmp('x', g.left, f.x);
-      cmp('중심y', g.top + g.height / 2, f.y + f.h / 2);
+      if (!p.topEdge) cmp('중심y', g.top + g.height / 2, f.y + f.h / 2);
       if (p.fontSize != null) cmp('fontSize', g.fontSize, p.fontSize, 0.6);
       if (p.fontWeight != null && String(g.fontWeight) !== String(p.fontWeight))
         bad.push(`weight ${g.fontWeight} ≠ ${p.fontWeight}`);

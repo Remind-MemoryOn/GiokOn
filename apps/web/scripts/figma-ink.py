@@ -12,6 +12,9 @@ import json, os, re, sys
 import numpy as np
 from PIL import Image
 
+# 이용안내(@4x 4218px)처럼 큰 export 는 기본 한도를 넘는다 — 우리가 만든 파일이라 안전.
+Image.MAX_IMAGE_PIXELS = None
+
 S = 4  # export 배율
 WEB = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIGMA_DIR = os.path.join(WEB, 'assets', 'figma')
@@ -21,6 +24,7 @@ TOL = float(os.environ.get('INK_TOL', '1.5'))
 
 PNG = {
     '1:13': '서비스 소개 페이지.png',
+    '1:17': '이용안내 페이지.png',
     '15:443': '회원가입 페이지1.png',
     '15:444': '회원가입 페이지2.png',
     '111:148': '회원가입 페이지- 로그인 찾기.png',

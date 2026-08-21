@@ -8,6 +8,7 @@ import { OnboardingPage } from './pages/public/OnboardingPage';
 import { FindIdPage } from './pages/public/FindIdPage';
 import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/public/ResetPasswordPage';
+import { GuidePage } from './pages/public/GuidePage';
 import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { EldersPage } from './pages/caregiver/EldersPage';
 import { useAuth } from './auth/AuthProvider';
@@ -42,7 +43,8 @@ function App() {
       <Routes>
         {/* ── 공개 ── */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/guide" element={<Pending title="이용안내" node="1:17" />} />
+        {/* 처리방침·약관은 이용안내 한 화면에 통합돼 있다(#privacy · #terms 앵커) */}
+        <Route path="/guide" element={<GuidePage />} />
         <Route path="/login" element={<LoginPage />} />
         {/* 디자인에는 이메일 가입 폼이 없다 — 회원가입 = 소셜 로그인 후 기본 정보 입력 */}
         <Route path="/signup" element={<OnboardingPage />} />

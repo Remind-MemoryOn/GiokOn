@@ -350,6 +350,28 @@ const SCREENS = [
     /leading-\[24px\] text-ink-900/,
   ]],
 
+  // ── 이용안내 1:17 ─────────────────────────────────────────────────────
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 초안 배너 1204×69 @205 · 카드 1204×2221 @330 / 1204×1461 @2623', [
+    /h-\[69px\] w-\[1204px\] rounded-\[10px\] border border-ink-400 bg-\[#f5f5f5\]\/50/,
+    /top: Y\(205\)/, /h-\[2221px\] w-\[1204px\]/, /top: Y\(330\)/,
+    /h-\[1461px\] w-\[1204px\]/, /top: Y\(2623\)/,
+  ]],
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 본문 20/40 tracking -0.2 · 좌열 190 통일 · 표 0.5px', [
+    /text-\[20px\] leading-\[40px\] tracking-\[-0\.2px\]/, /absolute left-\[190px\]/,
+    /border-\[0\.5px\] border-ink-400/,
+  ]],
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 비의료 고지 박스 1059×128 @2959 accent 10%', [
+    /h-\[128px\] w-\[1059px\] rounded-\[10px\] border border-accent bg-accent\/10/, /top: Y\(2959\)/,
+  ]],
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 처리방침·약관 앵커(로그인 화면 링크 대상)', [
+    /id="privacy"/, /id="terms"/, /id="contact"/,
+  ]],
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 카피(Figma 문구)', [
+    /개인정보 처리방침/, /이용약관/, /기억온은 의료기기가 아니며/,
+    /대화는 사람이 아닌 AI가 진행하며, 화면에 그 사실을 표시합니다\./,
+    /외부 법무 자문 검토 후 확정·시행됩니다/,
+  ], 'copy'],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,
