@@ -31,6 +31,8 @@ import {
   CONSENT_VERSION,
   type ChronicleEntry,
   type ChronicleSource,
+  type ConsentCapacity,
+  type ConsentSubjectType,
   type ConsentType,
   type ElderProfile,
 } from '@giokon/core';
@@ -169,13 +171,28 @@ export function useDeleteElder(): (id: string) => Promise<void> {
  * 여러 줄 쌓여, 나중에 "언제 받은 동의인지" 를 가리기 어려워진다(감사 지적).
  * 철회된 동의(revoked_at)는 유효하지 않으므로 다시 받는 것이 맞다.
  */
-export function useGrantConsents(): (elderId: string, types: ConsentType[]) => Promise<void> {
+/** 동의 기록에 함께 남길 주체 정보(대리동의 확인용). */
+export interface ConsentSubjectDetail {
+  subjectType: ConsentSubjectType;
+  capacity: ConsentCapacity;
+  /** 본인 동의면 null. DB 제약상 본인이 아니면 반드시 있어야 한다. */
+  guardianName: string | null;
+  guardianRelation: string | null;
+  /** 보호자(성년후견 미개시) 동의의 법적 한계 고지 근거. */
+  basis: string | null;
+}
+
+export function useGrantConsents(): (
+  elderId: string,
+  types: ConsentType[],
+  detail: ConsentSubjectDetail,
+) => Promise<void> {
   const { user, userRow } = useAuth();
   const mockGrant = useApp((s) => s.grantElderConsents);
   const recordConsent = useRecordConsent();
 
   return useCallback(
-    async (elderId: string, types: ConsentType[]): Promise<void> => {
+    async (elderId: string, types: ConsentType[], detail: ConsentSubjectDetail): Promise<void> => {
       if (!CFG) {
         mockGrant(elderId, types);
         return;
@@ -202,6 +219,13 @@ export function useGrantConsents(): (elderId: string, types: ConsentType[]) => P
           consent_type: t as ConsentInsert['consent_type'],
           granted: true,
           version: CONSENT_VERSION,
+          // 대리동의 확인 — 예전에는 이 넷이 항상 DB 기본값(self/unknown/null)으로
+          // 굳어 "누가 동의했는지"가 기록에 남지 않았다(감사 지적).
+          subject_type: detail.subjectType,
+          capacity: detail.capacity,
+          guardian_name: detail.guardianName,
+          guardian_relation: detail.guardianRelation,
+          basis: detail.basis,
         });
       }
     },
