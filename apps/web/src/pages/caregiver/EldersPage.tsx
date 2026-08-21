@@ -39,7 +39,9 @@ export function EldersPage() {
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
   const profilesQuery = useProfiles();
-  const org = useOrganization();
+  // main(2026-08-21)에서 useOrganization 에 enabled 게이트가 생겼다 — 미설정(목업)일 때
+  // 인증 없는 요청이 나가지 않도록 반드시 넘긴다.
+  const org = useOrganization({ enabled: isConfigured });
   const currentUser = useCurrentUser();
   const pending = useMyPendingAssignments(isConfigured ? currentUser.data?.id : undefined);
   const claim = useClaimElderByCode();
