@@ -67,8 +67,9 @@ const SOCIALS = [
 ] as const;
 
 export default function Settings() {
-  const { userRow, user, signOut } = useAuth();
-  const org = useOrganization();
+  const { userRow, user, authed, signOut } = useAuth();
+  // 목업 모드·로그인 전에는 조회하지 않는다(초기화 전 호출 방지).
+  const org = useOrganization({ enabled: isSupabaseConfigured && authed });
   const elders = useElders();
   const deleteElder = useDeleteElder();
 

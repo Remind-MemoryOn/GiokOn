@@ -34,10 +34,18 @@ export function useCurrentUser(): UseQueryResult<UserRow | null> {
   })
 }
 
-/** 현재 사용자가 속한 기관(RLS로 본인 기관 1행만). */
-export function useOrganization(): UseQueryResult<OrganizationRow | null> {
+/**
+ * 현재 사용자가 속한 기관(RLS로 본인 기관 1행만).
+ *
+ * ⚠️ `enabled` 를 반드시 넘겨라. 데이터 레이어가 초기화되지 않았거나(목업 모드) 아직
+ * 로그인 세션이 복원되지 않은 상태에서 호출하면 `getGiokonClient()` 가 throw 하거나
+ * 인증 없는 요청이 나간다. 앱의 다른 조회 훅은 모두 게이트가 있는데 이 훅만 없어서,
+ * 설정 화면 진입 때마다 무조건 요청이 나갔다(2026-08-21 크래시 신고).
+ */
+export function useOrganization(options?: { enabled?: boolean }): UseQueryResult<OrganizationRow | null> {
   return useQuery({
     queryKey: queryKeys.organization,
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       const { data, error } = await getGiokonClient()
         .from('organizations')

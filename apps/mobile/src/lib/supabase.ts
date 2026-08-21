@@ -12,10 +12,25 @@ import {
   type GiokonAuthStorage,
 } from '@giokon/data';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
-/** .env에 Supabase 설정이 모두 있는지. */
+/**
+ * 스킴이 빠진 URL(`xxxx.supabase.co`)이면 supabase-js 가 **상대 URL** 로 요청을 만든다.
+ * RN 의 XHR 은 그때 status 0 을 돌려주고, fetch 폴리필이 `new Response(body,{status:0})`
+ * 에서 RangeError 를 던진다 — 그것도 setTimeout 안이라 **잡히지 않는 크래시**가 된다
+ * ("Failed to construct 'Response': The status provided (0) is outside the range").
+ * 그래서 스킴이 없으면 설정으로 인정하지 않고 목업으로 떨어뜨린다(원인을 로그로 남긴다).
+ */
+const url = rawUrl && /^https?:\/\//i.test(rawUrl) ? rawUrl : undefined;
+if (rawUrl && !url) {
+  console.error(
+    `[giokon] EXPO_PUBLIC_SUPABASE_URL 이 "https://" 로 시작하지 않습니다(현재: ${rawUrl}). ` +
+      '상대 URL 로 요청이 나가 앱이 죽으므로 연결을 건너뜁니다 — .env 를 고쳐 주세요.',
+  );
+}
+
+/** .env에 Supabase 설정이 모두 있는지(URL 형식까지 확인). */
 export const isSupabaseConfigured = Boolean(url && publishableKey);
 
 /** 앱 전역 QueryClient (서버 상태 SoT). */
