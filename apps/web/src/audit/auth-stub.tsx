@@ -100,6 +100,8 @@ function seedElderDetail(q: typeof queryClient) {
   q.setQueryData(queryKeys.chronicles(E1), [
     { id: 'ch1', profile_id: E1, topic: '고향', content: '어린 시절 집 이야기', keywords: [], source: 'ai', recorded_at: '2026-07-30T00:00:00Z', updated_at: iso(0) },
     { id: 'ch2', profile_id: E1, topic: '가족', content: '명절마다 자식들이 모두 모였던 날', keywords: [], source: 'caregiver', recorded_at: '2026-07-08T00:00:00Z', updated_at: iso(22) },
+    { id: 'km1', profile_id: E1, topic: '주요 기억', content: '명절마다 가족이 모두 모였던 식탁', keywords: [], source: 'caregiver', recorded_at: '2026-07-01T00:00:00Z', updated_at: iso(0) },
+    { id: 'km2', profile_id: E1, topic: '주요 기억', content: '남편과 처음 데이트했던 전주 영화관', keywords: [], source: 'caregiver', recorded_at: '2026-07-02T00:00:00Z', updated_at: iso(0) },
   ]);
   q.setQueryData(queryKeys.safetyEvents(E1), [
     {

@@ -399,6 +399,29 @@ const SCREENS = [
     /relativeDay/, /String\(n\)\.padStart\(2, '0'\)/,
   ]],
 
+  // ── 어르신 기본 정보 수정 178:486 ─────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 카드 1057×1148 @(322,295) · 2열 폼(좌 410 · 우 873) 입력 416×57', [
+    /h-\[1148px\] w-\[1057px\] rounded-\[10px\] bg-white shadow-card/,
+    /left=\{410\} top=\{617\.4\}/, /left=\{873\} top=\{617\.4\}/,
+    /h-\[57px\] rounded-\[10px\] border border-line bg-white/,
+    /width = 416/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 사진 187×193 r14 + 카메라 53 · 출신지 돋보기 25', [
+    /h-\[193px\] w-\[187px\] overflow-hidden rounded-\[14px\]/,
+    /iconCamera/, /width=\{53\}/,
+    /trailingIcon=\{\{ fx: '194:149', src: asset\.iconSearchField, size: 25, right: 27 \}\}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 주요 기억 881×57 · 행 피치 74.05 · 취소/저장 140×57', [
+    /w-\[881px\]/, /1059\.69 \+ i \* 74\.05/,
+    /h-\[57px\] w-\[140px\][^"]*border border-accent bg-white/,
+    /h-\[57px\] w-\[140px\][^"]*border border-accent bg-accent[^"]*text-white/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 주요 기억은 연대기(주제=주요 기억) · 특이사항은 저장할 컬럼이 없어 잠근다', [
+    /const KEY_MEMORY_TOPIC = '주요 기억'/,
+    /useCreateChronicle/, /useDeleteChronicle/,
+    /id="f-note"[\s\S]{0,220}?disabled/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

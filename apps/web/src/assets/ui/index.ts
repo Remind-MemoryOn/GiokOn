@@ -4,6 +4,7 @@
 
 import wordmark from './wordmark.png';
 import iconSearch from './icon-search.png';
+import iconSearchField from './icon-search-field.png';
 import iconBell from './icon-bell.png';
 import iconChevronDown from './icon-chevron-down.png';
 import iconChevronRight from './icon-chevron-right.png';
@@ -45,6 +46,9 @@ import iconRevoke from './icon-revoke.png';
 import iconCopy from './icon-copy.png';
 import iconRefresh from './icon-refresh.png';
 import iconTrash from './icon-trash.png';
+import iconCamera from './icon-camera.png';
+import iconPlus from './icon-plus.png';
+import iconClose from './icon-close.png';
 import landingHero from './landing-hero.png';
 import landingWordmarkHero from './landing-wordmark-hero.png';
 import landingSpot1 from './landing-spot-1.png';
@@ -63,6 +67,7 @@ import landingBars from './landing-bars.png';
 export const asset = {
   wordmark,
   iconSearch,
+  iconSearchField,
   iconBell,
   iconChevronDown,
   iconChevronRight,
@@ -77,6 +82,9 @@ export const asset = {
   iconCopy,
   iconRefresh,
   iconTrash,
+  iconCamera,
+  iconPlus,
+  iconClose,
   avatarDefault,
   navLogout,
   statElders,

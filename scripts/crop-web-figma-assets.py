@@ -19,6 +19,7 @@ DASH = "요양보호사 페이지_대시보드.png"
 # "그 메뉴가 활성인 화면"에서 활성본을, 다른 화면에서 비활성본을 크롭한다.
 ELDERS = "요양보호사 페이지_어르신 관리.png"
 ELDER = "요양보호사 페이지_어르신 관리 상세 페이지.png"
+ELDER_EDIT = "요양보호사 페이지_어르신 관리 기본정보수정.png"
 SESSIONS = "요양보호사 페이지_세션 기록.png"
 ANALYSIS = "요양보호사 페이지_분석페이지.png"
 JOURNAL = "요양보호사 페이지_요양일지.png"
@@ -41,6 +42,11 @@ CROPS = [
     ("icon-chevron-down", DASH, 1358.0,  74.0, 1379.0,   90.0),
     # 사이드바
     # 비활성(회색)
+    # ── 어르신 기본정보 수정(178:486) 아이콘 ──
+    ("icon-camera",      ELDER_EDIT, 554.0,  551.0,  607.0,  604.0),
+    ("icon-plus",        ELDER_EDIT, 438.0, 1003.0,  461.0, 1026.0),
+    ("icon-search-field",ELDER_EDIT, 774.0,  892.6,  799.0,  917.6),
+    ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),
     ("icon-caregiver",   ELDER,   1007.5,  444.7, 1029.5,  466.6),
@@ -150,7 +156,8 @@ def circle_mask(im: Image.Image) -> Image.Image:
 
 
 # 원형으로 잘라낼 에셋(원 바깥 투명) — 나머지는 배경색 알파 추출
-CIRCLE = {"stat-elders", "stat-sessions", "stat-chronicles", "stat-ai", "avatar-default"}
+# 카메라 버튼은 어두운 사진 오버레이 위의 원형 버튼이라 알파 추출로는 사각 잔상이 남는다.
+CIRCLE = {"stat-elders", "stat-sessions", "stat-chronicles", "stat-ai", "avatar-default", "icon-camera"}
 # 좌우 대칭 복원이 필요한 에셋(가림 제거)
 MIRROR = {"icon-bell"}
 # 다색 에셋 — 단색 알파 추출을 하면 색이 뭉개진다. 흰 배경 그대로 둔다
