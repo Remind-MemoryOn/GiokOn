@@ -1,4 +1,8 @@
-// 동의 확인 (Figma `463:62`, 프레임 393×852) — 어르신 세션 시작 전 필수 동의.
+// 동의 확인 ② 필수 동의 (Figma `동의 확인2` = 기존 `463:62`, 프레임 393×852)
+//
+// ①(주체 선택)에서 넘어온 `subject`·`guardianName`·`guardianRelation` 을 그대로
+// 들고 와 저장 시 `consents.subject_type`/`guardian_name`/`guardian_relation` 에 기록한다
+// (의사능력 `capacity` 는 주체에서 파생 — @giokon/core `capacityForSubject`).
 //
 // Figma 실측(get_metadata + get_design_context, 2026-08-13 사용자 신규 디자인):
 //   헤더 0..114 — 공용 ScreenHeader(뒤로 @(29,74) · "동의 확인" Medium 18/30)
@@ -18,29 +22,30 @@
 // → checkbox-off/on 17×17)으로 쓴다. 선택 상태는 **흰 바탕 + 검정 테두리 + 검정 체크**다
 // (임시 구현은 검정 채움 + 흰 체크였다 — 실제 디자인과 달랐다).
 import { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CONSENT_CATALOG,
   CONSENT_VERSION,
+  capacityForSubject,
+  consentBasis,
   requiredElderConsents,
   type ConsentDefinition,
+  type ConsentSubjectType,
   type ConsentType,
 } from '@giokon/core';
-import { ScreenHeader } from '../../src/components/ScreenHeader';
-import { NonMedicalFootnote } from '../../src/components/banners';
-import { useElderView } from '../../src/data/reads';
-import checkboxOff from '../../assets/brand/checkbox-off.png';
-import checkboxOn from '../../assets/brand/checkbox-on.png';
-import { useGrantConsents } from '../../src/data/writes';
+import { ScreenHeader } from '../../../src/components/ScreenHeader';
+import { NonMedicalFootnote } from '../../../src/components/banners';
+import { CheckBox } from '../../../src/components/consent';
+import { useElderView } from '../../../src/data/reads';
+import { useGrantConsents } from '../../../src/data/writes';
 
 /** Figma 콘텐츠 열. 카드만 335(우측 끝 364), 버튼은 336(우측 끝 365) — 원본 그대로. */
 const LEFT = 29;
 const CARD_W = 335;
 const CARD_H = 97;
 const CARD_GAP = 116 - CARD_H; // Figma 카드 pitch 116
-const BOX = 17;
 
 /**
  * 동의 카드 제목 — 카탈로그 라벨의 "(필수…)" 접미사를 Figma 의 앞 배지로 옮긴다.
@@ -52,19 +57,13 @@ function cardTitle(def: ConsentDefinition): string {
   return `${badge} ${base}`;
 }
 
-/** 체크박스 17×17 — Figma 에셋(미선택 회색 외곽선 / 선택 검정 테두리 + 검정 체크). */
-function CheckBox({ checked }: { checked: boolean }) {
-  return (
-    <Image
-      source={checked ? checkboxOn : checkboxOff}
-      style={{ width: BOX, height: BOX }}
-      resizeMode="contain"
-    />
-  );
-}
-
 export default function ConsentGate() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, subject, guardianName, guardianRelation } = useLocalSearchParams<{
+    id: string;
+    subject?: ConsentSubjectType;
+    guardianName?: string;
+    guardianRelation?: string;
+  }>();
   const { elder, loading } = useElderView(id);
   const grant = useGrantConsents();
   const [saving, setSaving] = useState(false);
@@ -93,7 +92,18 @@ export default function ConsentGate() {
     if (!allChecked || saving) return;
     setSaving(true);
     try {
-      await grant(id, required);
+      // 주체가 없으면(직접 URL 진입 등) 앞 단계로 돌려보낸다 — 본인동의로 굳는 것을 막는다.
+      if (!subject) {
+        router.replace({ pathname: '/consent/[id]', params: { id } });
+        return;
+      }
+      await grant(id, required, {
+        subjectType: subject,
+        capacity: capacityForSubject(subject),
+        guardianName: guardianName?.trim() || null,
+        guardianRelation: guardianRelation?.trim() || null,
+        basis: consentBasis(subject),
+      });
       router.replace(`/session/start?id=${id}`);
     } catch (e) {
       Alert.alert('동의 저장 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');

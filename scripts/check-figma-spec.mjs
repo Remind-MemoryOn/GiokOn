@@ -534,27 +534,27 @@ const SPECS = [
 
   // ── 동의 확인 (Figma 463:62, 프레임 393×852 — 2026-08-13 신규) ──────────
   [
-    `${APP}/app/consent/[id].tsx`,
+    `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 제목 SemiBold 19/30 @144 · 부제 Regular 14/25 w337 @208',
     [/paddingTop: 30/, /text-\[19px\] font-semibold text-black/, /lineHeight: 30/, /text-\[14px\] font-normal text-muted/, /lineHeight: 25, width: 337, marginTop: 4/],
   ],
   [
-    `${APP}/app/consent/[id].tsx`,
+    `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 카드 335×97 r10 #d9d9d9 pitch 116 @(29, 273/389/505)',
     [/CARD_W = 335/, /CARD_H = 97/, /CARD_GAP = 116 - CARD_H/, /borderColor: '#d9d9d9'/, /marginTop: i === 0 \? 15 : CARD_GAP/],
   ],
   [
-    `${APP}/app/consent/[id].tsx`,
+    `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 체크박스 17 @(50,+23) · 제목 SemiBold 13/16 @(79,+22) · 설명 Regular 12/16 w252',
-    [/BOX = 17/, /left: 20, top: 22/, /text-\[13px\] font-semibold text-black/, /left: 49, top: 21, lineHeight: 16/, /left: 49, top: 43, width: 252, lineHeight: 16/],
+    [/CheckBox checked=\{on\}/, /left: 20, top: 22/, /text-\[13px\] font-semibold text-black/, /left: 49, top: 21, lineHeight: 16/, /left: 49, top: 43, width: 252, lineHeight: 16/],
   ],
   [
-    `${APP}/app/consent/[id].tsx`,
+    `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 비의료 고지 14/25 w316 @39 · CTA 336×57 r10 #e9822b @727',
     [/NonMedicalFootnote/, /lineHeight: 25, width: 316, marginLeft: 10, marginTop: 15/, /width: 336,\s*height: 57,\s*borderRadius: 10,\s*backgroundColor: '#e9822b'/, /marginTop: 35/, /paddingBottom: 68/],
   ],
   [
-    `${APP}/app/consent/[id].tsx`,
+    `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 항목·문구는 core 카탈로그 파생(문자열 하드코딩 금지)',
     [/CONSENT_CATALOG/, /requiredElderConsents/, /def\.label\.replace/, /\{def\.summary\}/, /CONSENT_VERSION/],
   ],
@@ -634,7 +634,49 @@ const SPECS = [
   [`${APP}/src/components/settings.tsx`, '설정: 휴지통 에셋 21 @(+269,+46)', [/iconTrash/, /width: 21, height: 21/, /left: 269 - 12, top: 46 - 12/]],
   [`${APP}/src/components/settings.tsx`, '설정: 행 chevron 8.75×13.25 / 작은 chevron 6×7 #404040', [/width=\{8\.75\} height=\{13\.25\}/, /width=\{6\} height=\{7\}/, /strong: '#404040'/]],
   [`${APP}/src/components/settings.tsx`, '설정: 로그아웃 에셋 13', [/iconLogout/, /width: 13, height: 13/]],
-  [`${APP}/app/consent/[id].tsx`, '동의: 체크박스 에셋 17 (미선택/선택)', [/checkboxOff/, /checkboxOn/, /BOX = 17/]],
+  [`${APP}/src/components/consent.tsx`, '동의: 체크박스 에셋 17 — 필수=검정 / 주체=주황', [/checkboxOff/, /checkboxOn/, /checkboxOnAccent/, /box: 17/]],
+
+  // ── 동의 확인① 동의 주체 (Figma `동의 확인1`, 프레임 393×852 — 2026-08-21 신규) ──
+  [
+    `${APP}/app/consent/[id]/index.tsx`,
+    '주체: 섹션 라벨 SemiBold 15/22 @289(잉크 293)',
+    [/text-\[15px\] font-semibold text-black/, /lineHeight: 22, marginTop: 31/],
+  ],
+  [
+    `${APP}/app/consent/[id]/index.tsx`,
+    '주체: 카드 335 r10 #d9d9d9 @323 · 3행 pitch 60 · 구분선 카드 폭 전체',
+    [/marginTop: 12/, /height: CONSENT_UI\.subjectRowH/, /borderTopWidth: i === 0 \? 0 : 1/],
+  ],
+  [
+    `${APP}/app/consent/[id]/index.tsx`,
+    '주체: 체크박스 주황 @(50,+21) · 라벨 SemiBold 13/17 @(79,+21)',
+    [/CheckBox checked=\{subject === opt\.value\} variant="accent"/, /left: 20, top: 21/, /text-\[13px\] font-semibold text-black/, /left: 49, top: 21, lineHeight: 17/],
+  ],
+  [
+    `${APP}/app/consent/[id]/index.tsx`,
+    '주체: CTA "다음" 336×57 @727(카드 하단 504 + 여백 223)',
+    [/CTA_SPACER = 223/, /minHeight: CTA_SPACER/, /width: 336,\s*height: 57/, />\s*다음\s*</],
+  ],
+  [
+    `${APP}/app/consent/[id]/index.tsx`,
+    '주체: 대리 동의자 필드 156/162 gap 18 · 관계 목록 5행×37',
+    [/CONSENT_UI\.nameW/, /CONSENT_UI\.relationW/, /marginLeft: CONSENT_UI\.fieldGap/, /height: 37/],
+  ],
+  [
+    `${APP}/src/components/consent.tsx`,
+    '주체: 필드 h41 r10 #d9d9d9 · 안내문구 Regular 12 @좌17 · ∨ 14.14×9.54 @우20.9',
+    [/fieldH: 41/, /nameW: 156/, /relationW: 162/, /fieldGap: 18/, /text-\[12px\] font-normal/, /right: 20\.9, top: 15\.7, width: 14\.14, height: 9\.54/],
+  ],
+  [
+    `${APP}/src/components/consent.tsx`,
+    '주체: 법적 한계 카드 335×97 bg #fef8f4 border #e9822b (제목 13/16 @+20 · 본문 12/16 @+42)',
+    [/noticeBg: '#fef8f4'/, /accent: '#e9822b'/, /height: 97/, /left: 32, top: 20, lineHeight: 16/, /left: 31, top: 42, width: 252, lineHeight: 16/],
+  ],
+  [
+    `${APP}/app/consent/[id]/terms.tsx`,
+    '동의: 주체·의사능력을 함께 기록(대리동의 확인)',
+    [/capacityForSubject\(subject\)/, /consentBasis\(subject\)/, /guardianName/, /guardianRelation/],
+  ],
   [`${APP}/app/settings/index.tsx`, '설정: 헤더 아래 34 · 좌 29 · 하단 49', [/paddingLeft: SETTINGS\.left, paddingTop: 34, paddingBottom: 49/]],
   [`${APP}/app/settings/index.tsx`, '설정: 프로필 카드 336×260 @ 라벨 아래 15', [/height: 260,\s*marginTop: 15/]],
   [`${APP}/app/settings/index.tsx`, '설정: 아바타 79 원 @(+26,+22)', [/left: 26,\s*top: 22,\s*width: 79,\s*height: 79,\s*borderRadius: 39\.5/]],

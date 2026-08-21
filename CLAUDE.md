@@ -129,10 +129,23 @@
     테두리(보라 점선)가 찍혀 있어 제거 후 잘라 썼다 — **@3x/@4x 재추출 예정**(같은 파일명
     `assets/brand/{icon-trash,icon-logout,checkbox-off,checkbox-on,btn-mic-wait,btn-mic-ready}.png`
     를 덮어쓰면 된다).
-  - ⏳ **남은 결정 사항(사용자)**: (a) **앱 동의 기록이 `subject_type`/`capacity` 를 항상 DB
-    기본값(`self`/`unknown`)으로 남긴다** — 화면 문구는 "어르신 또는 보호자·대리인"인데
-    대리동의·의사능력 선택 UI 가 없다(웹 `ConsentDialog` 에는 있다). 정부심사 기준상 가장
-    시급 — Figma 에 선택 컨트롤 추가 필요. (b) `profiles.memories` 컬럼은 아무도 안 쓴다
+  - ✅ **대리동의(동의 주체) 화면 신설(2026-08-21, Figma `동의 확인1`·`동의 확인2`)**:
+    앱 동의 기록이 `subject_type`/`capacity` 를 항상 DB 기본값(`self`/`unknown`)으로 남기던
+    문제를 해결했다. 동의 흐름이 **2단계**가 된다 — `app/consent/[id]/index.tsx`(동의 주체:
+    어르신 본인 / 법정 대리인 / 보호자, 카드 335×181 r10 3행 pitch 60, 체크박스는 **주황**
+    `Vector3`) → `app/consent/[id]/terms.tsx`(필수 동의 3종, 체크박스는 **검정** `Vector2`).
+    **의사능력은 주체에서 파생**(사용자 확정): 본인=capable · 법정대리인=incapable ·
+    보호자=unknown(후견 미개시라 판정 근거 없음 — `limited` 로 낮춰 잡지 않는다).
+    보호자 선택 시 `Frame 12` 법적 한계 안내 카드(335×97 bg `#fef8f4` border `#e9822b`)가
+    붙고 같은 문구가 `consents.basis` 로도 기록된다. 규칙·문구는 core `consent.ts` 가 SoT
+    (`CONSENT_SUBJECT_OPTIONS`·`capacityForSubject`·`GUARDIAN_RELATION_OPTIONS`·
+    `GUARDIAN_RISK_NOTICE`·`consentBasis`, 테스트 3건).
+    ⚠️ **디자인과 다른 점 1가지**: 사용자는 `Frame 13`(대리 동의자 성함·관계)을 **법정
+    대리인**에만 붙이라고 했지만, DB 제약 `consents_guardian_check` 가 본인이 아닌 모든
+    동의에 `guardian_name` 을 요구해 **보호자에도 같은 필드를 띄운다**(없으면 저장이 실패).
+    제약을 완화할지 결정 필요.
+    검증: 폰트 메트릭 잉크 예측 ↔ @4x 대조 11항목 **최대 편차 ≤1.38px**, `check:figma` 172.
+  - ⏳ **남은 결정 사항(사용자)**: (a) `profiles.memories` 컬럼은 아무도 안 쓴다
     (앱은 주요 기억을 `chronicle_entries`(topic='주요 기억')로 저장) → 유지/삭제 결정.
     (c) `session_logs.audio_url`·`audio_expires_at`·`duration_ms`·`switch_topic` 미사용
     (녹음 저장 미구현). (d) 진행 중 세션은 DB 에 없다(종료 시 1회 배치 저장) — 중단 시 유실·

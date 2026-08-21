@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   CONSENT_CATALOG,
+  CONSENT_SUBJECT_OPTIONS,
   CONSENT_VERSION,
+  GUARDIAN_RISK_NOTICE,
   canStartElderSession,
+  capacityForSubject,
+  consentBasis,
   hasSensitiveConsent,
   missingRequiredConsents,
   requiredAccountConsents,
@@ -60,5 +64,25 @@ describe('필수 동의 판정', () => {
   it('민감정보 동의 여부 판정', () => {
     expect(hasSensitiveConsent(['sensitive_health_voice'])).toBe(true)
     expect(hasSensitiveConsent(['ai_processing'])).toBe(false)
+  })
+})
+
+describe('동의 주체 · 의사능력', () => {
+  it('의사능력은 주체에서 파생한다(화면에 선택이 없다)', () => {
+    expect(capacityForSubject('self')).toBe('capable')
+    expect(capacityForSubject('legal_representative')).toBe('incapable')
+    // 후견 미개시 보호자는 판정 근거가 없다 — limited 로 낮춰 잡지 않는다.
+    expect(capacityForSubject('guardian')).toBe('unknown')
+  })
+
+  it('본인이 아니면 대리 동의자 정보가 필요하다(DB consents_guardian_check)', () => {
+    const proxy = CONSENT_SUBJECT_OPTIONS.filter((o) => o.proxy).map((o) => o.value)
+    expect(proxy).toEqual(['legal_representative', 'guardian'])
+  })
+
+  it('보호자 동의만 법적 한계 근거를 남긴다', () => {
+    expect(consentBasis('guardian')).toBe(GUARDIAN_RISK_NOTICE.body)
+    expect(consentBasis('self')).toBeNull()
+    expect(consentBasis('legal_representative')).toBeNull()
   })
 })

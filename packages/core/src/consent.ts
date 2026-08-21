@@ -128,3 +128,62 @@ export function canStartElderSession(granted: readonly ConsentType[]): boolean {
 export function hasSensitiveConsent(granted: readonly ConsentType[]): boolean {
   return granted.includes('sensitive_health_voice')
 }
+
+// ── 동의 주체 · 의사능력(대리동의) ──────────────────────────────────────────
+//
+// 개인정보보호법상 대리동의는 **누가 동의했는지**와 **정보주체의 의사능력**을 함께
+// 남겨야 확인이 된다. DB `consents.subject_type` / `consents.capacity` 가 그 자리다.
+// 앱 화면(Figma 동의 확인1)은 **주체만** 고르게 하므로, 의사능력은 아래 규칙으로
+// 파생한다(사용자 확정 2026-08-21). 규칙을 여기 한곳에 두어 앱·웹이 같은 값을 남긴다.
+
+/** 동의를 한 사람. DB enum `consent_subject_type` 과 1:1. */
+export type ConsentSubjectType = 'self' | 'guardian' | 'legal_representative'
+
+/** 정보주체의 의사능력 판정. DB enum `consent_capacity` 와 1:1. */
+export type ConsentCapacity = 'capable' | 'limited' | 'incapable' | 'unknown'
+
+export interface ConsentSubjectOption {
+  value: ConsentSubjectType
+  /** 화면 표기. */
+  label: string
+  /** 본인이 아니면 대리 동의자 정보를 함께 받아야 한다(DB 제약). */
+  proxy: boolean
+}
+
+/** 동의 주체 선택지(Figma 동의 확인1 카드의 3행 순서 그대로). */
+export const CONSENT_SUBJECT_OPTIONS: ConsentSubjectOption[] = [
+  { value: 'self', label: '어르신 본인', proxy: false },
+  { value: 'legal_representative', label: '법정 대리인', proxy: true },
+  { value: 'guardian', label: '보호자', proxy: true },
+]
+
+/**
+ * 주체 → 의사능력.
+ *   본인      : 스스로 이해하고 동의했으므로 capable
+ *   법정 대리인: 성년후견이 개시됐다는 뜻이므로 incapable
+ *   보호자     : 후견 미개시 — 의사능력을 판정할 근거가 없으므로 unknown
+ *
+ * ⚠️ 근거 없는 값을 만들지 않기 위해 보호자는 'limited' 로 낮춰 잡지 않는다.
+ */
+export function capacityForSubject(subject: ConsentSubjectType): ConsentCapacity {
+  if (subject === 'self') return 'capable'
+  if (subject === 'legal_representative') return 'incapable'
+  return 'unknown'
+}
+
+/** 대리 동의자와 어르신의 관계 선택지(Figma 동의 확인1 드롭다운). */
+export const GUARDIAN_RELATION_OPTIONS: string[] = ['형제', '자녀', '배우자', '친척', '기타']
+
+/**
+ * 성년후견이 개시되지 않은 보호자 동의의 법적 한계 — 화면 고지 문구이자
+ * `consents.basis` 에 남기는 근거. 문구가 바뀌면 화면과 기록이 함께 바뀐다.
+ */
+export const GUARDIAN_RISK_NOTICE = {
+  title: '[확인] 법적 한계 안내',
+  body: '성년후견이 개시되지 않은 보호자 동의는 법적 효력에 한계가 있습니다. 최소한의 정보만 수집합니다.',
+} as const
+
+/** 주체별 `consents.basis` 에 남길 근거(없으면 null). */
+export function consentBasis(subject: ConsentSubjectType): string | null {
+  return subject === 'guardian' ? GUARDIAN_RISK_NOTICE.body : null
+}
