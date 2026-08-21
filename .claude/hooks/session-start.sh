@@ -10,6 +10,7 @@
 #   SUPABASE_URL              (apps/web + supabase 공용)
 #   SUPABASE_PUBLISHABLE_KEY  (apps/web 클라이언트)
 #   SUPABASE_SECRET_KEY       (supabase Edge Functions)
+#   SUPABASE_JWKS_URL         (supabase — JWT 서명 검증용 공개 키 목록)
 #   OPENAI_API_KEY            (선택, Edge Functions — LLM·STT)
 #   NCP_CLOVA_CLIENT_ID       (선택, Edge Functions — CLOVA Voice/Speech, X-NCP-APIGW-API-KEY-ID)
 #   NCP_CLOVA_CLIENT_SECRET   (선택, Edge Functions — CLOVA Voice/Speech, X-NCP-APIGW-API-KEY)
@@ -57,6 +58,7 @@ if [ -n "${SUPABASE_URL:-}${SUPABASE_SECRET_KEY:-}${OPENAI_API_KEY:-}${NCP_CLOVA
     echo "# 자동 생성됨: .claude/hooks/session-start.sh (환경변수 기반, 커밋 금지)"
     emit "SUPABASE_URL" "${SUPABASE_URL:-}"
     emit "SUPABASE_SECRET_KEY" "${SUPABASE_SECRET_KEY:-}"
+    emit "SUPABASE_JWKS_URL" "${SUPABASE_JWKS_URL:-}"
     emit "OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
     emit "NCP_CLOVA_CLIENT_ID" "${NCP_CLOVA_CLIENT_ID:-}"
     emit "NCP_CLOVA_CLIENT_SECRET" "${NCP_CLOVA_CLIENT_SECRET:-}"
