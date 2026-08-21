@@ -37,6 +37,23 @@ export function formatRelative(iso: string): string {
   return formatKoreanDate(iso)
 }
 
+/**
+ * 달력 기준 상대 날짜 — `오늘` · `1일 전` · `22일 전`.
+ *
+ * `formatRelative` 은 경과 시간 기준이라 같은 날에도 "방금 전 / 3시간 전"이 나오는데,
+ * 신규 웹 디자인(Figma 4iU6…)은 기록 목록에서 **달력 하루 단위**로 표기한다
+ * ("오늘 16턴" · "2026.07.08  22일 전"). 1년이 넘으면 상대 표기가 무의미해 날짜로 돌아간다.
+ */
+export function relativeDay(iso: string, now = new Date()): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const startOf = (x: Date) => Date.UTC(x.getFullYear(), x.getMonth(), x.getDate())
+  const days = Math.round((startOf(now) - startOf(d)) / 86_400_000)
+  if (days <= 0) return '오늘'
+  if (days >= 365) return formatKoreanDate(iso)
+  return `${days}일 전`
+}
+
 const PALETTE = ['#fbb78c', '#a3d4b1', '#b1c8f0', '#f5b9c9', '#dabbf0', '#fbe294', '#9ad6d2']
 export function pickAvatarColor(seed: string): string {
   let h = 0

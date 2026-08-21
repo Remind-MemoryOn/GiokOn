@@ -25,7 +25,8 @@ export default {
         info: { DEFAULT: '#1cb2d0', soft: '#1cb2d01a' },
         chronicle: { DEFAULT: '#d5379b', soft: '#d5379b1a' },
         live: { DEFAULT: '#60bd66', soft: '#60bd661a' },
-        mute: { DEFAULT: '#f2f1f1', strong: '#efefef', field: '#d9d9d94d' },
+        mute: { DEFAULT: '#f2f1f1', strong: '#efefef', pale: '#f5f5f5', field: '#d9d9d94d' },
+        manual: { DEFAULT: '#e92b90', soft: '#e92b901a' },
         naver: { DEFAULT: '#48b034' },
         kakao: { DEFAULT: '#f4df2a' },
 

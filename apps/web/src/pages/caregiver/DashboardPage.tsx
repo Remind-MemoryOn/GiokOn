@@ -23,7 +23,7 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
-import { cn, formatRelative } from '../../lib/utils';
+import { cn, relativeDay } from '../../lib/utils';
 
 export function DashboardPage() {
   const { isConfigured } = useAuth();
@@ -96,7 +96,7 @@ export function DashboardPage() {
                       data-fx={i === 0 ? '216:241' : undefined}
                       className="text-w-body leading-[28px] text-ink-500"
                     >
-                      {formatRelative(ev.created_at)}
+                      {relativeDay(ev.created_at)}
                     </span>
                     {/* 디자인 시안은 한 어르신만 보여주지만 대시보드는 담당 전체를 모은다 —
                         어느 어르신인지 없으면 알림이 무의미해 같은 줄에 링크를 둔다. */}
@@ -301,7 +301,7 @@ export function DashboardPage() {
                         data-fx={i === 0 ? '219:504' : undefined}
                         className="-mt-[11px] text-w-body leading-[28px] text-ink-500"
                       >
-                        {formatRelative(s.started_at)}
+                        {relativeDay(s.started_at)}
                         {minutes ? ` · ${minutes}분` : ''}
                       </div>
                     </div>

@@ -35,6 +35,16 @@ import markGoogle from './mark-google.png';
 import iconEye from './icon-eye.png';
 import iconCheckbox from './icon-checkbox.png';
 import iconKey from './icon-key.png';
+import iconPencil from './icon-pencil.png';
+import iconCaregiver from './icon-caregiver.png';
+import iconCalendar from './icon-calendar.png';
+import iconClock from './icon-clock.png';
+import iconShield from './icon-shield.png';
+import iconCheckCircle from './icon-check-circle.png';
+import iconRevoke from './icon-revoke.png';
+import iconCopy from './icon-copy.png';
+import iconRefresh from './icon-refresh.png';
+import iconTrash from './icon-trash.png';
 import landingHero from './landing-hero.png';
 import landingWordmarkHero from './landing-wordmark-hero.png';
 import landingSpot1 from './landing-spot-1.png';
@@ -57,6 +67,16 @@ export const asset = {
   iconChevronDown,
   iconChevronRight,
   iconKey,
+  iconPencil,
+  iconCaregiver,
+  iconCalendar,
+  iconClock,
+  iconShield,
+  iconCheckCircle,
+  iconRevoke,
+  iconCopy,
+  iconRefresh,
+  iconTrash,
   avatarDefault,
   navLogout,
   statElders,

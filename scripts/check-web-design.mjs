@@ -372,6 +372,33 @@ const SCREENS = [
     /외부 법무 자문 검토 후 확정·시행됩니다/,
   ], 'copy'],
 
+  // ── 어르신 상세 161:373 ────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 카드 좌표·크기(프로필 1057×340 · 기본정보 447×419 · 동의 575×419)', [
+    /left=\{322\} top=\{343\.2\} width=\{1057\} height=\{340\.2\}/,
+    /left=\{322\} top=\{718\.42\} width=\{447\} height=\{419\.25\}/,
+    /left=\{804\} top=\{718\.42\} width=\{575\} height=\{419\.25\}/,
+    /left=\{322\} top=\{1172\.69\} width=\{1057\} height=\{337\.2\}/,
+    /left=\{322\} top=\{1544\.9\} width=\{1054\} height=\{336\.2\}/,
+    /left=\{322\} top=\{1916\.12\} width=\{1054\} height=\{429\.25\}/,
+    /left=\{322\} top=\{2380\.39\} width=\{1054\} height=\{564\.33\}/,
+    /left=\{322\} top=\{2979\.74\} width=\{1054\} height=\{271\.16\}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 사진 175 r100 · 이름 Bold 35/70 · 요약 박스 accent 5%', [
+    /h-\[175px\] w-\[175px\] rounded-pill/, /text-\[35px\] font-bold leading-\[70px\]/,
+    /h-\[239px\] w-\[319px\] rounded-\[10px\] bg-accent\/5/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 동의 행 452×62 mute-pale · 배지 live · 카드 액션 136×40', [
+    /h-\[62px\] w-\[452px\] rounded-\[10px\] bg-mute-pale/,
+    /bg-live-soft text-live/, /h-\[40px\] w-\[136px\][^"]*rounded-\[10px\] border border-accent/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 값 없으면 만들지 않는다(특이사항 미구현 · 동의 문구는 core 카탈로그)', [
+    /const val = \(v\?: string \| null\) => \(v && v\.trim\(\) \? v : '—'\)/,
+    /label="특이사항" value="—"/, /requiredConsents\('elder'\)/, /CONSENT_CATALOG\[type\]\.label/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 목록 표기는 달력 기준(relativeDay) · 날짜는 두 자리', [
+    /relativeDay/, /String\(n\)\.padStart\(2, '0'\)/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

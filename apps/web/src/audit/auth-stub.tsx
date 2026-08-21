@@ -63,6 +63,53 @@ const session = (id: string, profileId: string, minutes: number, status: string,
 const now = Date.now();
 const iso = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString();
 
+
+/** 어르신 상세(161:373) 감사용 — 시안과 같은 구성(동의 3종 완료 · 연대기 2 · 세션 3 · 안전 1). */
+const E1 = 'e1';
+function seedElderDetail(q: typeof queryClient) {
+  // 상세 화면만 시안과 같은 값으로 채운다(목록 카드의 "청주 · 식당 운영" 은 그대로 둔다).
+  q.setQueryData(queryKeys.profile(E1), {
+    ...ELDERS[0],
+    birth_date: '1938-05-12',
+    hometown: '충청북도 청주',
+    family: '2남 1녀, 남편',
+    guardian_name: '김민수',
+    guardian_relation: '자녀',
+    job: '식당 운영',
+    hobbies: '노래부르기, 산책',
+    updated_at: iso(0),
+  });
+  q.setQueryData(queryKeys.orgMembers, [USER]);
+  q.setQueryData(queryKeys.profileCaregivers(E1), [
+    {
+      id: 'pc1', profile_id: E1, caregiver_user_id: USER.id, status: 'active',
+      created_at: '2026-06-08T00:00:00Z', caregiver: { id: USER.id, name: USER.name, phone: USER.phone, email: USER.email },
+    },
+  ]);
+  q.setQueryData(queryKeys.consents(E1), [
+    { id: 'c1', profile_id: E1, consent_type: 'sensitive_health_voice', revoked_at: null },
+    { id: 'c2', profile_id: E1, consent_type: 'cross_border_transfer', revoked_at: null },
+    { id: 'c3', profile_id: E1, consent_type: 'ai_processing', revoked_at: null },
+  ]);
+  q.setQueryData(queryKeys.elderCode(E1), { profile_id: E1, code: 'K7M2Q9RXTV' });
+  q.setQueryData(queryKeys.sessions(E1), [
+    { ...session('s1', E1, 14, 'ended', iso(0)), turn_count: 16, current_topic: '어린 시절 집 이야기 (고향)' },
+    { ...session('s2', E1, 12, 'ended', iso(1)), turn_count: 8, current_topic: '어머니와 함께했던 기억 (가족)' },
+    { ...session('s3', E1, 9, 'active', iso(2)), turn_count: 12, current_topic: '학창 시절 친구 이야기 (학창 시절)' },
+  ]);
+  q.setQueryData(queryKeys.chronicles(E1), [
+    { id: 'ch1', profile_id: E1, topic: '고향', content: '어린 시절 집 이야기', keywords: [], source: 'ai', recorded_at: '2026-07-30T00:00:00Z', updated_at: iso(0) },
+    { id: 'ch2', profile_id: E1, topic: '가족', content: '명절마다 자식들이 모두 모였던 날', keywords: [], source: 'caregiver', recorded_at: '2026-07-08T00:00:00Z', updated_at: iso(22) },
+  ]);
+  q.setQueryData(queryKeys.safetyEvents(E1), [
+    {
+      id: 'se1', profile_id: E1, session_id: 's1', org_id: ORG.id, level: 'watch',
+      caregiver_alert: '외로움 신호가 관찰됐어요.', excerpt: '외로움을 표현하셨습니다.',
+      acknowledged_at: null, acknowledged_by: null, created_at: iso(2),
+    },
+  ]);
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -96,6 +143,7 @@ function seed() {
       created_at: iso(2),
     },
   ]);
+  seedElderDetail(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

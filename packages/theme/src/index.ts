@@ -91,7 +91,9 @@ export const webPalette = {
   info: { DEFAULT: '#1cb2d0', soft: '#1cb2d01a' },
   chronicle: { DEFAULT: '#d5379b', soft: '#d5379b1a' },
   live: { DEFAULT: '#60bd66', soft: '#60bd661a' },
-  mute: { DEFAULT: '#f2f1f1', strong: '#efefef', field: '#d9d9d94d' },
+  mute: { DEFAULT: '#f2f1f1', strong: '#efefef', pale: '#f5f5f5', field: '#d9d9d94d' },
+  // 연대기 출처 태그 — AI 자동은 accent, 사람이 쓴 것은 이 분홍(어르신 상세 195:351 실측).
+  manual: { DEFAULT: '#e92b90', soft: '#e92b901a' },
   // 소셜 로그인 브랜드 고정색
   naver: { DEFAULT: '#48b034' },
   kakao: { DEFAULT: '#f4df2a' },
