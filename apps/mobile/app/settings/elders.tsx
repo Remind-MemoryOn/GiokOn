@@ -11,12 +11,16 @@ import { router } from 'expo-router';
 import { useOrganization } from '@giokon/data';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ManagedElderCard, SETTINGS } from '../../src/components/settings';
+import { useAuth } from '../../src/auth/AuthProvider';
 import { useElders } from '../../src/data/reads';
 import { useDeleteElder } from '../../src/data/writes';
+import { isSupabaseConfigured } from '../../src/lib/supabase';
 
 export default function ManagedElders() {
+  const { authed } = useAuth();
   const elders = useElders();
-  const org = useOrganization();
+  // 목업 모드·로그인 전에는 조회하지 않는다(초기화 전 호출 방지).
+  const org = useOrganization({ enabled: isSupabaseConfigured && authed });
   const deleteElder = useDeleteElder();
   const orgName = org.data?.name ?? null;
 

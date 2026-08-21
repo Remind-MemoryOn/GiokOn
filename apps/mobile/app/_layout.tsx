@@ -9,11 +9,14 @@ import { useEffect } from 'react';
 import { Alert, View } from 'react-native';
 import { useGiokonRealtime } from '@giokon/data';
 import { initSupabase, isSupabaseConfigured, queryClient } from '../src/lib/supabase';
+import { installFetchGuard } from '../src/lib/fetchGuard';
 import { useAppStateRefetch } from '../src/lib/queryFocus';
 import { AuthProvider } from '../src/auth/AuthProvider';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { FONT_MAP } from '../src/lib/fonts';
 
+// fetch 폴리필의 status 0 크래시 방어망을 먼저 건다(요청이 나가기 전에).
+installFetchGuard();
 // 데이터 레이어 초기화(미설정 시 목업). 웹 main.tsx와 동일 패턴.
 initSupabase();
 
