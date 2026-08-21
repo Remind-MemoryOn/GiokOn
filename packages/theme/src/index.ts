@@ -69,10 +69,13 @@ export const figma = {
 // 실측 출처: 로그인 `15:443` · 대시보드 `118:300` 의 get_design_context.
 // 화면↔노드 맵과 절차는 docs/runbooks/figma-web-extraction.md.
 export const webPalette = {
-  // 브랜드 주황 — 앱과 같은 계열(#e9822b). soft = 사이드바 활성 배경(20% 틴트).
+  // 브랜드 주황 — 앱과 같은 계열(#e9822b).
+  //   soft = 사이드바 활성 배경(20% 틴트, `198:572` 실측)
+  //   tint = 배지·태그 배경(10% 틴트, `195:344`·`198:905` 실측) — 다른 상태색과 같은 농도
   accent: {
     DEFAULT: '#e9822b',
     soft: '#e9822b33',
+    tint: '#e9822b1a',
   },
   // 텍스트 계층: 제목=black, 본문=#404040, 보조=#7b7c7c, 뱃지 회색=#6e6e6e
   ink: {

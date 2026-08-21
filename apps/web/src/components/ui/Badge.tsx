@@ -15,7 +15,7 @@ const TONE: Record<BadgeTone, string> = {
   mute: 'bg-mute text-ink-400',
   muteStrong: 'bg-mute-strong text-ink-400',
   alert: 'bg-alert-soft text-alert',
-  accent: 'bg-accent-soft text-accent',
+  accent: 'bg-accent-tint text-accent',
 };
 
 interface Props extends HTMLAttributes<HTMLSpanElement> {

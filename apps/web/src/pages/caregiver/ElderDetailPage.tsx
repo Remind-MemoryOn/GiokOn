@@ -23,7 +23,7 @@ import {
   useSafetyEvents,
   useSessions,
 } from '@giokon/data';
-import { CONSENT_CATALOG, birthLabel, elderAge, requiredConsents } from '@giokon/core';
+import { CONSENT_CATALOG, birthLabel, elderAge, isKeyMemory, requiredConsents } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
@@ -225,7 +225,8 @@ export function ElderDetailPage() {
     label: CONSENT_CATALOG[type].label,
     done: (consents.data ?? []).some((c) => c.consent_type === type && !c.revoked_at),
   }));
-  const chronicleRows = (chronicles.data ?? []).slice(0, 2);
+  // 주요 기억은 '기본 정보 수정' 폼이 관리한다 → 연대기 목록에서는 감춘다(두 곳에서 지워지지 않게).
+  const chronicleRows = (chronicles.data ?? []).filter((c) => !isKeyMemory(c.topic)).slice(0, 2);
   const sessionRows = (sessions.data ?? []).slice(0, 3);
   const safetyRows = (safety.data ?? []).slice(0, 1);
 
@@ -604,7 +605,7 @@ export function ElderDetailPage() {
                 height={35}
                 className={cn(
                   'text-[20px]',
-                  ai ? 'bg-accent-soft text-accent' : 'bg-manual-soft text-manual',
+                  ai ? 'bg-accent-tint text-accent' : 'bg-manual-soft text-manual',
                 )}
               >
                 {ai ? 'AI 자동' : '요양보호사'}

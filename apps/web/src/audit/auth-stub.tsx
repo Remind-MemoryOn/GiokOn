@@ -112,6 +112,20 @@ function seedElderDetail(q: typeof queryClient) {
   ]);
 }
 
+/**
+ * 연대기 목록(198:506) 감사용 — 이 프레임의 시안은 상세(161:373)와 **다른 4건**을 그린다
+ * (상세는 2건만 보여 준다). 화면별로 자기 시안과 같은 데이터를 심는다.
+ */
+function seedChronicleList(q: typeof queryClient) {
+  if (!/\/chronicles$/.test(window.location.pathname)) return;
+  q.setQueryData(queryKeys.chronicles(E1), [
+    { id: 'ch1', profile_id: E1, topic: '고향', content: '어린 시절 집 이야기', keywords: [], source: 'ai', recorded_at: '2026-07-30T03:00:00Z', updated_at: iso(0) },
+    { id: 'ch3', profile_id: E1, topic: '가족', content: '어머니와 함께했던 기억', keywords: [], source: 'ai', recorded_at: '2026-07-19T03:00:00Z', updated_at: iso(0) },
+    { id: 'ch4', profile_id: E1, topic: '학창 시절', content: '학창 시절 친구 이야기', keywords: [], source: 'ai', recorded_at: '2026-07-19T02:00:00Z', updated_at: iso(0) },
+    { id: 'ch2', profile_id: E1, topic: '가족', content: '명절마다 자식들이 모두 모였던 날', keywords: [], source: 'caregiver', recorded_at: '2026-07-08T03:00:00Z', updated_at: iso(0) },
+  ]);
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -146,6 +160,7 @@ function seed() {
     },
   ]);
   seedElderDetail(q);
+  seedChronicleList(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

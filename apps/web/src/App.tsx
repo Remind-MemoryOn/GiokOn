@@ -13,6 +13,7 @@ import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { EldersPage } from './pages/caregiver/EldersPage';
 import { ElderDetailPage } from './pages/caregiver/ElderDetailPage';
 import { ElderEditPage } from './pages/caregiver/ElderEditPage';
+import { ElderChroniclesPage } from './pages/caregiver/ElderChroniclesPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -69,7 +70,9 @@ function App() {
           <Route path="elders/new" element={<Pending title="새 어르신 등록" node="172:330" />} />
           <Route path="elders/:elderId" element={<ElderDetailPage />} />
           <Route path="elders/:elderId/edit" element={<ElderEditPage />} />
-          <Route path="elders/:elderId/chronicles" element={<Pending title="연대기 목록" node="198:506" />} />
+          <Route path="elders/:elderId/chronicles" element={<ElderChroniclesPage />} />
+          <Route path="elders/:elderId/chronicles/new" element={<Pending title="연대기 추가" node="196:271" />} />
+          <Route path="elders/:elderId/chronicles/:chronicleId" element={<Pending title="연대기 상세 정보" node="198:991" />} />
           <Route path="sessions" element={<Pending title="세션 기록" node="178:787" />} />
           <Route path="sessions/:elderId" element={<Pending title="세션 목록" node="178:877" />} />
           <Route path="sessions/:elderId/:sessionId" element={<Pending title="대화 기록" node="178:1052" />} />

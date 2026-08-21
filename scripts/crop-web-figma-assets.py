@@ -26,6 +26,7 @@ JOURNAL = "요양보호사 페이지_요양일지.png"
 SHARES = "요양보호사 페이지_공개 관리.png"
 ORG = "요양보호사 페이지_기관 관리.png"
 SETTINGS = "요양보호사 페이지_설정.png"
+CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
 LOGIN = "회원가입 페이지1.png"
 LANDING = "서비스 소개 페이지.png"
 SIGNUP = "회원가입 페이지2.png"
@@ -46,6 +47,13 @@ CROPS = [
     ("icon-camera",      ELDER_EDIT, 554.0,  551.0,  607.0,  604.0),
     ("icon-plus",        ELDER_EDIT, 438.0, 1003.0,  461.0, 1026.0),
     ("icon-search-field",ELDER_EDIT, 774.0,  892.6,  799.0,  917.6),
+    # ── 연대기 목록(198:506) 아이콘 — 같은 글리프라도 렌더 크기가 달라 새로 자른다 ──
+    ("icon-pencil-lg",   CHRONICLES, 1141.0,  443.0, 1169.0,  471.0),
+    ("icon-trash-lg",    CHRONICLES, 1200.0,  443.3, 1226.97, 470.35),
+    ("icon-calendar-sm", CHRONICLES, 1226.0,  266.2, 1248.0,  288.2),
+    # ⚠️ ∨ 는 회전 노드라 metadata 좌표(1369, 281.8)가 렌더 위치가 아니다.
+    #    export 잉크 실측(1357~1369 × 274~281.75)으로 자른다.
+    ("icon-chevron-down-sm", CHRONICLES, 1357.0, 274.0, 1369.0, 281.8),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),

@@ -4,14 +4,13 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { birthYearFromDate } from '@giokon/core';
+import { KEY_MEMORY_TOPIC, birthYearFromDate } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ProfileForm, type ProfileSubmit } from '../../src/components/ProfileForm';
 import { useChronicles, useElderView } from '../../src/data/reads';
 import { useDeleteChronicle, useUpsertChronicle, useUpsertElder } from '../../src/data/writes';
 import { removeElderPhoto, saveElderPhoto, useElderPhotoUrl } from '../../src/data/elder-photo';
 
-const MEMORY_TOPIC = '주요 기억';
 
 export default function ChronicleEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -101,7 +100,7 @@ export default function ChronicleEdit() {
             await deleteChronicle({ id: existing.id, elderId: elder.id });
           }
         } else if (content) {
-          await upsertChronicle({ elderId: elder.id, topic: MEMORY_TOPIC, content, keywords: [] });
+          await upsertChronicle({ elderId: elder.id, topic: KEY_MEMORY_TOPIC, content, keywords: [] });
         }
       }
       router.back();

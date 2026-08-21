@@ -417,9 +417,31 @@ const SCREENS = [
     /h-\[57px\] w-\[140px\][^"]*border border-accent bg-accent[^"]*text-white/,
   ]],
   [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 주요 기억은 연대기(주제=주요 기억) · 특이사항은 저장할 컬럼이 없어 잠근다', [
-    /const KEY_MEMORY_TOPIC = '주요 기억'/,
+    /KEY_MEMORY_TOPIC.*from '@giokon\/core'/,
     /useCreateChronicle/, /useDeleteChronicle/,
     /id="f-note"[\s\S]{0,220}?disabled/,
+  ]],
+
+  // ── 연대기 목록 198:506 ────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ElderChroniclesPage.tsx`, '연대기 목록: 카드 1057 @(324,318) shadow-card · 행 879×168.12 피치 192.14', [
+    /const CARD_TOP = 318;/, /const ROW_TOP = 369\.27;/,
+    /const ROW_H = 168\.12;/, /const ROW_PITCH = 192\.14;/,
+    /left-\[324px\] w-\[1057px\] rounded-\[10px\] bg-white shadow-card/,
+    /left-\[411px\] w-\[879px\] rounded-\[10px\] border border-line bg-white/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderChroniclesPage.tsx`, '연대기 목록: 출처 배지 h35 r-pill(AI=accent 10% · 사람=manual) · 연필 28 · 휴지통 27', [
+    /h-\[35px\][^']*rounded-pill text-\[20px\] font-semibold/,
+    /ai \? 'bg-accent-tint text-accent' : 'bg-manual-soft text-manual'/,
+    /width: ai \? 95 : 124/,
+    /iconPencilLg[\s\S]{0,120}?width=\{28\}/, /iconTrashLg[\s\S]{0,120}?width=\{26\.97\}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderChroniclesPage.tsx`, '연대기 목록: 날짜 선택 170×37 r5 · 연대기 추가 879×77 테두리 accent', [
+    /h-\[37\.03px\] w-\[170px\] rounded-\[5px\] border border-line/,
+    /const ADD_H = 77\.06;/,
+    /left-\[411px\] flex w-\[879px\] items-center justify-center rounded-\[10px\] border border-accent/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderChroniclesPage.tsx`, '연대기 목록: 주요 기억은 감춘다(폼이 관리) · 빈 상태를 만들어 두지 않는다', [
+    /isKeyMemory\(c\.topic\)/, /아직 연대기 항목이 없습니다\./, /선택한 날짜에 기록된 연대기가 없습니다\./,
   ]],
 
   // ── 프리미티브 ─────────────────────────────────────────────────────────

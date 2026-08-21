@@ -54,6 +54,18 @@ export function relativeDay(iso: string, now = new Date()): string {
   return `${days}일 전`
 }
 
+/**
+ * 목록의 날짜 표기(`2026.07.08`) — 값이 없거나 잘못됐으면 **만들어내지 않고** `—`.
+ *
+ * `formatKoreanDate` 은 잘못된 값에 `NaN.NaN.NaN` 을 내는데, 실서비스 원칙상 근거 없는
+ * 값을 화면에 두면 안 되므로 빈 상태 기호로 되돌린다.
+ */
+export function dateDot(iso?: string | null): string {
+  if (!iso) return '—'
+  if (Number.isNaN(new Date(iso).getTime())) return '—'
+  return formatKoreanDate(iso)
+}
+
 const PALETTE = ['#fbb78c', '#a3d4b1', '#b1c8f0', '#f5b9c9', '#dabbf0', '#fbe294', '#9ad6d2']
 export function pickAvatarColor(seed: string): string {
   let h = 0

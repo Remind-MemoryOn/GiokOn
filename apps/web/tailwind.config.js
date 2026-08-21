@@ -10,6 +10,7 @@ export default {
         accent: {
           DEFAULT: '#e9822b',
           soft: '#e9822b33',
+          tint: '#e9822b1a',
         },
         ink: {
           900: '#000000',

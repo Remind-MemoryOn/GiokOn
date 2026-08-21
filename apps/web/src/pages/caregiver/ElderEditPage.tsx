@@ -19,15 +19,13 @@ import {
   useProfile,
   useUpdateProfile,
 } from '@giokon/data';
-import { birthSlashLabel, isBirthDate, type ElderProfile } from '@giokon/core';
+import { KEY_MEMORY_TOPIC, birthSlashLabel, isBirthDate, type ElderProfile } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 
 const Y = (v: number) => v - 122;
-/** 주요 기억을 담는 연대기 주제(앱과 동일). */
-const KEY_MEMORY_TOPIC = '주요 기억';
 
 /** 라벨(Medium 20) + 필수 별표(Medium 12 accent, 라벨보다 9px 위 라인박스). */
 function Label({

@@ -3,12 +3,11 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { birthYearFromDate } from '@giokon/core';
+import { KEY_MEMORY_TOPIC, birthYearFromDate } from '@giokon/core';
 import { EMPTY_VALUES, ProfileForm, type ProfileSubmit } from '../src/components/ProfileForm';
 import { useUpsertChronicle, useUpsertElder } from '../src/data/writes';
 import { saveElderPhoto } from '../src/data/elder-photo';
 
-const MEMORY_TOPIC = '주요 기억';
 
 export default function Register() {
   const upsertElder = useUpsertElder();
@@ -45,7 +44,7 @@ export default function Register() {
       for (const m of v.memories) {
         const content = m.text.trim();
         if (content) {
-          await upsertChronicle({ elderId: elder.id, topic: MEMORY_TOPIC, content, keywords: [] });
+          await upsertChronicle({ elderId: elder.id, topic: KEY_MEMORY_TOPIC, content, keywords: [] });
         }
       }
       router.replace(`/elder/${elder.id}`);

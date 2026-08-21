@@ -66,3 +66,17 @@ export function birthLabel(elder: BirthFields): string {
   }
   return `${elder.birthYear}년`
 }
+
+/**
+ * "주요 기억"을 담는 연대기 주제.
+ *
+ * 앱·웹 모두 어르신 프로필의 주요 기억을 별도 컬럼이 아니라
+ * `chronicle_entries(topic = 이 값)` 으로 저장한다. 문자열이 흩어지면 한쪽만 바뀌었을 때
+ * 조용히 두 목록이 어긋나므로 상수를 여기 한 곳에 둔다.
+ */
+export const KEY_MEMORY_TOPIC = '주요 기억'
+
+/** 프로필 폼에서 관리하는 주요 기억인가(= 연대기 목록에서는 감춘다). */
+export function isKeyMemory(topic: string): boolean {
+  return topic === KEY_MEMORY_TOPIC
+}
