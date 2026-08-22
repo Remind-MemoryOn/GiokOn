@@ -647,6 +647,26 @@ const SCREENS = [
     /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
   ]],
 
+  // ── 요양일지 작성 221:283 · 221:1060 · 221:1196 ────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 카드 1057×928 @295 · 방식 탭 262/261/262×57 @583.45 · 저장 140×57', [
+    /h-\[928px\] w-\[1057px\] rounded-\[10px\] bg-white shadow-card/,
+    /top: 288\.45, width: m\.w/,
+    /key: 'typed'[\s\S]{0,140}left: 87/, /key: 'voice'[\s\S]{0,140}left: 396/, /key: 'photo'[\s\S]{0,140}left: 704/,
+    /h-\[57px\] w-\[140px\] rounded-\[10px\] border border-accent bg-white/,
+    /h-\[57px\] w-\[140px\] rounded-\[10px\] bg-accent/,
+    /const SLOT = \{ w: 187, h: 193, top: 363, xs: \[87, 318, 549, 780\] \}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 실 STT·LLM 연동 전에는 결과를 만들지 않는다 · 저장→업로드→첨부 순서', [
+    /disabled\s*\n?\s*data-fx=\{mode === 'typed'/,
+    /AI 초안은 실 연동 후 제공됩니다/,
+    /음성 인식 연동 전이라 아래 원문은 직접 적어 주세요/,
+    /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
+  ]],
+  [`${WEB}/src/lib/journalPhotos.ts`, '일지 사진: private 버킷 signed URL · 경로는 profile_id 로 시작 · 파일을 먼저 파기', [
+    /const BUCKET = 'journal-photos'/, /createSignedUrls/,
+    /\$\{profileId\}\//, /removeJournalPhotoFiles/,
+  ]],
+
   [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [
     /webPalette\.series/, /v == null \? null/,
   ]],

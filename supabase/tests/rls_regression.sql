@@ -570,6 +570,45 @@ do $$ begin
     '작성자는 본인 초안을 삭제할 수 있어야 함';
 end $$;
 
+-- ── 5.9b) 일지 사진: 일지와 같은 격리 · guardian 배제 · 확정 일지 첨부는 못 뺀다 ──
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';  -- 작성자 C
+do $$
+declare
+  fid uuid := (select id from public.care_journals where status = 'final' limit 1);
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  insert into public.journal_photos (journal_id, path, sort)
+    values (fid, pid::text || '/p1.jpg', 0);
+end $$;
+
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- 같은 기관 관리자 A
+do $$ begin
+  assert (select count(*) from public.journal_photos) = 1,
+    '같은 기관 돌봄 구성원은 일지 사진을 조회할 수 있어야 함';
+end $$;
+
+set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인됨)
+do $$ begin
+  assert (select count(*) from public.journal_photos) = 0,
+    'guardian 은 일지 사진을 직접 볼 수 없어야 함(공개 커밋 경유만)';
+end $$;
+
+set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
+do $$ begin
+  assert (select count(*) from public.journal_photos) = 0,
+    '다른 기관의 일지 사진은 보이면 안 됨';
+end $$;
+
+-- 확정(final) 일지의 사진은 삭제 불가.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+delete from public.journal_photos;
+reset role;
+do $$ begin
+  assert (select count(*) from public.journal_photos) = 1,
+    '확정 일지의 사진은 삭제할 수 없어야 함';
+end $$;
+
 -- ── 5.10) 공개 커밋: 보호자는 승인된 연결 + 미철회 커밋만(T17.2) ───────────
 -- C 가 final 일지·분석을 공개 → 연결 승인된 H 만 열람. 철회 시 즉시 차단.
 -- 연결 없는 보호자 G(같은 기관)·타 기관 B 는 0건.

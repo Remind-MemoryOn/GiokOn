@@ -19,6 +19,14 @@ import anElders from './an-elders.png';
 import anSessions from './an-sessions.png';
 import anMinutes from './an-minutes.png';
 import anResponse from './an-response.png';
+import iconKeyboard from './icon-keyboard.png';
+import iconMic from './icon-mic.png';
+import iconCameraTab from './icon-camera-tab.png';
+import iconUpload from './icon-upload.png';
+import iconSparkle from './icon-sparkle.png';
+import iconChevronDownLg from './icon-chevron-down-lg.png';
+import iconClockField from './icon-clock-field.png';
+import iconImage from './icon-image.png';
 import anBadgeMinutes from './an-badge-minutes.png';
 import anBadgeSessions from './an-badge-sessions.png';
 import anBadgeRate from './an-badge-rate.png';
@@ -104,6 +112,14 @@ export const asset = {
   anSessions,
   anMinutes,
   anResponse,
+  iconKeyboard,
+  iconMic,
+  iconCameraTab,
+  iconUpload,
+  iconSparkle,
+  iconChevronDownLg,
+  iconClockField,
+  iconImage,
   anBadgeMinutes,
   anBadgeSessions,
   anBadgeRate,

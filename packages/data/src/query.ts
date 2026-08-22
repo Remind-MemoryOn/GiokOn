@@ -49,6 +49,8 @@ export const queryKeys = {
   orgSessionAnalyses: ['session_analyses', 'org'] as const,
   careJournals: (profileId: string) => ['care_journals', profileId] as const,
   orgCareJournals: ['care_journals', 'org'] as const,
+  journalPhotos: (journalId: string) => ['journal_photos', journalId] as const,
+  orgJournalPhotos: ['journal_photos', 'org'] as const,
   guardianShares: (profileId: string) => ['guardian_shares', profileId] as const,
   myShares: ['guardian_shares', 'mine'] as const,
 }

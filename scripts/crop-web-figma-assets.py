@@ -31,6 +31,8 @@ SESSION_LIST = "요양보호사 페이지_세션 목록.png"
 CHAT = "요양보호사 페이지_대화 기록.png"
 ANALYSIS_PAGE = "요양보호사 페이지_분석페이지.png"
 ANALYSIS_ELDER = "요양보호사 페이지_개인별 종합분석.png"
+JOURNAL_WRITE = "요양보호사 페이지_요양일지 작성 타이핑.png"
+JOURNAL_PHOTO = "요양보호사 페이지_요양일지 작성 사진첨부.png"
 # 모달 프레임 export 는 카드만 담고 있어 좌표가 **프레임 로컬**이다.
 CHRON_MODAL = "연대기 상세 정보.png"
 # ⚠️ 부품 export 는 아직 @1x 다 — 같은 파일명으로 @4x 를 덮어써 주면 그대로 선명해진다.
@@ -91,6 +93,16 @@ CROPS = [
     ("an-badge-rate",     ANALYSIS_ELDER, 1036.0,  485.0, 1086.0,  535.0),
     # 인지 효과 종합 평가의 표정 마크 76 — 시안은 **긍정 상태 1종만** 그려져 있다.
     ("an-verdict-good",   ANALYSIS_ELDER,  810.0, 3216.78, 886.0, 3292.82),
+    # ── 요양일지 작성(221:283·221:1196) ──
+    # 입력 방식 탭 아이콘 — 활성 탭은 주황 바탕에 흰 글리프라 **비활성 프레임에서** 자른다.
+    ("icon-keyboard",     JOURNAL_PHOTO,   489.0,  603.25,  515.0,  621.5),
+    ("icon-mic",          JOURNAL_WRITE,   802.0,  601.46,  818.5,  623.48),
+    ("icon-camera-tab",   JOURNAL_WRITE,  1106.0,  602.46, 1129.0,  622.48),
+    ("icon-upload",       JOURNAL_WRITE,   433.0, 1030.79,  449.0, 1046.38),
+    ("icon-sparkle",      JOURNAL_WRITE,   602.0, 1024.78,  628.33, 1051.13),
+    ("icon-chevron-down-lg", JOURNAL_WRITE, 1242.13, 459.0, 1261.42, 472.02),
+    ("icon-clock-field",  JOURNAL_WRITE,   768.0,  455.35,  790.0,  477.37),
+    ("icon-image",        JOURNAL_PHOTO,   483.0,  722.0,   518.5,  757.0),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),
