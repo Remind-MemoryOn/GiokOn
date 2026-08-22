@@ -26,6 +26,7 @@ JOURNAL = "요양보호사 페이지_요양일지.png"
 SHARES = "요양보호사 페이지_공개 관리.png"
 ORG = "요양보호사 페이지_기관 관리.png"
 SETTINGS = "요양보호사 페이지_설정.png"
+G_CONNECT = "보호자 페이지_어르신 연결 전.png"
 CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
 SESSION_LIST = "요양보호사 페이지_세션 목록.png"
 CHAT = "요양보호사 페이지_대화 기록.png"
@@ -103,6 +104,16 @@ CROPS = [
     ("icon-chevron-down-lg", JOURNAL_WRITE, 1242.13, 459.0, 1261.42, 472.02),
     ("icon-clock-field",  JOURNAL_WRITE,   768.0,  455.35,  790.0,  477.37),
     ("icon-image",        JOURNAL_PHOTO,   483.0,  722.0,   518.5,  757.0),
+    # ── 설정(121:598) ── 같은 글리프라도 렌더 크기가 달라 새로 자른다
+    ("icon-pencil-md",    SETTINGS,      1296.0,  364.0, 1318.0,  386.0),
+    ("icon-shield-md",    SETTINGS,       388.0, 2119.0,  409.27, 2144.99),
+    ("icon-download",     SETTINGS,       418.0, 1015.9,  436.0, 1033.92),
+    # ── 보호자 어르신 연결(31:616) 연결 과정 3단계 ──
+    ("g-step-code",   G_CONNECT,  503.0,  994.66,  550.74, 1046.83),
+    ("g-step-wait",   G_CONNECT,  831.0,  998.66,  876.0,  1043.69),
+    ("g-step-done",   G_CONNECT, 1152.0, 1002.0,  1198.0, 1040.0),
+    # ⚠️ 화살표는 좌우 반전 노드라 metadata(698.22,1037.81)가 렌더 위치가 아니다 — 잉크 실측.
+    ("g-step-arrow",  G_CONNECT,  684.0, 1016.0,   698.25, 1038.0),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),

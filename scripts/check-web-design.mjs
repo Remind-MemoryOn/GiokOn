@@ -150,8 +150,8 @@ const SCREENS = [
     /width=\{21\}/, /height=\{22\}/,
   ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: 벨 @1045 + 배지 18원 · 아바타 40 @1105', [
-    /left-\[1045px\] top-\[69px\]/, /h-\[18px\] min-w-\[18px\][^"]*rounded-full bg-accent/,
-    /left-\[1105px\] top-\[62px\]/, /width=\{40\}/, /height=\{40\}/,
+    /\{ bell: 1045, avatar: 1105, chevron: 254 \}/, /h-\[18px\] min-w-\[18px\][^"]*rounded-full bg-accent/,
+    /width=\{40\}/, /height=\{40\}/,
   ]],
   [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 폭 296 · 활성 pill 208×57 r10 accent-soft', [
     /w-\[296px\]/, /h-\[57px\] w-\[208px\]/, /rounded-\[10px\]/, /bg-accent-soft/, /ml-\[44px\]/,
@@ -676,6 +676,72 @@ const SCREENS = [
   [`${WEB}/src/lib/journalPhotos.ts`, '일지 사진: private 버킷 signed URL · 경로는 profile_id 로 시작 · 파일을 먼저 파기', [
     /const BUCKET = 'journal-photos'/, /createSignedUrls/,
     /\$\{profileId\}\//, /removeJournalPhotoFiles/,
+  ]],
+
+  // ── 공개 관리 상세 140:121 · 146:429 · 146:824 · 146:1067 ─────────────
+  [`${WEB}/src/pages/caregiver/ShareItemsPage.tsx`, '공개 항목: 카드 1054 @343 · 행 922×235.14 피치 271.165 · 버튼 152×57 · 상태 배지 100', [
+    /const ROW_TOP = 394\.24;/, /const ROW_H = 235\.14;/, /const ROW_PITCH = 271\.165;/,
+    /left-\[388px\] w-\[922px\] rounded-\[10px\] border border-line bg-white/,
+    /h-\[57px\] w-\[152px\] rounded-\[10px\] border border-accent bg-white/,
+    /h-\[57px\] w-\[152px\][^"]*rounded-\[10px\] bg-accent/,
+    /className="absolute w-\[100px\]"/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ShareItemsPage.tsx`, '공개 여부는 철회되지 않은 guardian_shares 로 판정 · 철회는 확인 후', [
+    /if \(!s\.revoked_at\) map\.set\(s\.item_id, s\.id\)/,
+    /useCreateGuardianShare/, /useRevokeGuardianShare/, /window\.confirm\(/,
+    /공개할 수 있는 기록이 아직 없습니다/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ShareHistoryPage.tsx`, '공개 이력: 카드 x=329(이 프레임만) · 머리글 81 · 작업 117×39 · 열 좌표 고정', [
+    /const CARD_LEFT = 329;/, /const HEAD_H = 81;/,
+    /h-\[39px\] w-\[117px\]/,
+    /typeCenter: 422\.5/, /titleCenter: 591/, /atCenter: 742\.5/, /stateCenter: 906/, /viewedLeft: 1019/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ShareHistoryPage.tsx`, '공개 이력: 보호자 확인 시각은 아직 기록하지 않는다 — 만들지 않는다', [
+    /보호자 확인 시각은 아직 기록하지 않는다/,
+    /아직 공개한 기록이 없습니다/,
+  ]],
+
+  // ── 기관 관리 131:959 ─────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 카드1 1054×360 @315 · 입력 576×57 · 저장 102×57 · 구성원 행 피치 122', [
+    /h-\[360px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.05px\] w-\[576px\]/, /h-\[57\.05px\] w-\[102px\] rounded-\[10px\] bg-accent/,
+    /const MEMBER_PITCH = 122;/, /h-\[33px\] w-\[119px\] items-center justify-center rounded-pill/, /px=\{79\}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 이름 수정은 기관 관리자만 · 값이 없으면 만들지 않는다', [
+    /const isAdmin = me\.data\?\.role === 'org_admin'/,
+    /disabled=\{!isAdmin\}/, /기관 이름은 기관 관리자만 바꿀 수 있어요/,
+    /org\.data\?\.id \?\? '—'/,
+  ]],
+
+  // ── 설정 121:598 ─────────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SettingsPage.tsx`, '설정: 카드 460/261/854/80 · 이름 576×57 · JSON 237×57 · 삭제 표 피치 122', [
+    /h-\[460px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[261px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[80px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.05px\] w-\[576px\]/, /h-\[57px\] w-\[237px\]/,
+    /const RULE_PITCH = 122;/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SettingsPage.tsx`, '설정: 계정 삭제는 셀프서비스 아님 · 값 없으면 만들지 않음 · 비의료 고지', [
+    /삭제 요청은 기관 관리자/,
+    /f\.value \?\? '—'/,
+    /기억온은 의료기기가 아니며, 인지활동 보조 서비스입니다/,
+  ]],
+
+  // ── 보호자 어르신 연결 31:616 ─────────────────────────────────────────
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결: 카드 457/559 · 입력 878×57 · 버튼 878×71 · 안내 원 94 · 화살표 14.25×22', [
+    /h-\[457px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[559px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.04px\] w-\[878px\]/, /h-\[71px\] w-\[878px\] rounded-\[10px\] bg-accent/,
+    /h-\[94px\] w-\[94px\] items-center justify-center rounded-full bg-accent-tint/,
+    /width: 14\.25, height: 22/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결: 어르신 코드 요청 + 승인 대기 상태를 그대로 말한다', [
+    /useLinkGuardianByElderCode/, /useMyGuardianLinks/,
+    /아직 연결된 어르신이 없어요/, /요양보호사의 승인을 기다리고 있어요/,
+  ]],
+  [`${WEB}/src/components/shell/TopBar.tsx`, '보호자 셸 탑바: 검색 없음 · 벨 1080 · 아바타 1140', [
+    /variant\?: 'caregiver' \| 'guardian'/,
+    /guardian \? \{ bell: 1080, avatar: 1140, chevron: 219 \}/,
   ]],
 
   [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [

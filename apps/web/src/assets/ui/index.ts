@@ -19,6 +19,13 @@ import anElders from './an-elders.png';
 import anSessions from './an-sessions.png';
 import anMinutes from './an-minutes.png';
 import anResponse from './an-response.png';
+import gStepCode from './g-step-code.png';
+import gStepWait from './g-step-wait.png';
+import gStepDone from './g-step-done.png';
+import gStepArrow from './g-step-arrow.png';
+import iconPencilMd from './icon-pencil-md.png';
+import iconShieldMd from './icon-shield-md.png';
+import iconDownload from './icon-download.png';
 import iconKeyboard from './icon-keyboard.png';
 import iconMic from './icon-mic.png';
 import iconCameraTab from './icon-camera-tab.png';
@@ -112,6 +119,13 @@ export const asset = {
   anSessions,
   anMinutes,
   anResponse,
+  gStepCode,
+  gStepWait,
+  gStepDone,
+  gStepArrow,
+  iconPencilMd,
+  iconShieldMd,
+  iconDownload,
   iconKeyboard,
   iconMic,
   iconCameraTab,

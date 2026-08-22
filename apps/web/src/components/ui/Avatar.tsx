@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { asset } from '../../assets/ui';
 import { cn } from '../../lib/utils';
 
@@ -9,6 +10,8 @@ const SIZE = { sm: 40, md: 50, lg: 76, xl: 99 } as const;
 interface Props {
   /** 실측 감사 앵커(data-fx) 등 통과 속성. */
   'data-fx'?: string;
+  /** 절대 배치용(기관 관리 구성원 목록 등). */
+  style?: CSSProperties;
   /** Storage signed URL. 없으면 기본 아바타. */
   src?: string | null;
   name?: string;
@@ -18,7 +21,7 @@ interface Props {
   className?: string;
 }
 
-export function Avatar({ src, name, size = 'md', px: pxProp, className, ...rest }: Props) {
+export function Avatar({ src, name, size = 'md', px: pxProp, className, style, ...rest }: Props) {
   const px = pxProp ?? SIZE[size];
   return (
     <img
@@ -28,7 +31,7 @@ export function Avatar({ src, name, size = 'md', px: pxProp, className, ...rest 
       width={px}
       height={px}
       className={cn('shrink-0 rounded-full object-cover', className)}
-      style={{ width: px, height: px }}
+      style={{ width: px, height: px, ...style }}
     />
   );
 }

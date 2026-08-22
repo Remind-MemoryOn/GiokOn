@@ -29,6 +29,11 @@ import { JournalPage } from './pages/caregiver/JournalPage';
 import { JournalListPage } from './pages/caregiver/JournalListPage';
 import { JournalWritePage } from './pages/caregiver/JournalWritePage';
 import { SharesPage } from './pages/caregiver/SharesPage';
+import { ShareItemsPage } from './pages/caregiver/ShareItemsPage';
+import { ShareHistoryPage } from './pages/caregiver/ShareHistoryPage';
+import { OrgPage } from './pages/caregiver/OrgPage';
+import { SettingsPage } from './pages/caregiver/SettingsPage';
+import { ConnectPage } from './pages/guardian/ConnectPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -109,10 +114,10 @@ function App() {
           <Route path="journal/:elderId" element={<JournalListPage />} />
           <Route path="journal/:elderId/new" element={<JournalWritePage />} />
           <Route path="shares" element={<SharesPage />} />
-          <Route path="shares/:elderId" element={<Pending title="공개 관리" node="140:121" />} />
-          <Route path="shares/:elderId/history" element={<Pending title="공개 이력" node="146:1067" />} />
-          <Route path="org" element={<Pending title="기관 관리" node="131:959" />} />
-          <Route path="settings" element={<Pending title="설정" node="121:598" />} />
+          <Route path="shares/:elderId" element={<ShareItemsPage />} />
+          <Route path="shares/:elderId/history" element={<ShareHistoryPage />} />
+          <Route path="org" element={<OrgPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* ── 보호자 ── */}
@@ -124,7 +129,7 @@ function App() {
             </GuardianGuard>
           }
         >
-          <Route index element={<Pending title="어르신 연결" node="31:616" />} />
+          <Route index element={<ConnectPage />} />
           <Route path="feed" element={<Pending title="공개된 소식" node="50:543" />} />
           <Route path="feed/journal/:itemId" element={<Pending title="요양일지" node="50:1102" />} />
           <Route path="feed/summary/:itemId" element={<Pending title="대화 요약" node="55:1258" />} />

@@ -13,7 +13,7 @@ import { queryClient } from '../lib/supabase';
 const ORG = { id: 'org-1', name: '햇살 요양원', created_at: '2026-01-01T00:00:00Z' };
 const USER = {
   id: 'user-1',
-  email: 'jieun@example.com',
+  email: 'eeee@gieokon.co.kr',  // 시안(121:769·131:1004)과 같은 값
   name: '이지은',
   role: 'caregiver',
   org_id: ORG.id,
@@ -86,7 +86,11 @@ function seedElderDetail(q: typeof queryClient) {
     hobbies: '노래부르기, 산책',
     updated_at: iso(0),
   });
-  q.setQueryData(queryKeys.orgMembers, [USER]);
+  // 기관 관리(131:959) 시안은 구성원 2명을 그린다.
+  q.setQueryData(queryKeys.orgMembers, [
+    USER,
+    { ...USER, id: 'u-kim', name: '김요양', email: 'Kim@gieokon.co.kr', role: 'caregiver' },
+  ]);
   q.setQueryData(queryKeys.profileCaregivers(E1), [
     {
       id: 'pc1', profile_id: E1, caregiver_user_id: USER.id, status: 'active',
@@ -277,7 +281,8 @@ function seedAnalyses(q: typeof queryClient) {
 
 /** 요양일지 목록(207:1147) 감사용 — 시안과 같은 4건. */
 function seedJournals(q: typeof queryClient) {
-  if (!/\/caregiver\/journal\//.test(window.location.pathname)) return;
+  const p2 = window.location.pathname;
+  if (!/\/caregiver\/journal\//.test(p2) && !/\/caregiver\/shares\//.test(p2)) return;
   const j = (id: string, date: string, content: string) => ({
     id,
     org_id: ORG.id,
@@ -296,6 +301,44 @@ function seedJournals(q: typeof queryClient) {
     j('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.'),
     j('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
     j('j4', '2026-07-13', '오후에 꽃을 심고 꾸미는 원예 활동을 진행했습니다. 완성된 화분을 보며 매우 좋아하셨어요.'),
+  ]);
+}
+
+/** 공개 관리(140:121·146:1067) 감사용 — 일지 4건 중 3건·분석 1건을 공개해 둔다. */
+function seedShares(q: typeof queryClient) {
+  if (!/\/caregiver\/shares\//.test(window.location.pathname)) return;
+  const share = (id: string, type: 'journal' | 'analysis', itemId: string, at: string, revoked = false) => ({
+    id,
+    org_id: ORG.id,
+    profile_id: E1,
+    item_type: type,
+    item_id: itemId,
+    note: null,
+    shared_by: USER.id,
+    shared_at: at,
+    revoked_at: revoked ? at : null,
+    revoked_by: revoked ? USER.id : null,
+  });
+  // 시안(140:121)은 7/30 요양일지를 맨 위에 그린다 — 분석은 그보다 앞선 날짜로 심는다.
+  const an = (id: string, at: string, topic: string) => ({
+    id, org_id: ORG.id, session_id: `s-${id}`, profile_id: E1, user_id: USER.id,
+    version: 'v1', created_at: at, updated_at: at,
+    analysis: {
+      version: 'v1', summary: '어르신이 어릴 적 살던 집과 가족들에 대한 추억을 이야기 하셨습니다.',
+      emotionTone: 'bright',
+      metrics: { aiTurns: 6, elderTurns: 6, responseRate: 0.85, avgUtteranceChars: 44, participation: 0.75 },
+      topicsEngaged: [topic], topicsLow: [], topicOutcomes: [], interestKeywords: [], recommendedTopics: [],
+    },
+  });
+  q.setQueryData(queryKeys.sessionAnalyses(E1), [
+    an('a0', '2026-07-29T02:02:00Z', '고향'),
+    an('a3', '2026-07-19T01:38:00Z', '가족'),
+  ]);
+  q.setQueryData(queryKeys.guardianShares(E1), [
+    share('sh1', 'analysis', 'a0', '2026-07-30T02:02:00Z'),
+    share('sh2', 'journal', 'j1', '2026-07-30T10:00:00Z'),
+    share('sh3', 'journal', 'j2', '2026-07-28T09:00:00Z'),
+    share('sh4', 'journal', 'j3', '2026-07-21T07:02:00Z'),
   ]);
 }
 
@@ -344,6 +387,7 @@ function seed() {
   seedConversation(q);
   seedAnalyses(q);
   seedJournals(q);
+  seedShares(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },
@@ -364,10 +408,14 @@ export function useAuth() {
   const app = /^\/(caregiver|guardian)/.test(path);
   const onboarding = /^\/(signup|onboarding)/.test(path);
   const signedIn = app || onboarding;
+  // 보호자 화면은 역할이 guardian 이어야 가드를 통과하고 탑바 문구도 바뀐다(31:616 "김민수 보호자님").
+  const me = /^\/guardian/.test(path)
+    ? { ...USER, id: 'guardian-1', name: '김민수', role: 'guardian', email: 'minsu@example.com' }
+    : USER;
   return {
-    session: signedIn ? { user: { id: USER.id, email: USER.email } } : null,
-    user: signedIn ? { id: USER.id, email: USER.email, user_metadata: { name: USER.name } } : null,
-    userRow: signedIn ? (onboarding ? { ...USER, onboarded_at: null } : USER) : null,
+    session: signedIn ? { user: { id: me.id, email: me.email } } : null,
+    user: signedIn ? { id: me.id, email: me.email, user_metadata: { name: me.name } } : null,
+    userRow: signedIn ? (onboarding ? { ...me, onboarded_at: null } : me) : null,
     loading: false,
     // 훅은 유휴 상태로 두고(네트워크 없음) 위에서 심은 캐시만 읽게 한다.
     isConfigured: false,

@@ -84,6 +84,8 @@ const CASES = [
   ['/caregiver/journal/demo', '계정으로 로그인해 주세요.', '요양일지 목록 가드'],
   ['/caregiver/journal/demo/new', '계정으로 로그인해 주세요.', '요양일지 작성 가드'],
   ['/caregiver/shares', '계정으로 로그인해 주세요.', '공개 관리 가드'],
+  ['/caregiver/shares/demo', '계정으로 로그인해 주세요.', '공개 항목 목록 가드'],
+  ['/caregiver/shares/demo/history', '계정으로 로그인해 주세요.', '공개 이력 가드'],
   ['/caregiver/org', '계정으로 로그인해 주세요.', '기관 관리 가드'],
   ['/caregiver/settings', '계정으로 로그인해 주세요.', '설정 가드'],
   ['/guardian', '계정으로 로그인해 주세요.', '보호자 영역 가드'],

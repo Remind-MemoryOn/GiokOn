@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 
 // 신규 디자인의 공용 셸: 상단 바(122) + 좌측 사이드바(296) + 콘텐츠 열(1054 @ x323).
 // 요양보호사·보호자 모두 같은 셸을 쓰고 사이드바 항목만 다르다.
-function AppShell({ nav }: { nav: NavItem[] }) {
+function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'caregiver' | 'guardian' }) {
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
   const [search, setSearch] = useState('');
@@ -34,7 +34,8 @@ function AppShell({ nav }: { nav: NavItem[] }) {
       >
         본문으로 바로가기
       </a>
-      <TopBar search={{ value: search, onChange: setSearch }} />
+      {/* 보호자 셸은 어르신 검색이 없다(Figma 31:616) */}
+      <TopBar variant={variant} search={variant === 'guardian' ? undefined : { value: search, onChange: setSearch }} />
       <div className="mx-auto flex w-full max-w-[1440px] min-h-[calc(100vh-122px)]">
         <Sidebar items={nav} />
         <main
@@ -53,7 +54,7 @@ export function CaregiverLayout() {
 }
 
 export function GuardianLayout() {
-  return <AppShell nav={GUARDIAN_NAV} />;
+  return <AppShell nav={GUARDIAN_NAV} variant="guardian" />;
 }
 
 /** 화면 제목 — Bold 30/70 @ (322,169) + 설명 Regular 20/30 @ 236.2(제목 라인박스와 3px 겹침)
