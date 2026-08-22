@@ -210,7 +210,11 @@ export interface ConversationTurn {
   extractedKeywords?: string[];
 }
 
-export type ConversationStatus = 'active' | 'ended';
+/**
+ * 세션 상태. `planned` = 요양보호사가 웹에서 설계만 해 둔 상태(앱이 시작하면 active).
+ * 대화 기록(ConversationLog)에는 planned 가 올 수 있다 — 아직 턴이 없는 설계 행이다.
+ */
+export type ConversationStatus = 'planned' | 'active' | 'ended';
 
 export type EmotionTone = 'bright' | 'calm' | 'longing' | 'mixed' | 'quiet';
 

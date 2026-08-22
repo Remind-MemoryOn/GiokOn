@@ -52,7 +52,12 @@ const browser = await chromium.launch(executablePath ? { executablePath } : {});
 for (const s of SCREENS) {
   if (ONLY.length && !ONLY.includes(s.node)) continue;
   const page = await browser.newPage({
-    viewport: { width: 1440, height: s.height ?? 1024 },
+    // 모달 프레임은 뷰포트보다 크면 스크롤 컨테이너 안에서 잘려 캡처된다 →
+    // 카드가 통째로 들어가도록 넉넉히 잡고, 잘라내기는 origin 박스로 한다.
+    viewport: {
+      width: 1440,
+      height: s.origin ? Math.max(s.height ?? 0, 1600) : (s.height ?? 1024),
+    },
     deviceScaleFactor: 4,
   });
   await page.goto(BASE + s.route, { waitUntil: 'networkidle', timeout: 20000 });

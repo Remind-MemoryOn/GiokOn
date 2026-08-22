@@ -483,6 +483,37 @@ const SCREENS = [
     /topic: KEY_MEMORY_TOPIC/,
   ]],
 
+  // ── 세션 목록 178:877 ──────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 카드 1054 @(322,315) · 행 881×140 피치 180 · shadow-card', [
+    /const CARD_TOP = 315;/, /const ROW_TOP = 381;/, /const ROW_H = 140;/, /const ROW_PITCH = 180;/,
+    /left-\[322px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /left-\[409px\] w-\[881px\] rounded-\[10px\] bg-white shadow-card/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 상대일+상태를 한 줄로(배지가 긴 라벨을 덮지 않게) · 시계 22 · chevron 12.18', [
+    /flex h-\[28px\] items-center gap-\[10px\]/,
+    /iconClockSm/, /width=\{22\}/,
+    /width: 12\.18, height: 18\.73/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 소요 시간·상태는 근거가 있을 때만 · planned 는 설계됨', [
+    /function durationLabel[\s\S]{0,220}?return null;/,
+    /s\.status === 'planned' \? '설계됨' : '종료'/,
+  ]],
+
+  // ── 회상 세션 설계 196:272 (모달) ──────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 제목 879×57 @(87,139.15) · 목표 @(87,252.27) · 소요 142×57 · 기록일 219×57 @(263,368.4)', [
+    /left-\[87px\] h-\[57\.06px\] w-\[879px\]/,
+    /h-\[57\.06px\] w-\[142px\]/, /h-\[57\.06px\] w-\[219px\]/,
+    /top: 139\.15/, /top: 252\.27/, /top: 368\.4/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 카운터 오른끝 935 · 제목50/목표200/내용500 · 소요 시간 선택지', [
+    /const COUNTER_RIGHT = 1054 - 935;/,
+    /const TITLE_MAX = 50;/, /const GOAL_MAX = 200;/, /const CONTENT_MAX = 500;/,
+    /const DURATIONS = \[10, 15, 20, 30, 40\];/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 저장하면 planned 세션이 된다(앱이 받는다)', [
+    /status: 'planned'/, /avoid_topics:/, /planned_date:/, /duration_minutes:/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

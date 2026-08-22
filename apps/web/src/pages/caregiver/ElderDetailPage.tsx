@@ -261,7 +261,12 @@ export function ElderDetailPage() {
         className="absolute left-[322px] flex items-center gap-[9px] text-[20px] font-semibold leading-[24px] text-ink-700"
         style={{ top: Y(194.11) }}
       >
-        <img src={asset.iconChevronRight} alt="" width={12} height={19} className="block rotate-180" />
+        <img
+          src={asset.iconChevronRightSm}
+          alt=""
+          className="block rotate-180"
+          style={{ width: 12.18, height: 18.73 }}
+        />
         목록으로
       </Link>
       <h1
@@ -556,7 +561,7 @@ export function ElderDetailPage() {
         대화 기록은 여기서 확인해주세요.
       </Sub>
       <CardAction fx="195:307" to={`/caregiver/sessions/${elder.id}`} left={1023} top={1590} label="자세히 보기" />
-      <CardAction fx="195:295" to={`/caregiver/sessions/${elder.id}`} left={1178} top={1590} label="세션 설계" plus />
+      <CardAction fx="195:295" to={`/caregiver/sessions/${elder.id}/new`} left={1178} top={1590} label="세션 설계" plus />
       <div
         data-fx="195:300"
         className="absolute left-[384px] h-px w-[930px] bg-line"

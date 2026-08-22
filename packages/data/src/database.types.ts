@@ -195,6 +195,13 @@ export type Database = {
           turn_count: number
           duration_seconds: number | null
           current_topic: string | null
+          title: string | null
+          goal: string | null
+          content: string | null
+          avoid_topics: string | null
+          keywords: string[]
+          duration_minutes: number | null
+          planned_date: string | null
           started_at: string
           ended_at: string | null
           updated_at: string
@@ -208,6 +215,13 @@ export type Database = {
           turn_count?: number
           duration_seconds?: number | null
           current_topic?: string | null
+          title?: string | null
+          goal?: string | null
+          content?: string | null
+          avoid_topics?: string | null
+          keywords?: string[]
+          duration_minutes?: number | null
+          planned_date?: string | null
           started_at?: string
           ended_at?: string | null
           updated_at?: string
@@ -221,6 +235,13 @@ export type Database = {
           turn_count?: number
           duration_seconds?: number | null
           current_topic?: string | null
+          title?: string | null
+          goal?: string | null
+          content?: string | null
+          avoid_topics?: string | null
+          keywords?: string[]
+          duration_minutes?: number | null
+          planned_date?: string | null
           started_at?: string
           ended_at?: string | null
           updated_at?: string
@@ -754,7 +775,7 @@ export type Database = {
     }
     Enums: {
       chronicle_source: 'caregiver' | 'ai'
-      session_status: 'active' | 'ended'
+      session_status: 'planned' | 'active' | 'ended'
       session_log_role: 'ai' | 'user'
       elder_gender: 'female' | 'male'
       org_role: 'org_admin' | 'caregiver' | 'guardian'

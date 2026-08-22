@@ -59,6 +59,13 @@ const session = (id: string, profileId: string, minutes: number, status: string,
   duration_seconds: minutes * 60,
   turn_count: 12,
   current_topic: null,
+  title: null,
+  goal: null,
+  content: null,
+  avoid_topics: null,
+  keywords: [],
+  duration_minutes: null,
+  planned_date: null,
 });
 const now = Date.now();
 const iso = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString();
@@ -133,6 +140,19 @@ function seedChronicleList(q: typeof queryClient) {
   ]);
 }
 
+/**
+ * 세션 목록(178:877) 감사용 — 이 프레임의 시안은 3건(종료·종료·진행 중)을 그린다.
+ * 어르신 상세(161:373)와 데이터가 달라 화면별로 자기 시안과 같은 값을 심는다.
+ */
+function seedSessionList(q: typeof queryClient) {
+  if (!/\/caregiver\/sessions\//.test(window.location.pathname)) return;
+  q.setQueryData(queryKeys.sessions(E1), [
+    { ...session('s1', E1, 14, 'ended', '2026-07-30T03:00:00Z'), title: '어린 시절 집 이야기' },
+    { ...session('s2', E1, 12, 'ended', '2026-07-19T03:00:00Z'), title: '어머니와 함께했던 기억' },
+    { ...session('s3', E1, 9, 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
+  ]);
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -168,6 +188,7 @@ function seed() {
   ]);
   seedElderDetail(q);
   seedChronicleList(q);
+  seedSessionList(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

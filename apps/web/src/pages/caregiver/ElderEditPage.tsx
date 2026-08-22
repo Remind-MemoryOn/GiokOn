@@ -218,7 +218,12 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
         className="absolute flex items-center gap-[9px] text-[20px] font-semibold leading-[24px] text-ink-700"
         style={{ left: 1285, top: Y(197.13) }}
       >
-        <img src={asset.iconChevronRight} alt="" width={12} height={19} className="block rotate-180" />
+        <img
+          src={asset.iconChevronRightSm}
+          alt=""
+          className="block rotate-180"
+          style={{ width: 12.18, height: 18.73 }}
+        />
         돌아가기
       </Link>
 
