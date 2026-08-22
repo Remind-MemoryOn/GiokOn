@@ -153,6 +153,44 @@ function seedSessionList(q: typeof queryClient) {
   ]);
 }
 
+/**
+ * 대화 기록(178:1052) 감사용 — 시안의 첫 네 턴을 그대로 심는다(2026-06-24 오전).
+ */
+function seedConversation(q: typeof queryClient) {
+  const m = /\/caregiver\/sessions\/[^/]+\/([^/]+)$/.exec(window.location.pathname);
+  if (!m || m[1] === 'new') return;
+  const id = m[1];
+  q.setQueryData(queryKeys.session(id), {
+    ...session(id, E1, 14, 'ended', '2026-06-24T01:17:00Z'),
+    title: '어린 시절 집 이야기',
+  });
+  const turn = (n: number, role: 'ai' | 'elder', content: string, hh: number, mm: number) => ({
+    id: `l${n}`,
+    session_id: id,
+    profile_id: E1,
+    user_id: USER.id,
+    org_id: ORG.id,
+    turn_index: n,
+    role,
+    content,
+    original_content: null,
+    topic: null,
+    switch_topic: null,
+    audio_url: null,
+    audio_expires_at: null,
+    duration_ms: null,
+    spoken_at: new Date(2026, 5, 24, hh, mm).toISOString(),
+    created_at: new Date(2026, 5, 24, hh, mm).toISOString(),
+    updated_at: new Date(2026, 5, 24, hh, mm).toISOString(),
+  });
+  q.setQueryData(queryKeys.sessionLogs(id), [
+    turn(1, 'ai', '어르신이 살던 집은 어떤 곳이었는지 기억나시나요?', 10, 17),
+    turn(2, 'elder', '마당이 있는 한옥이었는데, 마당에 큰 감나무가 하나 있었어. 가을이면 감이 아주 많이 열렸지.', 10, 18),
+    turn(3, 'ai', '그 감나무는 누가 심으셨나요?', 10, 19),
+    turn(4, 'elder', '아버지가 심으셨어. 풍년이 들고 가족이 건강하길 바라는 마음이었지.', 10, 21),
+  ]);
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -167,6 +205,12 @@ function seed() {
     aiTotal: 1,
     byProfile: { e1: 2, e2: 0, e3: 0 },
   });
+  // 세션 기록(178:787)의 "최근 대화" 는 fetchAll 키를 읽는다 — 시안과 같은 간격으로 심는다.
+  q.setQueryData([...queryKeys.recentSessions, 'all'], [
+    session('s1', 'e1', 14, 'ended', iso(0)),
+    session('s2', 'e2', 12, 'ended', iso(3)),
+    session('s3', 'e3', 9, 'ended', iso(20)),
+  ]);
   q.setQueryData([...queryKeys.recentSessions, 5], [
     session('s1', 'e1', 14, 'ended', iso(0)),
     session('s2', 'e2', 12, 'ended', iso(2)),
@@ -189,6 +233,7 @@ function seed() {
   seedElderDetail(q);
   seedChronicleList(q);
   seedSessionList(q);
+  seedConversation(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

@@ -14,6 +14,7 @@ import iconCloseSm from './icon-close-sm.png';
 import iconPhotoUpload from './icon-photo-upload.png';
 import iconClockSm from './icon-clock-sm.png';
 import iconChevronRightSm from './icon-chevron-right-sm.png';
+import avatarAi from './avatar-ai.png';
 import iconBell from './icon-bell.png';
 import iconChevronDown from './icon-chevron-down.png';
 import iconChevronRight from './icon-chevron-right.png';
@@ -86,6 +87,7 @@ export const asset = {
   iconPhotoUpload,
   iconClockSm,
   iconChevronRightSm,
+  avatarAi,
   iconBell,
   iconChevronDown,
   iconChevronRight,

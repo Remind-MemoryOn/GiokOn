@@ -16,8 +16,10 @@ import { ElderEditPage } from './pages/caregiver/ElderEditPage';
 import { ElderChroniclesPage } from './pages/caregiver/ElderChroniclesPage';
 import { ChronicleDialog } from './pages/caregiver/ChronicleDialog';
 import { ElderRegisterDialog } from './pages/caregiver/ElderRegisterDialog';
+import { SessionsPage } from './pages/caregiver/SessionsPage';
 import { SessionListPage } from './pages/caregiver/SessionListPage';
 import { SessionPlanDialog } from './pages/caregiver/SessionPlanDialog';
+import { ConversationLogPage } from './pages/caregiver/ConversationLogPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -81,13 +83,13 @@ function App() {
             <Route path="new" element={<ChronicleDialog mode="add" />} />
             <Route path=":chronicleId" element={<ChronicleDialog mode="edit" />} />
           </Route>
-          <Route path="sessions" element={<Pending title="세션 기록" node="178:787" />} />
+          <Route path="sessions" element={<SessionsPage />} />
           <Route path="sessions/:elderId" element={<SessionListPage />}>
             {/* 회상 세션 설계도 목록 위에 뜨는 모달이다(Figma 196:272) */}
             <Route path="new" element={<SessionPlanDialog />} />
             <Route path="plan/:sessionId" element={<SessionPlanDialog />} />
           </Route>
-          <Route path="sessions/:elderId/:sessionId" element={<Pending title="대화 기록" node="178:1052" />} />
+          <Route path="sessions/:elderId/:sessionId" element={<ConversationLogPage />} />
           <Route path="analysis" element={<Pending title="분석" node="225:1669" />} />
           <Route path="analysis/:elderId" element={<Pending title="개인별 분석" node="228:3722" />} />
           <Route path="analysis/:elderId/overall" element={<Pending title="종합 분석" node="228:4091" />} />

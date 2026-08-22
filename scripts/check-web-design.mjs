@@ -317,7 +317,7 @@ const SCREENS = [
     /flex min-w-0 flex-1 flex-col pb-\[88px\]/,
   ]],
   [`${WEB}/src/components/Layout.tsx`, '페이지 헤더: 설명 -3(제목 라인박스와 겹침) · 액션 @188 gap24', [
-    /-mt-\[3px\] max-w-\[640px\]/, /gap-\[24px\] pt-\[19px\]/,
+    /-mt-\[3px\] text-w-body leading-\[30px\]/, /gap-\[24px\] pt-\[19px\]/,
   ]],
   [`${WEB}/src/components/ui/Badge.tsx`, '배지 폭: 기본 px16 · 큰 배지 px18 · 상태 배지 고정 82', [
     /h-\[32px\] px-\[18px\]/, /h-\[25px\] px-\[16px\]/, /fixed && 'w-\[82px\] px-0'/,
@@ -512,6 +512,32 @@ const SCREENS = [
   ]],
   [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 저장하면 planned 세션이 된다(앱이 받는다)', [
     /status: 'planned'/, /avoid_topics:/, /planned_date:/, /duration_minutes:/,
+  ]],
+
+  // ── 세션 기록 178:787 ──────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 설명 한 줄 w723 · 검색 335×57 border #cccdce · 카드 329×146 3열 gap 33', [
+    /descMax=\{723\}/,
+    /rounded-\[10px\] border border-line-mid bg-white pl-\[47px\]/,
+    /h-\[146px\] w-\[329px\]/, /rounded-\[10px\] bg-white shadow-card/,
+    /gap-\[33px\]/, /px=\{101\}/, /ml-\[18px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 최근 대화는 세션에서 계산 · 없으면 만들지 않는다', [
+    /useRecentSessions\(\{ enabled: isConfigured, fetchAll: true \}\)/,
+    /최근 대화  없음/,
+  ]],
+
+  // ── 대화 기록 178:1052 ─────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ConversationLogPage.tsx`, '대화 기록: 카드 1054 @(322,315) · 첫 말풍선 135 · 간격 57 · 좌우 여백 80', [
+    /const CARD_TOP = 315;/, /const FIRST_TURN = 135;/, /const TURN_GAP = 57;/, /const SIDE = 80;/,
+    /ml-\[322px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ConversationLogPage.tsx`, '대화 기록: 말풍선 r15(꼬리 각짐) shadow-bubble · AI 흰색 / 어르신 accent 흰글자', [
+    /rounded-\[15px\] rounded-tl-none bg-white[^"]*shadow-bubble/,
+    /rounded-\[15px\] rounded-tr-none bg-accent[^"]*text-white shadow-bubble/,
+    /const BUBBLE_MAX = 454;/, /const AVATAR = 52;/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ConversationLogPage.tsx`, '대화 기록: 재생바는 녹음 없음(음성 저장 미구현 — 값을 만들지 않는다)', [
+    /녹음 없음/, /h-\[57px\] w-\[369px\][^"]*rounded-\[10px\] border border-line-mid/,
   ]],
 
   // ── 프리미티브 ─────────────────────────────────────────────────────────

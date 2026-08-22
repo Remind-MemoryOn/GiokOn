@@ -65,11 +65,14 @@ export function PageHeader({
   description,
   actions,
   tone = 'ink',
+  descMax = 640,
 }: {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
   tone?: 'accent' | 'ink';
+  /** 설명 줄바꿈 폭(px) — Figma 가 한 줄로 그린 화면은 실측 폭을 준다(기본 640). */
+  descMax?: number;
 }) {
   return (
     <header className="flex items-start justify-between gap-8 pt-[47px]">
@@ -86,7 +89,8 @@ export function PageHeader({
         {description ? (
           <div
             data-fx="page-desc"
-            className="-mt-[3px] max-w-[640px] text-w-body leading-[30px] text-ink-700"
+            className="-mt-[3px] text-w-body leading-[30px] text-ink-700"
+            style={{ maxWidth: descMax }}
           >
             {description}
           </div>

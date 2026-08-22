@@ -28,6 +28,7 @@ ORG = "요양보호사 페이지_기관 관리.png"
 SETTINGS = "요양보호사 페이지_설정.png"
 CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
 SESSION_LIST = "요양보호사 페이지_세션 목록.png"
+CHAT = "요양보호사 페이지_대화 기록.png"
 # 모달 프레임 export 는 카드만 담고 있어 좌표가 **프레임 로컬**이다.
 CHRON_MODAL = "연대기 상세 정보.png"
 # ⚠️ 부품 export 는 아직 @1x 다 — 같은 파일명으로 @4x 를 덮어써 주면 그대로 선명해진다.
@@ -69,6 +70,8 @@ CROPS = [
     # 행 링크·"돌아가기" 의 chevron(12.18×18.73). 대시보드 리스트용(15×21)과 비율이 달라
     # 따로 자른다. ⚠️ 회전 노드라 metadata 좌표(1226.99)가 아니라 렌더 위치(1214.81)에서 자른다.
     ("icon-chevron-right-sm",SESSION_LIST, 1214.81, 440.28, 1226.99, 459.01),
+    # ── 대화 기록(178:1052) ── AI 말풍선 옆 봇 아바타
+    ("avatar-ai",            CHAT, 402.0, 450.0, 454.0, 502.0),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),
@@ -180,7 +183,7 @@ def circle_mask(im: Image.Image) -> Image.Image:
 
 # 원형으로 잘라낼 에셋(원 바깥 투명) — 나머지는 배경색 알파 추출
 # 카메라 버튼은 어두운 사진 오버레이 위의 원형 버튼이라 알파 추출로는 사각 잔상이 남는다.
-CIRCLE = {"stat-elders", "stat-sessions", "stat-chronicles", "stat-ai", "avatar-default", "icon-camera"}
+CIRCLE = {"stat-elders", "stat-sessions", "stat-chronicles", "stat-ai", "avatar-default", "icon-camera", "avatar-ai"}
 # 좌우 대칭 복원이 필요한 에셋(가림 제거)
 MIRROR = {"icon-bell"}
 # 다색 에셋 — 단색 알파 추출을 하면 색이 뭉개진다. 흰 배경 그대로 둔다

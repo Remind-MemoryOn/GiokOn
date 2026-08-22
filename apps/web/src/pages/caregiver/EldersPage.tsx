@@ -117,7 +117,7 @@ export function EldersPage() {
           placeholder="이름을 검색하세요"
           aria-label="어르신 이름 검색"
           data-fx="161:230"
-          className="h-full w-full rounded-[10px] border border-line bg-white pl-[47px] pr-4 text-w-sub text-ink-700 placeholder:text-ink-500 focus:border-accent focus:outline-none"
+          className="h-full w-full rounded-[10px] border border-line-mid bg-white pl-[47px] pr-4 text-w-sub text-ink-700 placeholder:text-ink-500 focus:border-accent focus:outline-none"
         />
       </div>
 

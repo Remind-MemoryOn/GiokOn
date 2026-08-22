@@ -152,9 +152,13 @@ for (const screen of SCREENS) {
       if (p.color && g.color.replace(/\s/g, '') !== p.color.replace(/\s/g, ''))
         bad.push(`color ${g.color} ≠ ${p.color}`);
     } else {
-      cmp('x', g.left, f.x);
+      // 오른쪽 정렬 박스(반전된 말풍선 등)는 폭이 내용에 따라 달라진다 → 오른끝만 본다.
+      if (p.right) cmp('오른끝x', g.left + g.width, f.x + f.w);
+      else {
+        cmp('x', g.left, f.x);
+        cmp('w', g.width, f.w);
+      }
       cmp('y', g.top, f.y);
-      cmp('w', g.width, f.w);
       cmp('h', g.height, f.h);
       if (p.radius != null) cmp('r', g.radius, p.radius, 0.6);
       if (p.background && g.background.replace(/\s/g, '') !== p.background.replace(/\s/g, ''))

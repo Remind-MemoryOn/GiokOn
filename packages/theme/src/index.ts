@@ -90,6 +90,8 @@ export const webPalette = {
     DEFAULT: '#d9d9d9',
     strong: '#707070',
     soft: '#e3e3e3',
+    // 검색 상자·재생바 테두리(`161:230`·`178:810`·`189:1578` 실측) — 카드보다 한 톤 진하다
+    mid: '#cccdce',
   },
   // 상태색 — 각 10% 틴트를 배경으로 쓴다(뱃지·배너).
   alert: { DEFAULT: '#ff0004', soft: '#ff000408', line: '#ff000480' },
@@ -123,6 +125,8 @@ export const webTokens = {
     topBar: '1px 1px 10px 0px rgba(108,101,101,0.13)',
     card: '1px 1px 8px 0px rgba(106,106,106,0.25)',
     chip: '1px 1px 10px 0px rgba(0,0,0,0.05)',
+    /** 대화 기록 말풍선(`187:1276` 실측) — 카드보다 진하고 중립색이다. */
+    bubble: '1px 1px 8px 0px rgba(0,0,0,0.15)',
   },
   /** [fontSize, lineHeight] px — Figma 실측 그대로. */
   fontSize: {
