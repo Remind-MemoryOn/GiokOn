@@ -239,7 +239,7 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
       {/* 사진 — 업로드는 Storage 배선(Phase 2)까지 보기 전용 */}
       <div
         data-fx="194:131"
-        className="absolute left-[409px] h-[193px] w-[187px] overflow-hidden rounded-[14px] border border-[#e3e3e3] bg-mute-pale"
+        className="absolute left-[409px] h-[193px] w-[187px] overflow-hidden rounded-[14px] border border-line-soft bg-mute-pale"
         style={{ top: Y(401) }}
       >
         {photo ? (

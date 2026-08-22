@@ -36,6 +36,7 @@ PNG = {
     '178:486': '요양보호사 페이지_어르신 관리 기본정보수정.png',
     '198:506': '요양보호사 페이지_어르신 관리 연대기목록.png',
     '198:991': '연대기 상세 정보.png',
+    '172:330': 'components/Frame 19.png',
 }
 
 
@@ -85,7 +86,13 @@ def main():
         if not os.path.exists(shot_path):
             fails.append((screen['name'], screen['node'], '(렌더 없음)', shot_path))
             continue
-        fig = np.asarray(Image.open(fig_path).convert('RGB'))
+        fig_img = Image.open(fig_path).convert('RGB')
+        # 화면 export 는 @4x 지만 모달·부품 export 는 @1x 로 나온 것들이 있다.
+        # 구현 렌더는 항상 @4x 라 배율을 맞춰 준다(위치 비교라 확대 보간은 무해).
+        frame_w = screen.get('width', 1440)
+        if abs(fig_img.width / frame_w - S) > 0.01:
+            fig_img = fig_img.resize((round(frame_w * S), round(fig_img.height * frame_w * S / fig_img.width)), Image.LANCZOS)
+        fig = np.asarray(fig_img)
         imp = np.asarray(Image.open(shot_path).convert('RGB'))
         for p in screen['probes']:
             if p['kind'] != 'text' or p.get('skipInk') or p.get('pending'):

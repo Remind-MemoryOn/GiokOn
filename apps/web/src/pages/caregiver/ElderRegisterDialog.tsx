@@ -1,0 +1,383 @@
+// 어르신 등록 (Figma 172:330 — 카드 1054×886, 어르신 관리 위에 뜨는 모달)
+//   제목 Bold 25/70 @(87,27) · 사진 업로드 187×193 r14 @(87,106) — 글리프 35 @(161,170) ·
+//   2열 폼(좌 입력 88 · 우 입력 551, 라벨은 +1) 입력 416×57 · 주요 기억 880×57 @(88,691) ·
+//   취소/저장 140×57 @(656|826, 776)
+//
+// ⚠️ Figma 가 같은 폼의 x 를 87~90(좌)·550~553(우)로 흘려 놨다 → **입력 88/551 · 라벨
+//    89/552**(라벨이 1px 안쪽)로 통일한다. 실측 평균이라 어느 항목도 1px 을 넘지 않는다.
+// ⚠️ 등록 폼에는 **특이사항이 없다**(수정 폼에만 있다) — 디자인 그대로 둔다.
+// ⚠️ 사진은 프로필 행을 만든 **뒤에** 올린다. Storage 정책이 경로의 profile_id 로
+//    `profiles` 를 조회하기 때문이다(행이 없으면 업로드가 거부된다).
+import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useCreateProfile, useCurrentUser, useUpdateProfile } from '@giokon/data';
+import { KEY_MEMORY_TOPIC, birthSlashLabel, isBirthDate } from '@giokon/core';
+import { useCreateChronicle } from '@giokon/data';
+import { asset } from '../../assets/ui';
+import { useAuth } from '../../auth/AuthProvider';
+import { useStore } from '../../store/store';
+import { uploadElderPhoto } from '../../lib/elderPhotos';
+
+const COL = { inputL: 88, labelL: 89, inputR: 551, labelR: 552 };
+const VALUE = 'text-w-sub leading-[21px] text-ink-900';
+
+/** 라벨(Medium 20) + 필수 별표 — 별표는 Figma 실측 좌표 그대로 받는다. */
+function Label({
+  fx,
+  left,
+  top,
+  star,
+  htmlFor,
+  children,
+}: {
+  fx: string;
+  left: number;
+  top: number;
+  star?: { left: number; top: number };
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <label
+        data-fx={fx}
+        htmlFor={htmlFor}
+        className="absolute whitespace-nowrap text-w-body font-medium leading-[24px] text-ink-900"
+        style={{ left, top }}
+      >
+        {children}
+      </label>
+      {star ? (
+        <span
+          className="absolute text-[12px] font-medium leading-[30px] text-accent"
+          style={{ left: star.left, top: star.top }}
+          aria-hidden
+        >
+          ✱
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+function Field({
+  fx,
+  id,
+  left,
+  top,
+  width = 416,
+  value,
+  onChange,
+  placeholder,
+  trailingIcon,
+}: {
+  fx: string;
+  id: string;
+  left: number;
+  top: number;
+  width?: number;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  trailingIcon?: { fx: string; src: string; size: number; right: number };
+}) {
+  return (
+    <>
+      <input
+        data-fx={fx}
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`absolute h-[57px] rounded-[10px] border border-line bg-white focus:border-accent focus:outline-none ${VALUE} placeholder:text-ink-500`}
+        style={{
+          left,
+          top,
+          width,
+          paddingLeft: 29,
+          paddingRight: trailingIcon ? trailingIcon.right + trailingIcon.size + 8 : 29,
+        }}
+      />
+      {trailingIcon ? (
+        <img
+          data-fx={trailingIcon.fx}
+          src={trailingIcon.src}
+          alt=""
+          width={trailingIcon.size}
+          height={trailingIcon.size}
+          className="pointer-events-none absolute block"
+          style={{
+            left: left + width - trailingIcon.right - trailingIcon.size,
+            top: top + (57 - trailingIcon.size) / 2,
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function ElderRegisterDialog() {
+  const navigate = useNavigate();
+  const toast = useStore((s) => s.toast);
+  const { isConfigured } = useAuth();
+  const currentUser = useCurrentUser();
+  const create = useCreateProfile();
+  const update = useUpdateProfile();
+  const createChronicle = useCreateChronicle();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [form, setForm] = useState({
+    name: '',
+    birthDate: '',
+    hometown: '',
+    family: '',
+    job: '',
+    hobbies: '',
+    memory: '',
+  });
+  const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const close = () => navigate('/caregiver/elders');
+
+  async function save() {
+    if (!form.name.trim()) return toast('error', '이름을 입력해주세요.');
+    if (!isBirthDate(form.birthDate)) return toast('error', '생년월일을 선택해주세요.');
+    const userId = currentUser.data?.id;
+    if (!userId) return toast('error', '로그인 정보를 확인할 수 없어요.');
+    setSaving(true);
+    try {
+      const row = await create.mutateAsync({
+        user_id: userId,
+        name: form.name.trim(),
+        birth_date: form.birthDate,
+        birth_year: Number(form.birthDate.slice(0, 4)),
+        hometown: form.hometown.trim() || null,
+        family: form.family.trim() || null,
+        job: form.job.trim() || null,
+        hobbies: form.hobbies.trim() || null,
+      });
+      // 사진은 행이 생긴 뒤에만 올릴 수 있다. 실패해도 등록 자체는 살린다.
+      if (photo && isConfigured) {
+        try {
+          const path = await uploadElderPhoto(row.id, photo.file);
+          await update.mutateAsync({ id: row.id, patch: { photo_path: path } });
+        } catch (err) {
+          toast('error', `사진만 저장하지 못했어요: ${(err as Error).message}`);
+        }
+      }
+      const memory = form.memory.trim();
+      if (memory) {
+        await createChronicle.mutateAsync({
+          profile_id: row.id,
+          user_id: userId,
+          topic: KEY_MEMORY_TOPIC,
+          content: memory,
+          source: 'caregiver',
+          keywords: [],
+        });
+      }
+      toast('success', `${row.name} 어르신을 등록했어요.`);
+      navigate(`/caregiver/elders/${row.id}`);
+    } catch (err) {
+      toast('error', (err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/30 py-[40px]"
+      role="presentation"
+      onClick={(e) => e.target === e.currentTarget && close()}
+    >
+      <div
+        data-fx="172:142"
+        role="dialog"
+        aria-modal="true"
+        aria-label="어르신 등록"
+        className="relative h-[886px] w-[1054px] shrink-0 rounded-[10px] bg-white shadow-card"
+      >
+        <h2
+          data-fx="172:143"
+          className="absolute left-[87px] top-[27px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900"
+        >
+          어르신 등록
+        </h2>
+
+        {/* 사진 업로드 */}
+        <button
+          type="button"
+          data-fx="172:224"
+          onClick={() => fileRef.current?.click()}
+          className="absolute left-[88px] top-[106px] h-[193px] w-[187px] overflow-hidden rounded-[14px] border border-line-soft bg-mute-pale"
+        >
+          {photo ? (
+            <img src={photo.url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <>
+              <img
+                data-fx="172:225"
+                src={asset.iconPhotoUpload}
+                alt=""
+                width={35}
+                height={35}
+                className="absolute left-[73px] top-[64px] block"
+              />
+              <span
+                data-fx="172:228"
+                className="absolute left-[54px] top-[103px] whitespace-nowrap text-[16px] leading-[30px] text-ink-700"
+              >
+                사진 업로드
+              </span>
+            </>
+          )}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          aria-label="어르신 사진 선택"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) setPhoto({ file, url: URL.createObjectURL(file) });
+          }}
+        />
+
+        {/* 좌열 */}
+        <Label fx="172:127" left={COL.labelL} top={322} star={{ left: 123, top: 313 }} htmlFor="r-name">
+          이름
+        </Label>
+        <Field
+          fx="172:128"
+          id="r-name"
+          left={COL.inputL}
+          top={357}
+          value={form.name}
+          onChange={set('name')}
+          placeholder="이름을 입력해주세요"
+        />
+
+        <Label fx="172:132" left={COL.labelL} top={437} star={{ left: 159, top: 430 }} htmlFor="r-birth">
+          생년월일
+        </Label>
+        <div
+          data-fx="172:133"
+          className="absolute h-[57px] w-[416px] rounded-[10px] border border-line bg-white focus-within:border-accent"
+          style={{ left: COL.inputL, top: 472 }}
+        >
+          <span
+            data-fx="172:134"
+            className={`pointer-events-none absolute left-[29px] top-1/2 -translate-y-1/2 whitespace-nowrap ${form.birthDate ? VALUE : 'text-w-sub leading-[21px] text-ink-500'}`}
+          >
+            {form.birthDate ? birthSlashLabel(form.birthDate) : '생년월일을 선택해 주세요'}
+          </span>
+          <img
+            data-fx="314:559"
+            src={asset.iconCalendarSm}
+            alt=""
+            width={22}
+            height={22}
+            className="pointer-events-none absolute right-[28px] top-1/2 -translate-y-1/2 block"
+          />
+          <input
+            id="r-birth"
+            type="date"
+            aria-label="생년월일"
+            value={form.birthDate}
+            onChange={(e) => set('birthDate')(e.target.value)}
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </div>
+
+        <Label fx="172:137" left={COL.labelL} top={547} htmlFor="r-hometown">
+          출신지
+        </Label>
+        <Field
+          fx="172:138"
+          id="r-hometown"
+          left={COL.inputL}
+          top={581}
+          value={form.hometown}
+          onChange={set('hometown')}
+          placeholder="출신 지역 검색하기"
+          trailingIcon={{ fx: '172:234', src: asset.iconSearchField, size: 25, right: 27 }}
+        />
+
+        {/* 우열 */}
+        <Label fx="172:253" left={COL.labelR} top={322} htmlFor="r-family">
+          가족 구성
+        </Label>
+        <Field
+          fx="172:254"
+          id="r-family"
+          left={COL.inputR}
+          top={357}
+          value={form.family}
+          onChange={set('family')}
+          placeholder="가족 구성을 입력해 주세요"
+        />
+        <Label fx="172:257" left={COL.labelR} top={437} htmlFor="r-job">
+          직업 이력
+        </Label>
+        <Field
+          fx="172:258"
+          id="r-job"
+          left={COL.inputR}
+          top={472}
+          value={form.job}
+          onChange={set('job')}
+          placeholder="직업 이력을 입력해 주세요"
+        />
+        <Label fx="172:261" left={COL.labelR} top={547} htmlFor="r-hobbies">
+          취미
+        </Label>
+        <Field
+          fx="172:262"
+          id="r-hobbies"
+          left={COL.inputR}
+          top={581}
+          value={form.hobbies}
+          onChange={set('hobbies')}
+          placeholder="취미를 입력해 주세요"
+        />
+
+        {/* 주요 기억 — 등록 시 한 건. 나머지는 기본 정보 수정에서 추가한다. */}
+        <Label fx="172:269" left={COL.labelL} top={657} htmlFor="r-memory">
+          주요 기억
+        </Label>
+        <Field
+          fx="172:270"
+          id="r-memory"
+          left={COL.inputL}
+          top={691}
+          width={880}
+          value={form.memory}
+          onChange={set('memory')}
+          placeholder="주요 기억을 입력해 주세요"
+        />
+
+        <button
+          type="button"
+          data-fx="172:274"
+          onClick={close}
+          className="absolute left-[656px] top-[776px] h-[57px] w-[140px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          data-fx="172:280"
+          onClick={save}
+          disabled={saving}
+          className="absolute left-[826px] top-[776px] h-[57px] w-[140px] rounded-[10px] border border-accent bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-50"
+        >
+          {saving ? '저장 중...' : '저장'}
+        </button>
+      </div>
+    </div>
+  );
+}

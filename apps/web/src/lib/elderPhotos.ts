@@ -28,3 +28,19 @@ export function useElderPhotoUrls(paths: (string | undefined)[], enabled: boolea
     },
   });
 }
+
+/**
+ * 고른 파일을 private 버킷에 올리고 `profiles.photo_path` 에 넣을 경로를 돌려준다.
+ *
+ * ⚠️ Storage 정책이 경로의 profile_id 로 `profiles` 를 조회하므로 **행이 먼저 있어야**
+ * 올라간다(등록은 프로필 insert → 업로드 → photo_path 갱신 순서).
+ */
+export async function uploadElderPhoto(profileId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${profileId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  const { error } = await getGiokonClient()
+    .storage.from(BUCKET)
+    .upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false });
+  if (error) throw new Error(error.message);
+  return path;
+}

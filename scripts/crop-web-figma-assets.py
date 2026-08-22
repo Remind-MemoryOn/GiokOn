@@ -29,6 +29,8 @@ SETTINGS = "요양보호사 페이지_설정.png"
 CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
 # 모달 프레임 export 는 카드만 담고 있어 좌표가 **프레임 로컬**이다.
 CHRON_MODAL = "연대기 상세 정보.png"
+# ⚠️ 부품 export 는 아직 @1x 다 — 같은 파일명으로 @4x 를 덮어써 주면 그대로 선명해진다.
+REGISTER = "components/Frame 19.png"
 LOGIN = "회원가입 페이지1.png"
 LANDING = "서비스 소개 페이지.png"
 SIGNUP = "회원가입 페이지2.png"
@@ -59,6 +61,8 @@ CROPS = [
     # ── 연대기 추가/상세 모달(196:271·198:991) ──
     ("icon-chevron-down-md", CHRON_MODAL, 214.13, 162.0, 233.42, 175.02),
     ("icon-close-sm",        CHRON_MODAL, 176.0,  660.0, 187.0,  671.0),
+    # ── 어르신 등록 모달(172:330) ──
+    ("icon-photo-upload",    REGISTER, 161.0, 170.0, 196.0, 205.0),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),
@@ -244,7 +248,7 @@ def bars_alpha(crop: Image.Image, full: Image.Image, bg_x: int, y0: int) -> Imag
 
 
 # 모달 프레임 export 는 화면(1440)이 아니라 카드 폭이다 — 배율 계산의 기준을 바꾼다.
-FRAME_WIDTH = {CHRON_MODAL: 1054.0}
+FRAME_WIDTH = {CHRON_MODAL: 1054.0, REGISTER: 1054.0}
 
 
 def main() -> None:

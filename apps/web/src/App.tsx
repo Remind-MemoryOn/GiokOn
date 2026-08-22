@@ -15,6 +15,7 @@ import { ElderDetailPage } from './pages/caregiver/ElderDetailPage';
 import { ElderEditPage } from './pages/caregiver/ElderEditPage';
 import { ElderChroniclesPage } from './pages/caregiver/ElderChroniclesPage';
 import { ChronicleDialog } from './pages/caregiver/ChronicleDialog';
+import { ElderRegisterDialog } from './pages/caregiver/ElderRegisterDialog';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -67,8 +68,10 @@ function App() {
           }
         >
           <Route index element={<DashboardPage />} />
-          <Route path="elders" element={<EldersPage />} />
-          <Route path="elders/new" element={<Pending title="새 어르신 등록" node="172:330" />} />
+          <Route path="elders" element={<EldersPage />}>
+            {/* 어르신 등록도 목록 위에 뜨는 모달이다(Figma 172:330) */}
+            <Route path="new" element={<ElderRegisterDialog />} />
+          </Route>
           <Route path="elders/:elderId" element={<ElderDetailPage />} />
           <Route path="elders/:elderId/edit" element={<ElderEditPage />} />
           {/* 연대기 추가·상세는 목록 위에 뜨는 **모달**이다(Figma 196:271 · 198:991) */}

@@ -6,7 +6,7 @@
 //   합류 승인 대기 배너 1054×56 r10 accent 10% — Figma 는 화면 하단(881)에 붙여 놨다
 //   (카드 끝 541 과 340px 떨어져 있다) → 본문 세로 flex 의 mt-auto 로 하단 고정
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import {
   toElderProfile,
   useClaimElderByCode,
@@ -217,6 +217,9 @@ export function EldersPage() {
           />
         </Field>
       </Dialog>
+
+      {/* 어르신 등록 모달(172:330) — 이 목록 위에 뜬다 */}
+      <Outlet />
     </>
   );
 }

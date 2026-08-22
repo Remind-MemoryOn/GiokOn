@@ -467,6 +467,22 @@ const SCREENS = [
     /CHRONICLE_TOPICS/,
   ]],
 
+  // ── 어르신 등록 172:330 (모달) ─────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ElderRegisterDialog.tsx`, '어르신 등록: 카드 1054×886 · 사진 업로드 187×193 r14 · 2열(입력 88/551 · 라벨 +1)', [
+    /h-\[886px\] w-\[1054px\][^"]*rounded-\[10px\] bg-white shadow-card/,
+    /h-\[193px\] w-\[187px\] overflow-hidden rounded-\[14px\] border border-line-soft bg-mute-pale/,
+    /const COL = \{ inputL: 88, labelL: 89, inputR: 551, labelR: 552 \};/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderRegisterDialog.tsx`, '어르신 등록: 주요 기억 880×57 · 취소/저장 140×57 @776 · 등록 폼에 특이사항 없음', [
+    /width=\{880\}/,
+    /left-\[656px\] top-\[776px\] h-\[57px\] w-\[140px\]/,
+    /left-\[826px\] top-\[776px\] h-\[57px\] w-\[140px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderRegisterDialog.tsx`, '어르신 등록: 사진은 행을 만든 뒤에 올린다(Storage 정책) · 주요 기억은 연대기로', [
+    /uploadElderPhoto\(row\.id, photo\.file\)/,
+    /topic: KEY_MEMORY_TOPIC/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

@@ -65,6 +65,7 @@ const CASES = [
   // 미인증 가드: 보호 영역은 /login 으로(데모 모드=미설정→미인증)
   ['/caregiver', '계정으로 로그인해 주세요.', '요양보호사 영역 가드'],
   ['/caregiver/elders', '계정으로 로그인해 주세요.', '어르신 관리 가드'],
+  ['/caregiver/elders/new', '계정으로 로그인해 주세요.', '어르신 등록 모달 가드'],
   ['/caregiver/elders/demo', '계정으로 로그인해 주세요.', '어르신 상세 가드'],
   ['/caregiver/elders/demo/edit', '계정으로 로그인해 주세요.', '어르신 기본 정보 수정 가드'],
   ['/caregiver/elders/demo/chronicles', '계정으로 로그인해 주세요.', '연대기 목록 가드'],

@@ -21,6 +21,7 @@ export default {
         line: {
           DEFAULT: '#d9d9d9',
           strong: '#707070',
+          soft: '#e3e3e3',
         },
         alert: { DEFAULT: '#ff0004', soft: '#ff000408', line: '#ff000480' },
         info: { DEFAULT: '#1cb2d0', soft: '#1cb2d01a' },
