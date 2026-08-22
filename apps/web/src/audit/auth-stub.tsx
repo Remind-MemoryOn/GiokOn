@@ -145,7 +145,9 @@ function seedChronicleList(q: typeof queryClient) {
  * 어르신 상세(161:373)와 데이터가 달라 화면별로 자기 시안과 같은 값을 심는다.
  */
 function seedSessionList(q: typeof queryClient) {
-  if (!/\/caregiver\/sessions\//.test(window.location.pathname)) return;
+  // 대화 분석 목록(228:4628)도 같은 3건을 그린다.
+  const p = window.location.pathname;
+  if (!/\/caregiver\/sessions\//.test(p) && !/\/caregiver\/analysis\/[^/]+\/sessions$/.test(p)) return;
   q.setQueryData(queryKeys.sessions(E1), [
     { ...session('s1', E1, 14, 'ended', '2026-07-30T03:00:00Z'), title: '어린 시절 집 이야기' },
     { ...session('s2', E1, 12, 'ended', '2026-07-19T03:00:00Z'), title: '어머니와 함께했던 기억' },
@@ -157,12 +159,42 @@ function seedSessionList(q: typeof queryClient) {
  * 대화 기록(178:1052) 감사용 — 시안의 첫 네 턴을 그대로 심는다(2026-06-24 오전).
  */
 function seedConversation(q: typeof queryClient) {
-  const m = /\/caregiver\/sessions\/[^/]+\/([^/]+)$/.exec(window.location.pathname);
+  // 대화 분석 상세(228:4430)도 같은 세션·턴을 읽는다.
+  const path = window.location.pathname;
+  const onLog = /\/caregiver\/sessions\/[^/]+\/([^/]+)$/.exec(path);
+  const onAnalysis = /\/caregiver\/analysis\/[^/]+\/sessions\/([^/]+)$/.exec(path);
+  const m = onLog ?? onAnalysis;
   if (!m || m[1] === 'new') return;
   const id = m[1];
+  // 두 화면의 시안 날짜가 다르다 — 대화 기록은 2026-06-24, 대화 분석 상세는 2026-07-30 9:25.
   q.setQueryData(queryKeys.session(id), {
-    ...session(id, E1, 14, 'ended', '2026-06-24T01:17:00Z'),
+    ...session(id, E1, 14, 'ended', onAnalysis
+      ? new Date(2026, 6, 30, 9, 25).toISOString()
+      : '2026-06-24T01:17:00Z'),
+    duration_seconds: 852,
     title: '어린 시절 집 이야기',
+  });
+  // 대화 분석 상세는 세션 1건의 분석을 따로 읽는다(키가 다르다).
+  q.setQueryData(['session_analyses', 'session', id], {
+    id: `an-${id}`,
+    org_id: ORG.id,
+    session_id: id,
+    profile_id: E1,
+    user_id: USER.id,
+    version: 'v1',
+    created_at: '2026-07-30T00:40:00Z',
+    updated_at: '2026-07-30T00:40:00Z',
+    analysis: {
+      version: 'v1',
+      summary: '· 집 앞마당 감나무와 가을 풍경에 대한 기억\n· 가족들과 함께 감을 따던 따뜻한 추억\n· 어린 시절 살던 집과 가족에 대한 회상',
+      emotionTone: 'bright',
+      metrics: { aiTurns: 7, elderTurns: 7, responseRate: 0.85, avgUtteranceChars: 62, participation: 0.78 },
+      topicsEngaged: ['고향', '가족'],
+      topicsLow: [],
+      topicOutcomes: [{ topic: '고향', reaction: 'engaged', turns: 4 }],
+      interestKeywords: ['어린 시절', '감나무', '추억', '가족'],
+      recommendedTopics: ['가족'],
+    },
   });
   const turn = (n: number, role: 'ai' | 'elder', content: string, hh: number, mm: number) => ({
     id: `l${n}`,
@@ -188,6 +220,16 @@ function seedConversation(q: typeof queryClient) {
     turn(2, 'elder', '마당이 있는 한옥이었는데, 마당에 큰 감나무가 하나 있었어. 가을이면 감이 아주 많이 열렸지.', 10, 18),
     turn(3, 'ai', '그 감나무는 누가 심으셨나요?', 10, 19),
     turn(4, 'elder', '아버지가 심으셨어. 풍년이 들고 가족이 건강하길 바라는 마음이었지.', 10, 21),
+    // 대화 분석 상세(228:4430)는 '밝음'이 가장 많은 상태를 그린다(표정 마크가 붙는 칸).
+    // 대화 기록(178:1052) 시안은 4턴이라 그 화면에서는 넣지 않는다.
+    ...(onAnalysis
+      ? [
+          turn(5, 'ai', '감을 딸 때는 어떠셨어요?', 10, 23),
+          turn(6, 'elder', '온 가족이 모여서 참 재미있었지. 다들 웃고 떠들고 좋았어.', 10, 24),
+          turn(7, 'ai', '그때 드셨던 음식도 기억나세요?', 10, 26),
+          turn(8, 'elder', '곶감이 아주 맛있었어. 지금 생각해도 기뻤던 날이야.', 10, 27),
+        ]
+      : []),
   ]);
 }
 
@@ -229,6 +271,8 @@ function seedAnalyses(q: typeof queryClient) {
     };
   });
   q.setQueryData([...queryKeys.orgSessionAnalyses, 'all'], rows);
+  // 개인별 종합 분석(228:4091)은 어르신 한 명의 분석 이력을 따로 읽는다.
+  q.setQueryData(queryKeys.sessionAnalyses(E1), rows.filter((r) => r.profile_id === E1));
 }
 
 let seeded = false;

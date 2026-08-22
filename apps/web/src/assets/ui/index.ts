@@ -19,6 +19,10 @@ import anElders from './an-elders.png';
 import anSessions from './an-sessions.png';
 import anMinutes from './an-minutes.png';
 import anResponse from './an-response.png';
+import anBadgeMinutes from './an-badge-minutes.png';
+import anBadgeSessions from './an-badge-sessions.png';
+import anBadgeRate from './an-badge-rate.png';
+import anVerdictGood from './an-verdict-good.png';
 import anTrendRecall from './an-trend-recall.png';
 import anTrendEmotion from './an-trend-emotion.png';
 import anTrendPart from './an-trend-part.png';
@@ -100,6 +104,10 @@ export const asset = {
   anSessions,
   anMinutes,
   anResponse,
+  anBadgeMinutes,
+  anBadgeSessions,
+  anBadgeRate,
+  anVerdictGood,
   anTrendRecall,
   anTrendEmotion,
   anTrendPart,

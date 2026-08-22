@@ -484,18 +484,23 @@ const SCREENS = [
   ]],
 
   // ── 세션 목록 178:877 ──────────────────────────────────────────────────
-  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 카드 1054 @(322,315) · 행 881×140 피치 180 · shadow-card', [
-    /const CARD_TOP = 315;/, /const ROW_TOP = 381;/, /const ROW_H = 140;/, /const ROW_PITCH = 180;/,
+  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 카드 1054 @(322,315) · 첫 행 381 · shadow-card', [
+    /const CARD_TOP = 315;/, /const ROW_TOP = 381;/,
     /left-\[322px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
-    /left-\[409px\] w-\[881px\] rounded-\[10px\] bg-white shadow-card/,
+    /actionLabel="대화 기록 보기"/,
   ]],
-  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 상대일+상태를 한 줄로(배지가 긴 라벨을 덮지 않게) · 시계 22 · chevron 12.18', [
+  // 행은 세션 목록(178:877)·대화 분석 목록(228:4628) 공용 부품이다.
+  [`${WEB}/src/lib/session-row.ts`, '세션 행 실측: 높이 140 · 피치 180 · 소요 시간은 근거가 있을 때만', [
+    /export const ROW_H = 140;/, /export const ROW_PITCH = 180;/,
+    /export function durationLabel[\s\S]{0,220}?return null;/,
+  ]],
+  [`${WEB}/src/components/session-row.tsx`, '세션 행: 881×140 · 상대일+상태 한 줄 · 시계 22 · chevron 12.18 @1214.81', [
+    /left-\[409px\] w-\[881px\] rounded-\[10px\] bg-white shadow-card/,
     /flex h-\[28px\] items-center gap-\[10px\]/,
     /iconClockSm/, /width=\{22\}/,
-    /width: 12\.18, height: 18\.73/,
+    /left: 1214\.81, top: top \+ 59\.28, width: 12\.18, height: 18\.73/,
   ]],
-  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 소요 시간·상태는 근거가 있을 때만 · planned 는 설계됨', [
-    /function durationLabel[\s\S]{0,220}?return null;/,
+  [`${WEB}/src/components/session-row.tsx`, '세션 행: 상태는 근거가 있을 때만 · planned 는 설계됨', [
     /s\.status === 'planned' \? '설계됨' : '종료'/,
   ]],
 
@@ -575,6 +580,58 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 나이·성별·기관은 실데이터 — 없으면 만들지 않는다', [
     /useOrganization\(\{ enabled: isConfigured \}\)/,
     /e\.birthYear \? `\$\{e\.birthYear\}년생/, /: '—'/,
+  ]],
+
+  // ── 분석(개인별 종합) 228:4091 ────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/AnalysisElderPage.tsx`, '개인별 종합: 카드1 1054×1143 @343 · 카드2 1054×1983 @1552 · 참여칸 271×174 · 밑줄 81×3', [
+    /h-\[1143px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[1983px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[174px\] w-\[271px\]/, /h-\[3px\] w-\[81px\] bg-accent/,
+    /const C1 = 343/, /const C2 = 1552/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisElderPage.tsx`, '개인별 종합: 값 SemiBold 35 + 단위 22 · 종합 평가 pill 225×32 r-pill · 표정 76', [
+    /text-w-stat font-semibold leading-\[35px\]/, /text-\[22px\] font-normal leading-\[35px\]/,
+    /h-\[32px\] w-\[225px\] rounded-pill bg-accent-tint/,
+    /width: 76, height: 76/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisElderPage.tsx`, '개인별 종합: 수치는 core 관찰 순수함수 · 근거 없으면 만들지 않는다', [
+    /computeParticipationDetail/, /computeAxisObservations/, /computeMonthlyAxisTrend/,
+    /computeTopicShares/, /observationSummary/, /axisAverage/,
+    /비교 근거 없음/, /변화 근거 없음/, /전체 평균과 견줄 관찰 기록이 아직 없습니다/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisElderPage.tsx`, '개인별 종합: 방향 단정 카피 금지(향상·하락→부호 있는 변화) · 관찰 지표 고지 상시', [
+    /기억 회상 변화/, /전체 평균보다 높게 관찰됨/, /전체 평균과 비슷하게 관찰됨/,
+    /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
+  ]],
+
+  // ── 분석(대화 분석 목록) 228:4628 ─────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ConversationAnalysisListPage.tsx`, '대화 분석 목록: 카드 1054 @343 · 첫 행 409 · 밑줄 81×3 @598 · 날짜 선택 170×37 @1205', [
+    /const CARD_TOP = 343;/, /const ROW_TOP = 409;/,
+    /h-\[3px\] w-\[81px\] bg-accent/, /left: 598/,
+    /left-\[1205px\] h-\[37\.04px\] w-\[170px\]/,
+    /actionLabel="대화 분석 보기"/,
+  ]],
+
+  // ── 분석(대화 분석 상세) 228:4430 ─────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ConversationAnalysisPage.tsx`, '대화 분석 상세: 카드 1054×1347.8 @259.15 · 요약칸 271×147 · 특성칸 201×141 · 막대 593×12', [
+    /h-\[1347\.8px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[147px\] w-\[271px\]/, /h-\[141px\] w-\[201px\]/,
+    /const BAR_W = 593/, /h-\[12px\] overflow-hidden rounded-pill/,
+    /h-\[38px\] items-center rounded-\[5px\] border border-accent\/30 bg-accent\/\[0\.03\] px-\[18px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ConversationAnalysisPage.tsx`, '대화 분석 상세: 감정은 관찰한 말투 묶음(밝음·차분·그리움) — 가치 판단을 만들지 않는다', [
+    /computeEmotionSplit/, /describeSessionTraits/,
+    /BAND_LABEL = \{ bright: '밝음', calm: '차분', longing: '그리움' \}/,
+    /가장 많이 관찰된 말투는/,
+    /어르신 발화 기록이 없어 말투를 셀 수 없습니다/,
+    /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
+  ]],
+
+  // ── 요양일지(어르신 고르기) 205:1039 ──────────────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '요양일지: 카드 329×146 3열 gap 33 · 사진 101 @(18,22) · 3번째 줄은 기관명', [
+    /h-\[146px\] w-\[329px\] rounded-\[10px\] bg-white shadow-card/,
+    /gap-\[33px\]/, /left-\[18px\] top-\[22px\]/, /px=\{101\}/,
+    /left-\[134px\] top-\[86\.47px\]/, /org\.data\?\.name \?\? '—'/,
   ]],
 
   [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [

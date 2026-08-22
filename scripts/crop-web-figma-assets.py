@@ -30,6 +30,7 @@ CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
 SESSION_LIST = "요양보호사 페이지_세션 목록.png"
 CHAT = "요양보호사 페이지_대화 기록.png"
 ANALYSIS_PAGE = "요양보호사 페이지_분석페이지.png"
+ANALYSIS_ELDER = "요양보호사 페이지_개인별 종합분석.png"
 # 모달 프레임 export 는 카드만 담고 있어 좌표가 **프레임 로컬**이다.
 CHRON_MODAL = "연대기 상세 정보.png"
 # ⚠️ 부품 export 는 아직 @1x 다 — 같은 파일명으로 @4x 를 덮어써 주면 그대로 선명해진다.
@@ -83,6 +84,13 @@ CROPS = [
     ("an-trend-emotion", ANALYSIS_PAGE, 673.0, 3187.3, 709.0, 3223.3),
     ("an-trend-part",    ANALYSIS_PAGE, 897.0, 3189.3, 931.5, 3222.7),
     ("an-trend-resp",    ANALYSIS_PAGE, 1122.0, 3188.3, 1158.0, 3224.3),
+    # ── 개인별 종합 분석(228:4091) ──
+    # 종합 대화 참여도 3칸의 원형 배지(주황 원 50 + 흰 글리프) — 원째로 자른다.
+    ("an-badge-minutes",  ANALYSIS_ELDER,  431.0,  486.0,  481.0,  536.0),
+    ("an-badge-sessions", ANALYSIS_ELDER,  736.0,  482.0,  786.0,  532.0),
+    ("an-badge-rate",     ANALYSIS_ELDER, 1036.0,  485.0, 1086.0,  535.0),
+    # 인지 효과 종합 평가의 표정 마크 76 — 시안은 **긍정 상태 1종만** 그려져 있다.
+    ("an-verdict-good",   ANALYSIS_ELDER,  810.0, 3216.78, 886.0, 3292.82),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),

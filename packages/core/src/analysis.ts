@@ -66,7 +66,7 @@ const LONGING = ['그립', '보고싶', '그리워', '예전', '돌아가', '아
 const BRIGHT = ['좋아', '재미', '웃', '행복', '예뻤', '맛있', '신났', '기뻤', '고마워']
 const CALM = ['편안', '조용', '천천히', '그냥', '잔잔']
 
-function readEmotion(text: string): EmotionTone {
+export function readEmotion(text: string): EmotionTone {
   const longing = LONGING.some((k) => text.includes(k))
   const bright = BRIGHT.some((k) => text.includes(k))
   const calm = CALM.some((k) => text.includes(k))
