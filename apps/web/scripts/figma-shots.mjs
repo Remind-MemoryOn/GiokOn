@@ -59,7 +59,20 @@ for (const s of SCREENS) {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(200);
   const file = `${OUT}/${s.node.replace(':', '_')}.png`;
-  await page.screenshot({ path: file, fullPage: true });
+  if (s.origin) {
+    // 모달 프레임은 카드만 잘라 export 와 1:1 로 맞춘다(카드 좌상단 = Figma 원점).
+    const box = await page.locator(s.origin).first().boundingBox();
+    if (!box) {
+      console.error(`✗ ${s.node}: origin(${s.origin}) 을 찾지 못했습니다.`);
+      process.exit(1);
+    }
+    await page.screenshot({
+      path: file,
+      clip: { x: box.x, y: box.y, width: s.width ?? box.width, height: s.height ?? box.height },
+    });
+  } else {
+    await page.screenshot({ path: file, fullPage: true });
+  }
   console.log(`· ${s.node} ${s.route} → ${file}`);
   await page.close();
 }

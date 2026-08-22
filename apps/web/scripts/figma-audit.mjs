@@ -68,17 +68,29 @@ const executablePath =
   (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 
-/** 브라우저 안에서 한 화면의 모든 프로브를 잰다. */
-const MEASURE = (probes) =>
-  probes.map((p) => {
+/** 브라우저 안에서 한 화면의 모든 프로브를 잰다.
+ *  모달처럼 페이지 좌표가 아니라 **카드 안 좌표**로 그려진 프레임은 `origin` 선택자의
+ *  좌상단을 원점으로 삼는다(Figma 프레임 = 카드 자체라 화면 위치가 정해져 있지 않다). */
+const MEASURE = ({ probes, origin }) => {
+  let ox = 0;
+  let oy = 0;
+  if (origin) {
+    const o = document.querySelector(origin);
+    if (o) {
+      const r = o.getBoundingClientRect();
+      ox = r.left + window.scrollX;
+      oy = r.top + window.scrollY;
+    }
+  }
+  return probes.map((p) => {
     const el = document.querySelector(p.sel);
     if (!el) return { name: p.name, missing: true };
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
     return {
       name: p.name,
-      left: r.left + window.scrollX,
-      top: r.top + window.scrollY,
+      left: r.left + window.scrollX - ox,
+      top: r.top + window.scrollY - oy,
       width: r.width,
       height: r.height,
       fontSize: parseFloat(cs.fontSize),
@@ -90,6 +102,7 @@ const MEASURE = (probes) =>
       radius: parseFloat(cs.borderTopLeftRadius),
     };
   });
+};
 
 const rows = [];
 const notes = [];
@@ -103,7 +116,7 @@ for (const screen of SCREENS) {
   await page.goto(BASE + screen.route, { waitUntil: 'networkidle', timeout: 20000 });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(150);
-  const got = await page.evaluate(MEASURE, screen.probes);
+  const got = await page.evaluate(MEASURE, { probes: screen.probes, origin: screen.origin });
   await page.close();
 
   for (let i = 0; i < screen.probes.length; i++) {

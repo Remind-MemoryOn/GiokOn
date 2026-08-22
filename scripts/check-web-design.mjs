@@ -444,6 +444,29 @@ const SCREENS = [
     /isKeyMemory\(c\.topic\)/, /아직 연대기 항목이 없습니다\./, /선택한 날짜에 기록된 연대기가 없습니다\./,
   ]],
 
+  // ── 연대기 추가 196:271 · 상세 정보 198:991 (모달) ─────────────────────
+  [`${WEB}/src/pages/caregiver/ChronicleDialog.tsx`, '연대기 모달: 카드 1054×841 r10 shadow-card · 제목 Bold 25/70 @(87,26)', [
+    /w-\[1054px\][^"]*rounded-\[10px\] bg-white shadow-card/,
+    /const cardH = 841;/,
+    /left-\[87px\] top-\[26px\][^"]*text-w-section font-bold leading-\[70px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ChronicleDialog.tsx`, '연대기 모달: 작성자/유형 172×57 · 기록일 219×57 · 제목 879×57 · 내용 879×196.23', [
+    /h-\[57\.07px\] w-\[172px\] rounded-\[10px\] border border-line/,
+    /h-\[57\.07px\] w-\[219px\] rounded-\[10px\] border border-line/,
+    /h-\[57\.07px\] w-\[879px\] rounded-\[10px\] border border-line/,
+    /const CONTENT_H = 196\.23;/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ChronicleDialog.tsx`, '연대기 모달: 카운터 오른끝 935 · 키워드 칩 h30 r-pill bg-mute · 취소/저장 140×57 @735', [
+    /const COUNTER_RIGHT = 1054 - 935;/,
+    /const TITLE_MAX = 50;/, /const CONTENT_MAX = 500;/,
+    /h-\[30px\] shrink-0 items-center rounded-pill bg-mute pl-\[17px\] pr-\[17px\]/,
+    /const btnTop = 735;/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ChronicleDialog.tsx`, '연대기 모달: 작성자는 못 바꾼다(AI 투명성) · 유형은 core 표준 목록', [
+    /작성자는 기록을 만든 주체라 바꿀 수 없어요\./,
+    /CHRONICLE_TOPICS/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

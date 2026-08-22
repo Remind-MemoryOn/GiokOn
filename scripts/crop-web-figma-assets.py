@@ -3,7 +3,7 @@
 
 컨테이너에서 www.figma.com egress 가 막혀 get_design_context 가 준 SVG URL 을 받을 수 없다.
 대신 사용자가 export 해 준 화면 PNG(@4x)에서 **디자인 실측 좌표**로 크롭한다.
-좌표는 1440 캔버스 기준이며 배율은 파일에서 계산한다(현재 4.0).
+좌표는 프레임 로컬(화면=1440 · 모달=카드 폭)이며 배율은 파일 폭에서 계산한다(현재 4.0).
 
 사용: python3 scripts/crop-web-figma-assets.py
 """
@@ -27,11 +27,13 @@ SHARES = "요양보호사 페이지_공개 관리.png"
 ORG = "요양보호사 페이지_기관 관리.png"
 SETTINGS = "요양보호사 페이지_설정.png"
 CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
+# 모달 프레임 export 는 카드만 담고 있어 좌표가 **프레임 로컬**이다.
+CHRON_MODAL = "연대기 상세 정보.png"
 LOGIN = "회원가입 페이지1.png"
 LANDING = "서비스 소개 페이지.png"
 SIGNUP = "회원가입 페이지2.png"
 
-# (출력이름, 원본, x1, y1, x2, y2)  — 1440 캔버스 좌표
+# (출력이름, 원본, x1, y1, x2, y2)  — 프레임 로컬 좌표(FRAME_WIDTH 참고)
 CROPS = [
     # 탑바
     ("wordmark",        DASH,   63.0,   70.0,  216.0,   93.4),
@@ -54,6 +56,9 @@ CROPS = [
     # ⚠️ ∨ 는 회전 노드라 metadata 좌표(1369, 281.8)가 렌더 위치가 아니다.
     #    export 잉크 실측(1357~1369 × 274~281.75)으로 자른다.
     ("icon-chevron-down-sm", CHRONICLES, 1357.0, 274.0, 1369.0, 281.8),
+    # ── 연대기 추가/상세 모달(196:271·198:991) ──
+    ("icon-chevron-down-md", CHRON_MODAL, 214.13, 162.0, 233.42, 175.02),
+    ("icon-close-sm",        CHRON_MODAL, 176.0,  660.0, 187.0,  671.0),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),
@@ -238,11 +243,15 @@ def bars_alpha(crop: Image.Image, full: Image.Image, bg_x: int, y0: int) -> Imag
     return out
 
 
+# 모달 프레임 export 는 화면(1440)이 아니라 카드 폭이다 — 배율 계산의 기준을 바꾼다.
+FRAME_WIDTH = {CHRON_MODAL: 1054.0}
+
+
 def main() -> None:
     for name, srcname, x1, y1, x2, y2 in CROPS:
         src = SRC / srcname
         im = Image.open(src).convert("RGBA")
-        scale = im.size[0] / 1440.0
+        scale = im.size[0] / FRAME_WIDTH.get(srcname, 1440.0)
         box = tuple(round(v * scale) for v in (x1, y1, x2, y2))
         cropped = im.crop(box)
         if name in CIRCLE:

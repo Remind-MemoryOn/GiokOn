@@ -150,6 +150,7 @@ export type Database = {
           user_id: string
           org_id: string
           topic: string
+          title: string | null
           content: string
           keywords: string[]
           source: Database['public']['Enums']['chronicle_source']
@@ -162,6 +163,7 @@ export type Database = {
           user_id: string
           org_id?: string
           topic: string
+          title?: string | null
           content: string
           keywords?: string[]
           source?: Database['public']['Enums']['chronicle_source']
@@ -174,6 +176,7 @@ export type Database = {
           user_id?: string
           org_id?: string
           topic?: string
+          title?: string | null
           content?: string
           keywords?: string[]
           source?: Database['public']['Enums']['chronicle_source']

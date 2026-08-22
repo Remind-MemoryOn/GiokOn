@@ -117,9 +117,16 @@ function seedElderDetail(q: typeof queryClient) {
  * (상세는 2건만 보여 준다). 화면별로 자기 시안과 같은 데이터를 심는다.
  */
 function seedChronicleList(q: typeof queryClient) {
-  if (!/\/chronicles$/.test(window.location.pathname)) return;
+  if (!/\/chronicles(\/|$)/.test(window.location.pathname)) return;
   q.setQueryData(queryKeys.chronicles(E1), [
-    { id: 'ch1', profile_id: E1, topic: '고향', content: '어린 시절 집 이야기', keywords: [], source: 'ai', recorded_at: '2026-07-30T03:00:00Z', updated_at: iso(0) },
+    // ch1 은 상세 모달(198:991) 시안과 같은 값 — 제목·내용·키워드까지.
+    {
+      id: 'ch1', profile_id: E1, topic: '고향', title: '어린 시절 집 이야기',
+      content:
+        '어르신은 어린 시절 살던 집과 가족들에 대한 추억을 이야기하셨습니다. 특히 집 앞마당에 있던 감나무에 대한 기억을 자세히 떠올리셨으며, 가을이 되면 가족들과 함께 감을 따던 이야기를 들려주셨습니다. 어린 시절 함께 지냈던 가족과 집 주변의 모습에 대해서도 자연스럽게 이야기를 이어가셨습니다.',
+      keywords: ['가족', '감나무', '살던 집', '어린 시절'],
+      source: 'ai', recorded_at: '2026-07-30T03:00:00Z', updated_at: iso(0),
+    },
     { id: 'ch3', profile_id: E1, topic: '가족', content: '어머니와 함께했던 기억', keywords: [], source: 'ai', recorded_at: '2026-07-19T03:00:00Z', updated_at: iso(0) },
     { id: 'ch4', profile_id: E1, topic: '학창 시절', content: '학창 시절 친구 이야기', keywords: [], source: 'ai', recorded_at: '2026-07-19T02:00:00Z', updated_at: iso(0) },
     { id: 'ch2', profile_id: E1, topic: '가족', content: '명절마다 자식들이 모두 모였던 날', keywords: [], source: 'caregiver', recorded_at: '2026-07-08T03:00:00Z', updated_at: iso(0) },

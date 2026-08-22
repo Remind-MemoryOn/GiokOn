@@ -7,10 +7,10 @@
 //
 // ⚠️ Figma 는 행 4개로 고정된 카드를 그렸다. 실데이터는 개수가 달라지므로 **카드 높이를
 //    행 수에서 계산**한다(위/아래 여백·행 간격은 실측 그대로).
-// ⚠️ 연대기 제목 컬럼은 아직 없다(Phase 2 `chronicles.title`) → 앱과 같이 `content` 를
-//    제목 자리에 쓴다. 값을 지어내지 않는다.
+// ⚠️ 제목(`title`)은 사람이 붙이는 값이라 AI 가 모은 항목·구 데이터에는 없다 →
+//    없으면 `content` 로 대신 보여 준다(제목을 지어내지 않는다).
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Outlet, useParams } from 'react-router-dom';
 import { useChronicles, useDeleteChronicle, useProfile } from '@giokon/data';
 import { dateDot, isKeyMemory, relativeDay } from '@giokon/core';
 import { asset } from '../../assets/ui';
@@ -154,6 +154,7 @@ export function ElderChroniclesPage() {
       ) : (
         rows.map((c, i) => {
           const ai = c.source === 'ai';
+          const label = c.title ?? c.content;
           const rowTop = ROW_TOP + i * ROW_PITCH;
           return (
             <div key={c.id}>
@@ -184,12 +185,12 @@ export function ElderChroniclesPage() {
                 className="absolute left-[475px] w-[640px] truncate text-w-section font-bold leading-[70px] text-ink-900"
                 style={{ top: Y(rowTop + 65.73) }}
               >
-                {c.content}
+                {label}
               </p>
               <Link
                 to={`/caregiver/elders/${elderId ?? ''}/chronicles/${c.id}`}
                 data-fx={i === 0 ? '198:932' : undefined}
-                aria-label={`${c.content} 상세 기록 열기`}
+                aria-label={`${label} 상세 기록 열기`}
                 className="absolute left-[1141px] block"
                 style={{ top: Y(rowTop + 73.73) }}
               >
@@ -198,9 +199,9 @@ export function ElderChroniclesPage() {
               <button
                 type="button"
                 data-fx={i === 0 ? '198:909' : undefined}
-                aria-label={`${c.content} 삭제`}
+                aria-label={`${label} 삭제`}
                 onClick={() => {
-                  if (!window.confirm(`"${c.content}" 연대기를 삭제할까요? 되돌릴 수 없습니다.`)) return;
+                  if (!window.confirm(`"${label}" 연대기를 삭제할까요? 되돌릴 수 없습니다.`)) return;
                   remove.mutate(
                     { id: c.id, profileId: c.profile_id },
                     {
@@ -236,6 +237,9 @@ export function ElderChroniclesPage() {
       {profileQuery.data ? (
         <span className="sr-only">{profileQuery.data.name} 어르신의 연대기 목록</span>
       ) : null}
+
+      {/* 연대기 추가·상세 모달 — 이 목록 위에 뜬다 */}
+      <Outlet />
     </div>
   );
 }

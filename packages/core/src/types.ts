@@ -184,6 +184,8 @@ export interface ChronicleEntry {
   id: string;
   elderId: string;
   topic: string;
+  /** 사람이 붙인 제목(최대 50자). AI 가 모은 항목·구 데이터는 없다 → 화면은 content 로 대체. */
+  title?: string;
   content: string;
   keywords: string[];
   source: ChronicleSource;

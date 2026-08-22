@@ -93,12 +93,18 @@ describe('toChronicleEntry', () => {
     user_id: 'u1',
     org_id: 'o1',
     topic: '직업',
+    title: null,
     content: '전주에서 식당을 했다',
     keywords: ['전주', '식당'],
     source: 'caregiver',
     recorded_at: '2026-01-03T00:00:00Z',
     updated_at: '2026-01-03T00:00:00Z',
   }
+
+  it('제목은 있을 때만 싣는다(없으면 키 자체가 없다)', () => {
+    expect(toChronicleEntry(base).title).toBeUndefined()
+    expect(toChronicleEntry({ ...base, title: '식당 하던 시절' }).title).toBe('식당 하던 시절')
+  })
 
   it('profile_id를 elderId로, source를 도메인 표기로 매핑한다', () => {
     expect(toChronicleEntry(base)).toMatchObject({

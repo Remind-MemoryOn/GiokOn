@@ -9,6 +9,8 @@ import iconPencilLg from './icon-pencil-lg.png';
 import iconTrashLg from './icon-trash-lg.png';
 import iconCalendarSm from './icon-calendar-sm.png';
 import iconChevronDownSm from './icon-chevron-down-sm.png';
+import iconChevronDownMd from './icon-chevron-down-md.png';
+import iconCloseSm from './icon-close-sm.png';
 import iconBell from './icon-bell.png';
 import iconChevronDown from './icon-chevron-down.png';
 import iconChevronRight from './icon-chevron-right.png';
@@ -76,6 +78,8 @@ export const asset = {
   iconTrashLg,
   iconCalendarSm,
   iconChevronDownSm,
+  iconChevronDownMd,
+  iconCloseSm,
   iconBell,
   iconChevronDown,
   iconChevronRight,

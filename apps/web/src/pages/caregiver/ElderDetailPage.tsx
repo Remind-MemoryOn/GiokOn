@@ -621,7 +621,7 @@ export function ElderDetailPage() {
                 className="absolute left-[389px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900"
                 style={{ top: Y(2101 + i * 140) }}
               >
-                {c.content}
+                {c.title ?? c.content}
               </p>
             </div>
           );

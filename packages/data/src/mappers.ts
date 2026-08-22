@@ -62,6 +62,8 @@ export function toChronicleEntry(row: ChronicleRow): ChronicleEntry {
     id: row.id,
     elderId: row.profile_id,
     topic: row.topic,
+    // 없으면 넣지 않는다(빈 문자열로 만들면 "제목이 있는데 비었다"와 구분이 안 된다).
+    ...(row.title ? { title: row.title } : {}),
     content: row.content,
     keywords: row.keywords ?? [],
     source: toChronicleSource(row.source),
