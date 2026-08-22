@@ -21,6 +21,7 @@ import { SessionListPage } from './pages/caregiver/SessionListPage';
 import { SessionPlanDialog } from './pages/caregiver/SessionPlanDialog';
 import { ConversationLogPage } from './pages/caregiver/ConversationLogPage';
 import { AnalysisPage } from './pages/caregiver/AnalysisPage';
+import { AnalysisEldersPage } from './pages/caregiver/AnalysisEldersPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -92,7 +93,7 @@ function App() {
           </Route>
           <Route path="sessions/:elderId/:sessionId" element={<ConversationLogPage />} />
           <Route path="analysis" element={<AnalysisPage />} />
-          <Route path="analysis/elders" element={<Pending title="개인별 분석 목록" node="228:3722" />} />
+          <Route path="analysis/elders" element={<AnalysisEldersPage />} />
           <Route path="analysis/:elderId" element={<Pending title="개인별 분석" node="228:3722" />} />
           <Route path="analysis/:elderId/overall" element={<Pending title="종합 분석" node="228:4091" />} />
           <Route path="analysis/:elderId/sessions" element={<Pending title="대화 분석 목록" node="228:4628" />} />

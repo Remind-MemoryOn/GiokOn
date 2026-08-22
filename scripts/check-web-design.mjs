@@ -561,6 +561,22 @@ const SCREENS = [
     /기억 회상 변화/, /감정 표현 변화/,
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
+  // ── 분석(개인별) 228:3722 ─────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 카드 1054 @343 · 어르신 카드 301×161 3열(피치 323) · 검색 335×57', [
+    /w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /const COL_X = \[375 - 322, 698 - 322, 1021 - 322\]/,
+    /h-\[161px\] w-\[301px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.06px\] w-\[335px\]/, /border border-line-mid/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 활성 탭=개인별(밑줄 101×3 @598) · 사진 76 · 이름 Bold 25/70', [
+    /h-\[3px\] w-\[101px\] bg-accent/, /left: 598/,
+    /size="lg"/, /text-w-section font-bold leading-\[70px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 나이·성별·기관은 실데이터 — 없으면 만들지 않는다', [
+    /useOrganization\(\{ enabled: isConfigured \}\)/,
+    /e\.birthYear \? `\$\{e\.birthYear\}년생/, /: '—'/,
+  ]],
+
   [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [
     /webPalette\.series/, /v == null \? null/,
   ]],
