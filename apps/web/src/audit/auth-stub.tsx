@@ -275,6 +275,30 @@ function seedAnalyses(q: typeof queryClient) {
   q.setQueryData(queryKeys.sessionAnalyses(E1), rows.filter((r) => r.profile_id === E1));
 }
 
+/** 요양일지 목록(207:1147) 감사용 — 시안과 같은 4건. */
+function seedJournals(q: typeof queryClient) {
+  if (!/\/caregiver\/journal\//.test(window.location.pathname)) return;
+  const j = (id: string, date: string, content: string) => ({
+    id,
+    org_id: ORG.id,
+    profile_id: E1,
+    author_id: USER.id,
+    journal_date: date,
+    content,
+    source: 'typed' as const,
+    photo_path: null,
+    status: 'draft' as const,
+    created_at: `${date}T02:00:00Z`,
+    updated_at: `${date}T02:00:00Z`,
+  });
+  q.setQueryData(queryKeys.careJournals(E1), [
+    j('j1', '2026-07-30', '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.'),
+    j('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.'),
+    j('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
+    j('j4', '2026-07-13', '오후에 꽃을 심고 꾸미는 원예 활동을 진행했습니다. 완성된 화분을 보며 매우 좋아하셨어요.'),
+  ]);
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -319,6 +343,7 @@ function seed() {
   seedSessionList(q);
   seedConversation(q);
   seedAnalyses(q);
+  seedJournals(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

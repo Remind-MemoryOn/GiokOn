@@ -29,6 +29,8 @@ export default {
         chronicle: { DEFAULT: '#d5379b', soft: '#d5379b1a' },
         live: { DEFAULT: '#60bd66', soft: '#60bd661a' },
         mute: { DEFAULT: '#f2f1f1', strong: '#efefef', pale: '#f5f5f5', field: '#d9d9d94d' },
+        // 요양일지 태그(207:1147 실측) — 공개 관리·보호자 화면의 '요양일지' 배지에도 쓴다.
+        journal: { DEFAULT: '#5d2b99', soft: '#5d2b991a' },
         manual: { DEFAULT: '#e92b90', soft: '#e92b901a' },
         naver: { DEFAULT: '#48b034' },
         kakao: { DEFAULT: '#f4df2a' },

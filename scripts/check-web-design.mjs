@@ -634,6 +634,19 @@ const SCREENS = [
     /left-\[134px\] top-\[86\.47px\]/, /org\.data\?\.name \?\? '—'/,
   ]],
 
+  // ── 요양일지 목록 207:1147 ────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 카드 1057 @376 · 행 879×235.15 피치 259.164 · 배지 107×35 · 작성 버튼 185×57', [
+    /const CARD_TOP = 376;/, /const ROW_TOP = 427\.27;/,
+    /const ROW_H = 235\.15;/, /const ROW_PITCH = 259\.164;/,
+    /left-\[410px\] w-\[879px\] rounded-\[10px\] border border-line bg-white/,
+    /h-\[57px\] w-\[185px\][^"]*rounded-\[10px\] bg-accent/,
+    /tone="journal"[\s\S]{0,20}tag/,
+  ]],
+  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
+    /window\.confirm\(/, /useDeleteCareJournal/,
+    /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
+  ]],
+
   [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [
     /webPalette\.series/, /v == null \? null/,
   ]],
