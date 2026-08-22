@@ -520,11 +520,17 @@ const SCREENS = [
   ]],
 
   // ── 세션 기록 178:787 ──────────────────────────────────────────────────
-  [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 설명 한 줄 w723 · 검색 335×57 border #cccdce · 카드 329×146 3열 gap 33', [
+  [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 설명 한 줄 w723 · 검색 335×57 border #cccdce · 3번째 줄은 최근 대화', [
     /descMax=\{723\}/,
     /rounded-\[10px\] border border-line-mid bg-white pl-\[47px\]/,
-    /h-\[146px\] w-\[329px\]/, /rounded-\[10px\] bg-white shadow-card/,
-    /gap-\[33px\]/, /px=\{101\}/, /ml-\[18px\]/,
+    /gap-\[33px\]/, /<ElderPickerGrid/,
+    /최근 대화  없음/,
+  ]],
+  // 카드는 세션 기록·요양일지·공개 관리 공용 부품이다.
+  [`${WEB}/src/components/elder-picker.tsx`, '어르신 카드: 329×146 r10 shadow-card · 사진 101 @(18,22) · 글줄 134/30.42·60.44·86.47', [
+    /h-\[146px\] w-\[329px\] rounded-\[10px\] bg-white shadow-card/,
+    /left-\[18px\] top-\[22px\]/, /px=\{101\}/,
+    /left-\[134px\] top-\[30\.42px\]/, /left-\[134px\] top-\[60\.44px\]/, /left-\[134px\] top-\[86\.47px\]/,
   ]],
   [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 최근 대화는 세션에서 계산 · 없으면 만들지 않는다', [
     /useRecentSessions\(\{ enabled: isConfigured, fetchAll: true \}\)/,
@@ -628,10 +634,15 @@ const SCREENS = [
   ]],
 
   // ── 요양일지(어르신 고르기) 205:1039 ──────────────────────────────────
-  [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '요양일지: 카드 329×146 3열 gap 33 · 사진 101 @(18,22) · 3번째 줄은 기관명', [
-    /h-\[146px\] w-\[329px\] rounded-\[10px\] bg-white shadow-card/,
-    /gap-\[33px\]/, /left-\[18px\] top-\[22px\]/, /px=\{101\}/,
-    /left-\[134px\] top-\[86\.47px\]/, /org\.data\?\.name \?\? '—'/,
+  [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '요양일지: 설명 한 줄 w918 · 카드 3열 gap 33 · 3번째 줄은 기관명', [
+    /descMax=\{918\}/, /gap-\[33px\]/, /<ElderPickerGrid/,
+    /org\.data\?\.name \?\? '—'/,
+  ]],
+  // ── 공개 관리(어르신 고르기) 135:1288 ─────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SharesPage.tsx`, '공개 관리: 설명 한 줄 w723 · 카드 3열 gap 33 · 3번째 줄은 기관명', [
+    /descMax=\{723\}/, /gap-\[33px\]/, /<ElderPickerGrid/,
+    /to=\{\(e\) => `\/caregiver\/shares\/\$\{e\.id\}`\}/,
+    /org\.data\?\.name \?\? '—'/,
   ]],
 
   // ── 요양일지 목록 207:1147 ────────────────────────────────────────────
