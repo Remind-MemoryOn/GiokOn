@@ -29,6 +29,7 @@ SETTINGS = "요양보호사 페이지_설정.png"
 CHRONICLES = "요양보호사 페이지_어르신 관리 연대기목록.png"
 SESSION_LIST = "요양보호사 페이지_세션 목록.png"
 CHAT = "요양보호사 페이지_대화 기록.png"
+ANALYSIS_PAGE = "요양보호사 페이지_분석페이지.png"
 # 모달 프레임 export 는 카드만 담고 있어 좌표가 **프레임 로컬**이다.
 CHRON_MODAL = "연대기 상세 정보.png"
 # ⚠️ 부품 export 는 아직 @1x 다 — 같은 파일명으로 @4x 를 덮어써 주면 그대로 선명해진다.
@@ -72,6 +73,16 @@ CROPS = [
     ("icon-chevron-right-sm",SESSION_LIST, 1214.81, 440.28, 1226.99, 459.01),
     # ── 대화 기록(178:1052) ── AI 말풍선 옆 봇 아바타
     ("avatar-ai",            CHAT, 402.0, 450.0, 454.0, 502.0),
+    # ── 분석(225:1669) 전체 요약 4칸 아이콘(선 아이콘, 대시보드의 원형 배지와 다르다) ──
+    ("an-elders",   ANALYSIS_PAGE, 442.0, 549.4, 490.0, 582.4),
+    ("an-sessions", ANALYSIS_PAGE, 673.0, 547.4, 709.0, 583.4),
+    ("an-minutes",  ANALYSIS_PAGE, 899.0, 547.4, 935.0, 583.4),
+    ("an-response", ANALYSIS_PAGE, 1130.0, 547.4, 1166.0, 583.4),
+    # 변화율 4칸 아이콘(추세 화살표·표정·말풍선·시계)
+    ("an-trend-recall",  ANALYSIS_PAGE, 443.0, 3196.3, 479.0, 3215.7),
+    ("an-trend-emotion", ANALYSIS_PAGE, 673.0, 3187.3, 709.0, 3223.3),
+    ("an-trend-part",    ANALYSIS_PAGE, 897.0, 3189.3, 931.5, 3222.7),
+    ("an-trend-resp",    ANALYSIS_PAGE, 1122.0, 3188.3, 1158.0, 3224.3),
     ("icon-close",       ELDER_EDIT, 1245.0, 1078.0, 1263.0, 1096.0),
     # ── 어르신 상세(161:373) 아이콘 — 잉크 실측으로 자른다 ──
     ("icon-pencil",      ELDER,   1218.0,  207.0, 1236.0,  225.0),

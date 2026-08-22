@@ -15,6 +15,14 @@ import iconPhotoUpload from './icon-photo-upload.png';
 import iconClockSm from './icon-clock-sm.png';
 import iconChevronRightSm from './icon-chevron-right-sm.png';
 import avatarAi from './avatar-ai.png';
+import anElders from './an-elders.png';
+import anSessions from './an-sessions.png';
+import anMinutes from './an-minutes.png';
+import anResponse from './an-response.png';
+import anTrendRecall from './an-trend-recall.png';
+import anTrendEmotion from './an-trend-emotion.png';
+import anTrendPart from './an-trend-part.png';
+import anTrendResp from './an-trend-resp.png';
 import iconBell from './icon-bell.png';
 import iconChevronDown from './icon-chevron-down.png';
 import iconChevronRight from './icon-chevron-right.png';
@@ -88,6 +96,14 @@ export const asset = {
   iconClockSm,
   iconChevronRightSm,
   avatarAi,
+  anElders,
+  anSessions,
+  anMinutes,
+  anResponse,
+  anTrendRecall,
+  anTrendEmotion,
+  anTrendPart,
+  anTrendResp,
   iconBell,
   iconChevronDown,
   iconChevronRight,

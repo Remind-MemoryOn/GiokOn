@@ -331,3 +331,77 @@ export function computeOverall(
   const topTopics = computeTopicShares([], analyses)
   return { totalElders, totalSessions, avgMinutes, avgResponseRate, topTopics }
 }
+
+export interface TopicDetail {
+  topic: string
+  /** 그 주제가 등장한 세션 수(관찰). */
+  mentions: number
+  /** 등장 중 호응(engaged) 비율 0~100. 등장이 없으면 null. */
+  positiveRate: number | null
+  /** 그 주제를 다룬 세션의 평균 길이(초). 근거가 없으면 null. */
+  avgSeconds: number | null
+  /** 직전 동일 길이 기간 대비 변화(%p·%). 비교 근거가 없으면 null. */
+  delta: { mentions: number | null; positiveRate: number | null; avgSeconds: number | null }
+}
+
+function topicSlice(
+  rows: { analysis: SessionAnalysis; seconds: number | null }[],
+  topic: string,
+): { mentions: number; positiveRate: number | null; avgSeconds: number | null } {
+  let mentions = 0
+  let engaged = 0
+  let secondsSum = 0
+  let secondsN = 0
+  for (const r of rows) {
+    const outcome = r.analysis.topicOutcomes.find((o) => o.topic === topic)
+    const inEngaged = r.analysis.topicsEngaged.includes(topic)
+    if (!outcome && !inEngaged) continue
+    mentions += 1
+    if (outcome ? outcome.reaction === 'engaged' : inEngaged) engaged += 1
+    if (r.seconds != null) {
+      secondsSum += r.seconds
+      secondsN += 1
+    }
+  }
+  return {
+    mentions,
+    positiveRate: mentions > 0 ? Math.round((engaged / mentions) * 100) : null,
+    avgSeconds: secondsN > 0 ? Math.round(secondsSum / secondsN) : null,
+  }
+}
+
+/**
+ * 한 주제의 상세 관찰(Figma 분석 "주제별 상세 분석" 3칸).
+ *
+ * 최근 `months` 개월과 **직전 같은 길이 기간**을 나눠 언급 빈도·호응률·평균 대화 시간과
+ * 그 변화를 낸다. 근거가 없는 항목은 null — 화면은 `—` 로 둔다(값을 만들지 않는다).
+ */
+export function computeTopicDetail(
+  rows: { analysis: SessionAnalysis; at: string; seconds: number | null }[],
+  topic: string,
+  months = 3,
+  now = new Date(),
+): TopicDetail {
+  const span = months * 30 * 86400000
+  const end = now.getTime()
+  const recent: { analysis: SessionAnalysis; seconds: number | null }[] = []
+  const previous: { analysis: SessionAnalysis; seconds: number | null }[] = []
+  for (const r of rows) {
+    const t = new Date(r.at).getTime()
+    if (Number.isNaN(t)) continue
+    if (t > end - span) recent.push(r)
+    else if (t > end - span * 2) previous.push(r)
+  }
+  const a = topicSlice(recent, topic)
+  const b = topicSlice(previous, topic)
+  const diff = (x: number | null, y: number | null) => (x == null || y == null ? null : x - y)
+  return {
+    topic,
+    ...a,
+    delta: {
+      mentions: previous.length === 0 ? null : a.mentions - b.mentions,
+      positiveRate: diff(a.positiveRate, b.positiveRate),
+      avgSeconds: diff(a.avgSeconds, b.avgSeconds),
+    },
+  }
+}

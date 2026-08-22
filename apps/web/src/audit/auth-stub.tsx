@@ -191,6 +191,46 @@ function seedConversation(q: typeof queryClient) {
   ]);
 }
 
+/**
+ * 분석 화면(225:1669) 감사용 — 관찰 지표는 전부 core 순수함수가 계산하므로
+ * **분석 원본(session_analyses)** 을 심는다. 최근 3개월에 고르게 퍼뜨려 월별 추이가 그려진다.
+ */
+function seedAnalyses(q: typeof queryClient) {
+  const TOPICS = ['가족', '고향', '직업', '취미', '여행'];
+  const rows = Array.from({ length: 12 }, (_, i) => {
+    const at = new Date(now - i * 7 * 86_400_000).toISOString();
+    const engaged = TOPICS.slice(0, 3 - (i % 2));
+    return {
+      id: `a${i}`,
+      org_id: ORG.id,
+      session_id: `s${i}`,
+      profile_id: ELDERS[i % ELDERS.length].id,
+      user_id: USER.id,
+      version: 'v1',
+      created_at: at,
+      updated_at: at,
+      analysis: {
+        version: 'v1',
+        summary: '관찰 요약',
+        emotionTone: i % 3 === 0 ? 'bright' : 'calm',
+        metrics: {
+          aiTurns: 6 + (i % 3),
+          elderTurns: 6 + (i % 3),
+          responseRate: 0.8 + (i % 3) * 0.05,
+          avgUtteranceChars: 40 + i,
+          participation: 0.7 + (i % 4) * 0.05,
+        },
+        topicsEngaged: engaged,
+        topicsLow: TOPICS.slice(4),
+        topicOutcomes: TOPICS.slice(0, 3).map((t) => ({ topic: t, reaction: 'engaged', turns: 3 })),
+        interestKeywords: ['어린 시절', '고향', '가족', '추억', '친구'].slice(0, 3 + (i % 3)),
+        recommendedTopics: ['가족'],
+      },
+    };
+  });
+  q.setQueryData([...queryKeys.orgSessionAnalyses, 'all'], rows);
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -234,6 +274,7 @@ function seed() {
   seedChronicleList(q);
   seedSessionList(q);
   seedConversation(q);
+  seedAnalyses(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

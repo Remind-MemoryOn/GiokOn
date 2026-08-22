@@ -17,6 +17,7 @@
   "dependencies": {
     "@giokon/core": "workspace:*",
     "@giokon/data": "workspace:*",
+    "@giokon/theme": "workspace:*",
     "@tanstack/react-query": "^5.101.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",

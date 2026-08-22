@@ -540,6 +540,31 @@ const SCREENS = [
     /녹음 없음/, /h-\[57px\] w-\[369px\][^"]*rounded-\[10px\] border border-line-mid/,
   ]],
 
+  // ── 분석(전체 종합) 225:1669 ──────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 카드1 1054×1885 @343 · 카드2 1054×1780 @2294 · 탭 22 · 기간 pill 127×30', [
+    /h-\[1885px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[1780px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /text-w-nav font-semibold leading-\[30px\] text-accent/,
+    /h-\[30px\] w-\[127px\] rounded-\[5px\] border border-ink-500\/30/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 틴트 카드(accent 3% + 30% 테두리 r5) · TOP5 트랙 707×12 · 축 카드 156×176', [
+    /const TINT = 'absolute rounded-\[5px\] border border-accent\/30 bg-accent\/\[0\.03\]'/,
+    /h-\[12px\] w-\[707px\] rounded-pill bg-accent-tint/,
+    /h-\[176px\] w-\[156px\]/, /h-\[141px\] w-\[201px\]/, /h-\[174px\] w-\[271px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 수치는 core 관찰 순수함수 · 근거 없으면 만들지 않는다', [
+    /computeOverall/, /computeMonthlyTopicTrend/, /computeMonthlyAxisTrend/,
+    /computeAxisObservations/, /computeTopicDetail/,
+    /비교 근거 없음/, /변화 근거 없음/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 방향 단정 카피 금지(향상률→변화) · 관찰 지표 고지 상시', [
+    /기억 회상 변화/, /감정 표현 변화/,
+    /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
+  ]],
+  [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [
+    /webPalette\.series/, /v == null \? null/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

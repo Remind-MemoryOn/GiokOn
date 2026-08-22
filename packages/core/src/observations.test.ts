@@ -6,10 +6,12 @@ import {
   computeMonthlyTopicTrend,
   computeOverall,
   computeParticipation,
+  computeTopicDetail,
   computeTopicShares,
   observationSummary,
 } from './observations'
 import { DEFAULT_APPEARANCE } from './types'
+import type { SessionAnalysis } from './analysis'
 import type { ChronicleEntry, ConversationTurn, ElderProfile, Session } from './types'
 
 const elder: ElderProfile = {
@@ -203,5 +205,60 @@ describe('computeMonthlyAxisTrend', () => {
       expect(s.points[1]).toBeNull()
     }
     expect(t.series.find((s) => s.axis === 'focus')?.points[2]).not.toBeNull()
+  })
+})
+
+describe('computeTopicDetail', () => {
+  const mk = (topic: string, reaction: 'engaged' | 'low'): SessionAnalysis => ({
+    version: 'v1',
+    summary: '',
+    emotionTone: 'calm',
+    metrics: { elderTurns: 5, aiTurns: 5, responseRate: 0.8, avgUtteranceChars: 40, participation: 0.7 },
+    topicsEngaged: reaction === 'engaged' ? [topic] : [],
+    topicsLow: reaction === 'low' ? [topic] : [],
+    topicOutcomes: [{ topic, reaction, elderTurns: 3 }],
+    interestKeywords: [],
+    recommendedTopics: [],
+  })
+  const now = new Date('2026-08-01T00:00:00Z')
+  const iso = (daysAgo: number) =>
+    new Date(now.getTime() - daysAgo * 86400000).toISOString()
+
+  it('등장 세션 수·호응률·평균 길이를 센다', () => {
+    const d = computeTopicDetail(
+      [
+        { analysis: mk('가족', 'engaged'), at: iso(1), seconds: 600 },
+        { analysis: mk('가족', 'low'), at: iso(2), seconds: 900 },
+        { analysis: mk('고향', 'engaged'), at: iso(3), seconds: 300 },
+      ],
+      '가족',
+      3,
+      now,
+    )
+    expect(d.mentions).toBe(2)
+    expect(d.positiveRate).toBe(50)
+    expect(d.avgSeconds).toBe(750)
+  })
+
+  it('비교 근거가 없으면 변화를 만들지 않는다', () => {
+    const d = computeTopicDetail(
+      [{ analysis: mk('가족', 'engaged'), at: iso(1), seconds: null }],
+      '가족',
+      3,
+      now,
+    )
+    expect(d.avgSeconds).toBeNull()
+    expect(d.delta.mentions).toBeNull()
+  })
+
+  it('등장하지 않은 주제는 0회 · 비율 null(0회 관찰 ≠ 측정 불가)', () => {
+    const d = computeTopicDetail(
+      [{ analysis: mk('고향', 'engaged'), at: iso(1), seconds: 600 }],
+      '가족',
+      3,
+      now,
+    )
+    expect(d.mentions).toBe(0)
+    expect(d.positiveRate).toBeNull()
   })
 })
