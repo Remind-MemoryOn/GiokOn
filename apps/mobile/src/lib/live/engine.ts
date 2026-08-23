@@ -51,6 +51,13 @@ export class LiveConversationEngine {
   private micStop: { stop: () => void } | null = null;
   private draft = '';
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  // 재접속(resumption)용 캐시 — start() 때 채워진다.
+  private lastToken = '';
+  private model = '';
+  private systemInstruction = '';
+  private resumeHandle = '';
+  private resumedOnce = false;
+  private closing = false;
 
   constructor(
     private readonly elder: ElderProfile,
@@ -72,26 +79,57 @@ export class LiveConversationEngine {
     if (!isSupabaseConfigured || !micStreamingSupported()) return false;
     try {
       const { token, model } = await fetchLiveToken();
-      this.client = new GeminiLiveClient(model, {
-        onDraft: (text) => {
-          // 서버 전사 스냅샷을 누적만 한다 — 확정은 stopListening 시점에 한 번.
-          this.draft = text;
-          this.armSilenceTimer();
-        },
-        onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
-        onClose: () => {
-          this.client = null;
-        },
-      });
-      await this.client.connect(
-        token,
-        buildSystemPrompt(this.elder, this.chronicles, this.design),
-      );
+      this.lastToken = token;
+      this.model = model;
+      this.systemInstruction = buildSystemPrompt(this.elder, this.chronicles, this.design);
+      this.client = this.makeClient();
+      await this.client.connect(token, this.systemInstruction);
       return true;
     } catch (e) {
       console.info('[giokon] live 미가용 — 기존 파이프라인으로 진행', e);
       this.client = null;
       return false;
+    }
+  }
+
+  /** 클라이언트 팩토리 — 최초 접속과 재접속(resume)이 같은 핸들러를 쓰도록 뽑아둔다. */
+  private makeClient(): GeminiLiveClient {
+    return new GeminiLiveClient(this.model, {
+      onDraft: (text) => {
+        // 서버 전사 스냅샷을 누적만 한다 — 확정은 stopListening 시점에 한 번.
+        this.draft = text;
+        this.armSilenceTimer();
+      },
+      onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
+      onResumption: (handle) => {
+        // 세션 재개 핸들 보관 — 네트워크 끊김 시 같은 맥락으로 재접속한다.
+        this.resumeHandle = handle;
+      },
+      onClose: () => {
+        if (this.closing) {
+          this.client = null;
+          return;
+        }
+        // 의도하지 않은 끊김 → **1회 한정** 같은 대화로 재접속을 시도한다.
+        this.client = null;
+        if (this.resumeHandle && !this.resumedOnce && this.lastToken) {
+          this.resumedOnce = true;
+          setTimeout(() => void this.tryResume(), 1200);
+        }
+      },
+    });
+  }
+
+  /** 재개 핸들로 재접속. 실패하면 폴백 파이프라인으로 자연 강하한다. */
+  private async tryResume(): Promise<void> {
+    try {
+      const client = this.makeClient();
+      await client.connect(this.lastToken, this.systemInstruction, this.resumeHandle);
+      this.client = client;
+      console.info('[giokon] live 세션 재개 성공');
+    } catch (e) {
+      console.warn('[giokon] live 재접속 실패 — 폴백으로 진행', e);
+      this.client = null;
     }
   }
 
@@ -106,7 +144,12 @@ export class LiveConversationEngine {
   async requestOpener(): Promise<LiveTurnResult | null> {
     if (!this.available) return null;
     try {
-      return await this.client!.sendUserTurn('(내부 지시) 오늘의 첫 인사와 함께 회상 대화의 첫 질문을 건네주세요.', 20000);
+      const r = await this.client!.sendUserTurn(
+        '(내부 지시) 오늘의 첫 인사와 함께 회상 대화의 첫 질문을 건네주세요.',
+        20000,
+      );
+      if (!r || r === 'timeout') return null;
+      return r;
     } catch (e) {
       console.warn('[giokon] live 오프너 실패', e);
       return null;
@@ -140,14 +183,15 @@ export class LiveConversationEngine {
   /**
    * 확정 텍스트로 모델 턴을 진행한다. **재생은 하지 않고** 응답(텍스트+오디오 청크)을
    * 돌려준다 — 호출부(talk 화면)가 네비게이션·speaking 상태와 재생을 조율한다.
+   * 응답 지연은 `{ status: 'timeout' }` 으로 구분한다(조용한 폴백 방지 — talk 에서 안내).
    */
   async submitUserTurn(
     finalText: string,
-  ): Promise<{ text: string; chunksB64: string[] } | null> {
+  ): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null> {
     if (!this.available) return null;
     const turn = await this.client!.sendUserTurn(finalText);
-    if (!turn) return null;
-    return { text: turn.text, chunksB64: turn.audioChunksB64 };
+    if (turn === 'timeout') return { status: 'timeout' };
+    return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64 };
   }
 
   /** 턴 음성(base64 PCM 청크)을 재생하고 완료를 기다린다. */
@@ -161,6 +205,7 @@ export class LiveConversationEngine {
   }
 
   async close(): Promise<void> {
+    this.closing = true; // 의도 종료 — onClose 에서 재접속 시도하지 않는다
     this.clearSilenceTimer();
     this.micStop?.stop();
     this.micStop = null;

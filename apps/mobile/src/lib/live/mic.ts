@@ -2,8 +2,21 @@
 //
 // ⚠️ 네이티브 모듈이라 Expo Go 에선 동작하지 않는다(dev-client/EAS 빌드 필요).
 // 모듈 로드 실패 시 isSupported=false 로 보고해 호출부가 기존 파이프라인으로 폴백한다.
+// 권한은 ensureMicPermission() 으로 **청취 시작 전에** 명시 요청한다 — 개발자 빌드는
+// 자동 부여되지만 심사용 production 빌드에서 최초 거절 시 무반응이 되는 것을 막는다.
+
+import { Audio } from 'expo-av';
 
 type StartOptions = { onData: (base64Chunk: string) => void; onError?: (e: unknown) => void };
+
+/** 마이크 녹음 권한 확인·요청. false면 호출부가 안내 후 중단해야 한다. */
+export async function ensureMicPermission(): Promise<boolean> {
+  const current = await Audio.getPermissionsAsync();
+  if (current.granted) return true;
+  if (!current.canAskAgain) return false;
+  const requested = await Audio.requestPermissionsAsync();
+  return requested.granted;
+}
 
 interface LiveAudioStreamModule {
   init(options: Record<string, unknown>): void;

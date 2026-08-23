@@ -26,6 +26,8 @@ import {
   closeLiveEngine,
   peekLiveEngine,
 } from '../../src/lib/live/engine';
+import { playPcmTurn } from '../../src/lib/live/player';
+import { ensureMicPermission } from '../../src/lib/live/mic';
 import { useApp } from '../../src/store/appStore';
 import {
   useSessionPersistence,
@@ -73,6 +75,9 @@ export default function Talk() {
   // 기존 파이프라인(expo-speech + 타자/모의 입력)으로 조용히 폴백한다.
   const liveAudioChunks = useRef<Map<string, string[]>>(new Map());
   const [liveListening, setLiveListening] = useState(false);
+  /** 모델 응답 대기 중(저장 버튼 이중 탭 방지 + 처리 중 표시). */
+  const [confirming, setConfirming] = useState(false);
+  const timeoutNoticed = useRef(false);
 
   useEffect(() => {
     if (!active) return;
@@ -109,9 +114,12 @@ export default function Talk() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 세션 시작 시점 1회 초기화
   }, []);
 
-  // 세션이 끝나 화면을 떠날 때 연결 정리(종료 경로는 endAndSave 에서 먼저 닫는다).
+  // 세션이 끝나 화면을 떠날 때 연결·오디오 캐시 정리(종료 경로는 endAndSave 에서 먼저 닫는다).
   useEffect(() => {
-    if (!active && !finishing.current) void closeLiveEngine();
+    if (!active && !finishing.current) {
+      liveAudioChunks.current.clear();
+      void closeLiveEngine();
+    }
   }, [active]);
 
   // AI 질문 자동 재생. Live 오디오가 있는 질문은 **엔진이 재생을 주도**하므로
@@ -171,7 +179,7 @@ export default function Talk() {
     presentResult(await finishAndPersist());
   };
 
-  const onMic = () => {
+  const onMic = async () => {
     const engine = peekLiveEngine();
     if (engine?.available) {
       // Live 모드: 마이크 토글 — 누르면 청취 시작(실시간 전사), 다시 누르거나
@@ -179,11 +187,20 @@ export default function Talk() {
       if (engine.isListening) {
         engine.stopListening(); // onDraftFinal 콜백이 패널을 연다
         setLiveListening(false);
-      } else {
-        ExpoSpeechProvider.cancelSpeak();
-        engine.startListening();
-        setLiveListening(true);
+        return;
       }
+      ExpoSpeechProvider.cancelSpeak();
+      const granted = await ensureMicPermission();
+      if (!granted) {
+        Alert.alert(
+          '마이크 권한',
+          '어르신 말씀을 듣기 위해 마이크 권한이 필요해요.\n설정에서 허용해 주세요.',
+        );
+        return;
+      }
+      if (!peekLiveEngine()?.available) return; // 대기 중 세션이 끊긴 경우
+      engine.startListening();
+      setLiveListening(true);
       return;
     }
     // 폴백 파이프라인(기존 동작)
@@ -191,20 +208,33 @@ export default function Talk() {
     capture(); // 인식 시작 → pendingStt 채워지면 하단 인라인 패널 표시
   };
 
-  /** 저장 확정 — Live 모드에선 위기가 아닌 한 모델 응답을 이번 AI 발화로 채택한다. */
+  /** 저장 확정 — Live 모드에선 위기가 아닌 한 모델 응답을 이번 AI 발화로 채택한다.
+   *  대기 화면(/session/loading)으로 **먼저** 넘어가 모델 응답 시간을 덮는다 —
+   *  loading 이 질문 교체를 감지해 자동 복귀한다(§리포트 ② 개선). */
   async function handleConfirm() {
     const finalText = draft.trim() || (pending ?? '');
+    router.push('/session/loading');
     const engine = peekLiveEngine();
     let livePayload: { question: string } | undefined;
     if (engine?.available && finalText) {
-      // ⚠️ 위기 발화는 모델에 **보내지 않는다** — 로컬 안전 응답·에스컬레이션이 우선.
-      const isCrisis = assessUtterance(finalText).situation === 'crisis';
-      if (!isCrisis) {
-        const res = await engine.submitUserTurn(finalText);
-        if (res?.text) livePayload = { question: res.text };
-        if (res && res.chunksB64.length > 0) {
-          liveAudioChunks.current.set(res.text, res.chunksB64);
+      setConfirming(true);
+      try {
+        // ⚠️ 위기 발화는 모델에 **보내지 않는다** — 로컬 안전 응답·에스컬레이션이 우선.
+        const isCrisis = assessUtterance(finalText).situation === 'crisis';
+        if (!isCrisis) {
+          const res = await engine.submitUserTurn(finalText);
+          if (res?.status === 'ok' && res.text) {
+            livePayload = { question: res.text };
+            if (res.chunksB64.length > 0) liveAudioChunks.current.set(res.text, res.chunksB64);
+          } else if (res?.status === 'timeout' && !timeoutNoticed.current) {
+            // 조용히 mock 질문으로 바뀌면 "AI가 갑자기 이상해졌다"는 위화감만 남는다 →
+            // 세션당 1회 안내(요양보호사 대상).
+            timeoutNoticed.current = true;
+            Alert.alert('알림', 'AI 응답이 지연되고 있어요.\n이번 턴은 기본 대화로 이어갑니다.');
+          }
         }
+      } finally {
+        setConfirming(false);
       }
     }
     confirm(finalText, livePayload);
@@ -224,8 +254,6 @@ export default function Talk() {
     // 확정된 턴을 곧바로 DB 에 남긴다(진행 중 저장). 실패해도 대화는 막지 않고
     // 다음 턴·종료 때 다시 시도한다.
     void syncProgress();
-    // 다음 질문 생성 대기 화면(Figma `28:37`)을 거쳐 대화로 돌아온다.
-    router.push('/session/loading');
   }
 
   const micState: MicState = speaking
@@ -354,11 +382,11 @@ export default function Talk() {
               if (!question || replaying) return;
               setReplaying(true);
               try {
-                // Live 오디오가 있으면 원음 그대로, 없으면 기기 TTS로 읽는다.
+                // Live 오디오가 있으면 원음 그대로(엔진 생존과 무관 — 플레이어 직접 호출),
+                // 없으면 기기 TTS로 읽는다.
                 const chunks = liveAudioChunks.current.get(question);
                 if (chunks && chunks.length > 0) {
-                  await peekLiveEngine()?.playTurn(chunks);
-                  if (!peekLiveEngine()) return;
+                  await playPcmTurn(chunks);
                 } else {
                   await ExpoSpeechProvider.speak(question);
                 }
@@ -460,14 +488,16 @@ export default function Talk() {
             </Pressable>
             <Pressable
               onPress={() => {
+                if (confirming) return;
                 void handleConfirm();
               }}
+              disabled={confirming}
               accessibilityRole="button"
               className="flex-1 items-center justify-center active:opacity-90"
-              style={{ height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+              style={{ height: 57, borderRadius: 10, backgroundColor: '#e9822b', opacity: confirming ? 0.6 : 1 }}
             >
               <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
-                저장
+                {confirming ? 'AI 응답 대기 중…' : '저장'}
               </Text>
             </Pressable>
           </View>

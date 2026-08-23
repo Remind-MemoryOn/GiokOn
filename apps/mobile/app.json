@@ -1,33 +1,50 @@
 {
   "expo": {
     "name": "기억온",
-    "slug": "giokon",
+    "slug": "giok-on",
     "scheme": "giokon",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "backgroundColor": "#ffffff",
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#ffffff",
-      "resizeMode": "contain"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "kr.gieokon.app"
+      "bundleIdentifier": "kr.gieokon.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "어르신과의 회상 대화에서 말씀을 인식하기 위해 마이크를 사용합니다."
+      }
     },
     "android": {
       "package": "kr.gieokon.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3877c5b5-40c9-4083-a1a3-4a6e37cf4d6b"
+      }
+    },
+    "owner": "paulodybi"
   }
 }

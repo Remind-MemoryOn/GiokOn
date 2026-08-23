@@ -22,6 +22,8 @@ type Handlers = {
   onDraft?: (text: string) => void;
   onError?: (e: unknown) => void;
   onClose?: () => void;
+  /** 세션 재개 핸들 수신 — 엔진이 보관해 끊김 시 재접속에 쓴다. */
+  onResumption?: (handle: string) => void;
 };
 
 interface WsLike {
@@ -35,16 +37,21 @@ export class GeminiLiveClient {
   private ws: WsLike | null = null;
   private outputText = '';
   private audioChunks: string[] = [];
-  private pendingTurn: ((r: LiveTurnResult | null) => void) | null = null;
+  private pendingTurn:
+    | ((r: LiveTurnResult | 'timeout') => void)
+    | null = null;
   private opened = false;
+  /** 서버가 내려준 세션 재개 핸들(재연결 시 setup 에 되돌려 준다). */
+  private lastHandle = '';
 
   constructor(
     private readonly model: string,
     private readonly handlers: Handlers,
   ) {}
 
-  /** ephemeral token 으로 접속해 setup 을 보낸다. setupComplete 수신 시 resolve. */
-  connect(token: string, systemInstruction: string): Promise<void> {
+  /** ephemeral token 으로 접속해 setup 을 보낸다. setupComplete 수신 시 resolve.
+   *  resumeHandle 을 주면 **같은 대화 맥락으로 재접속**한다(세션 재개). */
+  connect(token: string, systemInstruction: string, resumeHandle?: string): Promise<void> {
     const url = `${LIVE_WS_BASE}/${this.model}:bidiGenerateContent?access_token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     this.ws = ws;
@@ -74,7 +81,7 @@ export class GeminiLiveClient {
                 automatic_activity_detection: { disabled: true },
                 activity_handling: 'NO_INTERRUPTION',
               },
-              session_resumption: {},
+              session_resumption: resumeHandle ? { handle: resumeHandle } : {},
             },
           }),
         );
@@ -90,8 +97,15 @@ export class GeminiLiveClient {
           if ('serverContent' in msg) {
             this.handleServerContent(msg['serverContent'] as never);
           }
+          if ('sessionResumptionUpdate' in msg) {
+            const update = msg['sessionResumptionUpdate'] as { newHandle?: string; resumable?: boolean };
+            if (update?.newHandle && update.resumable !== false) {
+              this.lastHandle = update.newHandle;
+              this.handlers.onResumption?.(update.newHandle);
+            }
+          }
           if ('goAway' in msg) {
-            // 서버가 곧 연결을 닫는다 — 다음 턴까지 여유가 있으면 무시, 에러 아님.
+            // 서버가 곧 연결을 닫는다 — 재개 핸들은 이미 보관 중이므로 에러 아님.
             console.info('[giokon] live: goAway 수신');
           }
         } catch (e) {
@@ -141,27 +155,35 @@ export class GeminiLiveClient {
     }
   }
 
+  get resumptionHandle(): string {
+    return this.lastHandle;
+  }
+
   get isConnected(): boolean {
     return this.opened;
   }
 
-  /** 어르신 발화 확정 텍스트를 모델에 넘기고 이번 턴 응답을 기다린다. */
-  async sendUserTurn(text: string, timeoutMs = 20000): Promise<LiveTurnResult | null> {
+  /** 어르신 발화 확정 텍스트를 모델에 넘기고 이번 턴 응답을 기다린다.
+   *  응답 지연(타임아웃)은 예외가 아니라 **'timeout'** 으로 구분해 돌려준다. */
+  async sendUserTurn(
+    text: string,
+    timeoutMs = 20000,
+  ): Promise<LiveTurnResult | 'timeout'> {
     if (!this.ws || !this.opened) throw new Error('Live 세션이 연결돼 있지 않아요.');
-    const result = await new Promise<LiveTurnResult | null>((resolve) => {
+    const result = await new Promise<LiveTurnResult | 'timeout'>((resolve) => {
       this.pendingTurn = resolve;
       try {
         this.ws!.send(JSON.stringify({ realtime_input: { text } }));
       } catch (e) {
         this.pendingTurn = null;
-        resolve(null);
+        resolve('timeout');
         this.handlers.onError?.(e);
         return;
       }
       setTimeout(() => {
         if (this.pendingTurn === resolve) {
           this.pendingTurn = null;
-          resolve(null);
+          resolve('timeout');
         }
       }, timeoutMs);
     });
@@ -187,7 +209,7 @@ export class GeminiLiveClient {
 
   close(): void {
     if (this.pendingTurn) {
-      this.pendingTurn(null);
+      this.pendingTurn('timeout');
       this.pendingTurn = null;
     }
     try {
