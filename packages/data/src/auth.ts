@@ -18,6 +18,7 @@ import type {
 } from '@supabase/supabase-js'
 import { getGiokonClient } from './client'
 import type { ProfileCaregiverRow, ProfileGuardianRow, UserRow } from './database.types'
+import type { ConsentType } from '@giokon/core'
 
 // 화면(apps/web 등)에서 세션·사용자 타입을 쓸 수 있도록 재노출.
 export type { AuthChangeEvent, Session, Subscription, User } from '@supabase/supabase-js'
@@ -169,6 +170,11 @@ export interface OnboardingParams {
   orgName?: string
   /** 보호자 선택: 있으면 어르신 영속 코드로 연결(pending)까지 처리. */
   elderCode?: string
+  /**
+   * 온보딩 화면의 계정 필수 동의(consent_type 목록) — RPC 가 consents 에 적재한다(C2).
+   * 미전달 시 기록 없이 통과하던 이전 동작과 동일.
+   */
+  consents?: ConsentType[]
 }
 
 /**
@@ -183,6 +189,7 @@ export async function completeOnboarding(params: OnboardingParams): Promise<User
     p_role: params.role,
     p_org_name: params.orgName ?? null,
     p_elder_code: params.elderCode ?? null,
+    p_consents: params.consents?.length ? params.consents : null,
   })
   if (error) throw error
   return data as UserRow

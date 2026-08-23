@@ -15,6 +15,7 @@
 import {
   useChronicles as useChroniclesData,
   useConsents as useConsentsData,
+  useDuePlannedSession as useDuePlannedSessionData,
   useOrgSessionAnalyses as useOrgSessionAnalysesData,
   useProfile as useProfileData,
   useProfiles as useProfilesData,
@@ -129,7 +130,11 @@ export function useElderSessions(elderId: string | undefined): Session[] {
   const mock = useApp(useShallow((s) => (elderId ? s.sessionsByElder(elderId) : [])));
   const live = useSessionsData(CFG ? elderId : undefined);
   if (!CFG) return mock;
-  return (live.data ?? []).map(toSession);
+  // 웹 설계(planned) 행은 **아직 진행하지 않은 세션**이다 — 실행 이력 목록에서 제외한다.
+  // 채택은 세션 시작 화면(useDuePlannedRow → adoptPlannedSession)이 전담한다(B1-d).
+  return (live.data ?? [])
+    .filter((row) => row.status !== 'planned')
+    .map(toSession);
 }
 
 /**
@@ -140,7 +145,22 @@ export function useElderLogs(elderId: string | undefined): ConversationLog[] {
   const mock = useApp(useShallow((s) => (elderId ? s.logsByElder(elderId) : [])));
   const live = useSessionsData(CFG ? elderId : undefined);
   if (!CFG) return mock;
-  return (live.data ?? []).map((row) => toConversationLog(row, []));
+  return (live.data ?? [])
+    .filter((row) => row.status !== 'planned') // 설계만 한 행은 대화 기록이 아니다(B1-d).
+    .map((row) => toConversationLog(row, []));
+}
+
+/**
+ * 오늘 진행할 웹 설계 세션(planned, 기록일 도래)의 DB 행 — 세션 시작 화면이
+ * 채택 여부를 결정하는 근거(B1-a). 라이브 전용: 목업 모드에선 항상 null.
+ * 도메인 Session 이 아닌 **raw 행**을 그대로 노출한다 — status/planned_date 등
+ * 채택 판정에 필요한 필드가 도메인 매핑엔 없기 때문이다.
+ */
+export function useDuePlannedRow(
+  elderId: string | undefined,
+): ReturnType<typeof useDuePlannedSessionData>['data'] {
+  const live = useDuePlannedSessionData(CFG ? elderId : undefined);
+  return live.data ?? null;
 }
 
 /** 단일 대화 로그(전문 포함). 라이브에서 id는 세션 id. */

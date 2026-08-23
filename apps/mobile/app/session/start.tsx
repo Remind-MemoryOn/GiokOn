@@ -12,10 +12,11 @@ import { View, Text, Pressable, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { recommendNextTopics } from '@giokon/core';
+import type { SessionDesign } from '@giokon/core';
 import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
-import { useElder, useChronicles } from '../../src/data/reads';
+import { useElder, useChronicles, useDuePlannedRow } from '../../src/data/reads';
 import { useSessionPersistence } from '../../src/data/session-persistence';
 
 const FRAME_H = 852;
@@ -24,8 +25,9 @@ export default function SessionStart() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id);
   const chronicles = useChronicles(id);
+  const duePlanned = useDuePlannedRow(id);
   const begin = useApp((s) => s.beginSession);
-  const { openRemoteSession } = useSessionPersistence();
+  const { openRemoteSession, adoptPlannedSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
 
   if (!elder || !id) {
@@ -33,11 +35,32 @@ export default function SessionStart() {
   }
 
   const onStart = () => {
-    const topic = recommendNextTopics(elder, chronicles)[0] ?? '오늘';
-    begin(elder, chronicles, { title: `${topic} 이야기`, therapyType: 'reminiscence' });
-    // 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
-    // 웹에서 진행 상황을 볼 수 있다. 실패해도 대화는 시작하고 종료 시 일괄 저장한다.
-    void openRemoteSession();
+    // 웹 설계(planned) 채택 — 설계 값(goal/content/avoid_topics/keywords)이 그대로
+    // 이번 대화의 진행 입력이 된다(B1-a·B1-b). 근거가 없는 필드는 넣지 않는다.
+    let design: SessionDesign | undefined;
+    let title: string;
+    if (duePlanned) {
+      design = {
+        title: duePlanned.title ?? undefined,
+        goal: duePlanned.goal ?? undefined,
+        content: duePlanned.content ?? undefined,
+        avoidTopics: duePlanned.avoid_topics ?? undefined,
+        keywords: duePlanned.keywords && duePlanned.keywords.length > 0 ? duePlanned.keywords : undefined,
+      };
+      title = duePlanned.title ?? `${recommendNextTopics(elder, chronicles)[0] ?? '오늘'} 이야기`;
+    } else {
+      const topic = recommendNextTopics(elder, chronicles)[0] ?? '오늘';
+      title = `${topic} 이야기`;
+    }
+    begin(elder, chronicles, { title, therapyType: 'reminiscence' }, design);
+    if (duePlanned) {
+      // 같은 행을 active 로 전환해 이어 쓴다(B1-c — 새 행을 만들지 않아 좀비 없음).
+      void adoptPlannedSession(duePlanned.id, new Date().toISOString());
+    } else {
+      // 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
+      // 웹에서 진행 상황을 볼 수 있다. 실패해도 대화는 시작하고 종료 시 일괄 저장한다.
+      void openRemoteSession();
+    }
     router.replace('/session/talk');
   };
 

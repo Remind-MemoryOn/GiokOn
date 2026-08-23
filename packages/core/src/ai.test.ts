@@ -4,6 +4,7 @@ import {
   generateReply,
   extractChronicle,
   generateGuardianReport,
+  filterAvoidedBanks,
 } from './ai'
 import { DEFAULT_APPEARANCE } from './types'
 import type { ElderProfile, Session, ConversationTurn } from './types'
@@ -214,5 +215,33 @@ describe('generateGuardianReport', () => {
     expect(report.highlightTopics).toContain('고향')
     expect(report.headline).toContain('고향')
     expect(report.newChronicleCount).toBe(1)
+  })
+})
+
+describe('filterAvoidedBanks — 피해갈 내용(설계) 주제 배제', () => {
+  const topics = [{ topic: '고향' }, { topic: '가족' }, { topic: '음식' }]
+
+  it('설계가 없으면 원본 배열을 그대로 되돌린다', () => {
+    expect(filterAvoidedBanks(topics, undefined)).toEqual(topics)
+    expect(filterAvoidedBanks(topics, null)).toEqual(topics)
+    expect(filterAvoidedBanks(topics, '')).toEqual(topics)
+  })
+
+  it('토큰과 부분일치하는 주제를 제외한다', () => {
+    const kept = filterAvoidedBanks(topics, '가족 얘기는 빼고')
+    expect(kept.map((b) => b.topic)).toEqual(['고향', '음식'])
+  })
+
+  it('구분자로 끊은 여러 토큰을 모두 적용한다', () => {
+    const kept = filterAvoidedBanks(topics, '고향, 가족 이야기는 피하고 싶어요')
+    expect(kept.map((b) => b.topic)).toEqual(['음식'])
+  })
+
+  it('전부 가려지면 원본을 유지한다(대화 불능 방지 — 본문 금지는 프롬프트 계층)', () => {
+    expect(filterAvoidedBanks(topics, '고향 가족 음식')).toEqual(topics)
+  })
+
+  it('2자 미만 토큰은 무시한다', () => {
+    expect(filterAvoidedBanks(topics, 'a, 갑')).toEqual(topics)
   })
 })

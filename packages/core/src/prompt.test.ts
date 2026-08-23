@@ -66,6 +66,31 @@ describe('buildSystemPrompt', () => {
   it('버전이 있다(평가·회귀 추적)', () => {
     expect(PROMPT_VERSION).toMatch(/^v\d/)
   })
+
+  it('세션 설계(goal/content/keywords)를 주입한다', () => {
+    const p = buildSystemPrompt(elder, chronicle, {
+      title: '어린 시절 이야기',
+      goal: '고향 친구 이야기 꺼내기',
+      content: '감나무와 동네 풍경을 소재로',
+      keywords: ['감나무', '동네'],
+    })
+    expect(p).toContain('오늘 세션 설계')
+    expect(p).toContain('고향 친구 이야기 꺼내기')
+    expect(p).toContain('감나무와 동네 풍경을 소재로')
+    expect(p).toContain('감나무, 동네')
+  })
+
+  it('피해갈 내용은 엄금 문구로 주입한다(스스로 꺼내지 않는다)', () => {
+    const p = buildSystemPrompt(elder, chronicle, { avoidTopics: '돌아가신 남편' })
+    expect(p).toContain('절대 스스로 꺼내지 않습니다')
+    expect(p).toContain('돌아가신 남편')
+  })
+
+  it('설계가 없으면 설계 섹션을 만들지 않는다(근거 없는 값 금지)', () => {
+    expect(buildSystemPrompt(elder, chronicle)).not.toContain('오늘 세션 설계')
+    // 빈 설계 객체도 섹션을 만들지 않는다
+    expect(buildSystemPrompt(elder, chronicle, {})).not.toContain('오늘 세션 설계')
+  })
 })
 
 describe('RESPONSE_JSON_SCHEMA — Structured Outputs', () => {

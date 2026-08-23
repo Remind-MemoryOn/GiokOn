@@ -167,6 +167,21 @@ export const THERAPY_TYPES: Record<TherapyType, TherapyTypeMeta> = {
   },
 };
 
+/**
+ * 세션 설계(웹에서 요양보호사가 미리 만든 값 — DB sessions 의 planned 컬럼群).
+ * 앱이 planned 세션을 채택해 active 로 전환할 때 대화 진행 입력으로 쓴다:
+ *   - goal/content/keywords → 질문 생성 재료(프롬프트 주입)
+ *   - avoidTopics           → 안전 입력(AI 가 스스로 꺼내지 않을 내용)
+ * 화면 표시용이 아니므로 근거 없는 값은 만들지 않는다(모두 optional).
+ */
+export interface SessionDesign {
+  title?: string;
+  goal?: string;
+  content?: string;
+  avoidTopics?: string;
+  keywords?: string[];
+}
+
 export interface Session {
   id: string;
   title: string;
@@ -174,6 +189,8 @@ export interface Session {
   note?: string;          // 요양보호사 메모
   durationMinutes: number;
   elderId: string;
+  /** 웹 설계 값(planned 세션을 채택했을 때 존재). 없으면 앱이 즉석 시작한 세션. */
+  design?: SessionDesign;
   createdAt: string;
   updatedAt: string;
 }

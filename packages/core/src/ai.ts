@@ -210,6 +210,28 @@ function getBanks(type: TherapyType): TopicBank[] {
   }
 }
 
+/**
+ * 피해갈 내용(웹 설계 `avoidTopics`)에 걸리는 주제 은행을 제외한다.
+ * 자유 입력 텍스트를 구분자로 끊은 토큰(2자 이상)과 주제명의 **양방향 부분일치**로
+ * 판정한다("가족 얘기, 건강" → '가족' 제외). 전부 가려지면 원본을 유지한다 —
+ * 이 계층은 주제 선택 가드일 뿐이고, 본문 금지는 프롬프트(buildSystemPrompt)가 담당한다.
+ */
+export function filterAvoidedBanks<T extends { topic: string }>(
+  banks: T[],
+  avoidTopics?: string | null,
+): T[] {
+  const text = (avoidTopics ?? '').trim()
+  if (!text) return banks
+  const tokens = text
+    .split(/[\s,·/;|]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2)
+  if (tokens.length === 0) return banks
+  const avoided = (b: T) => tokens.some((t) => b.topic.includes(t) || t.includes(b.topic))
+  const kept = banks.filter((b) => !avoided(b))
+  return kept.length > 0 ? kept : banks
+}
+
 function shortQuote(t: string): string {
   const clean = t.replace(/\s+/g, ' ').trim()
   if (!clean) return ''
@@ -370,7 +392,7 @@ export function generateOpener(
   session: Session,
   chronicle: ChronicleEntry[],
 ): AiResponse {
-  const banks = getBanks(session.therapyType)
+  const banks = filterAvoidedBanks(getBanks(session.therapyType), session.design?.avoidTopics)
 
   if (chronicle.length > 0) {
     const recent = chronicle[0]
@@ -398,7 +420,7 @@ export function generateReply(
   lastUserText: string,
   assessment?: UtteranceAssessment,
 ): AiResponse {
-  const banks = getBanks(session.therapyType)
+  const banks = filterAvoidedBanks(getBanks(session.therapyType), session.design?.avoidTopics)
   const state = deriveDialogueState(historyBeforeUtterance(history, lastUserText))
   const a = assessment ?? assessUtterance(lastUserText)
   const currentBank = banks.find((b) => b.topic === state.currentTopic) || banks[0]

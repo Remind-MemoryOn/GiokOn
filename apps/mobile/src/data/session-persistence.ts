@@ -240,6 +240,11 @@ let syncing = false;
  */
 export function useSessionPersistence(): {
   openRemoteSession: () => Promise<void>;
+  /**
+   * 웹 설계 세션(planned)을 **채택**해 active 로 전환한다(B1-c).
+   * 새 행을 만들지 않고 같은 행을 이어 쓰므로 '설계됨' 좀비가 남지 않는다.
+   */
+  adoptPlannedSession: (sessionId: string, startedAt: string) => Promise<void>;
   syncProgress: () => Promise<void>;
   finishAndPersist: () => Promise<SessionSaveResult>;
   retrySave: () => Promise<SessionSaveResult>;
@@ -275,6 +280,33 @@ export function useSessionPersistence(): {
       console.warn('[giokon] 진행 중 세션 생성 실패 — 종료 시 일괄 저장합니다.', e);
     }
   }, [user]);
+
+  /**
+   * planned 세션 채택 — status 를 active 로 바꾸고 그 행 id 를 런타임에 붙인다.
+   * 이후 syncProgress/finalize 가 같은 행에 이어 쓴다. 전환 실패 시에도 attach 만은
+   * 시도한다: finalize 가 ended 로 마무리하므로 좀비는 남지 않는다(실패 로그만).
+   */
+  const adoptPlannedSession = useCallback(
+    async (sessionId: string, startedAt: string): Promise<void> => {
+      if (!isSupabaseConfigured || !user) return;
+      try {
+        await withRetry(async () => {
+          const { error } = await getGiokonClient()
+            .from('sessions')
+            .update({ status: 'active', started_at: startedAt })
+            .eq('id', sessionId)
+            .eq('status', 'planned');
+          if (error) throw new Error(error.message);
+        });
+      } catch (e) {
+        console.warn('[giokon] 설계 세션 active 전환 실패 — 종료 시 함께 정리됩니다.', e);
+      }
+      useApp.getState().attachRemoteSession(sessionId);
+      const a = useApp.getState().active;
+      if (a) invalidateFor(a.elder.id);
+    },
+    [user],
+  );
 
   const syncProgress = useCallback(async (): Promise<void> => {
     if (!isSupabaseConfigured || !user || syncing) return;
@@ -349,5 +381,5 @@ export function useSessionPersistence(): {
     }).catch((e) => console.warn('[giokon] 세션 종료 표시 실패', e));
   }, []);
 
-  return { openRemoteSession, syncProgress, finishAndPersist, retrySave: save, discardUnsaved };
+  return { openRemoteSession, adoptPlannedSession, syncProgress, finishAndPersist, retrySave: save, discardUnsaved };
 }
