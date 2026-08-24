@@ -14,6 +14,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "check:copy": "node scripts/check-nonmedical-copy.mjs",
+    "check:bom": "node scripts/check-bom.mjs",
     "web": "pnpm -F @giokon/web dev",
     "web:preview": "pnpm -F @giokon/web build && pnpm -F @giokon/web preview",
     "web:smoke": "pnpm -F @giokon/web build && pnpm -F @giokon/web smoke",
