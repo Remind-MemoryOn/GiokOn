@@ -36,6 +36,7 @@ import { asset } from '../../assets/ui';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge, type BadgeTone } from '../../components/ui/Badge';
 import { useAuth } from '../../auth/AuthProvider';
+import { MessageNoticeDialog } from '../../components/guardian-message';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { cn } from '../../lib/utils';
 
@@ -97,6 +98,7 @@ export function FeedPage() {
   const tabDef = TABS.find((t) => t.key === tabParam) ?? TABS[0];
   const tab: Tab = tabDef.key;
   const [limit, setLimit] = useState(PAGE);
+  const compose = search.get('compose') === '1';
   const setTab = (t: Tab) => {
     setLimit(PAGE);
     setSearch(t === 'all' ? {} : { tab: t }, { replace: true });
@@ -399,6 +401,12 @@ export function FeedPage() {
           </Link>
         </div>
       ) : null}
+
+      {/* 메시지 이용 안내 — 보내기 전에 반드시 읽는다(69:195) */}
+      <MessageNoticeDialog
+        open={compose}
+        onClose={() => setSearch(tab === 'all' ? {} : { tab }, { replace: true })}
+      />
     </div>
   );
 }

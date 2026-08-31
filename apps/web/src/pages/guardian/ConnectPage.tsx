@@ -19,6 +19,7 @@ import {
   useMySharedContent,
   useOrganization,
   useProfile,
+  useProfiles,
   useRevokeGuardianLink,
   type ProfileGuardianRow,
 } from '@giokon/data';
@@ -52,9 +53,11 @@ export function ConnectPage() {
   const { isConfigured } = useAuth();
   const [params] = useSearchParams();
   const all = useMyGuardianLinks({ enabled: isConfigured });
-  const connected = (all.data ?? []).find((l) => l.status === 'approved');
+  const approved = (all.data ?? []).filter((l) => l.status === 'approved');
   // 새 코드로 다시 연결할 때는 연결 전 화면(코드 입력)을 그대로 쓴다.
-  if (connected && params.get('relink') !== '1') return <ConnectedView link={connected} />;
+  if (params.get('relink') === '1') return <ConnectForm />;
+  if (approved.length > 1) return <MultiConnectView links={approved} />;
+  if (approved.length === 1) return <ConnectedView link={approved[0]} />;
   return <ConnectForm />;
 }
 
@@ -92,7 +95,7 @@ function ConnectForm() {
     <div className="relative -ml-[323px] h-[1386px] w-[1440px]">
       <h1
         data-fx="46:77"
-        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-ink-900"
+        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-accent"
         style={{ top: Y(169) }}
       >
         {/* 연결 상태를 그대로 말한다 — 없는 연결을 있는 것처럼 쓰지 않는다 */}
@@ -312,7 +315,7 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
     <div className="relative -ml-[323px] h-[1278px] w-[1440px]">
       <h1
         data-fx="50:243"
-        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-ink-900"
+        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-accent"
         style={{ top: Y(169) }}
       >
         연결된 어르신
@@ -530,6 +533,194 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
           </a>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── 여러 어르신 연결 (Figma 69:320 — 1440×1587) ─────────────────────────────
+//   제목 @(322,169) · 부제 2줄 w562 @(322,236.15) · + 새 어르신 연결 190×57 @(1180,211)
+//   카드 1054×340 @(322,347) 피치 406 — 사진 187 @(+86,+53) · 이름 Bold 35/70 @(+322,+41) ·
+//   나이·기관 Medium 24/30 @(+322,+108.29) · 정보 3줄(라벨 Regular 22 · 값 Bold 22) ·
+//   연결됨 배지 100×35.25 @(+130,+252) · 더보기 @(+864,+155.32)
+//
+// ⚠️ 더보기 화살표는 반전 노드라 metadata x(1273.66)가 렌더 위치가 아니다 — 프레임 오른끝 − 폭.
+const MULTI = {
+  cardTop: 347,
+  pitch: 406,
+  h: 340,
+  photo: { left: 86, top: 53, px: 187 },
+  name: { left: 322, top: 41 },
+  meta: { left: 322, top: 108.29 },
+  badge: { left: 130, top: 252, w: 100, h: 35.25 },
+  more: { left: 864, top: 155.32, chevron: { left: 938, top: 180.95, w: 13.66, h: 20.97 } },
+};
+
+/** 정보 3줄 — 아이콘·라벨·값의 카드 안 상대 좌표(실측). */
+const MULTI_ROWS = [
+  { key: 'caregiver', icon: asset.iconCaregiver, iconAt: [323, 164.32, 19, 20.01], label: '담당 요양보호사', labelLeft: 360, valueLeft: 516, top: 159.32, fx: '69:336' },
+  { key: 'linked', icon: asset.iconCalendar, iconAt: [321, 207.35, 25, 25.02], label: '연결일', labelLeft: 363, valueLeft: 440, top: 204.35, fx: '69:442' },
+  { key: 'updated', icon: asset.iconClock, iconAt: [321, 256.38, 25, 25.02], label: '최근 업데이트', labelLeft: 363, valueLeft: 503, top: 254.38, fx: '69:454' },
+] as const;
+
+function MultiConnectView({ links }: { links: ProfileGuardianRow[] }) {
+  const { isConfigured } = useAuth();
+  const profiles = useProfiles({ enabled: isConfigured });
+  const org = useOrganization({ enabled: isConfigured });
+  const byId = useMemo(
+    () => new Map((profiles.data ?? []).map((p) => [p.id, p])),
+    [profiles.data],
+  );
+  const photoPaths = useMemo(
+    () => (profiles.data ?? []).map((p) => p.photo_path).filter((v): v is string => Boolean(v)),
+    [profiles.data],
+  );
+  const photos = useElderPhotoUrls(photoPaths, isConfigured);
+
+  const bottom = MULTI.cardTop + (links.length - 1) * MULTI.pitch + MULTI.h;
+
+  return (
+    <div className="relative -ml-[323px] w-[1440px]" style={{ height: Y(bottom) + 88 }}>
+      <h1
+        data-fx="69:321"
+        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-accent"
+        style={{ top: Y(169) }}
+      >
+        연결된 어르신
+      </h1>
+      <p
+        data-fx="69:322"
+        className="absolute left-[322px] w-[562px] text-w-body leading-[30px] text-ink-700"
+        style={{ top: Y(236.15), wordBreak: 'keep-all' }}
+      >
+        현재 연결된 모든 어르신을 확인하고, 공개된 기록을 확인해보세요.
+      </p>
+      <Link
+        to="/guardian?relink=1"
+        data-fx="69:445"
+        className="absolute flex h-[57px] w-[190px] items-center rounded-[10px] border border-accent bg-white"
+        style={{ left: 1180, top: Y(211) }}
+      >
+        <span
+          data-fx="69:446"
+          className="absolute left-[33px] top-[10px] h-[30px] whitespace-nowrap text-[18px] font-semibold leading-[30px] text-accent"
+        >
+          {/* 시안은 + 만 25, 글자는 18 이다(잉크 폭 실측). */}
+          <span className="text-[25px] leading-[30px]">+</span>
+          <span className="leading-[30px]"> 새 어르신 연결</span>
+        </span>
+      </Link>
+
+      {links.map((link, i) => {
+        const p = byId.get(link.profile_id);
+        const elder = p ? toElderProfile(p) : null;
+        const top = MULTI.cardTop + i * MULTI.pitch;
+        const url = p?.photo_path ? photos.data?.[p.photo_path] : undefined;
+        // 기관 이름은 우리가 읽을 수 있는 기관(내 소속)일 때만 쓴다 — 다른 기관은 RLS 로 막힌다.
+        const orgName = p && org.data && p.org_id === org.data.id ? org.data.name : null;
+        const age = elder?.birthYear ? `${elderAge(elder)}세` : null;
+        const values: Record<string, string> = {
+          // 담당 요양보호사 이름은 보호자 권한으로 읽을 경로가 없다 → 빈 값.
+          caregiver: '—',
+          linked: dateDot(link.approved_at ?? link.created_at),
+          updated: dateDot(link.updated_at),
+        };
+        return (
+          <div
+            key={link.id}
+            data-fx={i === 0 ? '69:323' : undefined}
+            className="absolute left-[322px] w-[1054px] rounded-[10px] bg-white shadow-card"
+            style={{ top: Y(top), height: MULTI.h }}
+          >
+            {url ? (
+              <img
+                data-fx={i === 0 ? '69:329' : undefined}
+                src={url}
+                alt={elder?.name ?? ''}
+                className="absolute block rounded-[10px] object-cover"
+                style={{ left: MULTI.photo.left, top: MULTI.photo.top, width: MULTI.photo.px, height: MULTI.photo.px }}
+              />
+            ) : (
+              <Avatar
+                data-fx={i === 0 ? '69:329' : undefined}
+                name={elder?.name ?? ''}
+                px={MULTI.photo.px}
+                shape="rounded"
+                className="absolute"
+                style={{ left: MULTI.photo.left, top: MULTI.photo.top }}
+              />
+            )}
+            <Link
+              to="/guardian/feed"
+              data-fx={i === 0 ? '69:326' : undefined}
+              className="absolute whitespace-nowrap text-[35px] font-bold leading-[70px] text-ink-900"
+              style={{ left: MULTI.name.left, top: MULTI.name.top }}
+            >
+              {elder ? `${elder.name} 어르신` : '—'}
+            </Link>
+            <p
+              data-fx={i === 0 ? '69:327' : undefined}
+              className="absolute whitespace-pre text-[24px] font-medium leading-[30px] text-ink-700"
+              style={{ left: MULTI.meta.left, top: MULTI.meta.top }}
+            >
+              {/* 나이도 기관도 근거가 없으면 만들지 않는다 */}
+              {`${age ?? '—'}   I    ${orgName ?? '—'}`}
+            </p>
+
+            {MULTI_ROWS.map((row) => (
+              <div key={row.key}>
+                <img
+                  src={row.icon}
+                  alt=""
+                  aria-hidden
+                  className="absolute block"
+                  style={{ left: row.iconAt[0], top: row.iconAt[1], width: row.iconAt[2], height: row.iconAt[3] }}
+                />
+                <span
+                  data-fx={i === 0 ? row.fx : undefined}
+                  className="absolute whitespace-nowrap text-[22px] leading-[30px] text-ink-700"
+                  style={{ left: row.labelLeft, top: row.top }}
+                >
+                  {row.label}
+                </span>
+                <span
+                  className="absolute whitespace-nowrap text-[22px] font-bold leading-[30px] text-ink-900"
+                  style={{ left: row.valueLeft, top: row.top }}
+                >
+                  {values[row.key]}
+                </span>
+              </div>
+            ))}
+
+            <Badge
+              data-fx={i === 0 ? '69:331' : undefined}
+              tone="live"
+              tag
+              className="absolute"
+              style={{ left: MULTI.badge.left, top: MULTI.badge.top, width: MULTI.badge.w, height: MULTI.badge.h }}
+            >
+              연결됨
+            </Badge>
+            <Link
+              to="/guardian/feed"
+              data-fx={i === 0 ? '69:508' : undefined}
+              className="absolute whitespace-nowrap text-[22px] leading-[30px] text-ink-700"
+              style={{ left: MULTI.more.left, top: MULTI.more.top }}
+            >
+              더보기
+            </Link>
+            <img
+              src={asset.iconChevronRightSm}
+              alt=""
+              aria-hidden
+              className="absolute block"
+              style={{
+                left: MULTI.more.chevron.left, top: MULTI.more.chevron.top,
+                width: MULTI.more.chevron.w, height: MULTI.more.chevron.h,
+              }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

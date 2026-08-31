@@ -746,6 +746,14 @@ const SCREENS = [
     /h-\[57px\] w-\[158px\] rounded-\[10px\] border border-accent bg-white/,
     /h-\[57px\] w-\[173px\] items-center rounded-\[10px\] bg-accent/,
   ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '여러 어르신 연결: 카드 1054×340 피치 406 · 사진 187 · 이름 35 · 나이·기관 Medium 24', [
+    /cardTop: 347,\n  pitch: 406,\n  h: 340,/,
+    /photo: \{ left: 86, top: 53, px: 187 \}/,
+    /text-\[35px\] font-bold leading-\[70px\]/,
+    /text-\[24px\] font-medium leading-\[30px\]/,
+    /approved\.length > 1\) return <MultiConnectView/,
+    /기관 이름은 우리가 읽을 수 있는 기관\(내 소속\)일 때만 쓴다/,
+  ]],
   [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 후: 어르신 코드는 보호자에게 공개하지 않는다 · 해제는 확인 후', [
     /어르신 코드는 보호자에게 공개하지 않는다/,
     /useRevokeGuardianLink/, /window\.confirm\(/,
@@ -790,6 +798,24 @@ const SCREENS = [
     /bg-accent-tint/,
     /reaction === 'engaged' && t\.excerpt/,
     /minutes != null \? `약 \$\{minutes\}분` : '—'/,
+  ]],
+  [`${WEB}/src/pages/guardian/SettingsPage.tsx`, '보호자 설정: 카드 377/251/80 · 알림 행 · 버전은 package.json', [
+    /const CARD1_TOP = 315;/, /const CARD2_TOP = 750;/, /const CARD3_TOP = 1058;/,
+    /h-\[377px\] w-\[1054px\]/, /h-\[251px\] w-\[1054px\]/, /h-\[80px\] w-\[1054px\]/,
+    /\{APP_VERSION\}/,
+    /여는 화면이 디자인에 없고 알림 센터도 배선 전이라 아직 누를 수 없다/,
+    /기억온은 의료기기가 아니며, 인지활동 보조 서비스입니다\./,
+  ]],
+  [`${WEB}/src/lib/version.ts`, '버전 표시는 package.json 이 근거다(시안의 v.1.0.0 은 예시)', [
+    /__APP_VERSION__/, /자리표시자 금지/,
+  ]],
+  [`${WEB}/src/components/guardian-message.tsx`, '메시지 이용 안내: 카드 868×758 · 제목 25 · 소제목 22 · 본문 20/35 · 체크박스 35', [
+    /width: 868, height: 758/,
+    /text-\[25px\] font-bold leading-\[30px\]/,
+    /text-\[22px\] font-semibold leading-\[24px\]/,
+    /lineHeight: '35px'/,
+    /평일 오전 9:00 ~ 오후 18:00/,
+    /메시지 전송 자체는 아직 백엔드가 없다/,
   ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '보호자 셸 탑바: 검색 없음 · 벨 1080 · 아바타 1140', [
     /variant\?: 'caregiver' \| 'guardian'/,

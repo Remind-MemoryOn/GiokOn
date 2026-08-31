@@ -37,6 +37,7 @@ import { ConnectPage } from './pages/guardian/ConnectPage';
 import { FeedPage } from './pages/guardian/FeedPage';
 import { JournalDetailPage } from './pages/guardian/JournalDetailPage';
 import { SummaryDetailPage } from './pages/guardian/SummaryDetailPage';
+import { SettingsPage as GuardianSettingsPage } from './pages/guardian/SettingsPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -139,7 +140,7 @@ function App() {
           <Route path="analysis" element={<Pending title="종합 분석" node="96:94" />} />
           <Route path="analysis/sessions" element={<Pending title="대화 분석" node="104:1041" />} />
           <Route path="analysis/sessions/:sessionId" element={<Pending title="대화 분석" node="104:1830" />} />
-          <Route path="settings" element={<Pending title="설정" node="334:697" />} />
+          <Route path="settings" element={<GuardianSettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

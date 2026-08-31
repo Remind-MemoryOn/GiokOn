@@ -349,15 +349,23 @@ function seedShares(q: typeof queryClient) {
  */
 function seedGuardian(q: typeof queryClient) {
   if (!/^\/guardian/.test(window.location.pathname)) return;
-  const connected = new URLSearchParams(window.location.search).get('state') === 'connected';
-  q.setQueryData(queryKeys.myGuardianLinks, connected
-    ? [{
-        id: 'pg1', org_id: ORG.id, profile_id: E1, guardian_user_id: 'guardian-1',
-        relation: '자녀', status: 'approved', approved_by: USER.id,
-        approved_at: '2026-06-08T00:00:00Z', revoked_at: null,
-        created_at: '2026-06-08T00:00:00Z', updated_at: '2026-06-08T00:00:00Z',
-      }]
-    : []);
+  const state = new URLSearchParams(window.location.search).get('state');
+  const guardianLink = (id: string, profileId: string, at: string, updated: string) => ({
+    id, org_id: ORG.id, profile_id: profileId, guardian_user_id: 'guardian-1',
+    relation: '자녀', status: 'approved', approved_by: USER.id,
+    approved_at: at, revoked_at: null, created_at: at, updated_at: updated,
+  });
+  // 여러 어르신 연결(69:320)은 승인된 연결이 2건 이상일 때 나오는 화면이다.
+  q.setQueryData(queryKeys.myGuardianLinks,
+    state === 'multi'
+      ? [
+          guardianLink('pg1', E1, '2026-06-08T00:00:00Z', new Date().toISOString()),
+          guardianLink('pg2', 'e2', '2026-07-12T00:00:00Z', '2026-07-12T00:00:00Z'),
+          guardianLink('pg3', 'e3', '2026-07-15T00:00:00Z', '2026-07-15T00:00:00Z'),
+        ]
+      : state === 'connected'
+        ? [guardianLink('pg1', E1, '2026-06-08T00:00:00Z', '2026-06-08T00:00:00Z')]
+        : []);
   // 공개된 소식은 탭마다 항목 수가 다르다 — 시안대로 심는다.
   //   전체 4건 + 더보기(카드 1004) · 요양일지 3건(726) · AI 요약 3건(726) · 공유 사진 4장(1236)
   const shareRow = (id: string, type: string, itemId: string, at: string) => ({

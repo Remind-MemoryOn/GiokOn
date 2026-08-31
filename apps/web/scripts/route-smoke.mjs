@@ -93,6 +93,7 @@ const CASES = [
   ['/guardian/analysis', '계정으로 로그인해 주세요.', '보호자 분석 가드'],
   ['/guardian/feed/journal/x', '계정으로 로그인해 주세요.', '보호자 요양일지 상세 가드'],
   ['/guardian/feed/summary/x', '계정으로 로그인해 주세요.', '보호자 대화 요약 상세 가드'],
+  ['/guardian/settings', '계정으로 로그인해 주세요.', '보호자 설정 가드'],
   ['/onboarding', '계정으로 로그인해 주세요.', '온보딩(미인증→로그인)'],
   ['/no-such-route', '서비스 소개', '404 → 랜딩'],
 ];
