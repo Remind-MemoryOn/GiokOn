@@ -11,16 +11,14 @@
 import { useMemo, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { toElderProfile, useProfile, useSessions } from '@giokon/data';
-import { dateDot, relativeDay } from '@giokon/core';
 import { asset } from '../../assets/ui';
-import { Badge } from '../../components/ui/Badge';
+import { SessionRow } from '../../components/session-row';
+import { ROW_H, ROW_PITCH } from '../../lib/session-row';
 
 const Y = (v: number) => v - 122;
 
 const CARD_TOP = 315;
 const ROW_TOP = 381;
-const ROW_H = 140;
-const ROW_PITCH = 180;
 /** 마지막 행 아래 카드 여백(시안: 3행 끝 881 → 카드 끝 947). */
 const CARD_PAD_BOTTOM = 66;
 
@@ -30,13 +28,6 @@ function dayKey(iso: string): string {
   if (Number.isNaN(d.getTime())) return '';
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-/** 소요 시간 — 설계값(분)이 있으면 그것을, 끝난 세션은 실제 초를 분으로. 없으면 만들지 않는다. */
-function durationLabel(minutes: number | null, seconds: number | null): string | null {
-  if (seconds != null) return `${Math.max(1, Math.round(seconds / 60))}분`;
-  if (minutes != null) return `${minutes}분`;
-  return null;
 }
 
 export function SessionListPage() {
@@ -153,84 +144,24 @@ export function SessionListPage() {
           ) : null}
         </div>
       ) : (
-        rows.map((s, i) => {
-          const top = ROW_TOP + i * ROW_PITCH;
-          const when = s.planned_date ?? s.started_at;
-          const duration = durationLabel(s.duration_minutes, s.duration_seconds);
-          const tone = s.status === 'active' ? 'live' : s.status === 'planned' ? 'accent' : 'mute';
-          const label = s.status === 'active' ? '진행 중' : s.status === 'planned' ? '설계됨' : '종료';
-          return (
-            <div key={s.id}>
-              <div
-                data-fx={i === 0 ? '178:746' : undefined}
-                className="absolute left-[409px] w-[881px] rounded-[10px] bg-white shadow-card"
-                style={{ top: Y(top), height: ROW_H }}
-              />
-              <p
-                data-fx={i === 0 ? '178:747' : undefined}
-                className="absolute left-[472px] w-[560px] truncate text-w-section font-bold leading-[70px] text-ink-900"
-                style={{ top: Y(top + 19) }}
-              >
-                {s.title ?? s.current_topic ?? '회상 대화'}
-              </p>
-              <span
-                data-fx={i === 0 ? '178:748' : undefined}
-                className="absolute left-[472px] whitespace-nowrap text-w-body leading-[28px] text-ink-500"
-                style={{ top: Y(top + 78.44) }}
-              >
-                {dateDot(when)}
-              </span>
-              {duration ? (
-                <>
-                  <img
-                    data-fx={i === 0 ? '178:756' : undefined}
-                    src={asset.iconClockSm}
-                    alt=""
-                    width={22}
-                    height={22}
-                    className="absolute left-[594px] block"
-                    style={{ top: Y(top + 81.45) }}
-                  />
-                  <span
-                    data-fx={i === 0 ? '178:749' : undefined}
-                    className="absolute left-[623px] whitespace-nowrap text-w-body leading-[28px] text-ink-500"
-                    style={{ top: Y(top + 78.44) }}
-                  >
-                    {duration}
-                  </span>
-                </>
-              ) : null}
-              {/* 상대일 + 상태는 **한 줄로 붙여** 놓는다 — 시안의 "오늘"(35) 기준 좌표에
-                  고정하면 "23일 전"처럼 긴 값에서 배지가 글자를 덮는다. */}
-              <div
-                className="absolute left-[688px] flex h-[28px] items-center gap-[10px] whitespace-nowrap"
-                style={{ top: Y(top + 78.44) }}
-              >
-                <span data-fx={i === 0 ? '194:233' : undefined} className="text-w-body leading-[28px] text-ink-500">
-                  {relativeDay(when)}
-                </span>
-                <Badge data-fx={i === 0 ? '194:230' : undefined} tone={tone} fixed>
-                  {label}
-                </Badge>
-              </div>
-              <Link
-                to={`/caregiver/sessions/${elderId ?? ''}/${s.id}`}
-                data-fx={i === 0 ? '178:752' : undefined}
-                className="absolute w-[136px] whitespace-nowrap text-right text-[20px] font-semibold leading-[24px] text-ink-700"
-                style={{ left: 1064, top: Y(top + 58.42) }}
-              >
-                대화 기록 보기
-              </Link>
-              <img
-                data-fx={i === 0 ? '178:753' : undefined}
-                src={asset.iconChevronRightSm}
-                alt=""
-                className="pointer-events-none absolute block"
-                style={{ left: 1214.81, top: Y(top + 59.28), width: 12.18, height: 18.73 }}
-              />
-            </div>
-          );
-        })
+        rows.map((s, i) => (
+          <SessionRow
+            key={s.id}
+            session={s}
+            top={Y(ROW_TOP + i * ROW_PITCH)}
+            to={`/caregiver/sessions/${elderId ?? ''}/${s.id}`}
+            actionLabel="대화 기록 보기"
+            fx={
+              i === 0
+                ? {
+                    row: '178:746', title: '178:747', date: '178:748', clock: '178:756',
+                    duration: '178:749', relative: '194:233', badge: '194:230',
+                    link: '178:752', chevron: '178:753',
+                  }
+                : undefined
+            }
+          />
+        ))
       )}
 
       {/* 회상 세션 설계 모달 — 이 목록 위에 뜬다 */}

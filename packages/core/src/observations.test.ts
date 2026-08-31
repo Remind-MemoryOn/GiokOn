@@ -6,10 +6,16 @@ import {
   computeMonthlyTopicTrend,
   computeOverall,
   computeParticipation,
+  computeEmotionSplit,
+  computeParticipationDetail,
+  computeTopicDetail,
   computeTopicShares,
+  axisAverage,
+  describeSessionTraits,
   observationSummary,
 } from './observations'
 import { DEFAULT_APPEARANCE } from './types'
+import type { SessionAnalysis } from './analysis'
 import type { ChronicleEntry, ConversationTurn, ElderProfile, Session } from './types'
 
 const elder: ElderProfile = {
@@ -203,5 +209,170 @@ describe('computeMonthlyAxisTrend', () => {
       expect(s.points[1]).toBeNull()
     }
     expect(t.series.find((s) => s.axis === 'focus')?.points[2]).not.toBeNull()
+  })
+})
+
+describe('computeTopicDetail', () => {
+  const mk = (topic: string, reaction: 'engaged' | 'low'): SessionAnalysis => ({
+    version: 'v1',
+    summary: '',
+    emotionTone: 'calm',
+    metrics: { elderTurns: 5, aiTurns: 5, responseRate: 0.8, avgUtteranceChars: 40, participation: 0.7 },
+    topicsEngaged: reaction === 'engaged' ? [topic] : [],
+    topicsLow: reaction === 'low' ? [topic] : [],
+    topicOutcomes: [{ topic, reaction, elderTurns: 3 }],
+    interestKeywords: [],
+    recommendedTopics: [],
+  })
+  const now = new Date('2026-08-01T00:00:00Z')
+  const iso = (daysAgo: number) =>
+    new Date(now.getTime() - daysAgo * 86400000).toISOString()
+
+  it('등장 세션 수·호응률·평균 길이를 센다', () => {
+    const d = computeTopicDetail(
+      [
+        { analysis: mk('가족', 'engaged'), at: iso(1), seconds: 600 },
+        { analysis: mk('가족', 'low'), at: iso(2), seconds: 900 },
+        { analysis: mk('고향', 'engaged'), at: iso(3), seconds: 300 },
+      ],
+      '가족',
+      3,
+      now,
+    )
+    expect(d.mentions).toBe(2)
+    expect(d.positiveRate).toBe(50)
+    expect(d.avgSeconds).toBe(750)
+  })
+
+  it('비교 근거가 없으면 변화를 만들지 않는다', () => {
+    const d = computeTopicDetail(
+      [{ analysis: mk('가족', 'engaged'), at: iso(1), seconds: null }],
+      '가족',
+      3,
+      now,
+    )
+    expect(d.avgSeconds).toBeNull()
+    expect(d.delta.mentions).toBeNull()
+  })
+
+  it('등장하지 않은 주제는 0회 · 비율 null(0회 관찰 ≠ 측정 불가)', () => {
+    const d = computeTopicDetail(
+      [{ analysis: mk('고향', 'engaged'), at: iso(1), seconds: 600 }],
+      '가족',
+      3,
+      now,
+    )
+    expect(d.mentions).toBe(0)
+    expect(d.positiveRate).toBeNull()
+  })
+})
+
+describe('computeParticipationDetail · axisAverage', () => {
+  const mk = (responseRate: number): SessionAnalysis => ({
+    version: 'v1',
+    summary: '',
+    emotionTone: 'calm',
+    metrics: { elderTurns: 5, aiTurns: 5, responseRate, avgUtteranceChars: 40, participation: 0.7 },
+    topicsEngaged: [],
+    topicsLow: [],
+    topicOutcomes: [],
+    interestKeywords: [],
+    recommendedTopics: [],
+  })
+  const now = new Date('2026-08-01T00:00:00Z')
+  const iso = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86400000).toISOString()
+
+  it('세션 수·평균 길이·응답률과 직전 기간 대비 변화를 낸다', () => {
+    const d = computeParticipationDetail(
+      [
+        { analysis: mk(0.9), at: iso(1), seconds: 600 },
+        { analysis: mk(0.7), at: iso(2), seconds: 900 },
+        // 직전 기간(3~6개월 전) 1건
+        { analysis: mk(0.5), at: iso(120), seconds: 300 },
+      ],
+      3,
+      now,
+    )
+    expect(d.totalSessions).toBe(2)
+    expect(d.avgSeconds).toBe(750)
+    expect(d.avgResponseRate).toBe(80)
+    expect(d.delta.totalSessions).toBe(1)
+    expect(d.delta.avgSeconds).toBe(450)
+    expect(d.delta.avgResponseRate).toBe(30)
+  })
+
+  it('분석이 없는 세션도 횟수에는 들지만 응답률 평균에서는 빠진다', () => {
+    const d = computeParticipationDetail(
+      [
+        { analysis: mk(0.9), at: iso(1), seconds: 600 },
+        { analysis: null, at: iso(2), seconds: 300 },
+      ],
+      3,
+      now,
+    )
+    expect(d.totalSessions).toBe(2)
+    expect(d.avgSeconds).toBe(450)
+    expect(d.avgResponseRate).toBe(90)
+  })
+
+  it('직전 기간 기록이 없으면 변화를 만들지 않는다', () => {
+    const d = computeParticipationDetail([{ analysis: mk(0.9), at: iso(1), seconds: null }], 3, now)
+    expect(d.avgSeconds).toBeNull()
+    expect(d.delta.totalSessions).toBeNull()
+    expect(d.delta.avgResponseRate).toBeNull()
+  })
+
+  it('축 평균은 값이 있는 축만 센다 — 전부 없으면 null', () => {
+    expect(
+      axisAverage([
+        { axis: 'recall', value: 60, delta: null },
+        { axis: 'emotion', value: 80, delta: null },
+        { axis: 'focus', value: null, delta: null },
+      ]),
+    ).toBe(70)
+    expect(axisAverage([{ axis: 'recall', value: null, delta: null }])).toBeNull()
+  })
+})
+
+describe('computeEmotionSplit · describeSessionTraits', () => {
+  const turn = (speaker: 'AI' | 'Elderly', text: string): ConversationTurn => ({
+    id: 't' + ++seq, speaker, text, timestamp: '',
+  })
+
+  it('어르신 발화만 말투 묶음으로 세고 합을 100 으로 맞춘다', () => {
+    const split = computeEmotionSplit([
+      turn('AI', '고향 이야기 들려주세요'),
+      turn('Elderly', '참 좋아 재미있었지'), // bright
+      turn('Elderly', '그립네 예전 그 시절이'), // longing
+      turn('Elderly', '그냥 조용히 지냈어'), // calm
+    ])
+    expect(split.turns).toBe(3)
+    expect(split.bright + split.calm + split.longing).toBe(100)
+    expect(split.bright).toBeGreaterThan(0)
+  })
+
+  it('발화가 없으면 값을 만들지 않는다', () => {
+    const split = computeEmotionSplit([turn('AI', '안녕하세요')])
+    expect(split).toEqual({ bright: 0, calm: 0, longing: 0, turns: 0 })
+    const traits = describeSessionTraits(null, split, null)
+    expect(traits.topEmotion).toBeNull()
+    expect(traits.focus).toBeNull()
+    expect(traits.expression).toBeNull()
+    expect(traits.length).toBeNull()
+  })
+
+  it('대화 특성은 지표 밴드로 낸다', () => {
+    const a: SessionAnalysis = {
+      version: 'v1', summary: '', emotionTone: 'bright',
+      metrics: { elderTurns: 5, aiTurns: 5, responseRate: 0.9, avgUtteranceChars: 70, participation: 0.8 },
+      topicsEngaged: [], topicsLow: [], topicOutcomes: [], interestKeywords: [], recommendedTopics: [],
+    }
+    const split = computeEmotionSplit([turn('Elderly', '재미있었어 웃었지')])
+    const t = describeSessionTraits(a, split, 1000)
+    expect(t.focus).toBe('높음')
+    expect(t.expression).toBe('높음')
+    expect(t.length).toBe('긴 편')
+    expect(t.topEmotion?.label).toBe('밝음')
+    expect(t.topEmotion?.percent).toBe(100)
   })
 })

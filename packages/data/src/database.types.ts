@@ -689,6 +689,39 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_photos: {
+        Row: {
+          id: string
+          org_id: string
+          journal_id: string
+          path: string
+          caption: string | null
+          sort: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          journal_id: string
+          path: string
+          caption?: string | null
+          sort?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          journal_id?: string
+          path?: string
+          caption?: string | null
+          sort?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       guardian_shares: {
         Row: {
           id: string
@@ -794,7 +827,7 @@ export type Database = {
       caregiver_assignment_status: 'active' | 'removed' | 'pending'
       journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
       journal_status: 'draft' | 'final'
-      share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report'
+      share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report' | 'photo'
     }
     CompositeTypes: { [_ in never]: never }
   }
@@ -834,6 +867,7 @@ export type ProfileCaregiverRow = Tables<'profile_caregivers'>
 export type CaregiverAssignmentStatus = Enums<'caregiver_assignment_status'>
 export type SessionAnalysisRow = Tables<'session_analyses'>
 export type CareJournalRow = Tables<'care_journals'>
+export type JournalPhotoRow = Tables<'journal_photos'>
 export type JournalSource = Enums<'journal_source'>
 export type JournalStatus = Enums<'journal_status'>
 export type GuardianShareRow = Tables<'guardian_shares'>

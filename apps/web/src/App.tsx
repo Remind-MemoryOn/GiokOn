@@ -20,6 +20,27 @@ import { SessionsPage } from './pages/caregiver/SessionsPage';
 import { SessionListPage } from './pages/caregiver/SessionListPage';
 import { SessionPlanDialog } from './pages/caregiver/SessionPlanDialog';
 import { ConversationLogPage } from './pages/caregiver/ConversationLogPage';
+import { AnalysisPage } from './pages/caregiver/AnalysisPage';
+import { AnalysisEldersPage } from './pages/caregiver/AnalysisEldersPage';
+import { AnalysisElderPage } from './pages/caregiver/AnalysisElderPage';
+import { ConversationAnalysisListPage } from './pages/caregiver/ConversationAnalysisListPage';
+import { ConversationAnalysisPage } from './pages/caregiver/ConversationAnalysisPage';
+import { JournalPage } from './pages/caregiver/JournalPage';
+import { JournalListPage } from './pages/caregiver/JournalListPage';
+import { JournalWritePage } from './pages/caregiver/JournalWritePage';
+import { SharesPage } from './pages/caregiver/SharesPage';
+import { ShareItemsPage } from './pages/caregiver/ShareItemsPage';
+import { ShareHistoryPage } from './pages/caregiver/ShareHistoryPage';
+import { OrgPage } from './pages/caregiver/OrgPage';
+import { SettingsPage } from './pages/caregiver/SettingsPage';
+import { ConnectPage } from './pages/guardian/ConnectPage';
+import { FeedPage } from './pages/guardian/FeedPage';
+import { JournalDetailPage } from './pages/guardian/JournalDetailPage';
+import { SummaryDetailPage } from './pages/guardian/SummaryDetailPage';
+import { SettingsPage as GuardianSettingsPage } from './pages/guardian/SettingsPage';
+import { AnalysisPage as GuardianAnalysisPage } from './pages/guardian/AnalysisPage';
+import { AnalysisSessionsPage as GuardianAnalysisSessionsPage } from './pages/guardian/AnalysisSessionsPage';
+import { AnalysisSessionPage as GuardianAnalysisSessionPage } from './pages/guardian/AnalysisSessionPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -90,19 +111,20 @@ function App() {
             <Route path="plan/:sessionId" element={<SessionPlanDialog />} />
           </Route>
           <Route path="sessions/:elderId/:sessionId" element={<ConversationLogPage />} />
-          <Route path="analysis" element={<Pending title="분석" node="225:1669" />} />
-          <Route path="analysis/:elderId" element={<Pending title="개인별 분석" node="228:3722" />} />
+          <Route path="analysis" element={<AnalysisPage />} />
+          <Route path="analysis/elders" element={<AnalysisEldersPage />} />
+          <Route path="analysis/:elderId" element={<AnalysisElderPage />} />
           <Route path="analysis/:elderId/overall" element={<Pending title="종합 분석" node="228:4091" />} />
-          <Route path="analysis/:elderId/sessions" element={<Pending title="대화 분석 목록" node="228:4628" />} />
-          <Route path="analysis/:elderId/sessions/:sessionId" element={<Pending title="대화 분석" node="228:4430" />} />
-          <Route path="journal" element={<Pending title="요양일지" node="205:1039" />} />
-          <Route path="journal/:elderId" element={<Pending title="요양일지 목록" node="207:1147" />} />
-          <Route path="journal/:elderId/new" element={<Pending title="요양일지 작성" node="221:283" />} />
-          <Route path="shares" element={<Pending title="공개 관리" node="135:1288" />} />
-          <Route path="shares/:elderId" element={<Pending title="공개 관리" node="140:121" />} />
-          <Route path="shares/:elderId/history" element={<Pending title="공개 이력" node="146:1067" />} />
-          <Route path="org" element={<Pending title="기관 관리" node="131:959" />} />
-          <Route path="settings" element={<Pending title="설정" node="121:598" />} />
+          <Route path="analysis/:elderId/sessions" element={<ConversationAnalysisListPage />} />
+          <Route path="analysis/:elderId/sessions/:sessionId" element={<ConversationAnalysisPage />} />
+          <Route path="journal" element={<JournalPage />} />
+          <Route path="journal/:elderId" element={<JournalListPage />} />
+          <Route path="journal/:elderId/new" element={<JournalWritePage />} />
+          <Route path="shares" element={<SharesPage />} />
+          <Route path="shares/:elderId" element={<ShareItemsPage />} />
+          <Route path="shares/:elderId/history" element={<ShareHistoryPage />} />
+          <Route path="org" element={<OrgPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* ── 보호자 ── */}
@@ -114,14 +136,14 @@ function App() {
             </GuardianGuard>
           }
         >
-          <Route index element={<Pending title="어르신 연결" node="31:616" />} />
-          <Route path="feed" element={<Pending title="공개된 소식" node="50:543" />} />
-          <Route path="feed/journal/:itemId" element={<Pending title="요양일지" node="50:1102" />} />
-          <Route path="feed/summary/:itemId" element={<Pending title="대화 요약" node="55:1258" />} />
-          <Route path="analysis" element={<Pending title="종합 분석" node="96:94" />} />
-          <Route path="analysis/sessions" element={<Pending title="대화 분석" node="104:1041" />} />
-          <Route path="analysis/sessions/:sessionId" element={<Pending title="대화 분석" node="104:1830" />} />
-          <Route path="settings" element={<Pending title="설정" node="334:697" />} />
+          <Route index element={<ConnectPage />} />
+          <Route path="feed" element={<FeedPage />} />
+          <Route path="feed/journal/:itemId" element={<JournalDetailPage />} />
+          <Route path="feed/summary/:itemId" element={<SummaryDetailPage />} />
+          <Route path="analysis" element={<GuardianAnalysisPage />} />
+          <Route path="analysis/sessions" element={<GuardianAnalysisSessionsPage />} />
+          <Route path="analysis/sessions/:sessionId" element={<GuardianAnalysisSessionPage />} />
+          <Route path="settings" element={<GuardianSettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

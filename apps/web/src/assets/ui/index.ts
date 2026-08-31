@@ -15,6 +15,33 @@ import iconPhotoUpload from './icon-photo-upload.png';
 import iconClockSm from './icon-clock-sm.png';
 import iconChevronRightSm from './icon-chevron-right-sm.png';
 import avatarAi from './avatar-ai.png';
+import anElders from './an-elders.png';
+import anSessions from './an-sessions.png';
+import anMinutes from './an-minutes.png';
+import anResponse from './an-response.png';
+import gStepCode from './g-step-code.png';
+import gStepWait from './g-step-wait.png';
+import gStepDone from './g-step-done.png';
+import gStepArrow from './g-step-arrow.png';
+import iconPencilMd from './icon-pencil-md.png';
+import iconShieldMd from './icon-shield-md.png';
+import iconDownload from './icon-download.png';
+import iconKeyboard from './icon-keyboard.png';
+import iconMic from './icon-mic.png';
+import iconCameraTab from './icon-camera-tab.png';
+import iconUpload from './icon-upload.png';
+import iconSparkle from './icon-sparkle.png';
+import iconChevronDownLg from './icon-chevron-down-lg.png';
+import iconClockField from './icon-clock-field.png';
+import iconImage from './icon-image.png';
+import anBadgeMinutes from './an-badge-minutes.png';
+import anBadgeSessions from './an-badge-sessions.png';
+import anBadgeRate from './an-badge-rate.png';
+import anVerdictGood from './an-verdict-good.png';
+import anTrendRecall from './an-trend-recall.png';
+import anTrendEmotion from './an-trend-emotion.png';
+import anTrendPart from './an-trend-part.png';
+import anTrendResp from './an-trend-resp.png';
 import iconBell from './icon-bell.png';
 import iconChevronDown from './icon-chevron-down.png';
 import iconChevronRight from './icon-chevron-right.png';
@@ -88,6 +115,33 @@ export const asset = {
   iconClockSm,
   iconChevronRightSm,
   avatarAi,
+  anElders,
+  anSessions,
+  anMinutes,
+  anResponse,
+  gStepCode,
+  gStepWait,
+  gStepDone,
+  gStepArrow,
+  iconPencilMd,
+  iconShieldMd,
+  iconDownload,
+  iconKeyboard,
+  iconMic,
+  iconCameraTab,
+  iconUpload,
+  iconSparkle,
+  iconChevronDownLg,
+  iconClockField,
+  iconImage,
+  anBadgeMinutes,
+  anBadgeSessions,
+  anBadgeRate,
+  anVerdictGood,
+  anTrendRecall,
+  anTrendEmotion,
+  anTrendPart,
+  anTrendResp,
   iconBell,
   iconChevronDown,
   iconChevronRight,

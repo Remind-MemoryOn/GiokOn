@@ -100,7 +100,14 @@ export const webPalette = {
   live: { DEFAULT: '#60bd66', soft: '#60bd661a' },
   mute: { DEFAULT: '#f2f1f1', strong: '#efefef', pale: '#f5f5f5', field: '#d9d9d94d' },
   // 연대기 출처 태그 — AI 자동은 accent, 사람이 쓴 것은 이 분홍(어르신 상세 195:351 실측).
+  // 요양일지 태그(207:1147 실측) — 공개 관리·보호자 화면의 '요양일지' 배지에도 쓴다.
+  journal: { DEFAULT: '#5d2b99', soft: '#5d2b991a' },
   manual: { DEFAULT: '#e92b90', soft: '#e92b901a' },
+  // 그래프 계열색 5종(관심 주제·관찰 지표 추이, `228:3231`~`228:3243` 실측).
+  // 주제 수가 5를 넘으면 순환한다.
+  series: ['#e9822b', '#8cd565', '#2bc9e9', '#e92b90', '#d147dd'],
+  // TOP5 막대 채움 — 1위가 가장 진하다(`228:3029`~`228:3045` 실측).
+  topicRamp: ['#e9822b', '#ec9248', '#efa465', '#f3bb8a', '#f8d2b1'],
   // 소셜 로그인 브랜드 고정색
   naver: { DEFAULT: '#48b034' },
   kakao: { DEFAULT: '#f4df2a' },

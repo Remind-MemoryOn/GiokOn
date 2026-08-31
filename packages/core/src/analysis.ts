@@ -59,6 +59,12 @@ export interface SessionAnalysis {
   interestKeywords: string[]
   /** 다음 세션에 다뤄볼 추천 주제. */
   recommendedTopics: string[]
+  /**
+   * 대화에 걸린 시간(분). `analyzeSession` 은 대화 전문만 받아 시각을 모르므로
+   * **세션을 끝내는 쪽이 붙인다**(앱 `finishSession`). 근거가 없으면 없는 채로 둔다 —
+   * 보호자 화면은 `—` 로 보여 준다.
+   */
+  durationMinutes?: number
 }
 
 // ── 정서 톤(관찰) — ai.ts와 동일 원칙의 경량 판독 ──
@@ -66,7 +72,7 @@ const LONGING = ['그립', '보고싶', '그리워', '예전', '돌아가', '아
 const BRIGHT = ['좋아', '재미', '웃', '행복', '예뻤', '맛있', '신났', '기뻤', '고마워']
 const CALM = ['편안', '조용', '천천히', '그냥', '잔잔']
 
-function readEmotion(text: string): EmotionTone {
+export function readEmotion(text: string): EmotionTone {
   const longing = LONGING.some((k) => text.includes(k))
   const bright = BRIGHT.some((k) => text.includes(k))
   const calm = CALM.some((k) => text.includes(k))

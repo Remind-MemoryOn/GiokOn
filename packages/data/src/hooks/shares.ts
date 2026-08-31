@@ -15,6 +15,7 @@ import { queryKeys } from '../query'
 import type {
   CareJournalRow,
   GuardianShareRow,
+  JournalPhotoRow,
   SessionAnalysisRow,
   ShareItemType,
   TablesInsert,
@@ -114,6 +115,8 @@ export interface MySharedContent {
   shares: GuardianShareRow[]
   journals: CareJournalRow[]
   analyses: SessionAnalysisRow[]
+  /** `photo` 로 공개된 일지 사진(보호자 공유 사진 갤러리 — 신규 디자인 55:2035). */
+  photos: JournalPhotoRow[]
 }
 
 /**
@@ -139,22 +142,28 @@ export function useMySharedContent(options?: {
 
       const journalIds = idsOf('journal')
       const analysisIds = idsOf('analysis')
+      const photoIds = idsOf('photo')
 
-      const [journalsRes, analysesRes] = await Promise.all([
+      const [journalsRes, analysesRes, photosRes] = await Promise.all([
         journalIds.length > 0
           ? client.from('care_journals').select('*').in('id', journalIds)
           : Promise.resolve({ data: [] as CareJournalRow[], error: null }),
         analysisIds.length > 0
           ? client.from('session_analyses').select('*').in('id', analysisIds)
           : Promise.resolve({ data: [] as SessionAnalysisRow[], error: null }),
+        photoIds.length > 0
+          ? client.from('journal_photos').select('*').in('id', photoIds)
+          : Promise.resolve({ data: [] as JournalPhotoRow[], error: null }),
       ])
       if (journalsRes.error) throw new Error(journalsRes.error.message)
       if (analysesRes.error) throw new Error(analysesRes.error.message)
+      if (photosRes.error) throw new Error(photosRes.error.message)
 
       return {
         shares: shares ?? [],
         journals: journalsRes.data ?? [],
         analyses: analysesRes.data ?? [],
+        photos: photosRes.data ?? [],
       }
     },
   })

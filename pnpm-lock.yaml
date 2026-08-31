@@ -161,6 +161,9 @@ importers:
       '@giokon/data':
         specifier: workspace:*
         version: link:../../packages/data
+      '@giokon/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@tanstack/react-query':
         specifier: ^5.101.1
         version: 5.101.1(react@19.2.7)

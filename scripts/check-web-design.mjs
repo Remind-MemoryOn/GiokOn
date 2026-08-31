@@ -150,8 +150,8 @@ const SCREENS = [
     /width=\{21\}/, /height=\{22\}/,
   ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '탑바: 벨 @1045 + 배지 18원 · 아바타 40 @1105', [
-    /left-\[1045px\] top-\[69px\]/, /h-\[18px\] min-w-\[18px\][^"]*rounded-full bg-accent/,
-    /left-\[1105px\] top-\[62px\]/, /width=\{40\}/, /height=\{40\}/,
+    /\{ bell: 1045, avatar: 1105, chevron: 254 \}/, /h-\[18px\] min-w-\[18px\][^"]*rounded-full bg-accent/,
+    /width=\{40\}/, /height=\{40\}/,
   ]],
   [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 폭 296 · 활성 pill 208×57 r10 accent-soft', [
     /w-\[296px\]/, /h-\[57px\] w-\[208px\]/, /rounded-\[10px\]/, /bg-accent-soft/, /ml-\[44px\]/,
@@ -484,18 +484,23 @@ const SCREENS = [
   ]],
 
   // ── 세션 목록 178:877 ──────────────────────────────────────────────────
-  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 카드 1054 @(322,315) · 행 881×140 피치 180 · shadow-card', [
-    /const CARD_TOP = 315;/, /const ROW_TOP = 381;/, /const ROW_H = 140;/, /const ROW_PITCH = 180;/,
+  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 카드 1054 @(322,315) · 첫 행 381 · shadow-card', [
+    /const CARD_TOP = 315;/, /const ROW_TOP = 381;/,
     /left-\[322px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
-    /left-\[409px\] w-\[881px\] rounded-\[10px\] bg-white shadow-card/,
+    /actionLabel="대화 기록 보기"/,
   ]],
-  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 상대일+상태를 한 줄로(배지가 긴 라벨을 덮지 않게) · 시계 22 · chevron 12.18', [
+  // 행은 세션 목록(178:877)·대화 분석 목록(228:4628) 공용 부품이다.
+  [`${WEB}/src/lib/session-row.ts`, '세션 행 실측: 높이 140 · 피치 180 · 소요 시간은 근거가 있을 때만', [
+    /export const ROW_H = 140;/, /export const ROW_PITCH = 180;/,
+    /export function durationLabel[\s\S]{0,220}?return null;/,
+  ]],
+  [`${WEB}/src/components/session-row.tsx`, '세션 행: 881×140 · 상대일+상태 한 줄 · 시계 22 · chevron 12.18 @1214.81', [
+    /left-\[409px\] w-\[881px\] rounded-\[10px\] bg-white shadow-card/,
     /flex h-\[28px\] items-center gap-\[10px\]/,
     /iconClockSm/, /width=\{22\}/,
-    /width: 12\.18, height: 18\.73/,
+    /left: 1214\.81, top: top \+ 59\.28, width: 12\.18, height: 18\.73/,
   ]],
-  [`${WEB}/src/pages/caregiver/SessionListPage.tsx`, '세션 목록: 소요 시간·상태는 근거가 있을 때만 · planned 는 설계됨', [
-    /function durationLabel[\s\S]{0,220}?return null;/,
+  [`${WEB}/src/components/session-row.tsx`, '세션 행: 상태는 근거가 있을 때만 · planned 는 설계됨', [
     /s\.status === 'planned' \? '설계됨' : '종료'/,
   ]],
 
@@ -515,11 +520,17 @@ const SCREENS = [
   ]],
 
   // ── 세션 기록 178:787 ──────────────────────────────────────────────────
-  [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 설명 한 줄 w723 · 검색 335×57 border #cccdce · 카드 329×146 3열 gap 33', [
+  [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 설명 한 줄 w723 · 검색 335×57 border #cccdce · 3번째 줄은 최근 대화', [
     /descMax=\{723\}/,
     /rounded-\[10px\] border border-line-mid bg-white pl-\[47px\]/,
-    /h-\[146px\] w-\[329px\]/, /rounded-\[10px\] bg-white shadow-card/,
-    /gap-\[33px\]/, /px=\{101\}/, /ml-\[18px\]/,
+    /gap-\[33px\]/, /<ElderPickerGrid/,
+    /최근 대화  없음/,
+  ]],
+  // 카드는 세션 기록·요양일지·공개 관리 공용 부품이다.
+  [`${WEB}/src/components/elder-picker.tsx`, '어르신 카드: 329×146 r10 shadow-card · 사진 101 @(18,22) · 글줄 134/30.42·60.44·86.47', [
+    /h-\[146px\] w-\[329px\] rounded-\[10px\] bg-white shadow-card/,
+    /left-\[18px\] top-\[22px\]/, /px=\{101\}/,
+    /left-\[134px\] top-\[30\.42px\]/, /left-\[134px\] top-\[60\.44px\]/, /left-\[134px\] top-\[86\.47px\]/,
   ]],
   [`${WEB}/src/pages/caregiver/SessionsPage.tsx`, '세션 기록: 최근 대화는 세션에서 계산 · 없으면 만들지 않는다', [
     /useRecentSessions\(\{ enabled: isConfigured, fetchAll: true \}\)/,
@@ -540,6 +551,310 @@ const SCREENS = [
     /녹음 없음/, /h-\[57px\] w-\[369px\][^"]*rounded-\[10px\] border border-line-mid/,
   ]],
 
+  // ── 분석(전체 종합) 225:1669 ──────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 카드1 1054×1885 @343 · 카드2 1054×1780 @2294 · 탭 22 · 기간 pill 127×30', [
+    /h-\[1885px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[1780px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /text-w-nav font-semibold leading-\[30px\] text-accent/,
+    /h-\[30px\] w-\[127px\] rounded-\[5px\] border border-ink-500\/30/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 틴트 카드(accent 3% + 30% 테두리 r5) · TOP5 트랙 707×12 · 축 카드 156×176', [
+    /const TINT = 'absolute rounded-\[5px\] border border-accent\/30 bg-accent\/\[0\.03\]'/,
+    /h-\[12px\] w-\[707px\] rounded-pill bg-accent-tint/,
+    /h-\[176px\] w-\[156px\]/, /h-\[141px\] w-\[201px\]/, /h-\[174px\] w-\[271px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 수치는 core 관찰 순수함수 · 근거 없으면 만들지 않는다', [
+    /computeOverall/, /computeMonthlyTopicTrend/, /computeMonthlyAxisTrend/,
+    /computeAxisObservations/, /computeTopicDetail/,
+    /비교 근거 없음/, /변화 근거 없음/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 방향 단정 카피 금지(향상률→변화) · 관찰 지표 고지 상시', [
+    /기억 회상 변화/, /감정 표현 변화/,
+    /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
+  ]],
+  // ── 분석(개인별) 228:3722 ─────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 카드 1054 @343 · 어르신 카드 301×161 3열(피치 323) · 검색 335×57', [
+    /w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /const COL_X = \[375 - 322, 698 - 322, 1021 - 322\]/,
+    /h-\[161px\] w-\[301px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.06px\] w-\[335px\]/, /border border-line-mid/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 활성 탭=개인별(밑줄 101×3 @598) · 사진 76 · 이름 Bold 25/70', [
+    /h-\[3px\] w-\[101px\] bg-accent/, /left: 598/,
+    /size="lg"/, /text-w-section font-bold leading-\[70px\]/,
+  ]],
+  [`${WEB}/src/pages/caregiver/AnalysisEldersPage.tsx`, '개인별 분석: 나이·성별·기관은 실데이터 — 없으면 만들지 않는다', [
+    /useOrganization\(\{ enabled: isConfigured \}\)/,
+    /e\.birthYear \? `\$\{e\.birthYear\}년생/, /: '—'/,
+  ]],
+
+  // ── 분석(개인별 종합) 228:4091 ────────────────────────────────────────
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 카드1 1054×1143 @343 · 카드2 1054×1983 @1552 · 참여칸 271×174', [
+    /h-\[1143px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[1983px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[174px\] w-\[271px\]/,
+    /const C1 = 343/, /const C2 = 1552/,
+  ]],
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 값 SemiBold 35 + 단위 22 · 종합 평가 pill 225×32 r-pill · 표정 76', [
+    /text-w-stat font-semibold leading-\[35px\]/, /text-\[22px\] font-normal leading-\[35px\]/,
+    /h-\[32px\] w-\[225px\] rounded-pill bg-accent-tint/,
+    /width: 76, height: 76/,
+  ]],
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 수치는 core 관찰 순수함수 · 근거 없으면 만들지 않는다', [
+    /computeParticipationDetail/, /computeAxisObservations/, /computeMonthlyAxisTrend/,
+    /computeTopicShares/, /observationSummary/, /axisAverage/,
+    /비교 근거 없음/, /변화 근거 없음/, /전체 평균과 견줄 관찰 기록이 아직 없습니다/,
+  ]],
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 방향 단정 카피 금지(향상·하락→부호 있는 변화) · 관찰 지표 고지 상시', [
+    /기억 회상 변화/, /전체 평균보다 높게 관찰됨/, /전체 평균과 비슷하게 관찰됨/,
+    /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
+  ]],
+
+  // ── 분석(대화 분석 목록) 228:4628 ─────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/ConversationAnalysisListPage.tsx`, '대화 분석 목록: 카드 1054 @343 · 첫 행 409 · 밑줄 81×3 @598 · 날짜 선택 170×37 @1205', [
+    /const CARD_TOP = 343;/, /const ROW_TOP = 409;/,
+    /h-\[3px\] w-\[81px\] bg-accent/, /left: 598/,
+    /left-\[1205px\] h-\[37\.04px\] w-\[170px\]/,
+    /actionLabel="대화 분석 보기"/,
+  ]],
+
+  // ── 분석(대화 분석 상세) 228:4430 ─────────────────────────────────────
+  [`${WEB}/src/components/analysis-session.tsx`, '대화 분석 상세: 카드 1054×1347.8 @259.15 · 요약칸 271×147 · 특성칸 201×141 · 막대 593×12', [
+    /h-\[1347\.8px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[147px\] w-\[271px\]/, /h-\[141px\] w-\[201px\]/,
+    /const BAR_W = 593/, /h-\[12px\] overflow-hidden rounded-pill/,
+    /h-\[38px\] items-center rounded-\[5px\] border border-accent\/30 bg-accent\/\[0\.03\] px-\[18px\]/,
+  ]],
+  [`${WEB}/src/components/analysis-session.tsx`, '대화 분석 상세: 감정은 관찰한 말투 묶음(밝음·차분·그리움) — 가치 판단을 만들지 않는다', [
+    /computeEmotionSplit/, /describeSessionTraits/,
+    /BAND_LABEL = \{ bright: '밝음', calm: '차분', longing: '그리움' \}/,
+    /가장 많이 관찰된 말투는/,
+    /어르신 발화 기록이 없어 말투를 셀 수 없습니다/,
+    /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
+  ]],
+
+  // ── 요양일지(어르신 고르기) 205:1039 ──────────────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '요양일지: 설명 한 줄 w918 · 카드 3열 gap 33 · 3번째 줄은 기관명', [
+    /descMax=\{918\}/, /gap-\[33px\]/, /<ElderPickerGrid/,
+    /org\.data\?\.name \?\? '—'/,
+  ]],
+  // ── 공개 관리(어르신 고르기) 135:1288 ─────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SharesPage.tsx`, '공개 관리: 설명 한 줄 w723 · 카드 3열 gap 33 · 3번째 줄은 기관명', [
+    /descMax=\{723\}/, /gap-\[33px\]/, /<ElderPickerGrid/,
+    /to=\{\(e\) => `\/caregiver\/shares\/\$\{e\.id\}`\}/,
+    /org\.data\?\.name \?\? '—'/,
+  ]],
+
+  // ── 요양일지 목록 207:1147 ────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 카드 1057 @376 · 행 879×235.15 피치 259.164 · 배지 107×35 · 작성 버튼 185×57', [
+    /const CARD_TOP = 376;/, /const ROW_TOP = 427\.27;/,
+    /const ROW_H = 235\.15;/, /const ROW_PITCH = 259\.164;/,
+    /left-\[410px\] w-\[879px\] rounded-\[10px\] border border-line bg-white/,
+    /h-\[57px\] w-\[185px\][^"]*rounded-\[10px\] bg-accent/,
+    /tone="journal"[\s\S]{0,20}tag/,
+  ]],
+  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
+    /window\.confirm\(/, /useDeleteCareJournal/,
+    /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
+  ]],
+
+  // ── 요양일지 작성 221:283 · 221:1060 · 221:1196 ────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 카드 1057×928 @295 · 방식 탭 262/261/262×57 @583.45 · 저장 140×57', [
+    /h-\[928px\] w-\[1057px\] rounded-\[10px\] bg-white shadow-card/,
+    /top: 288\.45, width: m\.w/,
+    /key: 'typed'[\s\S]{0,140}left: 87/, /key: 'voice'[\s\S]{0,140}left: 396/, /key: 'photo'[\s\S]{0,140}left: 704/,
+    /h-\[57px\] w-\[140px\] rounded-\[10px\] border border-accent bg-white/,
+    /h-\[57px\] w-\[140px\] rounded-\[10px\] bg-accent/,
+    /const SLOT = \{ w: 187, h: 193, top: 363, xs: \[87, 318, 549, 780\] \}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 실 STT·LLM 연동 전에는 결과를 만들지 않는다 · 저장→업로드→첨부 순서', [
+    /disabled\s*\n?\s*data-fx=\{mode === 'typed'/,
+    /AI 초안은 실 연동 후 제공됩니다/,
+    /음성 인식 연동 전이라 아래 원문은 직접 적어 주세요/,
+    /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
+  ]],
+  [`${WEB}/src/lib/journalPhotos.ts`, '일지 사진: private 버킷 signed URL · 경로는 profile_id 로 시작 · 파일을 먼저 파기', [
+    /const BUCKET = 'journal-photos'/, /createSignedUrls/,
+    /\$\{profileId\}\//, /removeJournalPhotoFiles/,
+  ]],
+
+  // ── 공개 관리 상세 140:121 · 146:429 · 146:824 · 146:1067 ─────────────
+  [`${WEB}/src/pages/caregiver/ShareItemsPage.tsx`, '공개 항목: 카드 1054 @343 · 행 922×235.14 피치 271.165 · 버튼 152×57 · 상태 배지 100', [
+    /const ROW_TOP = 394\.24;/, /const ROW_H = 235\.14;/, /const ROW_PITCH = 271\.165;/,
+    /left-\[388px\] w-\[922px\] rounded-\[10px\] border border-line bg-white/,
+    /h-\[57px\] w-\[152px\] rounded-\[10px\] border border-accent bg-white/,
+    /h-\[57px\] w-\[152px\][^"]*rounded-\[10px\] bg-accent/,
+    /width: 100 \}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ShareItemsPage.tsx`, '공개 여부는 철회되지 않은 guardian_shares 로 판정 · 철회는 확인 후', [
+    /if \(!s\.revoked_at\) map\.set\(s\.item_id, s\.id\)/,
+    /useCreateGuardianShare/, /useRevokeGuardianShare/, /window\.confirm\(/,
+    /공개할 수 있는 기록이 아직 없습니다/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ShareHistoryPage.tsx`, '공개 이력: 카드 x=329(이 프레임만) · 머리글 81 · 작업 117×39 · 열 좌표 고정', [
+    /const CARD_LEFT = 329;/, /const HEAD_H = 81;/,
+    /h-\[39px\] w-\[117px\]/,
+    /typeCenter: 422\.5/, /titleCenter: 591/, /atCenter: 742\.5/, /stateCenter: 906/, /viewedLeft: 1019/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ShareHistoryPage.tsx`, '공개 이력: 보호자 확인 시각은 아직 기록하지 않는다 — 만들지 않는다', [
+    /보호자 확인 시각은 아직 기록하지 않는다/,
+    /아직 공개한 기록이 없습니다/,
+  ]],
+
+  // ── 기관 관리 131:959 ─────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 카드1 1054×360 @315 · 입력 576×57 · 저장 102×57 · 구성원 행 피치 122', [
+    /h-\[360px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.05px\] w-\[576px\]/, /h-\[57\.05px\] w-\[102px\] rounded-\[10px\] bg-accent/,
+    /const MEMBER_PITCH = 122;/, /h-\[33px\] w-\[119px\] items-center justify-center rounded-pill/, /px=\{79\}/,
+  ]],
+  [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 이름 수정은 기관 관리자만 · 값이 없으면 만들지 않는다', [
+    /const isAdmin = me\.data\?\.role === 'org_admin'/,
+    /disabled=\{!isAdmin\}/, /기관 이름은 기관 관리자만 바꿀 수 있어요/,
+    /org\.data\?\.id \?\? '—'/,
+  ]],
+
+  // ── 설정 121:598 ─────────────────────────────────────────────────────
+  [`${WEB}/src/pages/caregiver/SettingsPage.tsx`, '설정: 카드 460/261/854/80 · 이름 576×57 · JSON 237×57 · 삭제 표 피치 122', [
+    /h-\[460px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[261px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[80px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.05px\] w-\[576px\]/, /h-\[57px\] w-\[237px\]/,
+    /const RULE_PITCH = 122;/,
+  ]],
+  [`${WEB}/src/pages/caregiver/SettingsPage.tsx`, '설정: 계정 삭제는 셀프서비스 아님 · 값 없으면 만들지 않음 · 비의료 고지', [
+    /삭제 요청은 기관 관리자/,
+    /f\.value \?\? '—'/,
+    /기억온은 의료기기가 아니며, 인지활동 보조 서비스입니다/,
+  ]],
+
+  // ── 보호자 어르신 연결 31:616 ─────────────────────────────────────────
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결: 카드 457/559 · 입력 878×57 · 버튼 878×71 · 안내 원 94 · 화살표 14.25×22', [
+    /h-\[457px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[559px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[57\.04px\] w-\[878px\]/, /h-\[71px\] w-\[878px\] rounded-\[10px\] bg-accent/,
+    /h-\[94px\] w-\[94px\] items-center justify-center rounded-full bg-accent-tint/,
+    /width: 14\.25, height: 22/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결: 어르신 코드 요청 + 승인 대기 상태를 그대로 말한다', [
+    /useLinkGuardianByElderCode/, /useMyGuardianLinks/,
+    /아직 연결된 어르신이 없어요/, /요양보호사의 승인을 기다리고 있어요/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 후: 카드 340/559 · 사진 175 · 서브카드 319×239 · 세로 구분선 206', [
+    /h-\[340px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /px=\{175\}/, /h-\[239px\] w-\[319px\] rounded-\[10px\] bg-accent\/\[0\.05\]/,
+    /h-\[206px\] w-px bg-line/,
+    /h-\[57px\] w-\[158px\] rounded-\[10px\] border border-accent bg-white/,
+    /h-\[57px\] w-\[173px\] items-center rounded-\[10px\] bg-accent/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '여러 어르신 연결: 카드 1054×340 피치 406 · 사진 187 · 이름 35 · 나이·기관 Medium 24', [
+    /cardTop: 347,\n  pitch: 406,\n  h: 340,/,
+    /photo: \{ left: 86, top: 53, px: 187 \}/,
+    /text-\[35px\] font-bold leading-\[70px\]/,
+    /text-\[24px\] font-medium leading-\[30px\]/,
+    /approved\.length > 1\) return <MultiConnectView/,
+    /기관 이름은 우리가 읽을 수 있는 기관\(내 소속\)일 때만 쓴다/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 후: 어르신 코드는 보호자에게 공개하지 않는다 · 해제는 확인 후', [
+    /어르신 코드는 보호자에게 공개하지 않는다/,
+    /useRevokeGuardianLink/, /window\.confirm\(/,
+  ]],
+  // ── 보호자 공개된 소식 50:543 ─────────────────────────────────────────
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 카드 1054 @343 · 항목 피치 236 · 어르신 pill 322×57 · 담당 카드 1054×211', [
+    /const ITEM_TOP = 387;/, /const ITEM_PITCH = 236;/,
+    /h-\[211px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[50\.03px\] w-\[213px\]/,
+  ]],
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 유형 매핑 · 원본이 없으면 그리지 않는다 · 메시지는 단방향', [
+    /journal: \{ label: '요양일지'/, /analysis: \{ label: 'AI 회상 대화 요약'/,
+    /photo: \{ label: '공유 사진'/, /report: \{ label: '관찰 포인트'/,
+    /if \(!j\) continue;/, /메시지는 보호자 → 요양보호사 단방향이다/,
+    /아직 공개된 소식이 없어요/,
+  ]],
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식 탭: 부제·담당 카드는 탭마다 다르고 공유 사진은 2열 격자(394×486 · x 407/890 · 피치 536)', [
+    /오늘도 어르신의 요양일지를 확인해보세요\./,
+    /오늘도 어르신의 AI 회상 대화 요약을 확인해보세요\./,
+    /오늘도 어르신의 활동 사진을 확인해보세요\./,
+    /cols: \[407, 890\]/, /w: 394,\n  h: 486,/, /rowPitch: 536/, /photoH: 246/,
+    /\{tab === 'all' \? \(/,
+    /const PAGE = 4;/,
+  ]],
+  [`${WEB}/src/components/guardian-detail.tsx`, '보호자 상세 골격: 카드 432.33 · 안여백 86 · 첫 제목 46.67 · 본문 28.021 · 낱말 SemiBold + 구분자 Regular', [
+    /export const CARD_TOP = 432\.33;/, /export const LINE = 28\.021;/,
+    /export const BODY_DY = 64\.46;/, /export const PAD_X = 86;/, /export const PAD_TOP = 46\.67;/,
+    /left: 322, top: Y\(190\), width: 12\.18, height: 18\.73/,
+    /담당 요양보호사 : —/,
+    /items\.length === 0 \? '—'/,
+  ]],
+  [`${WEB}/src/pages/guardian/JournalDetailPage.tsx`, '요양일지 상세: 섹션 간격 35.35 · 사진 281×177 3열(0/300/601)', [
+    /const SEC_GAP = 35\.35;/, /w: 281, h: 177, xs: \[0, 300, 601\]/,
+    /<SectionBody fx="50:1089" under pre width=\{690\}>/,
+    /활동 요약은 아직 care_journals 에 칸이 없다/,
+    /공개된 활동 사진이 아직 없어요/,
+  ]],
+  [`${WEB}/src/pages/guardian/SummaryDetailPage.tsx`, '대화 요약 상세: 2열(704) · 인용 상자 876×118 · 간격 35.5/27.4/36', [
+    /const COL2 = 704;/, /w: 876, h: 118, x: 37, y: 45\.72/,
+    /gap=\{SEC_GAP\}/, /gap=\{27\.4\}/, /gap=\{36\}/,
+    /bg-accent-tint/,
+    /reaction === 'engaged' && t\.excerpt/,
+    /minutes != null \? `약 \$\{minutes\}분` : '—'/,
+  ]],
+  [`${WEB}/src/pages/guardian/SettingsPage.tsx`, '보호자 설정: 카드 377/251/80 · 알림 행 · 버전은 package.json', [
+    /const CARD1_TOP = 315;/, /const CARD2_TOP = 750;/, /const CARD3_TOP = 1058;/,
+    /h-\[377px\] w-\[1054px\]/, /h-\[251px\] w-\[1054px\]/, /h-\[80px\] w-\[1054px\]/,
+    /\{APP_VERSION\}/,
+    /여는 화면이 디자인에 없고 알림 센터도 배선 전이라 아직 누를 수 없다/,
+    /기억온은 의료기기가 아니며, 인지활동 보조 서비스입니다\./,
+  ]],
+  [`${WEB}/src/lib/version.ts`, '버전 표시는 package.json 이 근거다(시안의 v.1.0.0 은 예시)', [
+    /__APP_VERSION__/, /자리표시자 금지/,
+  ]],
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '종합 분석 카드 2장 — 요양보호사·보호자 공용(카드 343/1552 · 콘텐츠 87/86)', [
+    /export function ElderAnalysisCards/,
+    /const C1 = 343;/, /const C2 = 1552;/, /const COL1 = 87;/, /const COL2 = 86;/,
+    /요양보호사\(228:4091\)와 보호자\(96:94\)가 \*\*같은 화면\*\*/,
+  ]],
+  [`${WEB}/src/components/analysis-session.tsx`, '대화 분석 상세 카드 — 요양보호사·보호자 공용(카드 259.15 · 막대 593)', [
+    /export function SessionAnalysisCard/,
+    /const CARD_TOP = 259\.15;/, /const BAR_W = 593;/,
+    /요양보호사\(228:4430\)와 보호자\(104:1830\)가 \*\*같은 카드\*\*/,
+  ]],
+  [`${WEB}/src/pages/guardian/AnalysisPage.tsx`, '보호자 종합 분석: 탭 426/598 · 밑줄 81 @341 · 기간 pill 1249', [
+    /left: 426, top: Y\(301\)/, /left: 598, top: Y\(301\)/,
+    /h-\[3px\] w-\[81px\] bg-accent/,
+    /<ElderAnalysisCards elderId=\{approved\?\.profile_id\} months=\{months\} \/>/,
+  ]],
+  [`${WEB}/src/pages/guardian/AnalysisSessionsPage.tsx`, '보호자 대화 분석 목록: 카드 343 · 행 458 피치 180 · 끝난 대화만', [
+    /const CARD_TOP = 343;/, /const ROW_TOP = 458;/,
+    /s\.status === 'ended'/, /withinMonths\(s\.ended_at \?\? s\.started_at, months\)/,
+    /compact/, /actionLabel="대화 분석 보기"/,
+  ]],
+  [`${WEB}/src/pages/guardian/AnalysisSessionPage.tsx`, '보호자 대화 분석 상세: 돌아가기 343/화살표 322 · 카드 공용', [
+    /left: 343, top: Y\(187\.11\)/, /left: 322, top: Y\(190\), width: 12\.18/,
+    /<SessionAnalysisCard sessionId=\{sessionId\} \/>/,
+  ]],
+  [`${WEB}/src/components/guardian-header.tsx`, '보호자 머리: 인사말 이름만 주황 · pill 322×57 · 라벨 SemiBold 18(34/161)', [
+    /안녕하세요, <span className="text-accent">/,
+    /h-\[57px\] w-\[322px\] items-center rounded-\[10px\] border border-accent bg-white/,
+    /left-\[34px\][^\n]*text-\[18px\] font-semibold leading-\[30px\] text-accent/,
+    /left-\[161px\][^\n]*text-\[18px\] font-semibold leading-\[30px\] text-ink-900/,
+  ]],
+  [`${WEB}/src/components/guardian-message.tsx`, '메시지 이용 안내: 카드 868×758 · 제목 25 · 소제목 22 · 본문 20/35 · 체크박스 35', [
+    /width: 868, height: 758/,
+    /text-\[25px\] font-bold leading-\[30px\]/,
+    /text-\[22px\] font-semibold leading-\[24px\]/,
+    /lineHeight: '35px'/,
+    /평일 오전 9:00 ~ 오후 18:00/,
+    /메시지 전송 자체는 아직 백엔드가 없다/,
+  ]],
+  [`${WEB}/src/components/shell/TopBar.tsx`, '보호자 셸 탑바: 검색 없음 · 벨 1080 · 아바타 1140', [
+    /variant\?: 'caregiver' \| 'guardian'/,
+    /guardian \? \{ bell: 1080, avatar: 1140, chevron: 219 \}/,
+  ]],
+
+  [`${WEB}/src/components/charts.tsx`, '그래프: 계열색은 theme · 근거 없는 달은 점을 찍지 않는다', [
+    /webPalette\.series/, /v == null \? null/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,
@@ -551,7 +866,7 @@ const SCREENS = [
     /primary: 'bg-accent text-white/,
   ]],
   [`${WEB}/src/components/ui/Avatar.tsx`, '아바타: 원형 40/50/76/99 · 사진 없으면 Figma 기본 에셋', [
-    /sm: 40, md: 50, lg: 76, xl: 99/, /rounded-full object-cover/, /asset\.avatarDefault/,
+    /sm: 40, md: 50, lg: 76, xl: 99/, /shape === 'circle' \? 'rounded-full' : 'rounded-\[10px\]'/, /asset\.avatarDefault/,
   ]],
   [`${WEB}/src/index.css`, '전역: Pretendard 자체 호스팅 · 흰 배경 · ink 본문', [
     /@font-face/, /PretendardVariable\.woff2/, /bg-white text-ink-700 antialiased/,

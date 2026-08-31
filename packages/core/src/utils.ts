@@ -66,6 +66,35 @@ export function dateDot(iso?: string | null): string {
   return formatKoreanDate(iso)
 }
 
+/**
+ * 목록의 날짜+시각 표기(`2026.07.30   19:00`). 사이는 **공백 3칸**(Figma 실측 간격 17.3px).
+ *
+ * `formatKoreanDateTime` 은 공백 1칸이고 잘못된 값에 `NaN` 을 흘린다 → 목록에서는 이쪽을 쓴다.
+ */
+export function dateDotTime(iso?: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${formatKoreanDate(iso)}   ${hh}:${mm}`
+}
+
+/**
+ * `iso` 가 최근 `months` 개월 안인가. 기간 필터의 단일 기준
+ * (앱 `src/lib/period.ts` 의 기간 pill 과 같은 셈법).
+ *
+ * 값이 없거나 잘못됐으면 **포함하지 않는다** — 근거 없는 기록을 기간 안으로 끌어오지 않는다.
+ */
+export function withinMonths(iso?: string | null, months = 3, now = new Date()): boolean {
+  if (!iso) return false
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return false
+  const from = new Date(now)
+  from.setMonth(from.getMonth() - months)
+  return t >= from.getTime() && t <= now.getTime()
+}
+
 const PALETTE = ['#fbb78c', '#a3d4b1', '#b1c8f0', '#f5b9c9', '#dabbf0', '#fbe294', '#9ad6d2']
 export function pickAvatarColor(seed: string): string {
   let h = 0

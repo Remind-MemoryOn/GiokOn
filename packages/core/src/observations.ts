@@ -8,8 +8,8 @@
 //   (0 과 null 은 다르다 — 0회 관찰과 "측정 불가"를 구분한다. 어르신 개인에 대한
 //   관찰 기록을 임의값으로 표시하는 것은 비의료·정부심사 기준에서 특히 위험하다.)
 
-import type { ChronicleEntry, ElderProfile, Session } from './types'
-import type { SessionAnalysis } from './analysis'
+import type { ChronicleEntry, ConversationTurn, ElderProfile, Session } from './types'
+import { readEmotion, type SessionAnalysis } from './analysis'
 
 export interface TopicShare {
   label: string
@@ -330,4 +330,254 @@ export function computeOverall(
     : null
   const topTopics = computeTopicShares([], analyses)
   return { totalElders, totalSessions, avgMinutes, avgResponseRate, topTopics }
+}
+
+export interface TopicDetail {
+  topic: string
+  /** 그 주제가 등장한 세션 수(관찰). */
+  mentions: number
+  /** 등장 중 호응(engaged) 비율 0~100. 등장이 없으면 null. */
+  positiveRate: number | null
+  /** 그 주제를 다룬 세션의 평균 길이(초). 근거가 없으면 null. */
+  avgSeconds: number | null
+  /** 직전 동일 길이 기간 대비 변화(%p·%). 비교 근거가 없으면 null. */
+  delta: { mentions: number | null; positiveRate: number | null; avgSeconds: number | null }
+}
+
+function topicSlice(
+  rows: { analysis: SessionAnalysis; seconds: number | null }[],
+  topic: string,
+): { mentions: number; positiveRate: number | null; avgSeconds: number | null } {
+  let mentions = 0
+  let engaged = 0
+  let secondsSum = 0
+  let secondsN = 0
+  for (const r of rows) {
+    const outcome = r.analysis.topicOutcomes.find((o) => o.topic === topic)
+    const inEngaged = r.analysis.topicsEngaged.includes(topic)
+    if (!outcome && !inEngaged) continue
+    mentions += 1
+    if (outcome ? outcome.reaction === 'engaged' : inEngaged) engaged += 1
+    if (r.seconds != null) {
+      secondsSum += r.seconds
+      secondsN += 1
+    }
+  }
+  return {
+    mentions,
+    positiveRate: mentions > 0 ? Math.round((engaged / mentions) * 100) : null,
+    avgSeconds: secondsN > 0 ? Math.round(secondsSum / secondsN) : null,
+  }
+}
+
+/**
+ * 한 주제의 상세 관찰(Figma 분석 "주제별 상세 분석" 3칸).
+ *
+ * 최근 `months` 개월과 **직전 같은 길이 기간**을 나눠 언급 빈도·호응률·평균 대화 시간과
+ * 그 변화를 낸다. 근거가 없는 항목은 null — 화면은 `—` 로 둔다(값을 만들지 않는다).
+ */
+export function computeTopicDetail(
+  rows: { analysis: SessionAnalysis; at: string; seconds: number | null }[],
+  topic: string,
+  months = 3,
+  now = new Date(),
+): TopicDetail {
+  const span = months * 30 * 86400000
+  const end = now.getTime()
+  const recent: { analysis: SessionAnalysis; seconds: number | null }[] = []
+  const previous: { analysis: SessionAnalysis; seconds: number | null }[] = []
+  for (const r of rows) {
+    const t = new Date(r.at).getTime()
+    if (Number.isNaN(t)) continue
+    if (t > end - span) recent.push(r)
+    else if (t > end - span * 2) previous.push(r)
+  }
+  const a = topicSlice(recent, topic)
+  const b = topicSlice(previous, topic)
+  const diff = (x: number | null, y: number | null) => (x == null || y == null ? null : x - y)
+  return {
+    topic,
+    ...a,
+    delta: {
+      mentions: previous.length === 0 ? null : a.mentions - b.mentions,
+      positiveRate: diff(a.positiveRate, b.positiveRate),
+      avgSeconds: diff(a.avgSeconds, b.avgSeconds),
+    },
+  }
+}
+
+export interface ParticipationDetail {
+  /** 기간 안 세션 수(관찰). */
+  totalSessions: number
+  /** 세션 평균 길이(초). 길이를 아는 세션이 없으면 null. */
+  avgSeconds: number | null
+  /** 평균 응답률 0~100. 분석이 없으면 null. */
+  avgResponseRate: number | null
+  /** 직전 동일 길이 기간 대비 변화. 비교 근거가 없으면 null. */
+  delta: {
+    totalSessions: number | null
+    avgSeconds: number | null
+    avgResponseRate: number | null
+  }
+}
+
+function participationSlice(
+  rows: { analysis: SessionAnalysis | null; seconds: number | null }[],
+): Omit<ParticipationDetail, 'delta'> {
+  let secondsSum = 0
+  let secondsN = 0
+  let rateSum = 0
+  let rateN = 0
+  for (const r of rows) {
+    if (r.seconds != null) {
+      secondsSum += r.seconds
+      secondsN += 1
+    }
+    // 분석이 아직 없는 세션도 '대화 횟수'에는 든다 — 응답률만 빠진다.
+    if (r.analysis) {
+      rateSum += r.analysis.metrics.responseRate
+      rateN += 1
+    }
+  }
+  return {
+    totalSessions: rows.length,
+    avgSeconds: secondsN > 0 ? Math.round(secondsSum / secondsN) : null,
+    avgResponseRate: rateN > 0 ? Math.round((rateSum / rateN) * 100) : null,
+  }
+}
+
+/**
+ * 한 어르신의 참여 관찰 + 직전 기간 대비 변화(Figma 개인별 종합 분석 "종합 대화 참여도" 3칸).
+ *
+ * 행 하나 = 대화 한 번. 분석이 아직 없는 세션은 `analysis: null` 로 넣으면 횟수·평균
+ * 길이에는 들어가고 응답률 평균에서만 빠진다.
+ *
+ * `computeTopicDetail` 과 같은 방식으로 최근 `months` 개월과 **직전 같은 길이 기간**을
+ * 나눈다. 근거가 없는 항목은 null — 화면은 `—`·"비교 근거 없음" 으로 둔다.
+ */
+export function computeParticipationDetail(
+  rows: { analysis: SessionAnalysis | null; at: string; seconds: number | null }[],
+  months = 3,
+  now = new Date(),
+): ParticipationDetail {
+  const span = months * 30 * 86400000
+  const end = now.getTime()
+  const recent: { analysis: SessionAnalysis | null; seconds: number | null }[] = []
+  const previous: { analysis: SessionAnalysis | null; seconds: number | null }[] = []
+  for (const r of rows) {
+    const t = new Date(r.at).getTime()
+    if (Number.isNaN(t)) continue
+    if (t > end - span) recent.push(r)
+    else if (t > end - span * 2) previous.push(r)
+  }
+  const a = participationSlice(recent)
+  const b = participationSlice(previous)
+  const diff = (x: number | null, y: number | null) => (x == null || y == null ? null : x - y)
+  return {
+    ...a,
+    delta: {
+      totalSessions: previous.length === 0 ? null : a.totalSessions - b.totalSessions,
+      avgSeconds: diff(a.avgSeconds, b.avgSeconds),
+      avgResponseRate: diff(a.avgResponseRate, b.avgResponseRate),
+    },
+  }
+}
+
+/**
+ * 관찰 5축 평균(0~100). 축 하나라도 값이 있으면 그 값들의 평균, 없으면 null.
+ * "전체 평균 대비" 비교의 양쪽에 같은 잣대를 쓰기 위한 단일 수치다.
+ */
+export function axisAverage(axes: AxisObservation[]): number | null {
+  const vs = axes.map((a) => a.value).filter((v): v is number => v != null)
+  if (vs.length === 0) return null
+  return Math.round(vs.reduce((n, v) => n + v, 0) / vs.length)
+}
+
+/** 감정 분포 3묶음 — Figma 대화 분석 상세의 막대(밝음·차분·그리움). */
+export interface EmotionSplit {
+  /** 밝음(bright) — `mixed` 는 밝음·그리움이 섞인 것이라 절반씩 나눈다. */
+  bright: number
+  /** 차분(calm·quiet). */
+  calm: number
+  /** 그리움(longing) + `mixed` 의 절반. */
+  longing: number
+  /** 센 어르신 발화 수. 0 이면 위 셋은 전부 0 이고 화면은 빈 상태로 둔다. */
+  turns: number
+}
+
+export const EMOTION_SPLIT_LABEL: Record<'bright' | 'calm' | 'longing', string> = {
+  bright: '밝음',
+  calm: '차분',
+  longing: '그리움',
+}
+
+/**
+ * 한 세션의 감정 분포(%). **어르신 발화마다** 같은 규칙(`readEmotion`)을 돌려 센다.
+ *
+ * ⚠️ 시안은 "긍정/보통/부정" 이라고 썼지만 우리가 재는 것은 **말투 묶음**이지 정서의
+ * 좋고 나쁨이 아니다 — 관찰하지 않은 값(가치 판단)을 만들지 않으려고 관찰한 이름
+ * (밝음·차분·그리움)을 그대로 쓴다.
+ * 반올림 뒤 합이 100 이 되도록 가장 큰 묶음에 나머지를 준다.
+ */
+export function computeEmotionSplit(turns: ConversationTurn[]): EmotionSplit {
+  const elderTurns = turns.filter((t) => t.speaker === 'Elderly' && t.text.trim())
+  if (elderTurns.length === 0) return { bright: 0, calm: 0, longing: 0, turns: 0 }
+  let bright = 0
+  let calm = 0
+  let longing = 0
+  for (const t of elderTurns) {
+    const tone = readEmotion(t.text)
+    if (tone === 'bright') bright += 1
+    else if (tone === 'longing') longing += 1
+    else if (tone === 'mixed') {
+      bright += 0.5
+      longing += 0.5
+    } else calm += 1
+  }
+  const n = elderTurns.length
+  const pct = { bright: Math.round((bright / n) * 100), calm: Math.round((calm / n) * 100), longing: Math.round((longing / n) * 100) }
+  const rest = 100 - (pct.bright + pct.calm + pct.longing)
+  if (rest !== 0) {
+    const top = (Object.keys(pct) as (keyof typeof pct)[]).reduce((a, b) => (pct[a] >= pct[b] ? a : b))
+    pct[top] += rest
+  }
+  return { ...pct, turns: n }
+}
+
+/** 관찰 밴드 — 값이 없으면 null(화면은 `—`). */
+export type ObservationBand = '높음' | '보통' | '낮음'
+
+export interface SessionTraits {
+  /** 가장 많이 관찰된 말투 묶음과 비율. 발화가 없으면 null. */
+  topEmotion: { key: 'bright' | 'calm' | 'longing'; label: string; percent: number } | null
+  /** 대화 집중도 — 참여도 지표 밴드. */
+  focus: ObservationBand | null
+  /** 표현 빈도 — 평균 발화 길이 밴드. */
+  expression: ObservationBand | null
+  /** 대화 길이 — 세션 길이 밴드(`긴 편`·`보통`·`짧은 편`). */
+  length: '긴 편' | '보통' | '짧은 편' | null
+}
+
+/**
+ * 대화 특성 4칸(Figma 대화 분석 상세).
+ *
+ * 밴드 경계는 **표시용 구간**이며 판정이 아니다: 참여도 0.7/0.4, 평균 발화 길이
+ * `EXPRESSION_REFERENCE_CHARS`(60)/30자, 세션 길이 15분/7분.
+ * 근거가 없는 칸은 null 로 두고 화면에서 `—` 로 표시한다.
+ */
+export function describeSessionTraits(
+  analysis: SessionAnalysis | null,
+  split: EmotionSplit,
+  seconds: number | null,
+): SessionTraits {
+  const band = (v: number, high: number, mid: number): ObservationBand =>
+    v >= high ? '높음' : v >= mid ? '보통' : '낮음'
+  const keys = ['bright', 'calm', 'longing'] as const
+  const top = split.turns === 0 ? null : keys.reduce((a, b) => (split[a] >= split[b] ? a : b))
+  return {
+    topEmotion: top ? { key: top, label: EMOTION_SPLIT_LABEL[top], percent: split[top] } : null,
+    focus: analysis ? band(analysis.metrics.participation, 0.7, 0.4) : null,
+    expression: analysis ? band(analysis.metrics.avgUtteranceChars, EXPRESSION_REFERENCE_CHARS, 30) : null,
+    length: seconds == null ? null : seconds >= 900 ? '긴 편' : seconds >= 420 ? '보통' : '짧은 편',
+  }
 }

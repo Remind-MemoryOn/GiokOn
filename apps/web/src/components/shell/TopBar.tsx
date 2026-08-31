@@ -11,7 +11,11 @@ import { cn } from '../../lib/utils';
 //   검색 466×40 r100 배경 rgba(217,217,217,.3) @ (561, 62), 아이콘 21×22 @ (585,71)
 //   벨   23×25 @ (1045, 69) + 카운트 배지 18 원 @ (1059, 60)
 //   아바타 40 @ (1105, 62) · 이름 SemiBold 22 @ (1164, 67) · 펼침 화살표 @ (1359, 76)
+// ⚠️ 보호자 셸(31:616 등)은 **검색이 없고** 오른쪽 묶음이 밀린다:
+//   벨 @1080 · 아바타 @1140 · 이름 @1199. 화살표는 같은 1359.
 interface Props {
+  /** 보호자 셸은 검색이 없고 오른쪽 묶음 x 가 다르다(Figma 31:616). */
+  variant?: 'caregiver' | 'guardian';
   /** 어르신 검색 — 목록형 화면에서만 노출된다(디자인 기준). */
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
   /** 미확인 알림 수. 0이면 배지를 숨긴다. */
@@ -20,7 +24,9 @@ interface Props {
   notifications?: { id: string; message: string }[];
 }
 
-export function TopBar({ search, notificationCount = 0, notifications = [] }: Props) {
+export function TopBar({ variant = 'caregiver', search, notificationCount = 0, notifications = [] }: Props) {
+  const guardian = variant === 'guardian';
+  const X = guardian ? { bell: 1080, avatar: 1140, chevron: 219 } : { bell: 1045, avatar: 1105, chevron: 254 };
   const { user, userRow } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,7 +83,7 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
         ) : null}
 
         {/* 알림 — 전용 화면은 디자인에 없다. 벨이 드롭다운을 연다. */}
-        <div className="absolute left-[1045px] top-[69px]">
+        <div className="absolute top-[69px]" style={{ left: X.bell }}>
           <button
             type="button"
             onClick={() => setBellOpen((v) => !v)}
@@ -112,7 +118,7 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
           ) : null}
         </div>
 
-        <div className="absolute left-[1105px] top-[62px] flex items-center gap-[19px]">
+        <div className="absolute top-[62px] flex items-center gap-[19px]" style={{ left: X.avatar }}>
           <img
             src={asset.avatarDefault}
             alt=""
@@ -136,10 +142,8 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
               alt=""
               width={18}
               height={12}
-              className={cn(
-                'absolute left-[254px] top-[14px] block transition',
-                menuOpen && 'rotate-180',
-              )}
+              style={{ left: X.chevron }}
+              className={cn('absolute top-[14px] block transition', menuOpen && 'rotate-180')}
             />
           </button>
 
@@ -147,7 +151,7 @@ export function TopBar({ search, notificationCount = 0, notifications = [] }: Pr
           {menuOpen ? (
             <div className="absolute right-0 top-[68px] w-[236px] rounded-[10px] bg-white py-4 shadow-card">
               <Link
-                to="/caregiver/settings"
+                to={guardian ? '/guardian/settings' : '/caregiver/settings'}
                 onClick={() => setMenuOpen(false)}
                 className="flex h-[57px] items-center gap-4 px-[59px] text-w-nav font-semibold text-ink-500 hover:text-accent"
               >
