@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import {
   analyzeSession,
+  detectTurnTopic,
   openConversation,
   resolveSessionRecommendation,
   respondToUserTurn,
@@ -405,9 +406,11 @@ export const useApp = create<AppState>((set, get) => ({
       const screen = screenAiUtterance(live.question);
       if (screen.allowed) {
         question = live.question;
-        // 라이브 질문의 주제 전환 판별은 v1에서 보수적으로 유지한다(직전 주제 유지 →
-        // session_logs.switch_topic=false). 근거 없는 주제 지어내기를 피하기 위한 절충.
-        topic = a.currentTopic ?? topic;
+        // Live 질문의 주제를 텍스트에서 판별한다(core detectTurnTopic — 결정론 태깅).
+        // 근거가 있으면 화제 이동까지 기록된다(session_logs.switch_topic, 매퍼가
+        // 직전 턴 주제와 비교해 산출). 근거가 없으면 직전 주제를 유지한다 —
+        // 근거 없는 주제는 만들지 않는다(실서비스 원칙).
+        topic = detectTurnTopic(live.question) ?? a.currentTopic ?? topic;
       } else if (screen.safeAlternative) {
         question = screen.safeAlternative;
         topic = a.currentTopic ?? topic;

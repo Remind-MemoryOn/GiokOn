@@ -30,6 +30,12 @@
 > | loading 인터스티셜 고정 1.2s | 🟡 → **✅ 개선**(다음 질문 교체 감지 복귀, 최소 0.5s/최대 8s) — Live 응답 대기를 화면이 덮음 |
 > | liveAudioChunks 메모리 | 🟡 → **✅ 세션 종료 시 clear** |
 >
+> ### 🔄 4차 업데이트 (2026-08-25 — Live 주제 태깅)
+>
+> | 항목 | 상태 |
+> |---|---|
+> | Live 응답 주제 보수화(§6 — `switch_topic=false` 고정) | 🟢 → **✅ 개선** — core `detectTurnTopic`(analysis.ts): Live 질문 텍스트에서 표준 주제 근거를 결정론 판별(동점 시 나중 언급 우선), 근거 없으면 직전 주제 유지. `appStore.confirmUtterance` 배선 + core 테스트 5건 추가(총 180). 이후 세션 분석의 topicsEngaged/topicsLow·주제 전환 지표가 Live 모드에서도 근거 기록됨 → 웹 설계 프리필 등 후속 반영 루프의 데이터 신뢰도 확보 |
+>
 > **스토어 제출은 사용자 일정에 따라 보류** — 코드·설정·서류 준비는 위 표 기준 완료 상태이며,
 > 제출 시점에는 `eas build --profile production` + 리스팅(Data Safety 등)만 남는다.
 >
@@ -171,7 +177,7 @@
 
 - **loading 인터스티셜 고정 1200ms**(loading.tsx): Live 지연과 무관하게 표시되는 연출용 화면. 모델 응답이 늦으면 talk 복귀 후에도 질문이 잠깐 이전 것으로 보일 수 있음(§4-2와 동일 뿌리).
 - **liveAudioChunks 메모리**: 턴당 수백 KB × 10턴 ≈ 수 MB — 허용 범위. 세션 종료 시 ref 클리어 권장.
-- **주제(switch_topic) 보수화**: Live 응답은 직전 주제를 유지해 `switch_topic=false` 처리 — 분석의 '주제 전환' 지표가 Live 모드에서 과소 계상될 수 있다(근거 없는 주제 지어내기 방지 절충). 향후 모델 응답에 주제 태깅 도입 시 개선.
+- **주제(switch_topic) 보수화**: ~~Live 응답은 직전 주제를 유지해 `switch_topic=false` 처리~~ → **✅ 해소(2026-08-25, 4차)** — core `detectTurnTopic` 으로 Live 질문의 주제를 텍스트 근거로 태깅한다(근거 없으면 직전 주제 유지).
 - **오프너 레이스**: Live 오프너 도착 전 요양보호사가 즉시 다음 동작을 하면 로컬 질문이 유지된다(무결성 문제는 없음).
 - **폰트·접근성**: `check:font`(36파일 Pretendard 강제)·터치 타깃≥57px·role/label 유지. KWCAG 기본기 충족.
 - **다국어**: 한국어 하드코딩 — KR 시장 한정이므로 OK.
