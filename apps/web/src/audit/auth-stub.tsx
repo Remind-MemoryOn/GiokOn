@@ -149,13 +149,19 @@ function seedChronicleList(q: typeof queryClient) {
  * 어르신 상세(161:373)와 데이터가 달라 화면별로 자기 시안과 같은 값을 심는다.
  */
 function seedSessionList(q: typeof queryClient) {
-  // 대화 분석 목록(228:4628)도 같은 3건을 그린다.
+  // 대화 분석 목록(228:4628)·보호자 대화 분석(104:1041)도 같은 3건을 그린다.
   const p = window.location.pathname;
-  if (!/\/caregiver\/sessions\//.test(p) && !/\/caregiver\/analysis\/[^/]+\/sessions$/.test(p)) return;
+  const guardian = /^\/guardian\/analysis\/sessions$/.test(p);
+  if (
+    !guardian
+    && !/\/caregiver\/sessions\//.test(p)
+    && !/\/caregiver\/analysis\/[^/]+\/sessions$/.test(p)
+  ) return;
   q.setQueryData(queryKeys.sessions(E1), [
     { ...session('s1', E1, 14, 'ended', '2026-07-30T03:00:00Z'), title: '어린 시절 집 이야기' },
     { ...session('s2', E1, 12, 'ended', '2026-07-19T03:00:00Z'), title: '어머니와 함께했던 기억' },
-    { ...session('s3', E1, 9, 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
+    // 보호자에게는 끝난 대화만 보인다 — 그 화면 시안은 3행이라 세 번째도 종료로 심는다.
+    { ...session('s3', E1, 9, guardian ? 'ended' : 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
   ]);
 }
 
@@ -163,10 +169,11 @@ function seedSessionList(q: typeof queryClient) {
  * 대화 기록(178:1052) 감사용 — 시안의 첫 네 턴을 그대로 심는다(2026-06-24 오전).
  */
 function seedConversation(q: typeof queryClient) {
-  // 대화 분석 상세(228:4430)도 같은 세션·턴을 읽는다.
+  // 대화 분석 상세(228:4430)·보호자 대화 분석 상세(104:1830)도 같은 세션·턴을 읽는다.
   const path = window.location.pathname;
   const onLog = /\/caregiver\/sessions\/[^/]+\/([^/]+)$/.exec(path);
-  const onAnalysis = /\/caregiver\/analysis\/[^/]+\/sessions\/([^/]+)$/.exec(path);
+  const onAnalysis = /\/caregiver\/analysis\/[^/]+\/sessions\/([^/]+)$/.exec(path)
+    ?? /\/guardian\/analysis\/sessions\/([^/]+)$/.exec(path);
   const m = onLog ?? onAnalysis;
   if (!m || m[1] === 'new') return;
   const id = m[1];

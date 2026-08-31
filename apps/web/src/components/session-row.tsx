@@ -17,6 +17,8 @@ interface Props {
   top: number;
   to: string;
   actionLabel: string;
+  /** 보호자 화면(104:1041)은 상대일·상태 배지를 그리지 않는다 — 세션 상태는 공개 항목이 아니다. */
+  compact?: boolean;
   /** 첫 행에만 붙이는 실측 감사 앵커. */
   fx?: {
     row?: string; title?: string; date?: string; clock?: string;
@@ -24,7 +26,7 @@ interface Props {
   };
 }
 
-export function SessionRow({ session: s, top, to, actionLabel, fx = {} }: Props) {
+export function SessionRow({ session: s, top, to, actionLabel, compact, fx = {} }: Props) {
   const when = s.planned_date ?? s.started_at;
   const duration = durationLabel(s.duration_minutes, s.duration_seconds);
   const tone = s.status === 'active' ? 'live' : s.status === 'planned' ? 'accent' : 'mute';
@@ -73,17 +75,19 @@ export function SessionRow({ session: s, top, to, actionLabel, fx = {} }: Props)
       ) : null}
       {/* 상대일 + 상태는 **한 줄로 붙여** 놓는다 — 시안의 "오늘"(35) 기준 좌표에
           고정하면 "23일 전"처럼 긴 값에서 배지가 글자를 덮는다. */}
-      <div
-        className="absolute left-[688px] flex h-[28px] items-center gap-[10px] whitespace-nowrap"
-        style={{ top: top + 78.44 }}
-      >
-        <span data-fx={fx.relative} className="text-w-body leading-[28px] text-ink-500">
-          {relativeDay(when)}
-        </span>
-        <Badge data-fx={fx.badge} tone={tone} fixed>
-          {label}
-        </Badge>
-      </div>
+      {compact ? null : (
+        <div
+          className="absolute left-[688px] flex h-[28px] items-center gap-[10px] whitespace-nowrap"
+          style={{ top: top + 78.44 }}
+        >
+          <span data-fx={fx.relative} className="text-w-body leading-[28px] text-ink-500">
+            {relativeDay(when)}
+          </span>
+          <Badge data-fx={fx.badge} tone={tone} fixed>
+            {label}
+          </Badge>
+        </div>
+      )}
       <Link
         to={to}
         data-fx={fx.link}

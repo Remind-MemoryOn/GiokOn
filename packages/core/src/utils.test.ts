@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dateDot, dateDotTime, formatKoreanDate, relativeDay } from './utils'
+import { dateDot, dateDotTime, formatKoreanDate, relativeDay, withinMonths } from './utils'
 
 describe('relativeDay', () => {
   // 브라우저(사용자 로컬)의 달력 하루를 센다 → 테스트도 로컬 기준으로 만든다.
@@ -44,5 +44,22 @@ describe('dateDotTime', () => {
   it('근거가 없으면 값을 만들지 않는다', () => {
     expect(dateDotTime(null)).toBe('—')
     expect(dateDotTime('아직 없음')).toBe('—')
+  })
+})
+
+describe('withinMonths', () => {
+  const now = new Date('2026-08-31T00:00:00Z')
+  it('기간 안이면 참', () => {
+    expect(withinMonths('2026-07-01T00:00:00Z', 3, now)).toBe(true)
+  })
+  it('기간 밖이면 거짓', () => {
+    expect(withinMonths('2026-01-01T00:00:00Z', 3, now)).toBe(false)
+  })
+  it('앞으로의 날짜는 담지 않는다', () => {
+    expect(withinMonths('2027-01-01T00:00:00Z', 3, now)).toBe(false)
+  })
+  it('근거가 없으면 담지 않는다', () => {
+    expect(withinMonths(null, 3, now)).toBe(false)
+    expect(withinMonths('아직 없음', 3, now)).toBe(false)
   })
 })

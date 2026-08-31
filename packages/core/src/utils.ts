@@ -80,6 +80,21 @@ export function dateDotTime(iso?: string | null): string {
   return `${formatKoreanDate(iso)}   ${hh}:${mm}`
 }
 
+/**
+ * `iso` 가 최근 `months` 개월 안인가. 기간 필터의 단일 기준
+ * (앱 `src/lib/period.ts` 의 기간 pill 과 같은 셈법).
+ *
+ * 값이 없거나 잘못됐으면 **포함하지 않는다** — 근거 없는 기록을 기간 안으로 끌어오지 않는다.
+ */
+export function withinMonths(iso?: string | null, months = 3, now = new Date()): boolean {
+  if (!iso) return false
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return false
+  const from = new Date(now)
+  from.setMonth(from.getMonth() - months)
+  return t >= from.getTime() && t <= now.getTime()
+}
+
 const PALETTE = ['#fbb78c', '#a3d4b1', '#b1c8f0', '#f5b9c9', '#dabbf0', '#fbe294', '#9ad6d2']
 export function pickAvatarColor(seed: string): string {
   let h = 0

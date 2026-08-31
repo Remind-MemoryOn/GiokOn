@@ -36,6 +36,7 @@ import { asset } from '../../assets/ui';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge, type BadgeTone } from '../../components/ui/Badge';
 import { useAuth } from '../../auth/AuthProvider';
+import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { MessageNoticeDialog } from '../../components/guardian-message';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { cn } from '../../lib/utils';
@@ -178,41 +179,19 @@ export function FeedPage() {
   return (
     // 좌표가 화면 절대값이라 본문 여백과 사이드바를 되빼 원점을 맞춘다.
     <div className="relative -ml-[323px] w-[1440px]" style={{ height: Y(pageBottom) + 88 }}>
-      <h1
-        data-fx="50:544"
-        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[40px] text-ink-900"
-        style={{ top: Y(186) }}
-      >
-        {/* 이름은 로그인 계정에서 온다 */}
-        안녕하세요, <span className="text-accent">{userRow?.name ?? '보호자'}</span> 보호자님!
-      </h1>
-      <p
-        data-fx="50:546"
-        className="absolute left-[322px] whitespace-nowrap text-w-body leading-[30px] text-ink-700"
-        style={{ top: Y(236.14) }}
-      >
-        {tabDef.subtitle}
-      </p>
-
-      <Link
+      <GuardianGreeting
+        name={userRow?.name}
+        subtitle={tabDef.subtitle}
+        fxTitle="50:544"
+        fxDesc="50:546"
+      />
+      <ElderPill
+        elderName={elder?.name}
         to="/guardian"
-        data-fx="50:844"
-        className="absolute flex h-[57px] w-[322px] items-center rounded-[10px] border border-accent bg-white"
-        style={{ left: 1054, top: Y(187) }}
-      >
-        <span data-fx="50:845" className="absolute left-[34px] whitespace-nowrap text-[18px] font-semibold leading-[30px] text-accent">
-          연결된 어르신
-        </span>
-        <span data-fx="50:847" className="absolute left-[161px] whitespace-nowrap text-[18px] font-semibold leading-[30px] text-ink-900">
-          {elder ? `${elder.name} 어르신` : '—'}
-        </span>
-        <img
-          src={asset.iconChevronDownSm}
-          alt=""
-          className="absolute left-[276px] block"
-          style={{ width: 15.37, height: 10 }}
-        />
-      </Link>
+        fxBox="50:844"
+        fxLabel="50:845"
+        fxName="50:847"
+      />
 
       {TABS.map((t) => (
         <button
