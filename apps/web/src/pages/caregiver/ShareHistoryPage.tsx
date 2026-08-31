@@ -8,22 +8,25 @@
 //
 // ⚠️ 행 높이는 제목이 두 줄이면 늘어난다 → 셀은 세로 가운데 정렬로 두고 행 높이를
 //    내용에서 계산한다(시안의 132/136/137/139/140 은 그 결과다).
-// ⚠️ 보호자 확인 시각은 아직 DB 에 없다(`guardian_shares.viewed_at` 미도입) → `—` 로 둔다.
-//    없는 확인 기록을 만들지 않는다.
-import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+// ⚠️ 보호자 확인 시각은 `guardian_shares.viewed_at`(보호자가 열면 서버 함수가 남긴다).
+//    아직 안 봤으면 `-` 로 둔다 — 없는 확인 기록을 만들지 않는다.
+import { useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
   toElderProfile,
   useCareJournals,
   useCurrentUser,
+  useGuardianLinks,
   useGuardianShares,
   useProfile,
   useRevokeGuardianShare,
   useSessionAnalyses,
 } from '@giokon/data';
+import { birthLabel, elderAge } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { Badge } from '../../components/ui/Badge';
+import { ShareReceiptDialog, type ShareReceipt } from '../../components/share-receipt';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 
@@ -65,6 +68,16 @@ export function ShareHistoryPage() {
   const analyses = useSessionAnalyses(elderId);
   const me = useCurrentUser();
   const revoke = useRevokeGuardianShare();
+  const guardians = useGuardianLinks(elderId);
+  // 공개 이력 상세(153:1811) — 한 공개 건의 공개 정보 + 보호자 확인 정보.
+  // `?receipt=<공개 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
+  const [search, setSearch] = useSearchParams();
+  const [picked, setPicked] = useState<string | null>(null);
+  const receiptId = picked ?? search.get('receipt');
+  const setReceiptId = (id: string | null) => {
+    setPicked(id);
+    if (id === null && search.get('receipt')) setSearch({}, { replace: true });
+  };
 
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
@@ -88,7 +101,43 @@ export function ShareHistoryPage() {
     return map;
   }, [journals.data, analyses.data]);
 
-  const rows = shares.data ?? [];
+  const guardianName = useMemo(() => {
+    const approved = (guardians.data ?? []).find((g) => g.status === 'approved');
+    return approved?.guardian?.name ?? null;
+  }, [guardians.data]);
+
+  const rows = useMemo(() => shares.data ?? [], [shares.data]);
+
+  /** 같은 원본으로 함께 공개된 항목들을 한 줄로 — `일지 요약 내용, 관련 사진 (3장)`. */
+  const receipt = useMemo<ShareReceipt | null>(() => {
+    const share = rows.find((r) => r.id === receiptId);
+    if (!share) return null;
+    const isJournal = share.item_type === 'journal';
+    const photos = rows.filter((r) => r.item_type === 'photo' && !r.revoked_at);
+    const parts: string[] = [];
+    if (isJournal) parts.push('일지 요약 내용');
+    if (share.item_type === 'session_summary') parts.push('대화 요약 내용');
+    if (share.item_type === 'analysis') parts.push('대화 AI 분석');
+    if (isJournal && photos.length > 0) parts.push(`관련 사진 (${photos.length}장)`);
+    const elderLine = elder
+      ? [
+          `${elder.name}(${elder.birthYear ? `${elderAge(elder)}세` : birthLabel(elder)}${
+            elder.gender === 'female' ? ',여' : elder.gender === 'male' ? ',남' : ''
+          })`,
+        ].join('')
+      : '—';
+    return {
+      share,
+      badge: isJournal ? { label: '요양일지', w: 107 } : { label: 'AI 회상 대화 요약', w: 175 },
+      title: titles.get(share.item_id) ?? '—',
+      elderLine,
+      guardianName,
+      itemsLine: parts.join(', '),
+      detailTo: isJournal
+        ? `/caregiver/journal/${elderId ?? ''}/${share.item_id}`
+        : `/caregiver/analysis/${elderId ?? ''}/sessions`,
+    };
+  }, [rows, receiptId, titles, elder, guardianName, elderId]);
   const cardHeight = HEAD_H + Math.max(rows.length, 1) * ROW_H + 1;
 
   function onRevoke(id: string) {
@@ -253,21 +302,18 @@ export function ShareHistoryPage() {
                 className="absolute w-[130px] -translate-y-1/2 text-w-body leading-[28px] text-ink-900"
                 style={{ left: COLS.viewedLeft, top: Y(mid) }}
               >
-                {/* 보호자 확인 시각은 아직 기록하지 않는다 → 만들지 않는다 */}
-                -
+                {/* 보호자가 열어야 생기는 값이다 — 없으면 만들지 않는다 */}
+                {stamp(s.viewed_at)}
               </span>
-              <Link
-                to={
-                  isJournal
-                    ? `/caregiver/journal/${elderId ?? ''}/${s.item_id}`
-                    : `/caregiver/analysis/${elderId ?? ''}/sessions`
-                }
+              <button
+                type="button"
+                onClick={() => setReceiptId(s.id)}
                 data-fx={i === 0 ? '146:1314' : undefined}
                 className="absolute flex h-[39px] w-[117px] items-center justify-center rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white"
                 style={{ left: COLS.actionLeft, top: Y(mid - 25.5) }}
               >
                 상세 보기
-              </Link>
+              </button>
               {live ? (
                 <button
                   type="button"
@@ -297,6 +343,13 @@ export function ShareHistoryPage() {
         더보기
         <img src={asset.iconChevronDownSm} alt="" style={{ width: 18.73, height: 12.18 }} className="block" />
       </div>
+
+      {/* 공개 이력 상세 — 공개 정보 + 보호자 확인 정보(153:1811) */}
+      <ShareReceiptDialog
+        open={Boolean(receipt)}
+        onClose={() => setReceiptId(null)}
+        receipt={receipt}
+      />
     </div>
   );
 }

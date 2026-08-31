@@ -692,6 +692,61 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 5.10b) 보호자 확인 영수증: 보호자만 남길 수 있고, 열은 함수로만 바뀐다 ──
+set role authenticated;
+set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인)
+do $$
+declare
+  sid uuid := (select id from public.guardian_shares where item_type = 'analysis' limit 1);
+  r public.guardian_shares;
+begin
+  r := public.mark_share_viewed(sid);
+  assert r.view_count = 1, '첫 확인이면 횟수가 1 이어야 함';
+  assert r.viewed_at is not null, '첫 확인 시각이 남아야 함';
+  assert r.viewed_by = '55555555-5555-5555-5555-555555555555'::uuid,
+    '확인자는 호출한 보호자여야 함';
+  r := public.mark_share_viewed(sid);
+  assert r.view_count = 2, '다시 열면 횟수가 늘어야 함';
+end $$;
+
+-- 보호자는 공개 행을 직접 고칠 수 없다(철회·공개까지 손대지 못하게).
+do $$
+declare
+  sid uuid := (select id from public.guardian_shares where item_type = 'analysis' limit 1);
+  n int;
+begin
+  update public.guardian_shares set notify_on_view = true where id = sid;
+  get diagnostics n = row_count;
+  assert n = 0, '보호자는 공개 행을 직접 수정할 수 없어야 함';
+end $$;
+
+-- 연결 없는 보호자 G 는 확인을 남길 수 없다.
+set test.uid = '44444444-4444-4444-4444-444444444444';
+do $$
+declare
+  ok boolean := false;
+begin
+  begin
+    perform public.mark_share_viewed(
+      (select id from public.guardian_shares where item_type = 'analysis' limit 1));
+  exception when others then ok := true;
+  end;
+  assert ok, '연결이 없는 보호자는 확인을 남길 수 없어야 함';
+end $$;
+
+-- 요양보호사는 알림 토글을 켤 수 있다(확인 열은 함수만 건드린다).
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  n int;
+begin
+  update public.guardian_shares set notify_on_view = true
+   where item_type = 'analysis';
+  get diagnostics n = row_count;
+  assert n = 1, '돌봄 구성원은 확인 알림 토글을 켤 수 있어야 함';
+end $$;
+reset role;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,

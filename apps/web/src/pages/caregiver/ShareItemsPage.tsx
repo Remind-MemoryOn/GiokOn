@@ -11,23 +11,28 @@
 // ⚠️ Figma 는 1번째 행의 상태 배지만 3px 위로(433), 행마다 배지·버튼 y 를 0.2~1.5px 씩
 //    흘려 놨다 → 1번째 행 기준으로 통일한다.
 // ⚠️ 공개 여부는 `guardian_shares` 의 **철회되지 않은** 행으로 판정한다(행이 없으면 미공개).
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
   toElderProfile,
   useCareJournals,
   useCreateGuardianShare,
+  useGuardianLinks,
+  useJournalPhotos,
   useCurrentUser,
   useGuardianShares,
   useProfile,
   useRevokeGuardianShare,
   useSessionAnalyses,
+  useSetShareNotifyOnView,
   type ShareItemType,
 } from '@giokon/data';
 import { dateDot } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { Badge } from '../../components/ui/Badge';
+import { ShareSettingsDialog, type ShareTarget } from '../../components/share-settings';
+import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 
@@ -73,6 +78,16 @@ export function ShareItemsPage() {
   const me = useCurrentUser();
   const publish = useCreateGuardianShare();
   const revoke = useRevokeGuardianShare();
+  const setNotifyOnView = useSetShareNotifyOnView();
+  // 공개 기록 설정 모달(146:422) — 항목 단위로 무엇을 공개할지 고른다.
+  // `?settings=<항목 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
+  const [setting, setSetting] = useState<ShareTarget | null>(null);
+  const guardians = useGuardianLinks(elderId);
+  const guardianName = useMemo(() => {
+    const approved = (guardians.data ?? []).find((g) => g.status === 'approved');
+    return approved?.guardian?.name ?? null;
+  }, [guardians.data]);
+
 
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
@@ -119,19 +134,61 @@ export function ShareItemsPage() {
     return out.sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime());
   }, [tab, journals.data, analyses.data]);
 
+  const settingsParam = search.get('settings');
+  const open = setting ?? (settingsParam ? (items.find((i) => i.id === settingsParam) ?? null) : null);
+  const openPhotos = useJournalPhotos(open?.type === 'journal' ? open.id : undefined);
+  const openPhotoUrls = useJournalPhotoUrls((openPhotos.data ?? []).map((p) => p.path), true);
+  /** 모달의 처음 체크 상태 = 지금 공개돼 있는 것 그대로. */
+  const openInitial = useMemo(() => {
+    if (!open) return undefined;
+    const live = (shares.data ?? []).filter((s) => !s.revoked_at);
+    // 요약 줄은 요양일지=journal · AI 요약=session_summary 로 공개된다(두 번째 줄과 유형이 다르다).
+    const summaryType = open.type === 'journal' ? 'journal' : 'session_summary';
+    const first = live.find((s) => s.item_type === summaryType && s.item_id === open.id);
+    const second = open.type === 'journal'
+      ? live.some((s) => s.item_type === 'photo')
+      : live.some((s) => s.item_type === 'analysis' && s.item_id === open.id);
+    // 아직 아무것도 공개되지 않았으면 시안대로 둘 다 체크한 상태에서 시작한다.
+    if (!first && !second) return undefined;
+    return { summary: Boolean(first), second, notify: Boolean(first?.notify_on_view) };
+  }, [open, shares.data]);
+
   const rowsEnd = ROW_TOP + Math.max(items.length, 1) * ROW_PITCH - (ROW_PITCH - ROW_H);
   const dividerTop = rowsEnd + 49.12;
   const cardBottom = dividerTop + 16.92 + 30.02 + 15.06;
 
-  function onPublish(item: Item) {
-    if (!elderId) return;
-    publish.mutate(
-      { profile_id: elderId, item_type: item.type, item_id: item.id, shared_by: me.data?.id ?? null },
-      {
-        onSuccess: () => toast('success', '보호자에게 공개했어요.'),
-        onError: (e) => toast('error', e.message),
-      },
-    );
+  /**
+   * 모달의 선택을 그대로 반영한다 — 체크된 것은 없으면 공개하고, 체크가 풀린 것은
+   * 이미 공개돼 있으면 철회한다(같은 항목의 활성 공개는 서버가 1건으로 막는다).
+   */
+  async function onPublishPicked(
+    picked: { type: ShareItemType; id: string; checked: boolean }[],
+    notify: boolean,
+  ) {
+    if (!elderId || !me.data?.id) return;
+    const live = new Map((shares.data ?? []).filter((s) => !s.revoked_at).map((s) => [s.item_id, s]));
+    try {
+      for (const p of picked) {
+        const cur = live.get(p.id);
+        if (p.checked && !cur) {
+          await publish.mutateAsync({
+            profile_id: elderId,
+            item_type: p.type,
+            item_id: p.id,
+            shared_by: me.data.id,
+            notify_on_view: notify,
+          });
+        } else if (p.checked && cur && cur.notify_on_view !== notify) {
+          await setNotifyOnView.mutateAsync({ id: cur.id, notify });
+        } else if (!p.checked && cur) {
+          await revoke.mutateAsync({ id: cur.id, userId: me.data.id });
+        }
+      }
+      setSetting(null);
+      toast('success', '공개 설정을 저장했어요.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : '저장하지 못했어요.');
+    }
   }
   function onRevoke(item: Item) {
     const shareId = activeShare.get(item.id);
@@ -288,19 +345,20 @@ export function ShareItemsPage() {
                   >
                     비공개로 전환
                   </button>
-                  <Link
-                    to={`/caregiver/shares/${elderId ?? ''}/set/${item.type}/${item.id}`}
+                  <button
+                    type="button"
+                    onClick={() => setSetting(item)}
                     data-fx={i === 0 ? '142:795' : undefined}
                     className="absolute flex h-[57px] w-[152px] items-center justify-center rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white"
                     style={{ left: 1074, top: Y(top + 145.76) }}
                   >
                     공개 기록 수정
-                  </Link>
+                  </button>
                 </>
               ) : (
                 <button
                   type="button"
-                  onClick={() => onPublish(item)}
+                  onClick={() => setSetting(item)}
                   className="absolute h-[57px] w-[140px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
                   style={{ left: 1086, top: Y(top + 145.76) }}
                 >
@@ -342,6 +400,22 @@ export function ShareItemsPage() {
         더보기
         <img src={asset.iconChevronDownSm} alt="" style={{ width: 18.73, height: 12.18 }} className="block" />
       </div>
+
+      {/* 공개 기록 설정 — 무엇을 공개할지 항목 단위로 고른다(146:422) */}
+      <ShareSettingsDialog
+        open={Boolean(open)}
+        onClose={() => {
+          setSetting(null);
+          if (settingsParam) setSearch(tab === 'all' ? {} : { tab }, { replace: true });
+        }}
+        item={open}
+        guardianName={guardianName}
+        photos={openPhotos.data ?? []}
+        photoUrls={openPhotoUrls.data}
+        initial={openInitial}
+        pending={publish.isPending}
+        onPublish={(pick) => void onPublishPicked(pick.items, pick.notifyOnView)}
+      />
     </div>
   );
 }

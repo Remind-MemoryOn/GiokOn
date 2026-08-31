@@ -325,6 +325,11 @@ function seedShares(q: typeof queryClient) {
     shared_at: at,
     revoked_at: revoked ? at : null,
     revoked_by: revoked ? USER.id : null,
+    // 확인 정보(153:1811) 시안은 미확인 상태를 그린다.
+    viewed_at: null,
+    viewed_by: null,
+    view_count: 0,
+    notify_on_view: false,
   });
   // 시안(140:121)은 7/30 요양일지를 맨 위에 그린다 — 분석은 그보다 앞선 날짜로 심는다.
   const an = (id: string, at: string, topic: string) => ({

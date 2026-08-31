@@ -6,9 +6,9 @@
 //
 // 섹션 간격은 이 화면 실측(본문 끝 → 다음 제목 상자 35.35)을 쓴다 — 본문 줄 수가
 // 데이터마다 달라도 리듬이 유지되도록 흐름 배치로 그린다.
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useMySharedContent } from '@giokon/data';
+import { useMarkShareViewed, useMySharedContent } from '@giokon/data';
 import { useAuth } from '../../auth/AuthProvider';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import {
@@ -36,6 +36,18 @@ export function JournalDetailPage() {
     [shared.data, itemId],
   );
   const urls = useJournalPhotoUrls(photos.map((p) => p.path), isConfigured);
+
+  // 보호자가 열어 본 사실을 남긴다(공개 이력의 "보호자 확인" · 확인 정보 모달이 읽는다).
+  // 한 번 연 화면에서 두 번 세지 않도록 공개 id 당 한 번만 부른다.
+  const markViewed = useMarkShareViewed();
+  const marked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isConfigured || !share?.id || marked.current === share.id) return;
+    marked.current = share.id;
+    markViewed.mutate(share.id);
+    // markViewed 는 매 렌더 새 객체라 의존성에서 뺀다(ref 가이드로 한 번만 부른다).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConfigured, share?.id]);
 
   const d = journal ? new Date(journal.journal_date) : null;
   const title = d && !Number.isNaN(d.getTime())

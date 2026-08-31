@@ -111,6 +111,55 @@ export function useRevokeGuardianShare(): UseMutationResult<
   })
 }
 
+/** 확인 알림 토글 — 요양보호사만 켤 수 있다(보호자는 공개 행을 수정하지 못한다). */
+export function useSetShareNotifyOnView(): UseMutationResult<
+  GuardianShareRow,
+  Error,
+  { id: string; notify: boolean }
+> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, notify }) => {
+      const { data, error } = await getGiokonClient()
+        .from('guardian_shares')
+        .update({ notify_on_view: notify })
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw new Error(error.message)
+      return data
+    },
+    onSuccess: (row) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.guardianShares(row.profile_id) })
+      void qc.invalidateQueries({ queryKey: ['guardian_shares', 'org'] })
+    },
+  })
+}
+
+/**
+ * 보호자 확인(읽음) 영수증 — 보호자가 공개 항목을 열면 시각·횟수·확인자를 남긴다.
+ *
+ * 보호자에게 `guardian_shares` UPDATE 를 열면 공개·철회까지 손댈 수 있어,
+ * 서버 함수(`mark_share_viewed`, security definer)가 확인 열 3개만 건드린다.
+ */
+export function useMarkShareViewed(): UseMutationResult<GuardianShareRow, Error, string> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (shareId: string) => {
+      const { data, error } = await getGiokonClient().rpc('mark_share_viewed', {
+        p_share_id: shareId,
+      })
+      if (error) throw new Error(error.message)
+      return data as GuardianShareRow
+    },
+    onSuccess: (row) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.myShares })
+      void qc.invalidateQueries({ queryKey: queryKeys.guardianShares(row.profile_id) })
+      void qc.invalidateQueries({ queryKey: ['guardian_shares', 'org'] })
+    },
+  })
+}
+
 export interface MySharedContent {
   shares: GuardianShareRow[]
   journals: CareJournalRow[]

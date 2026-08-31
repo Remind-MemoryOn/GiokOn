@@ -697,7 +697,7 @@ const SCREENS = [
     /typeCenter: 422\.5/, /titleCenter: 591/, /atCenter: 742\.5/, /stateCenter: 906/, /viewedLeft: 1019/,
   ]],
   [`${WEB}/src/pages/caregiver/ShareHistoryPage.tsx`, '공개 이력: 보호자 확인 시각은 아직 기록하지 않는다 — 만들지 않는다', [
-    /보호자 확인 시각은 아직 기록하지 않는다/,
+    /\{stamp\(s\.viewed_at\)\}/,
     /아직 공개한 기록이 없습니다/,
   ]],
 
@@ -831,6 +831,23 @@ const SCREENS = [
   [`${WEB}/src/pages/guardian/AnalysisSessionPage.tsx`, '보호자 대화 분석 상세: 돌아가기 343/화살표 322 · 카드 공용', [
     /left: 343, top: Y\(187\.11\)/, /left: 322, top: Y\(190\), width: 12\.18/,
     /<SessionAnalysisCard sessionId=\{sessionId\} \/>/,
+  ]],
+  [`${WEB}/src/components/share-settings.tsx`, '공개 기록 설정: 카드 1103×729(사진 있으면 841) · 카드 447/917 · 체크 27×28 · 행 피치 43', [
+    /width: 1103, height: panelHeight/,
+    /const cardCHeight = strip \? 320 : 209;/,
+    /width: 447, height: 174/, /width: 917, height: cardCHeight/,
+    /width: 27, height: 28/, /top=\{524 \+ i \* 43\}/,
+    /type: isJournal \? 'journal' : 'session_summary'/,
+    /type: 'photo', id: p\.id/,
+    /고르지 않은 것은 공개하지 않는다/,
+  ]],
+  [`${WEB}/src/components/share-receipt.tsx`, '공개 이력 상세: 카드 1082×758 · 정보 카드 447/442×392 · 라벨 18 · 값 Medium 20', [
+    /width: 1082, height: 758/,
+    /width: 447, height: 392/, /width: 442, height: 392/,
+    /text-\[18px\] leading-\[28px\] text-ink-700/,
+    /text-w-body font-medium leading-\[28px\] text-ink-900/,
+    /share\.viewed_at \? dateDotTime\(share\.viewed_at\) : '-'/,
+    /share\.view_count > 0 \? `\$\{share\.view_count\}회` : '-'/,
   ]],
   [`${WEB}/src/components/guardian-header.tsx`, '보호자 머리: 인사말 이름만 주황 · pill 322×57 · 라벨 SemiBold 18(34/161)', [
     /안녕하세요, <span className="text-accent">/,

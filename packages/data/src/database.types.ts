@@ -734,6 +734,10 @@ export type Database = {
           shared_at: string
           revoked_at: string | null
           revoked_by: string | null
+          viewed_at: string | null
+          viewed_by: string | null
+          view_count: number
+          notify_on_view: boolean
           created_at: string
           updated_at: string
         }
@@ -748,6 +752,10 @@ export type Database = {
           shared_at?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          viewed_at?: string | null
+          viewed_by?: string | null
+          view_count?: number
+          notify_on_view?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -762,6 +770,10 @@ export type Database = {
           shared_at?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          viewed_at?: string | null
+          viewed_by?: string | null
+          view_count?: number
+          notify_on_view?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -770,6 +782,11 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      /** 보호자가 공개 항목을 열어 봤음을 기록한다(확인 시각·횟수·확인자). */
+      mark_share_viewed: {
+        Args: { p_share_id: string }
+        Returns: Database['public']['Tables']['guardian_shares']['Row']
+      }
       complete_onboarding: {
         Args: {
           p_name: string
