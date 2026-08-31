@@ -382,6 +382,15 @@ function seedGuardian(q: typeof queryClient) {
     id, org_id: ORG.id, journal_id: journalId, path: `${E1}/${file}`, sort: 0, caption,
     created_at: at, updated_at: at,
   });
+  // 시안은 같은 항목을 목록(2줄)과 상세(6~7줄)에 서로 다른 예시 본문으로 그렸다 →
+  // 상세 라우트에서만 상세 시안 본문으로 바꿔 심는다(항목 수는 그대로).
+  const detail = /^\/guardian\/feed\/(journal|summary)\//.test(window.location.pathname);
+  const J1 = detail
+    ? '오늘은 날씨가 좋아 어르신과 함께 공원 주변을 천천히 산책했습니다.\n산책을 마친 후에는 실내에서 가벼운 체조를 함께 진행했습니다.\n즐겁게 동작을 따라 하셨어요.\n\n활동에도 편안하게 참여하셨으며, 3끼 식사도 남김없이 잘 드셨습니다. 하지만 전반적으로 평소 아침은 점심,저녁에 비해 적게 드시는 편이셨어요. 산책 중에는 주변 풍경을 바라보며 이야기를 나누셨고, 전반적으로 밝고 편안한 모습을 보이셨습니다.'
+    : '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.';
+  const A0 = detail
+    ? '어르신은 어린 시절 살던 집과 가족들에 대한 추억을 이야기하셨습니다.\n특히 집 앞마당에 있던 감나무에 대한 기억을 자세히 떠올리셨으며, 가을이 되면 가족들과 함께 감을 따던 이야기를 들려주셨습니다.\n\n어린 시절 함께 지냈던 가족과 집 주변의 모습에 대해서도 자연스럽게 이야기를 이어가셨습니다.'
+    : '어르신이 어릴 적 살던 집과 가족들에 대한 추억을 이야기 하셨습니다. 특히 마당에 있던 감나무에 대한 추억을 오래 기억하셨어요.';
   q.setQueryData(queryKeys.myShares, {
     shares: [
       shareRow('ms1', 'journal', 'j1', '2026-07-30T10:00:00Z'),
@@ -396,13 +405,26 @@ function seedGuardian(q: typeof queryClient) {
       shareRow('ms10', 'photo', 'p4', '2026-07-07T07:00:00Z'),
     ],
     journals: [
-      journal('j1', '2026-07-30', '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.'),
+      journal('j1', '2026-07-30', J1),
       journal('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.'),
       journal('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
     ],
     analyses: [
-      analysis('a0', '2026-07-30T02:02:00Z', '어린 시절 집',
-        '어르신이 어릴 적 살던 집과 가족들에 대한 추억을 이야기 하셨습니다. 특히 마당에 있던 감나무에 대한 추억을 오래 기억하셨어요.'),
+      {
+        ...analysis('a0', '2026-07-30T02:02:00Z', '어린 시절 집', A0),
+        analysis: {
+          ...analysis('a0', '2026-07-30T02:02:00Z', '어린 시절 집', A0).analysis,
+          durationMinutes: 14,
+          interestKeywords: ['어린 시절', '가족', '옛집', '감나무', '가을'],
+          topicOutcomes: [
+            { topic: '어린 시절', reaction: 'engaged', elderTurns: 3,
+              excerpt: '마당에 큰 감나무가 하나 있었어. 가을이면 감이 아주 많이 열렸지.' },
+            { topic: '가족', reaction: 'engaged', elderTurns: 2 },
+            { topic: '살던 집', reaction: 'neutral', elderTurns: 2 },
+            { topic: '감나무', reaction: 'engaged', elderTurns: 2 },
+          ],
+        },
+      },
       analysis('a1', '2026-07-19T01:38:00Z', '어머니와 함께했던',
         '어린 시절 어머니와 함께 시장에 갔던 이야기를 들려주셨어요. 시장에서 먹었던 음식과 당시 풍경을 자연스럽게 회상하셨습니다.'),
       analysis('a2', '2026-07-10T08:02:00Z', '학창 시절 친구',

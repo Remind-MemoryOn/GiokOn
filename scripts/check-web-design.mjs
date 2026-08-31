@@ -771,6 +771,26 @@ const SCREENS = [
     /\{tab === 'all' \? \(/,
     /const PAGE = 4;/,
   ]],
+  [`${WEB}/src/components/guardian-detail.tsx`, '보호자 상세 골격: 카드 432.33 · 안여백 86 · 첫 제목 46.67 · 본문 28.021 · 낱말 SemiBold + 구분자 Regular', [
+    /export const CARD_TOP = 432\.33;/, /export const LINE = 28\.021;/,
+    /export const BODY_DY = 64\.46;/, /export const PAD_X = 86;/, /export const PAD_TOP = 46\.67;/,
+    /left: 322, top: Y\(190\), width: 12\.18, height: 18\.73/,
+    /담당 요양보호사 : —/,
+    /items\.length === 0 \? '—'/,
+  ]],
+  [`${WEB}/src/pages/guardian/JournalDetailPage.tsx`, '요양일지 상세: 섹션 간격 35.35 · 사진 281×177 3열(0/300/601)', [
+    /const SEC_GAP = 35\.35;/, /w: 281, h: 177, xs: \[0, 300, 601\]/,
+    /<SectionBody fx="50:1089" under pre width=\{690\}>/,
+    /활동 요약은 아직 care_journals 에 칸이 없다/,
+    /공개된 활동 사진이 아직 없어요/,
+  ]],
+  [`${WEB}/src/pages/guardian/SummaryDetailPage.tsx`, '대화 요약 상세: 2열(704) · 인용 상자 876×118 · 간격 35.5/27.4/36', [
+    /const COL2 = 704;/, /w: 876, h: 118, x: 37, y: 45\.72/,
+    /gap=\{SEC_GAP\}/, /gap=\{27\.4\}/, /gap=\{36\}/,
+    /bg-accent-tint/,
+    /reaction === 'engaged' && t\.excerpt/,
+    /minutes != null \? `약 \$\{minutes\}분` : '—'/,
+  ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '보호자 셸 탑바: 검색 없음 · 벨 1080 · 아바타 1140', [
     /variant\?: 'caregiver' \| 'guardian'/,
     /guardian \? \{ bell: 1080, avatar: 1140, chevron: 219 \}/,

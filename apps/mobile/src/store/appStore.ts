@@ -440,7 +440,9 @@ export const useApp = create<AppState>((set, get) => ({
     if (!a) return null;
     const endedAt = nowIso();
     const durationMs = new Date(endedAt).getTime() - new Date(a.startedAt).getTime();
-    const analysis = analyzeSession(a.elder, a.turns, a.chronicles);
+    // 대화 시간은 전문만 보는 analyzeSession 이 알 수 없다 → 여기서 붙인다(보호자 요약 화면이 읽는다).
+    const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
+    const analysis = { ...analyzeSession(a.elder, a.turns, a.chronicles), durationMinutes };
     const logId = uid('log_');
     const log: ConversationLog = {
       id: logId,
@@ -455,7 +457,7 @@ export const useApp = create<AppState>((set, get) => ({
     };
     const session: Session = {
       ...a.session,
-      durationMinutes: Math.max(1, Math.round(durationMs / 60000)),
+      durationMinutes,
       updatedAt: endedAt,
     };
     set((s) => ({

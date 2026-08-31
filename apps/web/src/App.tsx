@@ -35,6 +35,8 @@ import { OrgPage } from './pages/caregiver/OrgPage';
 import { SettingsPage } from './pages/caregiver/SettingsPage';
 import { ConnectPage } from './pages/guardian/ConnectPage';
 import { FeedPage } from './pages/guardian/FeedPage';
+import { JournalDetailPage } from './pages/guardian/JournalDetailPage';
+import { SummaryDetailPage } from './pages/guardian/SummaryDetailPage';
 import { useAuth } from './auth/AuthProvider';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
@@ -132,8 +134,8 @@ function App() {
         >
           <Route index element={<ConnectPage />} />
           <Route path="feed" element={<FeedPage />} />
-          <Route path="feed/journal/:itemId" element={<Pending title="요양일지" node="50:1102" />} />
-          <Route path="feed/summary/:itemId" element={<Pending title="대화 요약" node="55:1258" />} />
+          <Route path="feed/journal/:itemId" element={<JournalDetailPage />} />
+          <Route path="feed/summary/:itemId" element={<SummaryDetailPage />} />
           <Route path="analysis" element={<Pending title="종합 분석" node="96:94" />} />
           <Route path="analysis/sessions" element={<Pending title="대화 분석" node="104:1041" />} />
           <Route path="analysis/sessions/:sessionId" element={<Pending title="대화 분석" node="104:1830" />} />

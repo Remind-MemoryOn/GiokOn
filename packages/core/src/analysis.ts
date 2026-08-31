@@ -59,6 +59,12 @@ export interface SessionAnalysis {
   interestKeywords: string[]
   /** 다음 세션에 다뤄볼 추천 주제. */
   recommendedTopics: string[]
+  /**
+   * 대화에 걸린 시간(분). `analyzeSession` 은 대화 전문만 받아 시각을 모르므로
+   * **세션을 끝내는 쪽이 붙인다**(앱 `finishSession`). 근거가 없으면 없는 채로 둔다 —
+   * 보호자 화면은 `—` 로 보여 준다.
+   */
+  durationMinutes?: number
 }
 
 // ── 정서 톤(관찰) — ai.ts와 동일 원칙의 경량 판독 ──
