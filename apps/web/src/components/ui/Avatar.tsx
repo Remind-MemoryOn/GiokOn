@@ -18,10 +18,12 @@ interface Props {
   size?: keyof typeof SIZE;
   /** 실측이 표준 단계와 다를 때(예: 어르신 카드 101). */
   px?: number;
+  /** 보호자 연결 후 화면(50:378)은 원형이 아니라 r10 사각형이다. */
+  shape?: 'circle' | 'rounded';
   className?: string;
 }
 
-export function Avatar({ src, name, size = 'md', px: pxProp, className, style, ...rest }: Props) {
+export function Avatar({ src, name, size = 'md', px: pxProp, shape = 'circle', className, style, ...rest }: Props) {
   const px = pxProp ?? SIZE[size];
   return (
     <img
@@ -30,7 +32,7 @@ export function Avatar({ src, name, size = 'md', px: pxProp, className, style, .
       alt={name ? `${name} 어르신 사진` : ''}
       width={px}
       height={px}
-      className={cn('shrink-0 rounded-full object-cover', className)}
+      className={cn('shrink-0 object-cover', shape === 'circle' ? 'rounded-full' : 'rounded-[10px]', className)}
       style={{ width: px, height: px, ...style }}
     />
   );

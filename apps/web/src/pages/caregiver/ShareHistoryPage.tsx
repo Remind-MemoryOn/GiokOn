@@ -243,8 +243,8 @@ export function ShareHistoryPage() {
                 data-fx={i === 0 ? '146:1303' : undefined}
                 tone={live ? 'live' : 'mute'}
                 tag
-                className="absolute w-[100px] -translate-x-1/2 -translate-y-1/2"
-                style={{ left: COLS.stateCenter, top: Y(mid) }}
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{ left: COLS.stateCenter, top: Y(mid), width: 100 }}
               >
                 {live ? '공개중' : '미공개'}
               </Badge>

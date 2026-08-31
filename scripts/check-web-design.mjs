@@ -684,7 +684,7 @@ const SCREENS = [
     /left-\[388px\] w-\[922px\] rounded-\[10px\] border border-line bg-white/,
     /h-\[57px\] w-\[152px\] rounded-\[10px\] border border-accent bg-white/,
     /h-\[57px\] w-\[152px\][^"]*rounded-\[10px\] bg-accent/,
-    /className="absolute w-\[100px\]"/,
+    /width: 100 \}/,
   ]],
   [`${WEB}/src/pages/caregiver/ShareItemsPage.tsx`, '공개 여부는 철회되지 않은 guardian_shares 로 판정 · 철회는 확인 후', [
     /if \(!s\.revoked_at\) map\.set\(s\.item_id, s\.id\)/,
@@ -739,6 +739,38 @@ const SCREENS = [
     /useLinkGuardianByElderCode/, /useMyGuardianLinks/,
     /아직 연결된 어르신이 없어요/, /요양보호사의 승인을 기다리고 있어요/,
   ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 후: 카드 340/559 · 사진 175 · 서브카드 319×239 · 세로 구분선 206', [
+    /h-\[340px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /px=\{175\}/, /h-\[239px\] w-\[319px\] rounded-\[10px\] bg-accent\/\[0\.05\]/,
+    /h-\[206px\] w-px bg-line/,
+    /h-\[57px\] w-\[158px\] rounded-\[10px\] border border-accent bg-white/,
+    /h-\[57px\] w-\[173px\] items-center rounded-\[10px\] bg-accent/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 후: 어르신 코드는 보호자에게 공개하지 않는다 · 해제는 확인 후', [
+    /어르신 코드는 보호자에게 공개하지 않는다/,
+    /useRevokeGuardianLink/, /window\.confirm\(/,
+  ]],
+  // ── 보호자 공개된 소식 50:543 ─────────────────────────────────────────
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 카드 1054 @343 · 항목 피치 236 · 어르신 pill 322×57 · 담당 카드 1054×211', [
+    /const ITEM_TOP = 387;/, /const ITEM_PITCH = 236;/,
+    /h-\[57px\] w-\[322px\] items-center rounded-\[10px\] border border-accent bg-white/,
+    /h-\[211px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
+    /h-\[50\.03px\] w-\[213px\]/,
+  ]],
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 유형 매핑 · 원본이 없으면 그리지 않는다 · 메시지는 단방향', [
+    /journal: \{ label: '요양일지'/, /analysis: \{ label: 'AI 회상 대화 요약'/,
+    /photo: \{ label: '공유 사진'/, /report: \{ label: '관찰 포인트'/,
+    /if \(!j\) continue;/, /메시지는 보호자 → 요양보호사 단방향이다/,
+    /아직 공개된 소식이 없어요/,
+  ]],
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식 탭: 부제·담당 카드는 탭마다 다르고 공유 사진은 2열 격자(394×486 · x 407/890 · 피치 536)', [
+    /오늘도 어르신의 요양일지를 확인해보세요\./,
+    /오늘도 어르신의 AI 회상 대화 요약을 확인해보세요\./,
+    /오늘도 어르신의 활동 사진을 확인해보세요\./,
+    /cols: \[407, 890\]/, /w: 394,\n  h: 486,/, /rowPitch: 536/, /photoH: 246/,
+    /\{tab === 'all' \? \(/,
+    /const PAGE = 4;/,
+  ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '보호자 셸 탑바: 검색 없음 · 벨 1080 · 아바타 1140', [
     /variant\?: 'caregiver' \| 'guardian'/,
     /guardian \? \{ bell: 1080, avatar: 1140, chevron: 219 \}/,
@@ -759,7 +791,7 @@ const SCREENS = [
     /primary: 'bg-accent text-white/,
   ]],
   [`${WEB}/src/components/ui/Avatar.tsx`, '아바타: 원형 40/50/76/99 · 사진 없으면 Figma 기본 에셋', [
-    /sm: 40, md: 50, lg: 76, xl: 99/, /rounded-full object-cover/, /asset\.avatarDefault/,
+    /sm: 40, md: 50, lg: 76, xl: 99/, /shape === 'circle' \? 'rounded-full' : 'rounded-\[10px\]'/, /asset\.avatarDefault/,
   ]],
   [`${WEB}/src/index.css`, '전역: Pretendard 자체 호스팅 · 흰 배경 · ink 본문', [
     /@font-face/, /PretendardVariable\.woff2/, /bg-white text-ink-700 antialiased/,

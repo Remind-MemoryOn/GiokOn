@@ -271,8 +271,8 @@ export function ShareItemsPage() {
                 data-fx={i === 0 ? '140:506' : undefined}
                 tone={shared ? 'live' : 'mute'}
                 tag
-                className="absolute w-[100px]"
-                style={{ left: 1162, top: Y(top + 41.76) }}
+                className="absolute"
+                style={{ left: 1162, top: Y(top + 41.76), width: 100 }}
               >
                 {shared ? '공개됨' : '미공개'}
               </Badge>

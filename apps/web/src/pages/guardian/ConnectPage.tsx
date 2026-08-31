@@ -11,9 +11,23 @@
 // ⚠️ 연결은 **어르신 코드**로 요청하고 요양보호사가 승인한다(`link_guardian_by_elder_code`).
 //    승인 전에는 아무 기록도 보이지 않는다 — RLS 가 최종 방어선이다.
 import { useMemo, useState } from 'react';
-import { useLinkGuardianByElderCode, useMyGuardianLinks } from '@giokon/data';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  toElderProfile,
+  useLinkGuardianByElderCode,
+  useMyGuardianLinks,
+  useMySharedContent,
+  useOrganization,
+  useProfile,
+  useRevokeGuardianLink,
+  type ProfileGuardianRow,
+} from '@giokon/data';
+import { birthLabel, dateDot, elderAge } from '@giokon/core';
 import { asset } from '../../assets/ui';
+import { Avatar } from '../../components/ui/Avatar';
+import { Badge } from '../../components/ui/Badge';
 import { useAuth } from '../../auth/AuthProvider';
+import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 
@@ -35,6 +49,16 @@ const GUIDE = [
 ];
 
 export function ConnectPage() {
+  const { isConfigured } = useAuth();
+  const [params] = useSearchParams();
+  const all = useMyGuardianLinks({ enabled: isConfigured });
+  const connected = (all.data ?? []).find((l) => l.status === 'approved');
+  // 새 코드로 다시 연결할 때는 연결 전 화면(코드 입력)을 그대로 쓴다.
+  if (connected && params.get('relink') !== '1') return <ConnectedView link={connected} />;
+  return <ConnectForm />;
+}
+
+function ConnectForm() {
   const { isConfigured } = useAuth();
   const links = useMyGuardianLinks({ enabled: isConfigured });
   const link = useLinkGuardianByElderCode();
@@ -245,6 +269,264 @@ export function ConnectPage() {
               className="absolute left-[178.21px] block"
               style={{ width: 12.18, height: 18.73 }}
             />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 연결 후(50:528) — 승인된 연결이 있을 때. */
+function ConnectedView({ link }: { link: ProfileGuardianRow }) {
+  const { isConfigured } = useAuth();
+  const profileQuery = useProfile(link.profile_id);
+  const org = useOrganization({ enabled: isConfigured });
+  const shared = useMySharedContent({ enabled: isConfigured });
+  const revoke = useRevokeGuardianLink();
+  const toast = useStore((s) => s.toast);
+
+  const elder = useMemo(
+    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
+    [profileQuery.data],
+  );
+  const photos = useElderPhotoUrls(elder?.photoPath ? [elder.photoPath] : [], isConfigured);
+  /** 마지막 활동 = 가장 최근에 공개된 항목 시각. 없으면 만들지 않는다. */
+  const lastAt = useMemo(() => {
+    const list = shared.data?.shares ?? [];
+    return list.length > 0 ? list[0].shared_at : null;
+  }, [shared.data]);
+  const linkedAt = link.approved_at ?? link.created_at;
+
+  function unlink() {
+    if (!window.confirm('연결을 해제하면 공개된 기록을 더 이상 볼 수 없어요. 해제할까요?')) return;
+    revoke.mutate(
+      { id: link.id },
+      {
+        onSuccess: () => toast('success', '연결을 해제했어요.'),
+        onError: (e) => toast('error', e.message),
+      },
+    );
+  }
+
+  return (
+    <div className="relative -ml-[323px] h-[1278px] w-[1440px]">
+      <h1
+        data-fx="50:243"
+        className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-ink-900"
+        style={{ top: Y(169) }}
+      >
+        연결된 어르신
+      </h1>
+      <p
+        data-fx="50:245"
+        className="absolute left-[322px] w-[562px] text-w-body leading-[30px] text-ink-700"
+        style={{ top: Y(236.17), wordBreak: 'keep-all' }}
+      >
+        현재 연결된 어르신 정보를 확인하고 공개된 요양일지와 AI 회상 대화 요약을 확인할 수 있어요.
+      </p>
+      <Link
+        to="/guardian/feed"
+        data-fx="69:615"
+        className="absolute flex items-center gap-[9px] text-[20px] font-semibold leading-[24px] text-ink-700"
+        style={{ left: 1285, top: Y(197.14) }}
+      >
+        <img src={asset.iconChevronRightSm} alt="" className="block rotate-180" style={{ width: 12.18, height: 18.73 }} />
+        돌아가기
+      </Link>
+
+      {/* ── 어르신 카드 ─────────────────────────────────────────────── */}
+      <div
+        data-fx="50:354"
+        className="absolute left-[322px] h-[340px] w-[1054px] rounded-[10px] bg-white shadow-card"
+        style={{ top: Y(347) }}
+      >
+        <Avatar
+          data-fx="50:378"
+          src={elder?.photoPath ? photos.data?.[elder.photoPath] : undefined}
+          name={elder?.name ?? ''}
+          px={175}
+          shape="rounded"
+          className="absolute"
+          style={{ left: 88, top: 68 }}
+        />
+        <span
+          data-fx="50:355"
+          className="absolute whitespace-nowrap text-[35px] font-bold leading-[70px] text-ink-900"
+          style={{ left: 298, top: 73 }}
+        >
+          {elder?.name ?? '—'}
+        </span>
+        <span
+          data-fx="50:370"
+          className="absolute whitespace-nowrap text-[24px] leading-[30px] text-ink-700"
+          style={{ left: 298, top: 155.36 }}
+        >
+          {/* 생년월일·나이는 아는 만큼만 쓴다 */}
+          {elder ? `${birthLabel(elder)}${elder.birthYear ? ` (${elderAge(elder)}세)` : ''}` : '—'}
+        </span>
+        <span
+          data-fx="50:380"
+          className="absolute whitespace-nowrap text-[24px] leading-[30px] text-ink-700"
+          style={{ left: 298, top: 203.39 }}
+        >
+          {org.data?.name ?? '—'}
+        </span>
+        <Badge data-fx="50:387" tone="live" tag className="absolute" style={{ left: 129, top: 253, width: 100 }}>
+          연결됨
+        </Badge>
+
+        <div
+          data-fx="50:406"
+          className="absolute h-[239px] w-[319px] rounded-[10px] bg-accent/[0.05]"
+          style={{ left: 647, top: 48 }}
+        >
+          <img src={asset.iconCaregiver} alt="" className="absolute block" style={{ left: 60.92, top: 47.32, width: 19, height: 20.01 }} />
+          <span className="absolute whitespace-nowrap text-w-body leading-[30px] text-ink-500" style={{ left: 97, top: 42.31 }}>
+            담당 요양보호사
+          </span>
+          <span className="absolute whitespace-nowrap text-w-body leading-[30px] text-ink-900" style={{ left: 97, top: 83.34 }}>
+            {/* 보호자에게는 담당자 이름이 공개 항목이 아니면 보이지 않는다 */}
+            {link.approved_by ? '담당 요양보호사' : '—'}
+          </span>
+          <img src={asset.iconCalendar} alt="" className="absolute block" style={{ left: 61, top: 137.38, width: 21, height: 21.02 }} />
+          <span className="absolute whitespace-nowrap text-w-body leading-[30px] text-ink-500" style={{ left: 97, top: 133.38 }}>
+            연결일
+          </span>
+          <span className="absolute whitespace-nowrap text-w-body leading-[30px] text-ink-900" style={{ left: 97, top: 174.41 }}>
+            {dateDot(linkedAt)}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 연결 관리 ───────────────────────────────────────────────── */}
+      <div
+        data-fx="50:408"
+        className="absolute left-[322px] h-[559px] w-[1054px] rounded-[10px] bg-white shadow-card"
+        style={{ top: Y(753) }}
+      >
+        <h2
+          data-fx="50:409"
+          className="absolute left-[85px] top-[27px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900"
+        >
+          연결 관리
+        </h2>
+        {/* ⚠️ 세로 구분선은 180° 회전 노드라 metadata y(1070)가 아래끝이다 — 실제는 864~1070. */}
+        <div data-fx="50:438" className="absolute h-[206px] w-px bg-line" style={{ left: 431, top: 111 }} />
+        <div data-fx="50:451" className="absolute h-[206px] w-px bg-line" style={{ left: 722, top: 111 }} />
+
+        <span data-fx="50:413" className="absolute left-[86px] top-[111.62px] whitespace-nowrap text-[22px] font-semibold leading-[30px] text-ink-900">
+          연결 정보
+        </span>
+        {[
+          { fx: '50:414', label: '연결 상태' },
+          { fx: '50:418', label: '연결 코드' },
+          { fx: '50:420', label: '연결일' },
+          { fx: '50:421', label: '마지막 활동' },
+        ].map((r, i) => (
+          <span
+            key={r.label}
+            data-fx={r.fx}
+            className="absolute whitespace-nowrap text-[18px] leading-[29px] text-ink-500"
+            style={{ left: 86, top: 162.65 + i * 42.03 }}
+          >
+            {r.label}
+          </span>
+        ))}
+        <Badge data-fx="50:430" tone="live" className="absolute w-[67px]" style={{ left: 319, top: 163.99 }}>
+          양호
+        </Badge>
+        <span
+          data-fx="50:432"
+          className="absolute whitespace-nowrap text-[18px] leading-[21px] text-ink-900"
+          style={{ left: 270, top: 206.69 }}
+        >
+          {/* 어르신 코드는 보호자에게 공개하지 않는다(elder_codes 미열람) */}
+          —
+        </span>
+        <span
+          data-fx="50:434"
+          className="absolute whitespace-nowrap text-[18px] leading-[28px] text-ink-900"
+          style={{ left: 292, top: 246.71 }}
+        >
+          {dateDot(linkedAt)}
+        </span>
+        <span
+          data-fx="50:435"
+          className="absolute whitespace-nowrap text-[18px] leading-[28px] text-ink-900"
+          style={{ left: 242, top: 289.74 }}
+        >
+          {lastAt ? `${dateDot(lastAt)} ${new Date(lastAt).getHours()}:${String(new Date(lastAt).getMinutes()).padStart(2, '0')}` : '—'}
+        </span>
+
+        <span data-fx="50:440" className="absolute left-[469px] top-[111.62px] whitespace-nowrap text-[22px] font-semibold leading-[30px] text-ink-900">
+          연결 해제
+        </span>
+        <p
+          data-fx="50:441"
+          className="absolute left-[469px] top-[162.65px] w-[216px] text-[18px] leading-[28px] text-ink-500"
+          style={{ wordBreak: 'keep-all' }}
+        >
+          연결을 해제하면 공개된 기록을 더 이상 확인할 수 없어요.
+        </p>
+        <button
+          type="button"
+          data-fx="50:455"
+          onClick={unlink}
+          className="absolute h-[57px] w-[158px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
+          style={{ left: 469, top: 255 }}
+        >
+          연결 해제하기
+        </button>
+
+        <span data-fx="50:460" className="absolute left-[768px] top-[107.61px] whitespace-nowrap text-[22px] font-semibold leading-[30px] text-ink-900">
+          다시 연결하기
+        </span>
+        <p
+          data-fx="50:461"
+          className="absolute left-[768px] top-[158.65px] w-[201px] text-[18px] leading-[28px] text-ink-500"
+          style={{ wordBreak: 'keep-all' }}
+        >
+          새로운 연결 코드를 입력하여 다시 연결할 수 있어요.
+        </p>
+        <Link
+          to="/guardian?relink=1"
+          data-fx="50:463"
+          className="absolute flex h-[57px] w-[173px] items-center rounded-[10px] bg-accent"
+          style={{ left: 768, top: 251 }}
+        >
+          <img src={asset.iconRefresh} alt="" className="absolute left-[24px] block" style={{ width: 19.03, height: 17.97 }} />
+          <span className="absolute left-[51px] whitespace-nowrap text-w-sub font-semibold leading-[30px] text-white">
+            다시 연결하기
+          </span>
+        </Link>
+
+        <div
+          data-fx="50:501"
+          className="absolute h-[120.09px] w-[883px] rounded-[10px] border border-line bg-white"
+          style={{ left: 85, top: 376.81 }}
+        >
+          <p
+            data-fx="50:504"
+            className="absolute left-[53px] top-[30.02px] whitespace-nowrap text-[22px] font-semibold leading-[30px] text-ink-700"
+          >
+            연결 코드를 다시 받으셨나요?
+          </p>
+          <p
+            data-fx="50:503"
+            className="absolute left-[53px] top-[65.05px] whitespace-nowrap text-[18px] leading-[21px] text-ink-500"
+          >
+            담당 요양보호사님에게 새로운 연결 코드를 받아 다시 연결해보세요.
+          </p>
+          <a
+            data-fx="50:502"
+            href="/guide"
+            className="absolute flex h-[50.03px] w-[213px] items-center rounded-[10px] border border-line bg-white"
+            style={{ left: 619, top: 35.03 }}
+          >
+            <span data-fx="50:505" className="absolute left-[34px] whitespace-nowrap text-w-body leading-[30px] text-ink-900">
+              연결 방법 안내
+            </span>
+            <img src={asset.iconChevronRightSm} alt="" className="absolute left-[177.21px] block" style={{ width: 12.18, height: 18.73 }} />
           </a>
         </div>
       </div>

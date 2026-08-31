@@ -66,6 +66,20 @@ export function dateDot(iso?: string | null): string {
   return formatKoreanDate(iso)
 }
 
+/**
+ * 목록의 날짜+시각 표기(`2026.07.30   19:00`). 사이는 **공백 3칸**(Figma 실측 간격 17.3px).
+ *
+ * `formatKoreanDateTime` 은 공백 1칸이고 잘못된 값에 `NaN` 을 흘린다 → 목록에서는 이쪽을 쓴다.
+ */
+export function dateDotTime(iso?: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${formatKoreanDate(iso)}   ${hh}:${mm}`
+}
+
 const PALETTE = ['#fbb78c', '#a3d4b1', '#b1c8f0', '#f5b9c9', '#dabbf0', '#fbe294', '#9ad6d2']
 export function pickAvatarColor(seed: string): string {
   let h = 0

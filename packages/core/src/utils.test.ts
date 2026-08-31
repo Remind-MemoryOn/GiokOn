@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dateDot, formatKoreanDate, relativeDay } from './utils'
+import { dateDot, dateDotTime, formatKoreanDate, relativeDay } from './utils'
 
 describe('relativeDay', () => {
   // 브라우저(사용자 로컬)의 달력 하루를 센다 → 테스트도 로컬 기준으로 만든다.
@@ -33,5 +33,16 @@ describe('dateDot', () => {
     expect(dateDot(null)).toBe('—')
     expect(dateDot(undefined)).toBe('—')
     expect(dateDot('아직 없음')).toBe('—')
+  })
+})
+
+describe('dateDotTime', () => {
+  it('날짜와 시각을 공백 3칸으로 잇는다', () => {
+    expect(dateDotTime('2026-07-08T01:00:00Z')).toMatch(/^2026\.07\.0[89] {3}\d{2}:\d{2}$/)
+  })
+
+  it('근거가 없으면 값을 만들지 않는다', () => {
+    expect(dateDotTime(null)).toBe('—')
+    expect(dateDotTime('아직 없음')).toBe('—')
   })
 })

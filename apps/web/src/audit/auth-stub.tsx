@@ -342,6 +342,81 @@ function seedShares(q: typeof queryClient) {
   ]);
 }
 
+/**
+ * 보호자 화면(31:616 연결 전 · 50:528 연결 후) 감사용.
+ * 두 상태가 같은 라우트라 감사에서는 `?state=connected` 로 골라 심는다(제품 코드는 이 값을
+ * 보지 않는다 — 실제로는 승인된 연결이 있는지로 갈린다).
+ */
+function seedGuardian(q: typeof queryClient) {
+  if (!/^\/guardian/.test(window.location.pathname)) return;
+  const connected = new URLSearchParams(window.location.search).get('state') === 'connected';
+  q.setQueryData(queryKeys.myGuardianLinks, connected
+    ? [{
+        id: 'pg1', org_id: ORG.id, profile_id: E1, guardian_user_id: 'guardian-1',
+        relation: '자녀', status: 'approved', approved_by: USER.id,
+        approved_at: '2026-06-08T00:00:00Z', revoked_at: null,
+        created_at: '2026-06-08T00:00:00Z', updated_at: '2026-06-08T00:00:00Z',
+      }]
+    : []);
+  // 공개된 소식은 탭마다 항목 수가 다르다 — 시안대로 심는다.
+  //   전체 4건 + 더보기(카드 1004) · 요양일지 3건(726) · AI 요약 3건(726) · 공유 사진 4장(1236)
+  const shareRow = (id: string, type: string, itemId: string, at: string) => ({
+    id, org_id: ORG.id, profile_id: E1, item_type: type, item_id: itemId,
+    note: null, shared_by: USER.id, shared_at: at, revoked_at: null, revoked_by: null,
+  });
+  const journal = (id: string, date: string, content: string) => ({
+    id, org_id: ORG.id, profile_id: E1, author_id: USER.id,
+    journal_date: date, source: 'typed', photo_path: null, status: 'final', content,
+    created_at: `${date}T10:00:00Z`, updated_at: `${date}T10:00:00Z`,
+  });
+  const analysis = (id: string, at: string, topic: string, summary: string) => ({
+    id, org_id: ORG.id, session_id: 's1', profile_id: E1, user_id: USER.id,
+    version: 'v1', created_at: at, updated_at: at,
+    analysis: {
+      version: 'v1', summary, emotionTone: 'bright',
+      metrics: { aiTurns: 6, elderTurns: 6, responseRate: 0.85, avgUtteranceChars: 44, participation: 0.75 },
+      topicsEngaged: [topic], topicsLow: [], topicOutcomes: [], interestKeywords: [], recommendedTopics: [],
+    },
+  });
+  const photo = (id: string, journalId: string, file: string, caption: string, at: string) => ({
+    id, org_id: ORG.id, journal_id: journalId, path: `${E1}/${file}`, sort: 0, caption,
+    created_at: at, updated_at: at,
+  });
+  q.setQueryData(queryKeys.myShares, {
+    shares: [
+      shareRow('ms1', 'journal', 'j1', '2026-07-30T10:00:00Z'),
+      shareRow('ms2', 'analysis', 'a0', '2026-07-30T02:02:00Z'),
+      shareRow('ms3', 'journal', 'j2', '2026-07-28T09:00:00Z'),
+      shareRow('ms4', 'photo', 'p1', '2026-07-21T07:10:00Z'),
+      shareRow('ms5', 'journal', 'j3', '2026-07-21T07:00:00Z'),
+      shareRow('ms6', 'analysis', 'a1', '2026-07-19T01:38:00Z'),
+      shareRow('ms7', 'analysis', 'a2', '2026-07-10T08:02:00Z'),
+      shareRow('ms8', 'photo', 'p2', '2026-07-09T07:00:00Z'),
+      shareRow('ms9', 'photo', 'p3', '2026-07-08T07:00:00Z'),
+      shareRow('ms10', 'photo', 'p4', '2026-07-07T07:00:00Z'),
+    ],
+    journals: [
+      journal('j1', '2026-07-30', '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.'),
+      journal('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.'),
+      journal('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
+    ],
+    analyses: [
+      analysis('a0', '2026-07-30T02:02:00Z', '어린 시절 집',
+        '어르신이 어릴 적 살던 집과 가족들에 대한 추억을 이야기 하셨습니다. 특히 마당에 있던 감나무에 대한 추억을 오래 기억하셨어요.'),
+      analysis('a1', '2026-07-19T01:38:00Z', '어머니와 함께했던',
+        '어린 시절 어머니와 함께 시장에 갔던 이야기를 들려주셨어요. 시장에서 먹었던 음식과 당시 풍경을 자연스럽게 회상하셨습니다.'),
+      analysis('a2', '2026-07-10T08:02:00Z', '학창 시절 친구',
+        '학교에 다니던 시절 친하게 지냈던 친구에 대한 이야기를 나누셨어요. 함께 등교했던 길과 놀이에 대한 기억을 떠올리셨습니다.'),
+    ],
+    photos: [
+      photo('p1', 'j3', 'walk.jpg', '오늘 오전 산책 활동 중 찍은 사진입니다. 날씨가 좋아서 기분 좋게 산책하셨어요.', '2026-07-21T07:10:00Z'),
+      photo('p2', 'j1', 'lunch.jpg', '점심 식사를 편안하게 드시는 모습입니다. 식사도 잘 하시고 밝은 모습을 보여주셨어요.', '2026-07-30T08:00:00Z'),
+      photo('p3', 'j1', 'walk2.jpg', '오늘 오전 산책 활동 중 찍은 사진입니다. 공원 주변을 천천히 산책하셨어요.', '2026-07-30T07:00:00Z'),
+      photo('p4', 'j1', 'gym.jpg', '가벼운 스트레칭과 체조를 진행하였습니다. 즐겁게 동작을 따라 하셨어요.', '2026-07-30T06:00:00Z'),
+    ],
+  });
+}
+
 let seeded = false;
 function seed() {
   if (seeded) return;
@@ -388,6 +463,7 @@ function seed() {
   seedAnalyses(q);
   seedJournals(q);
   seedShares(q);
+  seedGuardian(q);
   q.setQueryData(queryKeys.myAssignments, [
     { id: 'pa1', profile_id: 'e1', user_id: USER.id, status: 'pending', created_at: iso(1) },
     { id: 'pa2', profile_id: 'e2', user_id: USER.id, status: 'pending', created_at: iso(1) },

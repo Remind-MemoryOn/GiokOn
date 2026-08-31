@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
 import { TopBar } from './shell/TopBar';
 import { Sidebar } from './shell/Sidebar';
@@ -13,7 +13,9 @@ import { cn } from '../lib/utils';
 function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'caregiver' | 'guardian' }) {
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
+  const location = useLocation();
   const [search, setSearch] = useState('');
+  const hideSearch = variant === 'guardian' && location.pathname === '/guardian';
 
   // 앱 대화 종료 → 세션·분석·공개 변경을 실시간 반영.
   const onRealtimeEvent = useCallback(
@@ -34,8 +36,11 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
       >
         본문으로 바로가기
       </a>
-      {/* 보호자 셸은 어르신 검색이 없다(Figma 31:616) */}
-      <TopBar variant={variant} search={variant === 'guardian' ? undefined : { value: search, onChange: setSearch }} />
+      {/* 보호자 '어르신 연결' 화면만 검색이 없다(Figma 31:616) — 목록 화면은 있다(50:543) */}
+      <TopBar
+        variant={variant}
+        search={hideSearch ? undefined : { value: search, onChange: setSearch }}
+      />
       <div className="mx-auto flex w-full max-w-[1440px] min-h-[calc(100vh-122px)]">
         <Sidebar items={nav} />
         <main
