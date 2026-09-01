@@ -53,4 +53,5 @@ export const queryKeys = {
   orgJournalPhotos: ['journal_photos', 'org'] as const,
   guardianShares: (profileId: string) => ['guardian_shares', profileId] as const,
   myShares: ['guardian_shares', 'mine'] as const,
+  myNotifications: ['notifications', 'mine'] as const,
 }

@@ -23,6 +23,7 @@ export type RealtimeTable =
   | 'session_analyses'
   | 'guardian_shares'
   | 'safety_events'
+  | 'notifications'
 
 export interface RealtimeEvent {
   table: RealtimeTable
@@ -45,6 +46,7 @@ export interface UseGiokonRealtimeOptions {
  * 경로**다(2026-08-18 추가). 이전에는 publication 에 없어 앱이 복귀 시 재조회로만
  * 따라잡았고, 화면을 켜 둔 채로는 영영 반영되지 않았다.
  * session_logs 는 진행 중 대화를 다른 화면(웹 대시보드)에서 지켜보기 위한 것이다.
+ * notifications 는 탑바 벨 배지를 즉시 갱신한다(트리거가 만드는 행이라 폴링만으로는 늦다).
  */
 const DEFAULT_TABLES: RealtimeTable[] = [
   'profiles',
@@ -54,6 +56,7 @@ const DEFAULT_TABLES: RealtimeTable[] = [
   'session_analyses',
   'guardian_shares',
   'safety_events',
+  'notifications',
 ]
 
 function invalidateFor(
@@ -102,6 +105,10 @@ function invalidateFor(
       if (profileId) {
         void qc.invalidateQueries({ queryKey: queryKeys.safetyEvents(profileId) })
       }
+      break
+    case 'notifications':
+      // RLS 가 본인 알림만 전달하므로 수신 자체가 내 알림함 변경이다.
+      void qc.invalidateQueries({ queryKey: queryKeys.myNotifications })
       break
   }
 }

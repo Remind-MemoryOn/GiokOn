@@ -499,6 +499,24 @@ function seed() {
       created_at: iso(2),
     },
   ]);
+  // 탑바 벨 배지는 시안이 3 을 그린다(요양보호사 페이지_대시보드) — 안 읽은 알림 3건.
+  const notif = (id: string, kind: string, title: string, body: string | null, days: number) => ({
+    id,
+    org_id: ORG.id,
+    user_id: USER.id,
+    kind,
+    profile_id: E1,
+    source_id: null,
+    title,
+    body,
+    read_at: null,
+    created_at: iso(days),
+  });
+  q.setQueryData(queryKeys.myNotifications, [
+    notif('n1', 'safety', '안전 알림이 있어요', '외로움 신호가 관찰됐어요.', 0),
+    notif('n2', 'share_viewed', '보호자가 공개한 기록을 확인했어요', null, 1),
+    notif('n3', 'safety', '안전 알림이 있어요', '어르신이 불안을 표현하셨어요.', 2),
+  ]);
   seedElderDetail(q);
   seedChronicleList(q);
   seedSessionList(q);

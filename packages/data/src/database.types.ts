@@ -10,7 +10,8 @@
 //  + 20260718110000_auth_onboarding + 20260718120000_guardian_links
 //  + 20260718125000_realtime_publication
 //  + 20260718130000_session_analyses + 20260718140000_care_journals
-//  + 20260718150000_guardian_shares)
+//  + 20260718150000_guardian_shares + 20260831000000_share_view_receipt
+//  + 20260901000000_profile_note + 20260901010000_notifications)
 //
 // 참고: org_id 는 NOT NULL 이지만 INSERT 시 스탬프 트리거(app.stamp_org_id)가
 // 자동 채우므로 Insert 타입에서는 선택(optional)으로 둔다.
@@ -783,6 +784,47 @@ export type Database = {
         }
         Relationships: []
       }
+      // 알림(20260901010000_notifications) — 사람이 만들지 않고 트리거가 파생한다.
+      // INSERT 정책이 없어 클라이언트는 읽기·읽음 처리(update)만 가능하다.
+      notifications: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string
+          kind: Database['public']['Enums']['notification_kind']
+          profile_id: string | null
+          source_id: string | null
+          title: string
+          body: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id?: string
+          user_id: string
+          kind: Database['public']['Enums']['notification_kind']
+          profile_id?: string | null
+          source_id?: string | null
+          title: string
+          body?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string
+          kind?: Database['public']['Enums']['notification_kind']
+          profile_id?: string | null
+          source_id?: string | null
+          title?: string
+          body?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -847,6 +889,7 @@ export type Database = {
       journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
       journal_status: 'draft' | 'final'
       share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report' | 'photo'
+      notification_kind: 'safety' | 'share_viewed' | 'message'
     }
     CompositeTypes: { [_ in never]: never }
   }
@@ -891,3 +934,5 @@ export type JournalSource = Enums<'journal_source'>
 export type JournalStatus = Enums<'journal_status'>
 export type GuardianShareRow = Tables<'guardian_shares'>
 export type ShareItemType = Enums<'share_item_type'>
+export type NotificationRow = Tables<'notifications'>
+export type NotificationKind = Enums<'notification_kind'>

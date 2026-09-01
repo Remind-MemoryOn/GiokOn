@@ -13,6 +13,7 @@ set client_min_messages = warning;
 -- ── 0) 깨끗한 상태 보장(재실행 가능) ──────────────────────────────────────
 -- security definer 함수/트리거가 RLS 를 우회하므로 superuser 로 정리한다.
 delete from public.audit_log;
+delete from public.notifications;
 delete from public.safety_events;
 delete from public.profile_guardians;
 delete from public.guardian_invites;
@@ -744,6 +745,130 @@ begin
    where item_type = 'analysis';
   get diagnostics n = row_count;
   assert n = 1, '돌봄 구성원은 확인 알림 토글을 켤 수 있어야 함';
+end $$;
+reset role;
+
+-- ── 5.10c) 알림: 본인 것만 · 사람은 못 만든다(트리거만) ────────────────────
+-- notifications 는 클라이언트가 만들지 않는다. 안전 이벤트(5.5)·보호자 확인에서
+-- DB 트리거가 파생하고, 각자 자기 알림만 읽고 읽음 처리한다.
+
+-- 5.5 의 위기 이벤트는 그 어르신의 활성 담당(요양보호사 C)에게 알림을 남긴다.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$ begin
+  assert (select count(*) from public.notifications) = 1,
+    '안전 이벤트가 담당 요양보호사에게 알림을 남겨야 함(기대 1)';
+  assert (select count(*) from public.notifications where kind = 'safety') = 1,
+    '안전 알림의 종류는 safety 여야 함';
+end $$;
+
+-- 같은 기관 관리자 A 도 남의 알림은 못 본다(안전 이벤트 자체는 5.5 에서 보였다).
+set test.uid = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+  assert (select count(*) from public.notifications) = 0,
+    '알림은 수신자 본인만 볼 수 있어야 함(기관 관리자도 예외 아님)';
+end $$;
+
+-- 연결된 보호자 H·타 기관 B 도 0건.
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$ begin
+  assert (select count(*) from public.notifications) = 0,
+    '보호자에게는 담당자 알림이 보이면 안 됨';
+end $$;
+set test.uid = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  assert (select count(*) from public.notifications) = 0,
+    '다른 기관의 알림은 절대 보이면 안 됨';
+end $$;
+
+-- 사람이 알림을 만들 수 없다(INSERT 정책 없음) — 자기 앞으로도 차단.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  blocked boolean := false;
+begin
+  begin
+    insert into public.notifications (user_id, kind, title)
+      values ('33333333-3333-3333-3333-333333333333', 'message', '내가 만든 알림');
+  exception when insufficient_privilege or check_violation then
+    blocked := true;
+  end;
+  assert blocked, '알림은 사람이 만들 수 없어야 함(트리거만)';
+end $$;
+
+-- 본인 알림 읽음 처리는 가능.
+do $$
+declare
+  n int;
+begin
+  update public.notifications set read_at = now() where read_at is null;
+  get diagnostics n = row_count;
+  assert n = 1, '본인 알림은 읽음 처리할 수 있어야 함';
+end $$;
+
+-- 남의 알림은 갱신 대상 자체가 보이지 않는다(0건).
+set test.uid = '44444444-4444-4444-4444-444444444444';
+do $$
+declare
+  n int;
+begin
+  update public.notifications set read_at = null;
+  get diagnostics n = row_count;
+  assert n = 0, '남의 알림은 갱신할 수 없어야 함';
+end $$;
+
+-- 삭제 불가(deny by default) — append-only.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+delete from public.notifications;
+do $$ begin
+  assert (select count(*) from public.notifications) = 1,
+    '알림은 임의 삭제할 수 없어야 함';
+end $$;
+
+-- 보호자 확인 → 공개한 사람에게 알림(알림 받기를 켠 공개만).
+-- 5.10b 에서 확인된 분석 공개는 이미 viewed_at 이 차 있어 다시 알리지 않는다
+-- (같은 사건 중복 방지) → 알림 받기를 켠 새 공개를 하나 만들어 확인시킨다.
+do $$
+declare
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+  jid uuid := (select id from public.care_journals where status = 'final' limit 1);
+begin
+  insert into public.guardian_shares
+    (shared_by, profile_id, item_type, item_id, notify_on_view)
+    values ('33333333-3333-3333-3333-333333333333', pid, 'journal', jid, true);
+end $$;
+
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$
+declare
+  sid uuid := (select id from public.guardian_shares
+                where item_type = 'journal' and revoked_at is null limit 1);
+begin
+  perform public.mark_share_viewed(sid);
+end $$;
+
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$ begin
+  assert (select count(*) from public.notifications where kind = 'share_viewed') = 1,
+    '보호자가 확인하면 공개한 사람에게 알림이 가야 함';
+  assert (select count(*) from public.notifications
+           where kind = 'share_viewed' and read_at is null) = 1,
+    '새 알림은 안 읽음 상태여야 함';
+end $$;
+
+-- 같은 공개를 다시 열어도 알림은 늘지 않는다(첫 확인만).
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$
+declare
+  sid uuid := (select id from public.guardian_shares
+                where item_type = 'journal' and revoked_at is null limit 1);
+begin
+  perform public.mark_share_viewed(sid);
+end $$;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$ begin
+  assert (select count(*) from public.notifications where kind = 'share_viewed') = 1,
+    '다시 열어도 확인 알림은 한 번만 남아야 함';
 end $$;
 reset role;
 

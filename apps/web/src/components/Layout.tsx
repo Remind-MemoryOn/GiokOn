@@ -1,6 +1,13 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
+import {
+  useGiokonRealtime,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useMyNotifications,
+  unreadCount,
+  type RealtimeEvent,
+} from '@giokon/data';
 import { TopBar } from './shell/TopBar';
 import { Sidebar } from './shell/Sidebar';
 import { CAREGIVER_NAV, GUARDIAN_NAV, type NavItem } from './shell/nav';
@@ -28,6 +35,28 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
   );
   useGiokonRealtime({ enabled: isConfigured, onEvent: onRealtimeEvent });
 
+  // 탑바 벨 — 알림은 DB 트리거가 파생한다(안전 이벤트·보호자 확인). 근거 없는
+  // 숫자를 만들지 않으므로 알림이 없으면 배지도 없다.
+  const { data: notificationRows } = useMyNotifications({ enabled: isConfigured });
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const notifications = useMemo(
+    () =>
+      (notificationRows ?? []).map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        at: n.created_at,
+        read: n.read_at !== null,
+      })),
+    [notificationRows],
+  );
+  const handleReadNotification = useCallback(
+    (id: string) => markRead.mutate(id),
+    [markRead],
+  );
+  const handleReadAllNotifications = useCallback(() => markAllRead.mutate(), [markAllRead]);
+
   return (
     <div className="min-h-screen bg-white">
       <a
@@ -40,6 +69,10 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
       <TopBar
         variant={variant}
         search={hideSearch ? undefined : { value: search, onChange: setSearch }}
+        notificationCount={unreadCount(notificationRows)}
+        notifications={notifications}
+        onReadNotification={handleReadNotification}
+        onReadAllNotifications={handleReadAllNotifications}
       />
       <div className="mx-auto flex w-full max-w-[1440px] min-h-[calc(100vh-122px)]">
         <Sidebar items={nav} />

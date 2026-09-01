@@ -8,7 +8,7 @@
 // 나머지는 "자세히 보기"로 넘긴다(연대기 2 · 대화 이력 3 · 안전 이벤트 1).
 // ⚠️ 동의 문구는 Figma 라벨이 아니라 `@giokon/core` 동의 카탈로그가 SoT 다(법무 문구가
 //    바뀌면 화면이 따라와야 한다). 어르신 필수 동의 3종이라 행 수는 디자인과 같다.
-// ⚠️ 특이사항은 아직 스키마에 없다 → 값을 만들지 않고 `—`(Figma 도 "-").
+// ⚠️ 특이사항(profiles.note)은 없을 수 있다 → 값을 만들지 않고 `—`(Figma 도 "-").
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from '@giokon/data';
+import { dateDotTime } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { cn } from '../../lib/utils';
@@ -20,11 +21,32 @@ interface Props {
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
   /** 미확인 알림 수. 0이면 배지를 숨긴다. */
   notificationCount?: number;
-  /** 벨 드롭다운에 표시할 알림. */
-  notifications?: { id: string; message: string }[];
+  /** 벨 드롭다운에 표시할 알림(최신순). */
+  notifications?: NotificationItem[];
+  /** 알림 하나를 읽음 처리. */
+  onReadNotification?: (id: string) => void;
+  /** 드롭다운의 "모두 읽음". */
+  onReadAllNotifications?: () => void;
 }
 
-export function TopBar({ variant = 'caregiver', search, notificationCount = 0, notifications = [] }: Props) {
+/** 벨 드롭다운 항목 — 전용 알림 화면은 디자인에 없어 여기까지가 알림의 소비처다. */
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body?: string | null;
+  /** 발생 시각(ISO). 없으면 시각을 표시하지 않는다. */
+  at?: string | null;
+  read?: boolean;
+}
+
+export function TopBar({
+  variant = 'caregiver',
+  search,
+  notificationCount = 0,
+  notifications = [],
+  onReadNotification,
+  onReadAllNotifications,
+}: Props) {
   const guardian = variant === 'guardian';
   const X = guardian ? { bell: 1080, avatar: 1140, chevron: 219 } : { bell: 1045, avatar: 1105, chevron: 254 };
   const { user, userRow } = useAuth();
@@ -94,7 +116,7 @@ export function TopBar({ variant = 'caregiver', search, notificationCount = 0, n
             <img src={asset.iconBell} alt="" width={23} height={25} className="block" data-fx="topbar-bell" />
             {notificationCount > 0 ? (
               <span
-                className="absolute -right-[11px] -top-[9px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[14px] font-semibold tracking-[-0.14px] text-white"
+                className="absolute -right-[9px] -top-[9px] flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[14px] font-semibold tracking-[-0.14px] text-white"
                 data-fx="topbar-badge"
               >
                 {notificationCount}
@@ -102,17 +124,70 @@ export function TopBar({ variant = 'caregiver', search, notificationCount = 0, n
             ) : null}
           </button>
           {bellOpen ? (
-            <div className="absolute right-0 top-[42px] w-[380px] rounded-[10px] bg-white p-6 shadow-card">
+            <div
+              className="absolute right-0 top-[42px] max-h-[420px] w-[380px] overflow-y-auto rounded-[10px] bg-white p-6 shadow-card"
+              role="region"
+              aria-label="알림"
+            >
               {notifications.length === 0 ? (
                 <p className="text-w-sub text-ink-500">새로운 알림이 없어요.</p>
               ) : (
-                <ul className="flex flex-col gap-4">
-                  {notifications.map((n) => (
-                    <li key={n.id} className="text-w-sub text-ink-700">
-                      {n.message}
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {notificationCount > 0 && onReadAllNotifications ? (
+                    <div className="mb-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={onReadAllNotifications}
+                        className="text-w-label leading-[24px] text-ink-500 underline hover:text-accent"
+                      >
+                        모두 읽음
+                      </button>
+                    </div>
+                  ) : null}
+                  <ul className="flex flex-col gap-4">
+                    {notifications.map((n) => (
+                      <li key={n.id}>
+                        <button
+                          type="button"
+                          onClick={() => !n.read && onReadNotification?.(n.id)}
+                          className="flex w-full gap-2 text-left"
+                        >
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'mt-[9px] h-[6px] w-[6px] shrink-0 rounded-full',
+                              n.read ? 'bg-transparent' : 'bg-accent',
+                            )}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={cn(
+                                'block text-w-sub',
+                                n.read ? 'text-ink-500' : 'font-semibold text-ink-900',
+                              )}
+                              style={{ wordBreak: 'keep-all' }}
+                            >
+                              {n.title}
+                            </span>
+                            {n.body ? (
+                              <span
+                                className="mt-1 block text-w-label leading-[24px] text-ink-700"
+                                style={{ wordBreak: 'keep-all' }}
+                              >
+                                {n.body}
+                              </span>
+                            ) : null}
+                            {n.at ? (
+                              <span className="mt-1 block text-w-label leading-[24px] text-ink-500">
+                                {dateDotTime(n.at)}
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </div>
           ) : null}
