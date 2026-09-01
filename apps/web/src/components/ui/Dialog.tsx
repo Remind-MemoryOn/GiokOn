@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { useModalA11y } from '../../lib/modalA11y';
 import { cn } from '../../lib/utils';
 
 // 신규 디자인 실측(연대기 추가 196:271 · 회상 세션 설계 196:272 · 어르신 등록 Frame 19):
@@ -17,21 +18,22 @@ interface Props {
   children: ReactNode;
   footer?: ReactNode;
   size?: keyof typeof SIZE;
+  /** 제목을 직접 그리는 모달(시안 치수)의 스크린리더용 이름. `title` 이 있으면 불필요. */
+  label?: string;
 }
 
-export function Dialog({ open, onClose, title, description, children, footer, size = 'lg' }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
-  }, [open, onClose]);
+export function Dialog({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+  size = 'lg',
+  label,
+}: Props) {
+  // Esc·본문 스크롤 잠금 + 초점 이동·가둠·복귀(KWCAG) — `lib/modalA11y`.
+  const panel = useModalA11y(open, onClose);
 
   if (!open) return null;
 
@@ -39,9 +41,10 @@ export function Dialog({ open, onClose, title, description, children, footer, si
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-ink-900/40" onClick={onClose} />
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={title ?? label}
         className={cn(
           'relative flex max-h-[86vh] w-full flex-col rounded-[10px] bg-white shadow-card',
           SIZE[size],

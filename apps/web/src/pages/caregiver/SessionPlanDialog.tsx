@@ -20,6 +20,7 @@ import {
 } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useStore } from '../../store/store';
+import { useModalA11y } from '../../lib/modalA11y';
 
 const TITLE_MAX = 50;
 const GOAL_MAX = 200;
@@ -161,6 +162,8 @@ function Form({
 }) {
   const [v, setV] = useState(initial);
   const [kw, setKw] = useState('');
+  // 시안 치수를 직접 그린 모달이라 공용 Dialog 를 쓰지 않는다 — 키보드 동작만 공유한다.
+  const panel = useModalA11y(true, onClose);
   const set = <K extends keyof Values>(k: K, val: Values[K]) => setV((p) => ({ ...p, [k]: val }));
 
   // 늘어난 내용 상자만큼 그 아래가 내려간다.
@@ -182,6 +185,7 @@ function Form({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={panel}
         data-fx="195:356"
         role="dialog"
         aria-modal="true"

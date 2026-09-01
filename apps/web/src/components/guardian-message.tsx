@@ -71,7 +71,7 @@ export function MessageNoticeDialog({
   }
 
   return (
-    <Dialog open={open} onClose={close} size="lg">
+    <Dialog open={open} onClose={close} size="lg" label="메시지 이용 안내">
       <div
         data-fx="69:195"
         className="relative mx-auto rounded-[10px] border border-line bg-white"
@@ -185,7 +185,7 @@ function ComposeDialog({
   const text = body.trim();
 
   return (
-    <Dialog open onClose={onClose} size="lg">
+    <Dialog open onClose={onClose} size="lg" label="메시지 보내기">
       <div
         className="relative mx-auto rounded-[10px] border border-line bg-white"
         style={{ width: 868, padding: '60px 74px' }}

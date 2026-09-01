@@ -65,7 +65,7 @@ export function ShareReceiptDialog({
   const viewed = share.viewed_at != null;
 
   return (
-    <Dialog open={open} onClose={onClose} size="lg">
+    <Dialog open={open} onClose={onClose} size="lg" label="공개 이력 상세">
       <div
         data-fx="153:1623"
         className="relative mx-auto rounded-[10px] bg-white"

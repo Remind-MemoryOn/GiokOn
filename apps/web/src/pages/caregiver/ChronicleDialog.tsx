@@ -21,6 +21,7 @@ import {
 import { CHRONICLE_TOPICS } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useStore } from '../../store/store';
+import { useModalA11y } from '../../lib/modalA11y';
 
 const TITLE_MAX = 50;
 const CONTENT_MAX = 500;
@@ -154,6 +155,8 @@ function Form({
 }) {
   const [v, setV] = useState(initial);
   const [kw, setKw] = useState('');
+  // 시안 치수를 직접 그린 모달이라 공용 Dialog 를 쓰지 않는다 — 키보드 동작만 공유한다.
+  const panel = useModalA11y(true, onClose);
   const set = <K extends keyof Values>(k: K, val: Values[K]) => setV((p) => ({ ...p, [k]: val }));
 
   // 유형 드롭다운은 표준 목록 + 지금 값(구 데이터·AI 가 붙인 주제)을 함께 보여 준다.
@@ -177,6 +180,7 @@ function Form({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={panel}
         data-fx={editing ? '198:828' : '195:440'}
         role="dialog"
         aria-modal="true"

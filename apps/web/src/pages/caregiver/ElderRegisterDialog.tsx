@@ -17,6 +17,7 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { uploadElderPhoto } from '../../lib/elderPhotos';
+import { useModalA11y } from '../../lib/modalA11y';
 
 const COL = { inputL: 88, labelL: 89, inputR: 551, labelR: 552 };
 const VALUE = 'text-w-sub leading-[21px] text-ink-900';
@@ -139,6 +140,8 @@ export function ElderRegisterDialog() {
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const close = () => navigate('/caregiver/elders');
+  // 시안 치수를 직접 그린 모달이라 공용 Dialog 를 쓰지 않는다 — 키보드 동작만 공유한다.
+  const panel = useModalA11y(true, close);
 
   async function save() {
     if (!form.name.trim()) return toast('error', '이름을 입력해주세요.');
@@ -193,6 +196,7 @@ export function ElderRegisterDialog() {
       onClick={(e) => e.target === e.currentTarget && close()}
     >
       <div
+        ref={panel}
         data-fx="172:142"
         role="dialog"
         aria-modal="true"

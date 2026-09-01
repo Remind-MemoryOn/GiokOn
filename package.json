@@ -23,7 +23,8 @@
     "check:figma": "node scripts/check-figma-spec.mjs",
     "check:design": "node scripts/check-web-design.mjs",
     "check:web": "pnpm -F @giokon/web typecheck && pnpm -F @giokon/web lint && pnpm check:copy && pnpm check:design && pnpm -F @giokon/web build && pnpm -F @giokon/web smoke",
-    "check:figma-web": "pnpm -F @giokon/web figma:audit"
+    "check:figma-web": "pnpm -F @giokon/web figma:audit",
+    "check:a11y": "pnpm -F @giokon/web a11y"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

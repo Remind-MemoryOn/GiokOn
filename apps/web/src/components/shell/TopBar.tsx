@@ -97,7 +97,9 @@ export function TopBar({
             <input
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
-              /* Figma 탑바 검색은 안내문 없이 돋보기만 둔다 */
+              /* Figma 탑바 검색은 안내문 없이 돋보기만 둔다 — 보이는 라벨이 없으므로
+                 스크린리더용 이름을 붙인다(렌더에는 영향이 없다, KWCAG 라벨 제공). */
+              aria-label="어르신 검색"
               placeholder={search.placeholder ?? ''}
               className="ml-3 h-full flex-1 bg-transparent pr-6 text-w-body text-ink-700 placeholder:text-ink-500 focus:outline-none"
             />

@@ -123,7 +123,7 @@ function SettingsForm({
   const canPublish = toGuardian && Boolean(guardianName) && (picked.summary || picked.second);
 
   return (
-    <Dialog open={open} onClose={onClose} size="lg">
+    <Dialog open={open} onClose={onClose} size="lg" label="공개 기록 설정">
       <div
         data-fx="146:422"
         className="relative mx-auto rounded-[10px] bg-white"

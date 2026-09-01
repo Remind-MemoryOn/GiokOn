@@ -81,6 +81,14 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 본문 바로가기 스킵 링크, 안전 알림 `role="alert" aria-live="assertive"`, 아이콘 버튼 `aria-label`,
 포커스 링. 새 인터랙션에도 같은 기준을 적용한다.
 
+- **`pnpm check:a11y`** 가 이관 완료 52화면에 axe(WCAG 2.1 A/AA)를 돌리고, axe 가 못 보는
+  **모달 키보드 동작**(초점 진입·Tab 가둠·Esc)까지 본다. 모달을 새로 만들면
+  `lib/modalA11y.ts` 의 `useModalA11y(open, onClose)` 를 쓰고 반환 ref 를 패널에 건다 —
+  시안 치수를 직접 그리는 모달도 키보드 동작은 공유한다.
+- 보이는 라벨이 없는 입력(시안이 안내문을 안 그린 검색 등)에는 `aria-label` 을 붙인다(렌더 무변화).
+- ⚠️ **명도대비는 시안이 정한 색이라 코드가 임의로 바꾸지 않는다.** 게이트는 미달 색 쌍을
+  표로 보고만 하고 실패시키지 않는다. 현황·최소 보정값은 `docs/accessibility.md` §6.
+
 ## 6. 개발 · 검증
 
 ```bash
@@ -90,6 +98,7 @@ pnpm web:smoke           # 빌드 + 라우트 스모크(preview 를 스스로 �
 pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (소스 정규식, 이관 완료 화면만)
 pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px)
 pnpm check:copy          # 비의료 카피 린트
+pnpm check:a11y          # ★ axe(WCAG 2.1 A/AA) 52화면 + 모달 키보드 동작
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
 ```
 
