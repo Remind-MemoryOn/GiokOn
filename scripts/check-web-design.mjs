@@ -391,9 +391,10 @@ const SCREENS = [
     /h-\[62px\] w-\[452px\] rounded-\[10px\] bg-mute-pale/,
     /bg-live-soft text-live/, /h-\[40px\] w-\[136px\][^"]*rounded-\[10px\] border border-accent/,
   ]],
-  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 값 없으면 만들지 않는다(특이사항 미구현 · 동의 문구는 core 카탈로그)', [
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 값 없으면 만들지 않는다 · 동의 문구는 core 카탈로그', [
     /const val = \(v\?: string \| null\) => \(v && v\.trim\(\) \? v : '—'\)/,
-    /label="특이사항" value="—"/, /requiredConsents\('elder'\)/, /CONSENT_CATALOG\[type\]\.label/,
+    /label="특이사항" value=\{val\(elder\.note\)\}/,
+    /requiredConsents\('elder'\)/, /CONSENT_CATALOG\[type\]\.label/,
   ]],
   [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 목록 표기는 달력 기준(relativeDay) · 날짜는 두 자리', [
     /relativeDay/, /String\(n\)\.padStart\(2, '0'\)/,
@@ -416,10 +417,12 @@ const SCREENS = [
     /h-\[57px\] w-\[140px\][^"]*border border-accent bg-white/,
     /h-\[57px\] w-\[140px\][^"]*border border-accent bg-accent[^"]*text-white/,
   ]],
-  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 주요 기억은 연대기(주제=주요 기억) · 특이사항은 저장할 컬럼이 없어 잠근다', [
+  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '기본정보 수정: 주요 기억은 연대기(주제=주요 기억) · 특이사항은 profiles.note(500자, 비의료)', [
     /KEY_MEMORY_TOPIC.*from '@giokon\/core'/,
     /useCreateChronicle/, /useDeleteChronicle/,
-    /id="f-note"[\s\S]{0,220}?disabled/,
+    /id="f-note"[\s\S]{0,260}?maxLength=\{500\}/,
+    /note: form\.note\.trim\(\) \|\| null/,
+    /선호·주의할 점 등/,
   ]],
 
   // ── 연대기 목록 198:506 ────────────────────────────────────────────────

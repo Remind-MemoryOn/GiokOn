@@ -411,8 +411,7 @@ export function ElderDetailPage() {
       />
       <InfoRow fx="161:694" top={963} label="직업 이력" value={val(elder.job)} />
       <InfoRow fx="161:696" top={1015.6} label="취미" value={val(elder.hobbies)} />
-      {/* 특이사항 컬럼은 아직 없다(Phase 2) — 값을 만들지 않는다 */}
-      <InfoRow fx="161:702" top={1069} label="특이사항" value="—" />
+      <InfoRow fx="161:702" top={1069} label="특이사항" value={val(elder.note)} />
 
       {/* ── 동의 관리 ──────────────────────────────────────────────────── */}
       <Card fx="167:876" left={804} top={718.42} width={575} height={419.25} />

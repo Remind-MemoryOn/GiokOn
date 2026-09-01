@@ -46,6 +46,7 @@ export function toElderProfile(row: ProfileRow): ElderProfile {
     avatarColor: pickAvatarColor(row.id),
     photoPath: row.photo_path ?? undefined,
     gender: row.gender ?? undefined,
+    note: row.note ?? undefined,
     guardian,
     appearance: DEFAULT_APPEARANCE,
     createdAt: row.created_at,
@@ -185,6 +186,11 @@ export interface ElderWriteInput {
    * `undefined` = 건드리지 않음(앱에서 수정해도 웹이 넣은 값이 유지된다), `null` = 지움.
    */
   guardian?: Guardian | null
+  /**
+   * 특이사항(돌봄에서 참고할 메모). 보호자와 같은 **웹 폼 전용** 필드라 부분 갱신 규약을 따른다.
+   * 건강 상태를 적는 칸이 아니다(비의료 포지셔닝).
+   */
+  note?: string | null
 }
 
 /**
@@ -213,6 +219,7 @@ export function toProfileInsert(input: ElderWriteInput, userId: string): TablesI
     gender: input.gender ?? null,
     guardian_name: input.guardian?.name ?? null,
     guardian_relation: input.guardian?.relation ?? null,
+    note: input.note ?? null,
   }
 }
 
@@ -241,6 +248,7 @@ export function toProfileUpdate(input: ElderWriteInput): TablesUpdate<'profiles'
     patch.guardian_name = input.guardian?.name ?? null
     patch.guardian_relation = input.guardian?.relation ?? null
   }
+  if (input.note !== undefined) patch.note = input.note
   return patch
 }
 

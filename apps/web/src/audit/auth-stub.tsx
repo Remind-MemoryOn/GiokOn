@@ -37,6 +37,7 @@ const elder = (id: string, name: string, age: number, gender: string) => ({
   hobbies: null,
   photo_path: null,
   gender,
+  note: null,
   guardian_name: null,
   guardian_relation: null,
   created_at: '2026-01-01T00:00:00Z',

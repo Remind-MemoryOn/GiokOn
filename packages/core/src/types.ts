@@ -109,6 +109,11 @@ export interface ElderProfile {
   photoPath?: string;
   /** 성별(선택). 미입력 시 화면에서 표기를 생략한다(임의값 표시 금지). */
   gender?: ElderGender;
+  /**
+   * 특이사항 — 돌봄에서 참고할 메모(선호·주의할 점 등). 최대 500자.
+   * **건강 상태를 적는 칸이 아니다**(비의료 포지셔닝).
+   */
+  note?: string;
   guardian?: Guardian;
   appearance: CharacterAppearance;
   createdAt: string;

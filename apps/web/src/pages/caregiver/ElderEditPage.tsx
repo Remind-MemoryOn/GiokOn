@@ -5,8 +5,8 @@
 //
 // ⚠️ Figma 가 같은 폼의 x 를 409/410/411/412(좌)·872/873/874/875(우)로 흘려 놨다 →
 //    좌 410 · 우 873 으로 통일한다.
-// ⚠️ **특이사항은 아직 스키마에 없다**(Phase 2 `profiles.note`). 저장할 곳이 없는 입력을
-//    쓰게 두면 입력이 조용히 사라지므로 **비활성**으로 두고 이유를 알린다.
+// ⚠️ **특이사항**은 `profiles.note`(최대 500자)다 — 돌봄에서 참고할 메모(선호·주의할 점)이고
+//    **건강 상태를 적는 칸이 아니다**(비의료 포지셔닝).
 // ⚠️ **주요 기억**은 앱과 같은 방식으로 `chronicle_entries(topic='주요 기억')` 에 담는다.
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -78,6 +78,7 @@ function Field({
   placeholder,
   disabled,
   title,
+  maxLength,
   trailingIcon,
 }: {
   fx?: string;
@@ -90,6 +91,8 @@ function Field({
   placeholder?: string;
   disabled?: boolean;
   title?: string;
+  /** DB 제약과 같은 상한을 입력에도 건다(넘겨서 저장 실패하지 않게). */
+  maxLength?: number;
   /** 오른쪽 끝 장식 아이콘(예: 출신지 지역 검색 돋보기 194:149) — 크기·오른쪽 여백 실측. */
   trailingIcon?: { fx?: string; src: string; size: number; right: number };
 }) {
@@ -103,6 +106,7 @@ function Field({
         placeholder={placeholder}
         disabled={disabled}
         title={title}
+        maxLength={maxLength}
         className="absolute h-[57px] rounded-[10px] border border-line bg-white text-w-sub text-ink-900 placeholder:text-ink-500 focus:border-accent focus:outline-none disabled:bg-mute-pale disabled:text-ink-500"
         style={{
           left,
@@ -148,6 +152,7 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
     family: elder.family ?? '',
     job: elder.job ?? '',
     hobbies: elder.hobbies ?? '',
+    note: elder.note ?? '',
   });
   const [memory, setMemory] = useState('');
 
@@ -170,6 +175,7 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
           family: form.family.trim() || null,
           job: form.job.trim() || null,
           hobbies: form.hobbies.trim() || null,
+          note: form.note.trim() || null,
         },
       },
       {
@@ -383,7 +389,7 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
         </div>
       ))}
 
-      {/* 특이사항 — 저장할 컬럼이 아직 없다(Phase 2) */}
+      {/* 특이사항 — profiles.note(돌봄 참고 메모, 의료 정보 아님) */}
       <Label fx="194:185" left={410} top={1216.8} htmlFor="f-note">
         특이사항
       </Label>
@@ -392,10 +398,10 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
         id="f-note"
         left={410}
         top={1250.82}
-        value=""
-        placeholder="특이사항을 입력해주세요."
-        disabled
-        title="특이사항 저장은 준비 중이에요. 지금 입력해도 보관되지 않아 잠가 두었습니다."
+        value={form.note}
+        onChange={set('note')}
+        maxLength={500}
+        placeholder="돌봄에서 참고할 점을 적어주세요(선호·주의할 점 등)."
       />
 
       <Link

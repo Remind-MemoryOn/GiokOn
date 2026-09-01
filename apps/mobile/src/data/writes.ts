@@ -81,6 +81,7 @@ export function useUpsertElder(): (input: ElderUpsertInput) => Promise<ElderProf
           ...input,
           gender: input.gender ?? undefined,
           guardian: input.guardian ?? undefined,
+          note: input.note ?? undefined,
         });
       const userId = requireWriteIdentity(user, userRow);
       if (input.id) {

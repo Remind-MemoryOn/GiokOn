@@ -29,6 +29,7 @@ const profileRow: ProfileRow = {
   guardian_relation: '아들',
   photo_path: null,
   gender: 'female',
+  note: '오후에 산책을 좋아하신다',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
 }

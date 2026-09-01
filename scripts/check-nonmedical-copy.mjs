@@ -5,7 +5,7 @@
 // "인지활동 보조·회상 대화·정서 지원" 서비스이며 의료기기·의료행위가 아니다.
 // 치료/진단/완치/처방 등 의학적 단정은 앱스토어 건강정책·정부심사에서 위험하다.
 //
-// 스캔 대상: apps/**(소스). 제외: node_modules/dist/build/*.test.*.
+// 스캔 대상: apps/**(소스). 제외: node_modules/dist/dist-audit/build/*.test.*.
 // 예외 허용: 같은 줄에 `nonmedical-ok` 주석을 달면 통과(정당한 사용 명시).
 //
 // docs/*(정책 문서)는 금지어를 "설명"하기 위해 필연적으로 포함하므로 스캔하지 않는다.
@@ -15,7 +15,8 @@ import { join, extname } from 'node:path'
 
 const ROOTS = ['apps']
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx'])
-const SKIP_DIR = new Set(['node_modules', 'dist', 'build', '.next', 'coverage', '.expo'])
+// dist-audit 은 Figma 정밀 대조용 빌드 산출물이다(소스가 아니라 검사 대상이 아니다).
+const SKIP_DIR = new Set(['node_modules', 'dist', 'dist-audit', 'build', '.next', 'coverage', '.expo'])
 const ALLOW_MARK = 'nonmedical-ok'
 
 // 의학적 단정(고신뢰). 단일 모호어(개선/예방)는 구(phrase)로 좁혀 오탐 방지.

@@ -102,6 +102,8 @@ export type Database = {
           photo_path: string | null
           /** 어르신 성별(선택). 화면 표기는 앱에서 매핑. */
           gender: Database['public']['Enums']['elder_gender'] | null
+          /** 돌봄에서 참고할 메모(특이사항). 최대 500자 — 건강 상태를 적는 칸이 아니다. */
+          note: string | null
           created_at: string
           updated_at: string
         }
@@ -120,6 +122,7 @@ export type Database = {
           guardian_relation?: string | null
           photo_path?: string | null
           gender?: Database['public']['Enums']['elder_gender'] | null
+          note?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -138,6 +141,7 @@ export type Database = {
           guardian_relation?: string | null
           photo_path?: string | null
           gender?: Database['public']['Enums']['elder_gender'] | null
+          note?: string | null
           created_at?: string
           updated_at?: string
         }
