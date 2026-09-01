@@ -569,10 +569,13 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 수치는 core 관찰 순수함수 · 근거 없으면 만들지 않는다', [
     /computeOverall/, /computeMonthlyTopicTrend/, /computeMonthlyAxisTrend/,
     /computeAxisObservations/, /computeTopicDetail/,
-    /비교 근거 없음/, /변화 근거 없음/,
+    /비교 근거 없음/,
   ]],
-  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 방향 단정 카피 금지(향상률→변화) · 관찰 지표 고지 상시', [
-    /기억 회상 변화/, /감정 표현 변화/,
+  // 카피는 **시안 그대로**(사용자 확정 2026-09-01) — 방향 낱말을 쓰되, 견줄 근거가
+  // 없으면 방향을 만들지 않고 `—` 로 둔다(자리표시자 금지는 그대로다).
+  [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 시안 카피 유지(향상률·증가율) · 근거 없으면 방향 없음 · 관찰 지표 고지 상시', [
+    /기억 회상 향상률/, /감정 표현 증가율/, /대화 참여도 향상률/, /응답 지속 시간 증가율/,
+    /o\.delta >= 0 \? '▲ 향상' : '▼ 하락'/,
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
   // ── 분석(개인별) 228:3722 ─────────────────────────────────────────────
@@ -606,10 +609,14 @@ const SCREENS = [
   [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 수치는 core 관찰 순수함수 · 근거 없으면 만들지 않는다', [
     /computeParticipationDetail/, /computeAxisObservations/, /computeMonthlyAxisTrend/,
     /computeTopicShares/, /observationSummary/, /axisAverage/,
-    /비교 근거 없음/, /변화 근거 없음/, /전체 평균과 견줄 관찰 기록이 아직 없습니다/,
+    /비교 근거 없음/, /전체 평균과 견줄 관찰 기록이 아직 없습니다/,
   ]],
-  [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 방향 단정 카피 금지(향상·하락→부호 있는 변화) · 관찰 지표 고지 상시', [
-    /기억 회상 변화/, /전체 평균보다 높게 관찰됨/, /전체 평균과 비슷하게 관찰됨/,
+  // 종합 평가는 시안이 **긍정 상태 하나만** 그렸다 → 그 상태만 시안 문구를 쓰고,
+  // 나머지 두 상태는 방향을 지어내지 않고 관찰된 비교 결과로 적는다.
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '개인별 종합: 시안 카피 유지(향상·하락·매우 긍정적) · 없는 상태는 만들지 않음 · 관찰 지표 고지 상시', [
+    /기억 회상 향상률/, /응답 지속 시간 증가율/,
+    /o\.delta >= 0 \? '▲ 향상' : '▼ 하락'/,
+    /'매우 긍정적'/, /전체 평균과 비슷하게 관찰됨/,
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
 

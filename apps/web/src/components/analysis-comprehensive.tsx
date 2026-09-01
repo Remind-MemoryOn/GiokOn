@@ -8,9 +8,10 @@
 // 전체 종합(225:1669)과 같은 부품을 쓰되 **대상이 어르신 한 명**이다. 수치는 전부
 // `@giokon/core` 관찰 순수함수 — 근거가 없으면 값을 만들지 않고 `—`/빈 상태로 둔다.
 // ⚠️ Figma 의 38회·11분 18초·+17% 와 AI 의견 문장은 **데모 값**이다.
-// ⚠️ 카피: 축 카드의 "향상/하락", 종합 평가의 "매우 긍정적 … 향상되고 있으며" 는 방향을
-//    단정하는 말이라 쓰지 않는다(apps/web/CLAUDE.md §4). 자리·치수는 시안 그대로 두고
-//    **부호 있는 변화량**과 **관찰된 비교 결과**로 바꾼다.
+// ⚠️ 카피는 **시안 그대로**다(사용자 확정 2026-09-01) — 축 카드 "향상/하락",
+//    변화 칸 "향상률·증가율", 종합 평가 "매우 긍정적". 모바일이 같은 문구로 나가 있어
+//    맞춘 결정이다(apps/web/CLAUDE.md §4 예외).
+//    다만 **값 자체는 만들지 않는다** — 근거가 없으면 라벨도 띄우지 않고 `—`/빈 상태다.
 // ⚠️ 종합 평가의 표정 마크는 시안에 **긍정 상태 1종만** 그려져 있다 → 전체 평균 이상일
 //    때만 그린다(나머지 상태 에셋은 디자인 추가 필요).
 import { useMemo } from 'react';
@@ -170,11 +171,16 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
   const myAvg = useMemo(() => axisAverage(axisObs), [axisObs]);
   /** 전체 평균 대비 차이(%p). 양쪽 근거가 다 있어야 낸다. */
   const vsOrg = myAvg == null || orgAvg == null ? null : myAvg - orgAvg;
+  /**
+   * 종합 평가 — 시안은 **긍정 상태 하나만** 그렸다(문구·표정 마크 모두).
+   * 그 상태는 시안 문구를 그대로 쓰고, 시안에 없는 나머지 두 상태는 방향을 지어내지 않고
+   * 관찰된 비교 결과로 적는다(사용자 확정: 카피는 시안대로 · 없는 건 만들지 않는다).
+   */
   const verdict =
     vsOrg == null
       ? null
       : vsOrg > SIMILAR_BAND
-        ? '전체 평균보다 높게 관찰됨'
+        ? '매우 긍정적'
         : vsOrg < -SIMILAR_BAND
           ? '전체 평균보다 낮게 관찰됨'
           : '전체 평균과 비슷하게 관찰됨';
@@ -348,13 +354,14 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
               <div className="absolute inset-x-0 top-[74.15px] text-center text-w-section font-bold leading-[35px] text-ink-900">
                 {o?.value == null ? '—' : `${o.value}%`}
               </div>
-              {/* 시안은 "향상/하락" 이라는 방향 단정이다 → 부호 있는 변화량으로 바꾼다 */}
+              {/* 시안 그대로 방향 라벨만 둔다(숫자 없음). 견줄 이전 기록이 없으면
+                  방향을 만들지 않고 비워 둔다 — 시안에는 없는 상태다. */}
               <div className="absolute inset-x-0 top-[121px] flex items-center justify-center gap-[4px] text-w-label leading-[30px] text-ink-500">
                 {o?.delta == null ? (
-                  '변화 근거 없음'
+                  '—'
                 ) : (
                   <span className={cn('font-semibold', o.delta >= 0 ? 'text-live' : 'text-alert')}>
-                    {o.delta >= 0 ? '▲' : '▼'} {Math.abs(o.delta)}%p
+                    {o.delta >= 0 ? '▲ 향상' : '▼ 하락'}
                   </span>
                 )}
               </div>
@@ -366,13 +373,14 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
         <Section fx="228:4287" left={COL2} top={745}>
           종합 인지 활동 효과 분석
         </Section>
-        {/* ⚠️ 시안 라벨은 "향상률·증가율"이지만 방향을 단정하는 말이라 **"변화"** 로 둔다 */}
+        {/* 라벨·단위 모두 시안 그대로(향상률·증가율 · `%`). 값이 백분율의 차이라 엄밀히는
+            %p 지만 표기는 시안을 따른다. */}
         {(
           [
-            { axis: 'recall', label: '기억 회상 변화', icon: asset.anTrendRecall, w: 36, h: 19.4 },
-            { axis: 'emotion', label: '감정 표현 변화', icon: asset.anTrendEmotion, w: 36, h: 36 },
-            { axis: 'participation', label: '대화 참여도 변화', icon: asset.anTrendPart, w: 34.5, h: 33.4 },
-            { axis: 'expression', label: '응답 지속 시간 변화', icon: asset.anTrendResp, w: 36, h: 36 },
+            { axis: 'recall', label: '기억 회상 향상률', icon: asset.anTrendRecall, w: 36, h: 19.4 },
+            { axis: 'emotion', label: '감정 표현 증가율', icon: asset.anTrendEmotion, w: 36, h: 36 },
+            { axis: 'participation', label: '대화 참여도 향상률', icon: asset.anTrendPart, w: 34.5, h: 33.4 },
+            { axis: 'expression', label: '응답 지속 시간 증가율', icon: asset.anTrendResp, w: 36, h: 36 },
           ] as const
         ).map((m, i) => {
           const o = axisObs.find((x) => x.axis === m.axis);
@@ -390,7 +398,7 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
                 <img src={m.icon} alt="" className="block" style={{ width: m.w, height: m.h }} />
                 <span className="text-w-stat font-bold leading-[35px] text-accent">
                   {o?.delta == null ? '—' : `${o.delta >= 0 ? '+' : ''}${o.delta}`}
-                  {o?.delta == null ? '' : <span className="text-w-body font-medium">%p</span>}
+                  {o?.delta == null ? '' : <span className="text-w-body font-medium">%</span>}
                 </span>
               </div>
             </div>
@@ -473,7 +481,11 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
               className="absolute w-[342px] -translate-x-1/2 text-center text-w-body leading-[28px] text-ink-900"
               style={{ left: 526, top: 1805, wordBreak: 'keep-all' }}
             >
-              최근 {months}개월 관찰 5축 평균이 {myAvg}%로, 기관 전체 평균 {orgAvg}%와 견준 결과입니다.
+              {/* 시안 문구는 긍정 상태에만 있다. 다른 상태는 **관찰된 근거**를 그대로 적는다
+                  — 없는 문구를 지어내지 않는다. */}
+              {vsOrg != null && vsOrg > SIMILAR_BAND
+                ? '모든 인지 지표가 꾸준히 향상되고 있으며, 전반적인 인지 활동 상태가 매우 양호합니다.'
+                : `최근 ${months}개월 관찰 5축 평균이 ${myAvg}%로, 기관 전체 평균 ${orgAvg}%와 견준 결과입니다.`}
             </div>
             <div
               data-fx="228:4314"
@@ -484,8 +496,10 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
               className="absolute -translate-x-1/2 whitespace-nowrap text-w-sub leading-[25px] text-ink-900"
               style={{ left: 526, top: 1888 }}
             >
+              {/* 시안: "전체 평균 대비 +17% 향상". 방향 낱말도 시안 표기를 따르되
+                  낮게 관찰된 경우까지 "향상" 이라 쓸 수는 없어 부호에 맞춘다. */}
               전체 평균 대비 {vsOrg != null && vsOrg >= 0 ? '+' : ''}
-              {vsOrg}%p
+              {vsOrg}% {vsOrg != null && vsOrg >= 0 ? '향상' : '하락'}
             </div>
           </>
         )}
