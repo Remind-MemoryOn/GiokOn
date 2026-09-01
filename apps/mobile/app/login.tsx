@@ -10,13 +10,14 @@
 // 세로 위치는 프레임 비율로 환산해 기기 높이에 맞춘다(고정 프레임 디자인 충실 재현).
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 //
-// 기능은 기존과 동일: signIn(이메일+비밀번호), 비밀번호 찾기(재설정 메일),
-// 소셜/아이디찾기/회원가입은 라이브 미배선 구간 안내.
+// 기능: signIn(이메일+비밀번호) · 비밀번호 찾기(재설정 메일) · 소셜 3종 실연동
+// (구글·카카오=Supabase PKCE OAuth, 네이버=naver-auth 함수 — src/auth/social.ts).
 import { useState } from 'react';
 import { View, Text, Pressable, TextInput, Image, Alert, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { useAuth } from '../src/auth/AuthProvider';
+import { signInWithSupabaseProvider, signInWithNaver } from '../src/auth/social';
 import { C } from '../src/theme';
 import wordmark from '../assets/brand/wordmark.png';
 import socialNaver from '../assets/brand/social-naver.png';
@@ -33,7 +34,7 @@ export default function Login() {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
-  const { signIn, isConfigured } = useAuth();
+  const { signIn, isConfigured, refreshUserRow } = useAuth();
   const { width, height } = useWindowDimensions();
 
   // 가로는 Figma 좌표를 화면 폭 비율로 환산(393 기준 디자인 → 좁은 기기에서도 비율 유지).
@@ -65,9 +66,29 @@ export default function Login() {
     }
   };
 
-  const onSocial = () => {
+  const [socialBusy, setSocialBusy] = useState<string | null>(null);
+
+  const onSocial = async (key: string) => {
     if (!isConfigured) return onLogin();
-    Alert.alert('소셜 로그인', '소셜 간편 로그인은 준비 중입니다.');
+    if (socialBusy) return;
+    setSocialBusy(key);
+    try {
+      const r =
+        key === 'naver'
+          ? await signInWithNaver()
+          : await signInWithSupabaseProvider(key as 'google' | 'kakao');
+      if (!r.ok) return; // 사용자가 창을 닫음 — 아무 것도 하지 않는다
+      // 미온보딩 계정은 웹 온보딩이 필요하다(앱에는 온보딩 화면이 없다 — 설계 확정).
+      const row = await refreshUserRow();
+      if (row && !row.onboarded_at) {
+        Alert.alert('환영해요!', '웹(giokon.app)에서 기본 정보 등록을 먼저 완료해 주세요.');
+      }
+      router.replace('/main');
+    } catch (e) {
+      Alert.alert('소셜 로그인', e instanceof Error ? e.message : '다시 시도해 주세요.');
+    } finally {
+      setSocialBusy(null);
+    }
   };
 
   return (
@@ -183,11 +204,13 @@ export default function Login() {
       ].map((s) => (
         <Pressable
           key={s.key}
-          onPress={onSocial}
+          onPress={() => void onSocial(s.key)}
+          disabled={socialBusy !== null}
           accessibilityRole="button"
           accessibilityLabel={`${s.label} 로그인`}
+          accessibilityState={{ busy: socialBusy === s.key }}
           className="absolute active:opacity-70"
-          style={{ left: x(s.left), top: top(642.75, height) }}
+          style={{ left: x(s.left), top: top(642.75, height), opacity: socialBusy && socialBusy !== s.key ? 0.4 : 1 }}
         >
           <Image source={s.src} style={{ width: x(52), height: 52 }} resizeMode="contain" />
         </Pressable>

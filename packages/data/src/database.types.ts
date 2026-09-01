@@ -863,6 +863,8 @@ export type Database = {
           p_role: string
           p_org_name?: string | null
           p_elder_code?: string | null
+          /** 온보딩 화면의 계정 필수 동의(consent_type 목록) — consents 적재(C2). */
+          p_consents?: string[] | null
         }
         Returns: Database['public']['Tables']['users']['Row']
       }

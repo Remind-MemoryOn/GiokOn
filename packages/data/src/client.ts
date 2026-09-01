@@ -32,6 +32,12 @@ export interface GiokonClientConfig {
    * web=true(기본), mobile(딥링크 직접 처리)=false 권장.
    */
   detectSessionInUrl?: boolean
+  /**
+   * OAuth 플로우. 모바일(웹브라우저 인증 후 딥링크 복귀)은 **'pkce'** 필수 —
+   * 콜백 URL 의 code 를 exchangeCodeForSession 으로 교환한다.
+   * web 기본값도 pkce(Supabase 권장)로 통일한다.
+   */
+  flowType?: 'implicit' | 'pkce'
 }
 
 /** 새 Supabase 클라이언트를 만든다. 앱 진입점에서 한 번 호출한다. */
@@ -42,6 +48,7 @@ export function createGiokonClient(config: GiokonClientConfig): GiokonClient {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: config.detectSessionInUrl ?? true,
+      flowType: config.flowType ?? 'pkce',
     },
   })
 }

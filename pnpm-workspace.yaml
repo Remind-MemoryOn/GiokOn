@@ -6,3 +6,9 @@ packages:
 # (구 위치는 무시되며 [WARN] "pnpm.overrides" ignored 경고가 난다.)
 overrides:
   react-native-reanimated: 3.17.4
+  # @types/react 단일 버전 강제 — 웹(19.2.x)·모바일(19.0.x)이 각각 다른 타입을 쓰면
+  # 루트 호이스트 대상이 설치 순서에 따라 흔들려, @expo/vector-icons 의 Icon 이
+  # 다른 @types/react 로 타입 결정되어 ui.tsx JSX 에서 TS2786 이 터진다(2026-08-23).
+  # 모든 패키지를 하나의 타입 버전으로 묶는다(모바일 핀과 일치).
+  "@types/react": 19.0.10
+  "@types/react-dom": 19.0.4

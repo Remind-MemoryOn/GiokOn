@@ -4,9 +4,10 @@ import {
   generateReply,
   extractChronicle,
   generateGuardianReport,
+  filterAvoidedBanks,
 } from './ai'
 import { DEFAULT_APPEARANCE } from './types'
-import type { ChronicleEntry, ElderProfile, Session, ConversationTurn } from './types'
+import type { ElderProfile, Session, ConversationTurn } from './types'
 
 const elder: ElderProfile = {
   id: 'e1',
@@ -217,67 +218,30 @@ describe('generateGuardianReport', () => {
   })
 })
 
-// ── 웹에서 설계한 세션(196:272)이 대화 진행에 실제로 쓰이는가 ───────────────
-// 설계 값은 표시용이 아니다: 키워드·내용 = 주제 선택 입력, 피해갈 내용 = 안전 가드.
-const planned = (plan: Session['plan']): Session => ({ ...session, plan })
+describe('filterAvoidedBanks — 피해갈 내용(설계) 주제 배제', () => {
+  const topics = [{ topic: '고향' }, { topic: '가족' }, { topic: '음식' }]
 
-describe('세션 설계 — 키워드가 첫 주제를 정한다', () => {
-  it('설계 키워드가 연대기·프로필보다 우선한다', () => {
-    // 프로필에 hometown(전주)이 있어 설계가 없으면 고향으로 열린다(위 테스트).
-    const res = generateOpener(elder, planned({ keywords: ['음식'] }), [])
-    expect(res.topic).toBe('음식')
+  it('설계가 없으면 원본 배열을 그대로 되돌린다', () => {
+    expect(filterAvoidedBanks(topics, undefined)).toEqual(topics)
+    expect(filterAvoidedBanks(topics, null)).toEqual(topics)
+    expect(filterAvoidedBanks(topics, '')).toEqual(topics)
   })
 
-  it('키워드가 없으면 내용에서 주제를 찾는다', () => {
-    const res = generateOpener(
-      elder,
-      planned({ keywords: [], content: '학교 다니실 때 친구 이야기를 나눠 주세요' }),
-      [],
-    )
-    expect(res.topic).toBe('학창 시절')
+  it('토큰과 부분일치하는 주제를 제외한다', () => {
+    const kept = filterAvoidedBanks(topics, '가족 얘기는 빼고')
+    expect(kept.map((b) => b.topic)).toEqual(['고향', '음식'])
   })
 
-  it('설계가 없으면 예전과 똑같이 동작한다', () => {
-    expect(generateOpener(elder, session, []).topic).toBe(
-      generateOpener(elder, planned(undefined), []).topic,
-    )
-  })
-})
-
-describe('세션 설계 — 피해갈 내용은 안전 가드다', () => {
-  it('피해갈 주제로는 대화를 열지 않는다', () => {
-    const res = generateOpener(elder, planned({ keywords: [], avoidTopics: '고향 이야기' }), [])
-    expect(res.topic).not.toBe('고향')
+  it('구분자로 끊은 여러 토큰을 모두 적용한다', () => {
+    const kept = filterAvoidedBanks(topics, '고향, 가족 이야기는 피하고 싶어요')
+    expect(kept.map((b) => b.topic)).toEqual(['음식'])
   })
 
-  it('설계 키워드와 피해갈 내용이 겹치면 피하는 쪽이 이긴다', () => {
-    const res = generateOpener(elder, planned({ keywords: ['가족'], avoidTopics: '가족' }), [])
-    expect(res.topic).not.toBe('가족')
+  it('전부 가려지면 원본을 유지한다(대화 불능 방지 — 본문 금지는 프롬프트 계층)', () => {
+    expect(filterAvoidedBanks(topics, '고향 가족 음식')).toEqual(topics)
   })
 
-  it('연대기 키워드가 가리켜도 피해갈 주제는 건너뛴다', () => {
-    const chronicle: ChronicleEntry[] = [{
-      id: 'c1', elderId: 'e1', topic: '가족', content: '명절 이야기',
-      keywords: ['가족'], source: 'AI', recordedAt: '', updatedAt: '',
-    }]
-    const res = generateOpener(elder, planned({ keywords: [], avoidTopics: '가족' }), chronicle)
-    expect(res.topic).not.toBe('가족')
-  })
-
-  it('주제를 옮길 때도 피해갈 주제로는 가지 않는다', () => {
-    // 후속 질문 풀이 소진되면 다음 주제로 넘어간다 — 그 후보에서도 빠져야 한다.
-    const s = planned({ keywords: [], avoidTopics: '가족' })
-    const history = [aiTurn('고향'), elderTurn('네'), aiTurn('고향'), elderTurn('네'),
-                     aiTurn('고향'), elderTurn('네'), aiTurn('고향')]
-    const res = generateReply(elder, s, history, '그렇지요')
-    expect(res.topic).not.toBe('가족')
-  })
-
-  it('어르신이 피해갈 주제를 꺼내도 AI 가 그쪽으로 파고들지 않는다', () => {
-    // 회피가 아니다 — 막지 않되 오프너로 확장하지 않고 지금 주제를 이어간다.
-    const s = planned({ keywords: [], avoidTopics: '가족' })
-    const res = generateReply(elder, s, [aiTurn('고향'), elderTurn('네')], '딸 이야기가 생각나요')
-    expect(res.topic).not.toBe('가족')
-    expect(res.switchTopic).toBe(false)
+  it('2자 미만 토큰은 무시한다', () => {
+    expect(filterAvoidedBanks(topics, 'a, 갑')).toEqual(topics)
   })
 })

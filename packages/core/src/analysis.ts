@@ -7,7 +7,7 @@
 // 직접 관찰되는 **행동 지표**(참여·응답·발화량·주제 반응·관심 변화)만 산출한다.
 // 내부적으로 '인지활동'을 돕는 게 목적이지만, 산출물은 판정이 아니라 관찰 기록이다.
 
-import { assessEngagement } from './safety'
+import { assessEngagement, normalizeUtterance } from './safety'
 import type { ChronicleEntry, ConversationTurn, ElderProfile, EmotionTone } from './types'
 
 export const ANALYSIS_VERSION = 'v1.0'
@@ -242,4 +242,66 @@ export function recommendNextTopics(
   ALL_TOPICS.forEach(push)
 
   return result.slice(0, 3)
+}
+
+// ── AI 발화 주제 태깅 ──
+// Live 등 LLM 자유 응답은 Structured Outputs 를 경유하지 않아 주제 필드가 없다.
+// 직전 주제를 무조건 이어 쓰면(보수화) 화제 이동이 기록에 남지 않아 세션 분석의
+// 주제별 반응(topicsEngaged/topicsLow)이 틀어진다. 본 표는 질문 텍스트에서
+// 표준 주제의 근거를 찾기 위한 대표 단어다 — 결정론이고 추가 모델 호출이 없으며,
+// 실 LLM 전환 후에도 로그 정합성을 위한 하단 태깅으로 남는다.
+const TURN_TOPIC_KEYWORDS: Record<string, string[]> = {
+  고향: ['고향', '동네', '시골', '마을', '전주', '서울', '부산', '대구', '인천', '광주', '대전',
+    '울산', '제주', '강원', '경상', '전라', '충청', '황해도', '평안', '함경'],
+  가족: ['가족', '자녀', '자식', '아들', '손자', '손녀', '손주', '며느리', '사위', '시어머니',
+    '아내', '남편', '부모님', '아버지', '어머니', '할머니', '할아버지', '형제', '자매',
+    '동생', '누나', '언니', '오빠', '삼촌', '이모', '고모', '조카'],
+  직업: ['직업', '직장', '회사', '공장', '농사', '장사', '가게', '점원', '공무원', '운전',
+    '군대', '군복무', '간호사', '미용실', '이발소', '일하', '일을'],
+  취미: ['취미', '등산', '낚시', '바둑', '화투', '뜨개질', '서예', '붓글씨', '텃밭', '원예',
+    '춤'],
+  음식: ['음식', '밥', '국밥', '김치', '된장', '고추장', '국수', '떡', '나물', '반찬', '잔치',
+    '요리', '간식', '과일'],
+  '학창 시절': ['학교', '학창', '소학교', '국민학교', '중학교', '고등학교', '교실', '숙제',
+    '책가방', '친구', '짝꿍', '급식'],
+  노래: ['노래', '가요', '트로트', '민요', '팝송', '음악', '가수', '소절', '라디오', '레코드',
+    '찬양', '흥얼'],
+  계절: ['계절', '날씨', '봄', '여름', '가을', '겨울'],
+  풍경: ['풍경', '경치', '바다', '들녘'],
+  색: ['색깔', '색상', '빨강', '파랑', '노랑', '초록', '분홍'],
+}
+
+/**
+ * AI 발화(질문) 텍스트에서 대화 주제를 판별한다 — 로그·분석의 근거 태깅용.
+ *
+ * - 정규화 텍스트(normalizeUtterance)에서 주제별 대표 단어를 센다. 점수(근거 수)가
+ *   가장 높은 주제를 고르되, 동점이면 **더 나중에 언급된** 주제를 고른다 — 브리지
+ *   문장("고향 이야기 잘 들었어요. 이제 자녀분들은 어떠셨어요?")의 새 주제가
+ *   문장 뒤쪽에 오는 대화 리듬을 반영한다.
+ * - 근거가 하나도 없으면 null. 호출부는 주제를 지어내지 말고 직전 주제를 유지해야
+ *   한다(근거 없는 값 금지 원칙). 부분일치 오탐을 막기 위해 단일 글자·오염 가능
+ *   단어('딸'⊂'딸기', '국'⊂'한국' 등)는 의도적으로 뺐다.
+ */
+export function detectTurnTopic(text: string): string | null {
+  const norm = normalizeUtterance(text)
+  if (!norm) return null
+  let best: { topic: string; score: number; last: number } | null = null
+  for (const [topic, keywords] of Object.entries(TURN_TOPIC_KEYWORDS)) {
+    let score = 0
+    let last = -1
+    for (const k of keywords) {
+      const at = norm.indexOf(k)
+      if (at >= 0) {
+        score++
+        if (at > last) last = at
+      }
+    }
+    if (
+      score > 0 &&
+      (!best || score > best.score || (score === best.score && last > best.last))
+    ) {
+      best = { topic, score, last }
+    }
+  }
+  return best?.topic ?? null
 }

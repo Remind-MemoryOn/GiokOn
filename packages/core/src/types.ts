@@ -173,21 +173,18 @@ export const THERAPY_TYPES: Record<TherapyType, TherapyTypeMeta> = {
 };
 
 /**
- * 웹에서 요양보호사가 만든 회상 세션 설계(신규 웹 디자인 `196:272`).
- *
- * **표시용 값이 아니라 대화 진행 입력이다** — 피해갈 내용은 안전 가드로,
- * 키워드·내용은 주제 선택 입력으로 쓴다. 근거 없는 값을 만들지 않으므로
- * 설계가 없는 세션(앱에서 바로 시작)에서는 `plan` 자체가 없다.
+ * 세션 설계(웹에서 요양보호사가 미리 만든 값 — DB sessions 의 planned 컬럼群).
+ * 앱이 planned 세션을 채택해 active 로 전환할 때 대화 진행 입력으로 쓴다:
+ *   - goal/content/keywords → 질문 생성 재료(프롬프트 주입)
+ *   - avoidTopics           → 안전 입력(AI 가 스스로 꺼내지 않을 내용)
+ * 화면 표시용이 아니므로 근거 없는 값은 만들지 않는다(모두 optional).
  */
-export interface SessionPlan {
-  /** 어떤 이야기를 나눌지(자유 서술, 최대 500자). */
-  content?: string;
-  /** 이번 대화에서 이루려는 것(최대 200자). */
+export interface SessionDesign {
+  title?: string;
   goal?: string;
-  /** 피해갈 내용 — 이 주제로는 대화를 열지도, 전환하지도 않는다. */
+  content?: string;
   avoidTopics?: string;
-  /** 관련 키워드 — 주제 선택의 1순위 입력. */
-  keywords: string[];
+  keywords?: string[];
 }
 
 export interface Session {
@@ -197,8 +194,8 @@ export interface Session {
   note?: string;          // 요양보호사 메모
   durationMinutes: number;
   elderId: string;
-  /** 웹에서 설계해 내려온 값. 앱에서 바로 시작한 세션에는 없다. */
-  plan?: SessionPlan;
+  /** 웹 설계 값(planned 세션을 채택했을 때 존재). 없으면 앱이 즉석 시작한 세션. */
+  design?: SessionDesign;
   createdAt: string;
   updatedAt: string;
 }

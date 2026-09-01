@@ -11,9 +11,11 @@
 import { create } from 'zustand';
 import {
   analyzeSession,
+  detectTurnTopic,
   openConversation,
   resolveSessionRecommendation,
   respondToUserTurn,
+  screenAiUtterance,
   nowIso,
   uid,
   pickAvatarColor,
@@ -26,6 +28,7 @@ import {
   type SafetyEventDraft,
   type Session,
   type SessionAnalysis,
+  type SessionDesign,
   type SessionRecommendation,
   type TherapyType,
 } from '@giokon/core';
@@ -62,6 +65,11 @@ export interface ActiveSession {
   elder: ElderProfile;
   session: Session;
   /**
+   * 웹에서 설계한 세션 값(planned 채택 시). 대화 진행 입력 — 프롬프트 주입·
+   * avoid_topics 가드가 이 값을 읽는다. 즉석 시작 세션이면 undefined.
+   */
+  design?: SessionDesign;
+  /**
    * 세션 시작 시 넘겨받은 어르신 연대기(대화 개인화·종료 분석의 근거).
    *
    * ⚠️ 종료 분석이 `chroniclesByElder()`(목업 스토어)를 다시 읽으면 **라이브 모드에서
@@ -87,13 +95,6 @@ export interface ActiveSession {
    * 생성에 실패하면(오프라인 등) null 로 두고 종료 시 일괄 저장으로 폴백한다.
    */
   remoteId: string | null;
-  /**
-   * 웹에서 설계해 둔 세션(`sessions.status='planned'`)에서 시작했다면 그 행의 id.
-   *
-   * 이 값이 있으면 **새 행을 만들지 않고 그 행을 active 로 바꾼다** — 새로 만들면
-   * 설계는 영영 planned 로 남고 웹 목록에 유령 행이 하나 더 생긴다.
-   */
-  plannedId: string | null;
   /** 이미 DB(session_logs)에 기록한 턴 수 — 다음 동기화의 시작점. */
   syncedTurns: number;
 }
@@ -171,15 +172,9 @@ interface AppState {
   beginSession: (
     elder: ElderProfile,
     chronicles: ChronicleEntry[],
-    input: {
-      title: string;
-      therapyType: TherapyType;
-      note?: string;
-      /** 웹 설계값 — 있으면 대화 진행(주제 선택·회피)에 그대로 쓰인다. */
-      plan?: Session['plan'];
-      /** 설계 행 id — 시작 시 그 행을 active 로 바꾼다(새로 만들지 않는다). */
-      plannedId?: string;
-    },
+    input: { title: string; therapyType: TherapyType; note?: string },
+    /** 웹 설계 값(planned 채택 시) — 대화 진행 입력으로 보존된다. */
+    design?: SessionDesign,
   ) => void;
   /** 마이크(모의 STT) — 어르신 발화를 인식해 확인 화면으로 넘긴다. */
   captureUtterance: () => void;
@@ -187,7 +182,15 @@ interface AppState {
   /** 확인 취소 → 대기 중 STT 폐기하고 마이크 대기 상태로. */
   discardUtterance: () => void;
   /** 확인/수정 완료 → 어르신 턴 반영 + 다음 AI 질문 생성(core). */
-  confirmUtterance: (finalText: string) => void;
+  /**
+   * Live 모드용 — 모델 응답을 그대로 이번 AI 발화로 채택한다.
+   * 안전 평가·이벤트는 여전히 core 파이프라인(respondToUserTurn)이 계산하고,
+   * 질문 본문만 교체한다(출력 가드 screenAiUtterance 재적용). 위기 시엔 호출하지
+   * 않는다 — 로컬 안전 응답이 우선이다.
+   */
+  confirmUtterance: (finalText: string, live?: { question: string }) => void;
+  /** 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다. */
+  overrideQuestion: (text: string) => void;
   acknowledgeSafety: () => void;
   cancelSession: () => void;
 
@@ -330,16 +333,16 @@ export const useApp = create<AppState>((set, get) => ({
   lastFinished: null,
   clearLastFinished: () => set({ lastFinished: null }),
 
-  beginSession: (elder, chronicles, input) => {
+  beginSession: (elder, chronicles, input, design) => {
     const ts = nowIso();
     const session: Session = {
       id: uid('ses_'),
       title: input.title,
       therapyType: input.therapyType,
       note: input.note,
-      plan: input.plan,
       durationMinutes: 0,
       elderId: elder.id,
+      design,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -349,6 +352,7 @@ export const useApp = create<AppState>((set, get) => ({
       active: {
         elder,
         session,
+        design,
         chronicles,
         turns: [aiTurn],
         startedAt: ts,
@@ -359,7 +363,6 @@ export const useApp = create<AppState>((set, get) => ({
         safety: { ...SAFE_INITIAL },
         events: [],
         remoteId: null,
-        plannedId: input.plannedId ?? null,
         syncedTurns: 0,
       },
     });
@@ -382,7 +385,7 @@ export const useApp = create<AppState>((set, get) => ({
     set({ active: { ...a, pendingStt: null, phase: 'mic_ready' } });
   },
 
-  confirmUtterance: (finalText) => {
+  confirmUtterance: (finalText, live) => {
     const a = get().active;
     if (!a) return;
     // 요양보호사가 STT 결과를 고쳤으면 원문을 함께 남긴다(session_logs.original_content).
@@ -392,8 +395,29 @@ export const useApp = create<AppState>((set, get) => ({
     // 기록만 보고는 어떤 주제에 대한 대답인지 알 수 없다(감사 지적).
     const elderTurn = makeTurn('Elderly', finalText, a.currentTopic, original);
     const history = [...a.turns, elderTurn];
+    // 안전 평가·이벤트는 항상 core 파이프라인이 산출한다 — Live 모드에서도 동일.
     const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
-    const aiTurn = makeTurn('AI', guarded.response.question, guarded.response.topic);
+
+    // Live 응답 채택 여부 — 출력 가드(screenAiUtterance)를 **다시** 통과시킨다.
+    // 막히면 안전 대체문으로 바꾸고, 그조차 없으면 로컬(core) 생성 질문을 유지한다.
+    let question = guarded.response.question;
+    let topic = guarded.response.topic;
+    if (live) {
+      const screen = screenAiUtterance(live.question);
+      if (screen.allowed) {
+        question = live.question;
+        // Live 질문의 주제를 텍스트에서 판별한다(core detectTurnTopic — 결정론 태깅).
+        // 근거가 있으면 화제 이동까지 기록된다(session_logs.switch_topic, 매퍼가
+        // 직전 턴 주제와 비교해 산출). 근거가 없으면 직전 주제를 유지한다 —
+        // 근거 없는 주제는 만들지 않는다(실서비스 원칙).
+        topic = detectTurnTopic(live.question) ?? a.currentTopic ?? topic;
+      } else if (screen.safeAlternative) {
+        question = screen.safeAlternative;
+        topic = a.currentTopic ?? topic;
+      }
+    }
+
+    const aiTurn = makeTurn('AI', question, topic);
     // 자동 종료: 안전 권고가 없고 설계 세션 길이에 도달하면 마무리를 권고한다(core 정책).
     const elderTurns = history.filter((t) => t.speaker === 'Elderly').length;
     const recommendation = resolveSessionRecommendation(guarded.session.recommendation, elderTurns);
@@ -408,8 +432,8 @@ export const useApp = create<AppState>((set, get) => ({
       active: {
         ...a,
         turns: [...history, aiTurn],
-        currentQuestion: guarded.response.question,
-        currentTopic: guarded.response.topic,
+        currentQuestion: question,
+        currentTopic: topic,
         pendingStt: null,
         phase: 'ai_speaking',
         safety,
@@ -418,6 +442,20 @@ export const useApp = create<AppState>((set, get) => ({
           : a.events,
       },
     });
+  },
+
+  overrideQuestion: (text) => {
+    const a = get().active;
+    if (!a || !text.trim()) return;
+    // 첫 AI 턴(오프너)만 교체한다 — Live 모델의 인사가 도착했을 때 사용.
+    const turns = a.turns.slice();
+    for (let i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].speaker === 'AI') {
+        turns[i] = { ...turns[i], text };
+        break;
+      }
+    }
+    set({ active: { ...a, turns, currentQuestion: text } });
   },
 
   acknowledgeSafety: () => {

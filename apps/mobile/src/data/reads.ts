@@ -15,6 +15,7 @@
 import {
   useChronicles as useChroniclesData,
   useConsents as useConsentsData,
+  useDuePlannedSession as useDuePlannedSessionData,
   useOrgSessionAnalyses as useOrgSessionAnalysesData,
   useProfile as useProfileData,
   useProfiles as useProfilesData,
@@ -124,47 +125,16 @@ export function useChronicles(elderId: string | undefined): ChronicleEntry[] {
   return (live.data ?? []).map(toChronicleEntry);
 }
 
-/**
- * 어르신 세션 **이력**(최신순, 목록 카드용).
- *
- * ⚠️ 웹에서 설계만 해 둔 세션(`planned`)은 아직 일어나지 않은 일이라 이력이 아니다 —
- * 여기 세우면 턴 0 짜리 빈 기록으로 보인다. 설계는 `usePlannedSession` 이 읽는다.
- */
+/** 어르신 세션 이력(최신순, 목록 카드용). */
 export function useElderSessions(elderId: string | undefined): Session[] {
   const mock = useApp(useShallow((s) => (elderId ? s.sessionsByElder(elderId) : [])));
   const live = useSessionsData(CFG ? elderId : undefined);
-  const rows = live.data;
-  const mapped = useMemo(
-    () => (rows ?? []).filter((r) => r.status !== 'planned').map(toSession),
-    [rows],
-  );
   if (!CFG) return mock;
-  return mapped;
-}
-
-/**
- * 웹에서 설계해 둔 다음 세션(`sessions.status='planned'`).
- *
- * 요양보호사가 웹 "회상 세션 설계"(`196:272`)에서 만든 것이고, 앱은 그 설계대로
- * 대화를 연다(제목·키워드·목표·**피해갈 내용**). 설계가 없으면 undefined —
- * 앱이 예전처럼 스스로 주제를 고른다.
- *
- * 여러 건이면 **기록일(planned_date)이 이른 것부터**, 같으면 먼저 만든 것부터 한다.
- * 목업 모드에는 설계 개념이 없다(웹에서만 만든다) → 항상 undefined.
- */
-export function usePlannedSession(elderId: string | undefined): Session | undefined {
-  const live = useSessionsData(CFG ? elderId : undefined);
-  const rows = live.data;
-  return useMemo(() => {
-    if (!CFG) return undefined;
-    const planned = (rows ?? []).filter((r) => r.status === 'planned');
-    if (planned.length === 0) return undefined;
-    const next = [...planned].sort((a, b) => {
-      const byDate = (a.planned_date ?? '').localeCompare(b.planned_date ?? '');
-      return byDate !== 0 ? byDate : a.started_at.localeCompare(b.started_at);
-    })[0];
-    return toSession(next);
-  }, [rows]);
+  // 웹 설계(planned) 행은 **아직 진행하지 않은 세션**이다 — 실행 이력 목록에서 제외한다.
+  // 채택은 세션 시작 화면(useDuePlannedRow → adoptPlannedSession)이 전담한다(B1-d).
+  return (live.data ?? [])
+    .filter((row) => row.status !== 'planned')
+    .map(toSession);
 }
 
 /**
@@ -174,14 +144,23 @@ export function usePlannedSession(elderId: string | undefined): Session | undefi
 export function useElderLogs(elderId: string | undefined): ConversationLog[] {
   const mock = useApp(useShallow((s) => (elderId ? s.logsByElder(elderId) : [])));
   const live = useSessionsData(CFG ? elderId : undefined);
-  const rows = live.data;
-  // 설계만 해 둔 세션에는 대화 전문이 없다 — 로그가 아니다(useElderSessions 와 같은 이유).
-  const mapped = useMemo(
-    () => (rows ?? []).filter((r) => r.status !== 'planned').map((row) => toConversationLog(row, [])),
-    [rows],
-  );
   if (!CFG) return mock;
-  return mapped;
+  return (live.data ?? [])
+    .filter((row) => row.status !== 'planned') // 설계만 한 행은 대화 기록이 아니다(B1-d).
+    .map((row) => toConversationLog(row, []));
+}
+
+/**
+ * 오늘 진행할 웹 설계 세션(planned, 기록일 도래)의 DB 행 — 세션 시작 화면이
+ * 채택 여부를 결정하는 근거(B1-a). 라이브 전용: 목업 모드에선 항상 null.
+ * 도메인 Session 이 아닌 **raw 행**을 그대로 노출한다 — status/planned_date 등
+ * 채택 판정에 필요한 필드가 도메인 매핑엔 없기 때문이다.
+ */
+export function useDuePlannedRow(
+  elderId: string | undefined,
+): ReturnType<typeof useDuePlannedSessionData>['data'] {
+  const live = useDuePlannedSessionData(CFG ? elderId : undefined);
+  return live.data ?? null;
 }
 
 /** 단일 대화 로그(전문 포함). 라이브에서 id는 세션 id. */

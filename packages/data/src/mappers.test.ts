@@ -290,43 +290,50 @@ describe('toSession', () => {
       therapyType: 'reminiscence',
       durationMinutes: 3,
       elderId: 'p1',
-      plan: undefined,
       createdAt: '2026-01-04T00:00:00Z',
       updatedAt: '2026-01-04T00:10:00Z',
     })
-  })
-
-  it('웹 설계값이 있으면 plan 으로 내려간다(제목도 설계 제목이 이긴다)', () => {
-    const s = toSession({
-      ...row,
-      status: 'planned',
-      title: '어린 시절 집 이야기',
-      goal: '고향 기억을 편하게 떠올리기',
-      content: '살던 집과 감나무 이야기',
-      avoid_topics: '병원',
-      keywords: ['고향', '감나무'],
-      duration_minutes: 20,
-      duration_seconds: null,
-      ended_at: null,
-    })
-    expect(s.title).toBe('어린 시절 집 이야기')
-    expect(s.durationMinutes).toBe(20)
-    expect(s.plan).toEqual({
-      content: '살던 집과 감나무 이야기',
-      goal: '고향 기억을 편하게 떠올리기',
-      avoidTopics: '병원',
-      keywords: ['고향', '감나무'],
-    })
-  })
-
-  it('설계 칸이 전부 비면 plan 을 만들지 않는다(근거 없는 값 금지)', () => {
-    expect(toSession({ ...row, status: 'planned' }).plan).toBeUndefined()
   })
 
   it('current_topic null은 기본 제목, duration_seconds null은 0분', () => {
     const s = toSession({ ...row, current_topic: null, duration_seconds: null })
     expect(s.title).toBe('회상 대화')
     expect(s.durationMinutes).toBe(0)
+  })
+
+  it('설계 값(planned 컬럼)을 design 으로 매핑한다(B1-e)', () => {
+    const s = toSession({
+      ...row,
+      status: 'planned',
+      title: '감나무 이야기',
+      goal: '고향 친구 떠올리기',
+      content: '동네 풍경 중심으로',
+      avoid_topics: '돌아가신 남편',
+      keywords: ['감나무'],
+      duration_seconds: null,
+      duration_minutes: 20,
+    })
+    expect(s.design).toEqual({
+      title: '감나무 이야기',
+      goal: '고향 친구 떠올리기',
+      content: '동네 풍경 중심으로',
+      avoidTopics: '돌아가신 남편',
+      keywords: ['감나무'],
+    })
+    // 설계 제목이 current_topic 보다 우선한다.
+    expect(s.title).toBe('감나무 이야기')
+    // 실측(duration_seconds)이 없는 설계 행만 설계치를 표기한다.
+    expect(s.durationMinutes).toBe(20)
+  })
+
+  it('설계 값이 하나도 없으면 design 을 만들지 않는다(근거 없는 객체 금지)', () => {
+    const s = toSession({ ...row })
+    expect(s.design).toBeUndefined()
+  })
+
+  it('실측 소요시간이 있으면 설계치보다 실측을 우선한다', () => {
+    const s = toSession({ ...row, title: '제목', duration_minutes: 40 })
+    expect(s.durationMinutes).toBe(3)
   })
 })
 

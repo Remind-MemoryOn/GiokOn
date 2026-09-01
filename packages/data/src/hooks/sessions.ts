@@ -74,6 +74,35 @@ export function useSession(id: string | undefined): UseQueryResult<SessionRow | 
   })
 }
 
+/**
+ * 오늘 진행할 **웹 설계 세션**(status='planned', 기록일 도래) — 앱이 채택해 active 로
+ * 전환한다(B1-a). 미래 설계는 아직 끌어오지 않는다(요양보호사가 설계일에 받도록).
+ * 라이브 전용 훅 — 목업 모드에서는 null.
+ */
+export function useDuePlannedSession(
+  profileId: string | undefined,
+): UseQueryResult<SessionRow | null> {
+  const today = new Date().toISOString().slice(0, 10)
+  return useQuery({
+    queryKey: [...queryKeys.sessions(profileId ?? 'none'), 'due-planned'],
+    enabled: Boolean(profileId),
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient()
+        .from('sessions')
+        .select('*')
+        .eq('profile_id', profileId as string)
+        .eq('status', 'planned')
+        .lte('planned_date', today)
+        .order('planned_date', { ascending: false })
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+}
+
 /** 세션 대화 전문(턴 순서). */
 export function useSessionLogs(sessionId: string | undefined): UseQueryResult<SessionLogRow[]> {
   return useQuery({

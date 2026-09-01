@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeSession, recommendNextTopics } from './analysis'
+import { analyzeSession, detectTurnTopic, recommendNextTopics } from './analysis'
 import { DEFAULT_APPEARANCE } from './types'
 import type { ChronicleEntry, ConversationTurn, ElderProfile } from './types'
 
@@ -84,5 +84,37 @@ describe('recommendNextTopics', () => {
     ]
     const rec = recommendNextTopics(elder, chron, [], [])
     expect(rec).toContain('노래')
+  })
+})
+
+describe('detectTurnTopic — Live 질문 주제 태깅', () => {
+  it('표준 주제별 근거로 판별한다', () => {
+    expect(detectTurnTopic('어르신, 고향 동네가 그리우실 때가 있으세요?')).toBe('고향')
+    expect(detectTurnTopic('명절에 가족들 다 모이면 뭐 하고 지내셨어요?')).toBe('가족')
+    expect(detectTurnTopic('일하시면서 만난 분들 중에 기억나는 분 있으세요?')).toBe('직업')
+    expect(detectTurnTopic('등산이나 낚시는 요즘도 하세요?')).toBe('취미')
+    expect(detectTurnTopic('잔칫날에는 어떤 음식을 하셨어요?')).toBe('음식')
+    expect(detectTurnTopic('학교 가는 길은 어땠어요? 멀었어요?')).toBe('학창 시절')
+    expect(detectTurnTopic('젊으셨을 적에 자주 부르시던 노래가 있으세요?')).toBe('노래')
+  })
+
+  it('동점이면 더 나중에 언급한 주제를 고른다(브리지 문장)', () => {
+    expect(
+      detectTurnTopic('고향 이야기 잘 들었어요. 이제 자녀분들 이야기도 해볼까요?'),
+    ).toBe('가족')
+  })
+
+  it('근거가 없으면 null — 호출부는 직전 주제를 유지해야 한다', () => {
+    expect(detectTurnTopic('오늘 이렇게 이야기 나눠 주셔서 고마워요.')).toBe(null)
+    expect(detectTurnTopic('   ')).toBe(null)
+  })
+
+  it('띄어쓰기·문장부호와 무관하게 매칭한다', () => {
+    expect(detectTurnTopic('어르신, 학창 시절 이야기 들려주세요!')).toBe('학창 시절')
+  })
+
+  it('오염 가능한 부분일치를 오탐으로 쓰지 않는다', () => {
+    expect(detectTurnTopic('딸기가 제철이라 맛있겠어요.')).not.toBe('가족') // '딸' 금지
+    expect(detectTurnTopic('우리 한국의 아름다운 바다 이야기 해볼까요?')).toBe('풍경') // '국' 금지
   })
 })

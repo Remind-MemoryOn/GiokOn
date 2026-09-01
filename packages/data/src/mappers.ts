@@ -18,6 +18,7 @@ import {
   type ElderProfile,
   type Guardian,
   type Session,
+  type SessionDesign,
   type Speaker,
 } from '@giokon/core'
 import type {
@@ -90,14 +91,30 @@ export function toConversationTurn(row: SessionLogRow): ConversationTurn {
 
 /**
  * DB 세션 메타 → 도메인 Session(세션 목록 카드용).
- * v1 스키마는 title/therapyType/note를 별도 컬럼으로 두지 않으므로(프로토타입 도메인
- * ↔ v1 스키마 불일치) 표시값을 파생한다: title←현재 주제, therapyType←회상 고정,
- * durationMinutes←duration_seconds/60.
+ *
+ * - 설계 값(planned 컬럼群)은 `design` 으로 그대로 옮긴다. 앱이 planned 세션을 채택해
+ *   대화 입력(goal/content/avoid_topics/keywords)으로 쓴다(B1-e — 이전에는 폐기돼 앱이
+ *   설계를 전혀 볼 수 없었다).
+ * - 제목: 웹 설계 제목 > 진행 중 주제(current_topic) > '회상 대화' 순의 근거 우선.
+ * - 소요 시간: 실측(duration_seconds/60)이 1차 근거고, 설계 행(실측 없음)만
+ *   설계치(duration_minutes)로 표기한다 — 둘 다 없으면 0(임의값 금지).
  */
 export function toSession(row: SessionRow): Session {
+  const design: SessionDesign | undefined =
+    row.title != null ||
+    row.goal != null ||
+    row.content != null ||
+    row.avoid_topics != null ||
+    (row.keywords?.length ?? 0) > 0
+      ? {
+          title: row.title ?? undefined,
+          goal: row.goal ?? undefined,
+          content: row.content ?? undefined,
+          avoidTopics: row.avoid_topics ?? undefined,
+          keywords: row.keywords ?? undefined,
+        }
+      : undefined
   return {
-    // 설계된 세션(status='planned')은 웹에서 붙인 제목이 곧 제목이다. 진행·종료된
-    // 세션은 대화가 실제로 머문 주제(current_topic)를 쓴다.
     id: row.id,
     title: row.title ?? row.current_topic ?? '회상 대화',
     therapyType: 'reminiscence',
@@ -106,26 +123,10 @@ export function toSession(row: SessionRow): Session {
         ? Math.max(0, Math.round(row.duration_seconds / 60))
         : (row.duration_minutes ?? 0),
     elderId: row.profile_id,
-    plan: toSessionPlan(row),
+    design,
     createdAt: row.started_at,
     updatedAt: row.updated_at,
   }
-}
-
-/**
- * 웹 세션 설계(`196:272`) → 도메인. **근거 없는 값을 만들지 않는다** — 설계 칸이
- * 전부 비어 있으면 `plan` 자체를 두지 않아(undefined) 앱이 예전처럼 스스로 주제를 고른다.
- */
-export function toSessionPlan(row: SessionRow): Session['plan'] {
-  const keywords = row.keywords ?? []
-  const plan = {
-    content: row.content ?? undefined,
-    goal: row.goal ?? undefined,
-    avoidTopics: row.avoid_topics ?? undefined,
-    keywords,
-  }
-  const empty = !plan.content && !plan.goal && !plan.avoidTopics && keywords.length === 0
-  return empty ? undefined : plan
 }
 
 /** DB 세션 메타 + 전문(session_logs)을 도메인 ConversationLog로 합친다. */

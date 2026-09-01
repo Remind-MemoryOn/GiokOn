@@ -7,19 +7,27 @@
 //   문구 "곧 다음 질문을 들려드릴게요." Medium 23/40 #7b7c7c 중앙 @ top 425
 //
 // 스피너 에셋은 원형 도트라 회전만 입힌다(형태는 원본 그대로 — 새로 그리지 않는다).
-// 다음 질문은 이미 생성돼 있으므로 잠시 후 대화 화면으로 돌아간다.
-import { useEffect, useMemo } from 'react';
+//
+// 복귀 시점(2026-08-23 개선): 예전엔 고정 1.2초 뒤 돌아갔다. Live 모드에서는 모델
+// 응답이 화면 전환과 무관하게 늦게 도착할 수 있어, **다음 질문이 실제로 교체됐는지**를
+// 감지해 복귀한다(최소 0.5초 표시로 깜빡임 방지 · 최대 8초 안전 상한).
+import { useEffect, useMemo, useState } from 'react';
 import { Animated, Easing, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useApp } from '../../src/store/appStore';
 import iconClose from '../../assets/brand/icon-close.png';
 import spinner from '../../assets/brand/loading-indicator.png';
 
 const FRAME_H = 852;
+const MIN_DISPLAY_MS = 500;
+const MAX_WAIT_MS = 8000;
 
 export default function QuestionLoading() {
   const { height } = useWindowDimensions();
   const spin = useMemo(() => new Animated.Value(0), []);
+  /** 진입 시점의 질문 — 이 값이 바뀌면 "다음 질문 도착"이다. */
+  const [questionAtEntry] = useState(() => useApp.getState().active?.currentQuestion ?? '');
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -35,9 +43,17 @@ export default function QuestionLoading() {
   }, [spin]);
 
   useEffect(() => {
-    const t = setTimeout(() => router.replace('/session/talk'), 1200);
-    return () => clearTimeout(t);
-  }, []);
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      const current = useApp.getState().active?.currentQuestion ?? '';
+      const elapsed = Date.now() - startedAt;
+      if ((current !== questionAtEntry && elapsed >= MIN_DISPLAY_MS) || elapsed >= MAX_WAIT_MS) {
+        clearInterval(timer);
+        router.replace('/session/talk');
+      }
+    }, 150);
+    return () => clearInterval(timer);
+  }, [questionAtEntry]);
 
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
