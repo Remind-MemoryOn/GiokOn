@@ -15,7 +15,7 @@ import { recommendNextTopics } from '@giokon/core';
 import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
-import { useElder, useChronicles } from '../../src/data/reads';
+import { useElder, useChronicles, usePlannedSession } from '../../src/data/reads';
 import { useSessionPersistence } from '../../src/data/session-persistence';
 
 const FRAME_H = 852;
@@ -24,6 +24,8 @@ export default function SessionStart() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id);
   const chronicles = useChronicles(id);
+  // 웹에서 설계해 둔 세션이 있으면 그대로 진행한다(제목·키워드·목표·피해갈 내용).
+  const planned = usePlannedSession(id);
   const begin = useApp((s) => s.beginSession);
   const { openRemoteSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
@@ -33,8 +35,14 @@ export default function SessionStart() {
   }
 
   const onStart = () => {
+    // 설계가 있으면 그것이 이 대화의 계획이다. 없으면 예전처럼 앱이 주제를 고른다.
     const topic = recommendNextTopics(elder, chronicles)[0] ?? '오늘';
-    begin(elder, chronicles, { title: `${topic} 이야기`, therapyType: 'reminiscence' });
+    begin(elder, chronicles, {
+      title: planned?.title ?? `${topic} 이야기`,
+      therapyType: 'reminiscence',
+      plan: planned?.plan,
+      plannedId: planned?.id,
+    });
     // 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
     // 웹에서 진행 상황을 볼 수 있다. 실패해도 대화는 시작하고 종료 시 일괄 저장한다.
     void openRemoteSession();

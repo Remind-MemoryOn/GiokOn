@@ -87,6 +87,13 @@ export interface ActiveSession {
    * 생성에 실패하면(오프라인 등) null 로 두고 종료 시 일괄 저장으로 폴백한다.
    */
   remoteId: string | null;
+  /**
+   * 웹에서 설계해 둔 세션(`sessions.status='planned'`)에서 시작했다면 그 행의 id.
+   *
+   * 이 값이 있으면 **새 행을 만들지 않고 그 행을 active 로 바꾼다** — 새로 만들면
+   * 설계는 영영 planned 로 남고 웹 목록에 유령 행이 하나 더 생긴다.
+   */
+  plannedId: string | null;
   /** 이미 DB(session_logs)에 기록한 턴 수 — 다음 동기화의 시작점. */
   syncedTurns: number;
 }
@@ -164,7 +171,15 @@ interface AppState {
   beginSession: (
     elder: ElderProfile,
     chronicles: ChronicleEntry[],
-    input: { title: string; therapyType: TherapyType; note?: string },
+    input: {
+      title: string;
+      therapyType: TherapyType;
+      note?: string;
+      /** 웹 설계값 — 있으면 대화 진행(주제 선택·회피)에 그대로 쓰인다. */
+      plan?: Session['plan'];
+      /** 설계 행 id — 시작 시 그 행을 active 로 바꾼다(새로 만들지 않는다). */
+      plannedId?: string;
+    },
   ) => void;
   /** 마이크(모의 STT) — 어르신 발화를 인식해 확인 화면으로 넘긴다. */
   captureUtterance: () => void;
@@ -322,6 +337,7 @@ export const useApp = create<AppState>((set, get) => ({
       title: input.title,
       therapyType: input.therapyType,
       note: input.note,
+      plan: input.plan,
       durationMinutes: 0,
       elderId: elder.id,
       createdAt: ts,
@@ -343,6 +359,7 @@ export const useApp = create<AppState>((set, get) => ({
         safety: { ...SAFE_INITIAL },
         events: [],
         remoteId: null,
+        plannedId: input.plannedId ?? null,
         syncedTurns: 0,
       },
     });

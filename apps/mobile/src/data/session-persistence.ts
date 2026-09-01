@@ -253,7 +253,28 @@ export function useSessionPersistence(): {
     if (!a || a.remoteId) return;
     try {
       const row = await withRetry(async () => {
-        const { data, error } = await getGiokonClient()
+        const client = getGiokonClient();
+        // 웹에서 설계해 둔 세션으로 시작했으면 **그 행을 이어받는다**(새로 만들면
+        // 설계는 planned 로 남고 웹 목록에 유령 행이 하나 더 생긴다).
+        // started_at 은 설계 시각이었으므로 실제 시작 시각으로 갱신한다.
+        if (a.plannedId) {
+          const { data, error } = await client
+            .from('sessions')
+            .update({
+              status: 'active',
+              turn_count: a.turns.length,
+              current_topic: a.currentTopic,
+              started_at: a.startedAt,
+            })
+            .eq('id', a.plannedId)
+            .eq('status', 'planned')
+            .select('id')
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          // 다른 기기가 먼저 이어받았으면(planned 가 아니면) 행이 없다 — 새로 만든다.
+          if (data) return data;
+        }
+        const { data, error } = await client
           .from('sessions')
           .insert({
             profile_id: a.elder.id,

@@ -152,17 +152,16 @@ function seedChronicleList(q: typeof queryClient) {
 function seedSessionList(q: typeof queryClient) {
   // 대화 분석 목록(228:4628)·보호자 대화 분석(104:1041)도 같은 3건을 그린다.
   const p = window.location.pathname;
-  const guardian = /^\/guardian\/analysis\/sessions$/.test(p);
-  if (
-    !guardian
-    && !/\/caregiver\/sessions\//.test(p)
-    && !/\/caregiver\/analysis\/[^/]+\/sessions$/.test(p)
-  ) return;
+  // 대화 분석 목록(요양보호사·보호자 모두)은 **끝난 대화만** 세운다 — 분석은 대화가
+  // 끝나야 생긴다. 시안이 3행이라 세 번째도 종료로 심는다. 세션 목록(178:877)은
+  // '진행 중' 배지를 그리므로 거기서만 active 로 둔다.
+  const analysisList =
+    /^\/guardian\/analysis\/sessions$/.test(p) || /\/caregiver\/analysis\/[^/]+\/sessions$/.test(p);
+  if (!analysisList && !/\/caregiver\/sessions\//.test(p)) return;
   q.setQueryData(queryKeys.sessions(E1), [
     { ...session('s1', E1, 14, 'ended', '2026-07-30T03:00:00Z'), title: '어린 시절 집 이야기' },
     { ...session('s2', E1, 12, 'ended', '2026-07-19T03:00:00Z'), title: '어머니와 함께했던 기억' },
-    // 보호자에게는 끝난 대화만 보인다 — 그 화면 시안은 3행이라 세 번째도 종료로 심는다.
-    { ...session('s3', E1, 9, guardian ? 'ended' : 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
+    { ...session('s3', E1, 9, analysisList ? 'ended' : 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
   ]);
 }
 

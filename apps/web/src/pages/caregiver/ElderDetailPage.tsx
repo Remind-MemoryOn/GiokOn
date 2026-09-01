@@ -227,7 +227,13 @@ export function ElderDetailPage() {
   }));
   // 주요 기억은 '기본 정보 수정' 폼이 관리한다 → 연대기 목록에서는 감춘다(두 곳에서 지워지지 않게).
   const chronicleRows = (chronicles.data ?? []).filter((c) => !isKeyMemory(c.topic)).slice(0, 2);
-  const sessionRows = (sessions.data ?? []).slice(0, 3);
+  // 설계(planned)와 이력을 가른다 — 설계는 아직 일어나지 않은 일이라 "대화 이력" 이 아니다.
+  const allSessions = sessions.data ?? [];
+  const plannedRows = allSessions
+    .filter((x) => x.status === 'planned')
+    .sort((a, b) => (a.planned_date ?? '').localeCompare(b.planned_date ?? ''))
+    .slice(0, 1);
+  const sessionRows = allSessions.filter((x) => x.status !== 'planned').slice(0, 3);
   const safetyRows = (safety.data ?? []).slice(0, 1);
 
   if (profileQuery.isLoading) return null;
@@ -566,14 +572,46 @@ export function ElderDetailPage() {
         className="absolute left-[384px] h-px w-[930px] bg-line"
         style={{ top: Y(1709) }}
       />
-      {/* 세션 설계(planned)는 Phase 2 스키마 대상 — 지금은 근거가 없어 빈 상태만 보여준다 */}
-      <p
-        data-fx="195:313"
-        className="absolute left-[677px] w-[343px] text-w-sub leading-[28px] text-ink-500"
-        style={{ top: Y(1776.04) }}
-      >
-        설계된 세션이 없습니다. 첫 세션을 만들어보세요.
-      </p>
+      {/* 설계된 세션 — Figma 는 빈 상태만 그렸다. 행이 생기면 이 페이지가 이미 쓰는
+          세션 행 모양(상대일 + 제목 + 상태 pill · 피치 137)을 그대로 쓴다. 카드 높이가
+          고정이라 한 줄만 보여주고 나머지는 "자세히 보기"로 넘긴다(연대기 2 · 대화 이력 3
+          · 안전 이벤트 1 과 같은 규칙). */}
+      {plannedRows.length === 0 ? (
+        <p
+          data-fx="195:313"
+          className="absolute left-[677px] w-[343px] text-w-sub leading-[28px] text-ink-500"
+          style={{ top: Y(1776.04) }}
+        >
+          설계된 세션이 없습니다. 첫 세션을 만들어보세요.
+        </p>
+      ) : (
+        plannedRows.map((p) => (
+          <div key={p.id}>
+            <span
+              className="absolute left-[379px] whitespace-pre text-w-body leading-[28px] text-ink-500"
+              style={{ top: Y(1738.49) }}
+            >
+              {`${ymd(p.planned_date ?? p.started_at)}    ${p.duration_minutes ? `${p.duration_minutes}분 예정` : '앱에서 진행'}`}
+            </span>
+            <Link
+              to={`/caregiver/sessions/${elder.id}/plan/${p.id}`}
+              className="absolute left-[379px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900"
+              style={{ top: Y(1753) }}
+            >
+              {p.title ?? '회상 대화'}
+            </Link>
+            <Pill
+              left={1242}
+              top={1764}
+              width={82}
+              height={25}
+              className="bg-accent/10 text-w-sub text-accent"
+            >
+              설계됨
+            </Pill>
+          </div>
+        ))
+      )}
 
       {/* ── 연대기 ─────────────────────────────────────────────────────── */}
       <Card fx="195:315" left={322} top={1916.12} width={1054} height={429.25} />

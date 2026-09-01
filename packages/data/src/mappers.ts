@@ -96,15 +96,36 @@ export function toConversationTurn(row: SessionLogRow): ConversationTurn {
  */
 export function toSession(row: SessionRow): Session {
   return {
+    // 설계된 세션(status='planned')은 웹에서 붙인 제목이 곧 제목이다. 진행·종료된
+    // 세션은 대화가 실제로 머문 주제(current_topic)를 쓴다.
     id: row.id,
-    title: row.current_topic ?? '회상 대화',
+    title: row.title ?? row.current_topic ?? '회상 대화',
     therapyType: 'reminiscence',
     durationMinutes:
-      row.duration_seconds != null ? Math.max(0, Math.round(row.duration_seconds / 60)) : 0,
+      row.duration_seconds != null
+        ? Math.max(0, Math.round(row.duration_seconds / 60))
+        : (row.duration_minutes ?? 0),
     elderId: row.profile_id,
+    plan: toSessionPlan(row),
     createdAt: row.started_at,
     updatedAt: row.updated_at,
   }
+}
+
+/**
+ * 웹 세션 설계(`196:272`) → 도메인. **근거 없는 값을 만들지 않는다** — 설계 칸이
+ * 전부 비어 있으면 `plan` 자체를 두지 않아(undefined) 앱이 예전처럼 스스로 주제를 고른다.
+ */
+export function toSessionPlan(row: SessionRow): Session['plan'] {
+  const keywords = row.keywords ?? []
+  const plan = {
+    content: row.content ?? undefined,
+    goal: row.goal ?? undefined,
+    avoidTopics: row.avoid_topics ?? undefined,
+    keywords,
+  }
+  const empty = !plan.content && !plan.goal && !plan.avoidTopics && keywords.length === 0
+  return empty ? undefined : plan
 }
 
 /** DB 세션 메타 + 전문(session_logs)을 도메인 ConversationLog로 합친다. */

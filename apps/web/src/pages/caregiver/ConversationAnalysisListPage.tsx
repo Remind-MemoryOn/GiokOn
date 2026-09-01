@@ -41,7 +41,8 @@ export function ConversationAnalysisListPage() {
     [profileQuery.data],
   );
   const rows = useMemo(() => {
-    const all = sessions.data ?? [];
+    // 분석은 대화가 **끝나야** 생긴다 — 설계·진행 중 세션을 여기 세우면 빈 분석으로 간다.
+    const all = (sessions.data ?? []).filter((s) => s.status === 'ended');
     return day
       ? all.filter((s) => dayKey(s.planned_date ?? s.started_at) === day)
       : all;

@@ -63,6 +63,10 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 - 앱↔웹 실시간은 `useGiokonRealtime`(sessions·session_analyses·guardian_shares·safety_events·
   profiles·chronicle_entries·session_logs·notifications·messages).
 - 어르신 접근은 **배정 모델**(`profile_caregivers`) + **영속 어르신 코드**(`elder_codes`).
+- **세션 상태 3종을 구분한다**: `planned`(웹에서 설계, 아직 일어나지 않음) · `active`(앱에서
+  진행 중) · `ended`(끝남). "대화 이력"·"대화 분석 목록" 에 `planned` 를 세우지 않는다
+  (분석은 `ended` 에만 있다). 앱은 `planned` 를 받아 그대로 진행하고, 시작할 때 **그 행을
+  active 로 바꾼다**(새로 만들면 설계가 유령으로 남는다).
 - RLS 가 최종 방어선이다. 화면에서 감추는 것으로 접근통제를 대신하지 않는다.
 
 ## 4. 카피 · 컴플라이언스 (CI 강제)

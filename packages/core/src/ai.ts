@@ -248,6 +248,46 @@ function detectTopicInterest(text: string, banks: TopicBank[], excludeTopic?: st
   return null
 }
 
+// ── 세션 설계(웹 `196:272`)를 대화 진행에 반영 ──────────────────
+//
+// 설계 값은 표시용이 아니다. **피해갈 내용은 안전 가드**(그 주제로 열지도 전환하지도
+// 않는다), **키워드·내용은 주제 선택 입력**이다. 설계가 없으면 예전과 똑같이 동작한다.
+
+/** 자유 서술 텍스트에서 주제 뱅크를 찾는다(키워드 사전 + 주제 이름 직접 언급). */
+function topicsInText(text: string | undefined, banks: TopicBank[]): TopicBank[] {
+  if (!text) return []
+  const found: TopicBank[] = []
+  for (const bank of banks) {
+    const named = text.includes(bank.topic)
+    const mapped = Object.entries(TOPIC_INTEREST_MAP).some(
+      ([keyword, topic]) => topic === bank.topic && text.includes(keyword),
+    )
+    if (named || mapped) found.push(bank)
+  }
+  return found
+}
+
+/** 설계가 피하라고 한 주제인가. 설계가 없으면 무엇도 피하지 않는다. */
+function isAvoidedTopic(topic: string, session: Session, banks: TopicBank[]): boolean {
+  const avoid = session.plan?.avoidTopics
+  if (!avoid?.trim()) return false
+  return topicsInText(avoid, banks).some((b) => b.topic === topic)
+}
+
+/** 설계가 원한 주제(키워드 우선, 없으면 내용에서). 피해갈 주제는 제외한다. */
+function plannedTopics(session: Session, banks: TopicBank[]): TopicBank[] {
+  const plan = session.plan
+  if (!plan) return []
+  const fromKeywords = plan.keywords.flatMap((k) => topicsInText(k, banks))
+  const wanted = fromKeywords.length > 0 ? fromKeywords : topicsInText(plan.content, banks)
+  const seen = new Set<string>()
+  return wanted.filter((b) => {
+    if (seen.has(b.topic) || isAvoidedTopic(b.topic, session, banks)) return false
+    seen.add(b.topic)
+    return true
+  })
+}
+
 // ─────────────────────────────────────────────────────────────
 // 2) 대화 이력에서 상태 신호 도출 (순수 — 외부 상태 없음)
 // ─────────────────────────────────────────────────────────────
@@ -339,8 +379,19 @@ function situationStreak(
 
 // 다음 주제 선택: ① 미방문 + 비민감 + 프로필 재료 → ② 미방문 + 비민감 →
 // ③ 비민감(현재 제외) → ④ 현재 제외 아무거나. 힘들어했던 주제로 되돌아가지 않는다.
-function pickNextTopic(banks: TopicBank[], state: DialogueState, elder: ElderProfile): TopicBank {
-  const notCurrent = banks.filter((b) => b.topic !== state.currentTopic)
+function pickNextTopic(
+  banks: TopicBank[],
+  state: DialogueState,
+  elder: ElderProfile,
+  session?: Session,
+): TopicBank {
+  // 설계가 피하라고 한 주제는 후보에서 뺀다 — 전부 빠지면 설계를 무시하지 않고
+  // 원래 후보로 되돌린다(대화가 멈추는 것이 더 나쁘다).
+  const allowed = session
+    ? banks.filter((b) => !isAvoidedTopic(b.topic, session, banks))
+    : banks
+  const pool = allowed.length > 0 ? allowed : banks
+  const notCurrent = pool.filter((b) => b.topic !== state.currentTopic)
   const fresh = notCurrent.filter(
     (b) => !state.visitedTopics.has(b.topic) && !state.sensitiveTopics.has(b.topic),
   )
@@ -349,7 +400,7 @@ function pickNextTopic(banks: TopicBank[], state: DialogueState, elder: ElderPro
   if (fresh.length > 0) return fresh[0]
   const safe = notCurrent.filter((b) => !state.sensitiveTopics.has(b.topic))
   if (safe.length > 0) return safe[0]
-  return notCurrent[0] ?? banks[0]
+  return notCurrent[0] ?? pool[0]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -371,18 +422,27 @@ export function generateOpener(
   chronicle: ChronicleEntry[],
 ): AiResponse {
   const banks = getBanks(session.therapyType)
+  const allowed = banks.filter((b) => !isAvoidedTopic(b.topic, session, banks))
+  const pool = allowed.length > 0 ? allowed : banks
 
+  // 1) 웹에서 설계한 주제가 최우선이다(요양보호사가 정한 방향).
+  const planned = plannedTopics(session, banks)[0]
+  if (planned) {
+    return { question: planned.opener(elder), topic: planned.topic, switchTopic: false }
+  }
+
+  // 2) 최근 연대기 항목의 키워드 — 단, 피해갈 주제는 건너뛴다.
   if (chronicle.length > 0) {
     const recent = chronicle[0]
     for (const k of recent.keywords) {
-      const bank = banks.find((b) => b.topic === TOPIC_INTEREST_MAP[k])
+      const bank = pool.find((b) => b.topic === TOPIC_INTEREST_MAP[k])
       if (bank) {
         return { question: bank.opener(elder), topic: bank.topic, switchTopic: false }
       }
     }
   }
 
-  const fallback = banks.find((b) => hasProfileMaterial(b, elder)) || banks[0]
+  const fallback = pool.find((b) => hasProfileMaterial(b, elder)) || pool[0]
   return { question: fallback.opener(elder), topic: fallback.topic, switchTopic: false }
 }
 
@@ -460,7 +520,7 @@ export function generateReply(
   // ── 급성 고통: 지지 우선. 이어지면 편안한 주제로 부드럽게 ──
   if (a.situation === 'distress') {
     if (situationStreak(state, 'distress') >= 2) {
-      const next = pickNextTopic(banks, state, elder)
+      const next = pickNextTopic(banks, state, elder, session)
       return {
         question: `많이 힘드셨지요. 말씀해 주셔서 고마워요. 우리 잠깐 숨 한번 쉬고요. ${next.simple(elder)}`,
         topic: next.topic,
@@ -479,7 +539,7 @@ export function generateReply(
     const griefStreak = situationStreak(state, 'grief')
     if (griefStreak >= 3) {
       // 침잠이 길어지면 부드럽게 따뜻한 주제로(민감 주제 제외).
-      const next = pickNextTopic(banks, state, elder)
+      const next = pickNextTopic(banks, state, elder, session)
       return {
         question: `귀한 이야기 들려주셔서 고마워요. 마음이 많이 쓰이셨겠어요. ${next.opener(elder)}`,
         topic: next.topic,
@@ -516,7 +576,7 @@ export function generateReply(
       }
     }
     if (streak === 2) {
-      const next = pickNextTopic(banks, state, elder)
+      const next = pickNextTopic(banks, state, elder, session)
       return {
         question: `천천히 하셔도 돼요. ${next.simple(elder)}`,
         topic: next.topic,
@@ -533,7 +593,11 @@ export function generateReply(
   // ── 일반 흐름 ──
 
   // 어르신이 먼저 꺼낸 다른 주제가 있으면 따라간다(어르신 주도).
-  const interest = detectTopicInterest(lastUserText, banks, state.currentTopic)
+  // ⚠️ 설계가 피하라고 한 주제로는 **AI 가 먼저 파고들지 않는다**. 어르신이 그 이야기를
+  //    꺼내는 것을 막지는 않지만(회피는 애도 원칙에 반한다), 오프너로 확장하지 않고
+  //    지금 주제를 이어간다.
+  const detected = detectTopicInterest(lastUserText, banks, state.currentTopic)
+  const interest = detected && !isAvoidedTopic(detected.topic, session, banks) ? detected : null
   if (interest) {
     return {
       question: `${shortQuote(lastUserText)} 그 이야기 더 듣고 싶어요. ${interest.opener(elder)}`,
@@ -547,7 +611,7 @@ export function generateReply(
   // 저관여: 처음엔 같은 주제를 더 쉽게(스캐폴딩), 연속되면 다른 쉬운 주제로.
   if (engagement === 'low') {
     if (state.prevEngagement === 'low' || state.prevEngagement === 'silent') {
-      const next = pickNextTopic(banks, state, elder)
+      const next = pickNextTopic(banks, state, elder, session)
       return {
         question: `괜찮아요. 그럼 다른 이야기 해볼까요? ${next.simple(elder)}`,
         topic: next.topic,
@@ -564,7 +628,7 @@ export function generateReply(
   // 진행: 후속 질문 풀에서 다음 질문. 풀 소진 시 다리 문장과 함께 주제 이동.
   const followupIndex = Math.max(0, state.currentTopicRun - 1)
   if (followupIndex >= currentBank.followups.length) {
-    const next = pickNextTopic(banks, state, elder)
+    const next = pickNextTopic(banks, state, elder, session)
     return {
       question: `${currentBank.bridge()} ${next.opener(elder)}`,
       topic: next.topic,
