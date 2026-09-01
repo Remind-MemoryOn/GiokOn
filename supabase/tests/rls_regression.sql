@@ -14,6 +14,7 @@ set client_min_messages = warning;
 -- security definer 함수/트리거가 RLS 를 우회하므로 superuser 로 정리한다.
 delete from public.audit_log;
 delete from public.notifications;
+delete from public.messages;
 delete from public.safety_events;
 delete from public.profile_guardians;
 delete from public.guardian_invites;
@@ -871,6 +872,107 @@ do $$ begin
     '다시 열어도 확인 알림은 한 번만 남아야 함';
 end $$;
 reset role;
+
+-- ── 5.11) 보호자 메시지: 보호자 → 담당 요양보호사 단방향 · append-only ─────
+-- 디자인에 답장 UI 가 없고 사용자가 단방향으로 확정했다 → 요양보호사는 읽기만 한다.
+-- 이용 안내 모달이 "내용과 전송 시간이 자동 저장" 이라 약속하므로 수정·삭제도 없다.
+
+-- 승인된 보호자 H 는 연결 어르신에 대해 보낼 수 있다.
+set role authenticated;
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$
+declare
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  insert into public.messages (profile_id, sender_user_id, body)
+    values (pid, '55555555-5555-5555-5555-555555555555',
+            '어제 산책 사진 잘 봤습니다. 무릎이 불편해 보이셨는데 괜찮으셨는지요?');
+end $$;
+do $$ begin
+  assert (select count(*) from public.messages) = 1,
+    '보낸 보호자는 자기 메시지를 볼 수 있어야 함';
+end $$;
+
+-- 보낸 사람 이름을 남의 것으로 적을 수 없다.
+do $$
+declare
+  blocked boolean := false;
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  begin
+    insert into public.messages (profile_id, sender_user_id, body)
+      values (pid, '33333333-3333-3333-3333-333333333333', '남의 이름으로');
+  exception when insufficient_privilege or check_violation then blocked := true;
+  end;
+  assert blocked, '보낸 사람을 위조할 수 없어야 함';
+end $$;
+
+-- 연결 없는 보호자 G: 보이지도 않고 보내지도 못한다.
+set test.uid = '44444444-4444-4444-4444-444444444444';
+do $$
+declare
+  blocked boolean := false;
+  pid uuid := (select id from public.profiles where name = 'A어르신');
+begin
+  assert (select count(*) from public.messages) = 0,
+    '연결되지 않은 보호자에게는 메시지가 보이면 안 됨';
+  begin
+    insert into public.messages (profile_id, sender_user_id, body)
+      values (pid, '44444444-4444-4444-4444-444444444444', '연결 없이 보내기');
+  exception when insufficient_privilege or check_violation then blocked := true;
+  end;
+  assert blocked, '연결되지 않은 보호자는 메시지를 보낼 수 없어야 함';
+end $$;
+
+-- 담당 요양보호사 C: 읽을 수 있고, 알림도 받는다. 그러나 답장(insert)은 못 한다.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  blocked boolean := false;
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  assert (select count(*) from public.messages) = 1,
+    '담당 요양보호사는 메시지를 볼 수 있어야 함';
+  assert (select count(*) from public.notifications where kind = 'message') = 1,
+    '메시지가 오면 담당 요양보호사에게 알림이 가야 함';
+  begin
+    insert into public.messages (profile_id, sender_user_id, body)
+      values (pid, '33333333-3333-3333-3333-333333333333', '답장합니다');
+  exception when insufficient_privilege or check_violation then blocked := true;
+  end;
+  assert blocked, '요양보호사는 메시지를 보낼 수 없어야 함(단방향)';
+end $$;
+
+-- 배정되지 않은 기관 관리자 A · 다른 기관 B: 0건(개인 간 문의라 기관 공유가 아니다).
+set test.uid = '11111111-1111-1111-1111-111111111111';
+do $$ begin
+  assert (select count(*) from public.messages) = 0,
+    '배정되지 않은 기관 관리자에게는 메시지가 보이면 안 됨';
+end $$;
+set test.uid = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  assert (select count(*) from public.messages) = 0,
+    '다른 기관의 메시지는 절대 보이면 안 됨';
+end $$;
+
+-- append-only: 보낸 사람도 고치거나 지울 수 없다.
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$
+declare
+  n int;
+begin
+  update public.messages set body = '내용을 바꿔치기';
+  get diagnostics n = row_count;
+  assert n = 0, '보낸 메시지는 수정할 수 없어야 함';
+  delete from public.messages;
+  get diagnostics n = row_count;
+  assert n = 0, '보낸 메시지는 삭제할 수 없어야 함';
+end $$;
+reset role;
+do $$ begin
+  assert (select count(*) from public.messages) = 1,
+    '메시지는 append-only 로 남아야 함';
+end $$;
 
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin

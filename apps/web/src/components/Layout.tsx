@@ -4,6 +4,7 @@ import {
   useGiokonRealtime,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
+  useMyMessages,
   useMyNotifications,
   unreadCount,
   type RealtimeEvent,
@@ -40,17 +41,21 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
   const { data: notificationRows } = useMyNotifications({ enabled: isConfigured });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
-  const notifications = useMemo(
-    () =>
-      (notificationRows ?? []).map((n) => ({
-        id: n.id,
-        title: n.title,
-        body: n.body,
-        at: n.created_at,
-        read: n.read_at !== null,
-      })),
-    [notificationRows],
-  );
+  // 메시지 알림 본문은 미리보기(200자)라 원문을 곁들인다 — 요양보호사 수신함 화면이
+  // 디자인에 없어 벨이 유일한 수신처다. RLS 가 담당 어르신 것만 돌려준다.
+  // 메시지 알림이 하나도 없으면 원문을 받을 이유가 없다.
+  const hasMessageNotice = (notificationRows ?? []).some((n) => n.kind === 'message');
+  const { data: messageRows } = useMyMessages({ enabled: isConfigured && hasMessageNotice });
+  const notifications = useMemo(() => {
+    const bodyById = new Map((messageRows ?? []).map((m) => [m.id, m.body]));
+    return (notificationRows ?? []).map((n) => ({
+      id: n.id,
+      title: n.title,
+      body: (n.kind === 'message' && n.source_id ? bodyById.get(n.source_id) : null) ?? n.body,
+      at: n.created_at,
+      read: n.read_at !== null,
+    }));
+  }, [notificationRows, messageRows]);
   const handleReadNotification = useCallback(
     (id: string) => markRead.mutate(id),
     [markRead],

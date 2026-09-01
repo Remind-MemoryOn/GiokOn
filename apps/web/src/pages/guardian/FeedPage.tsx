@@ -384,6 +384,8 @@ export function FeedPage() {
       {/* 메시지 이용 안내 — 보내기 전에 반드시 읽는다(69:195) */}
       <MessageNoticeDialog
         open={compose}
+        profileId={approved?.profile_id}
+        senderUserId={userRow?.id}
         onClose={() => setSearch(tab === 'all' ? {} : { tab }, { replace: true })}
       />
     </div>

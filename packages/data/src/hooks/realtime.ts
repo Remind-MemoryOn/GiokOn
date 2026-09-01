@@ -24,6 +24,7 @@ export type RealtimeTable =
   | 'guardian_shares'
   | 'safety_events'
   | 'notifications'
+  | 'messages'
 
 export interface RealtimeEvent {
   table: RealtimeTable
@@ -57,6 +58,7 @@ const DEFAULT_TABLES: RealtimeTable[] = [
   'guardian_shares',
   'safety_events',
   'notifications',
+  'messages',
 ]
 
 function invalidateFor(
@@ -109,6 +111,10 @@ function invalidateFor(
     case 'notifications':
       // RLS 가 본인 알림만 전달하므로 수신 자체가 내 알림함 변경이다.
       void qc.invalidateQueries({ queryKey: queryKeys.myNotifications })
+      break
+    case 'messages':
+      void qc.invalidateQueries({ queryKey: queryKeys.myMessages })
+      if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.messages(profileId) })
       break
   }
 }

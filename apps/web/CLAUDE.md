@@ -43,8 +43,10 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 
 **추가** — 백엔드까지 구현
 - **TopBar**: 워드마크 · 어르신 검색 · 알림 벨(배지) · 사용자 메뉴 드롭다운.
-- **알림 센터**(미배선) / **메시지**(보호자 → 담당 요양보호사 **단방향** — 이용 안내 모달까지
-  이관, 전송은 `messages` 테이블 신설 후) /
+- **알림**(완료 — `notifications` + 트리거 파생. 전용 알림 화면은 디자인에 없어 **탑바 벨
+  배지와 드롭다운까지**가 소비처다. 사람은 알림을 만들 수 없다: INSERT 정책 없음) /
+  **메시지**(완료 — `messages`, 보호자 → 담당 요양보호사 **단방향** · append-only ·
+  수신은 알림으로. ⚠️ **작성 폼은 Figma 에 없다** — 시안은 이용 안내 모달까지만 그렸다) /
   **공유 사진**(요양일지 첨부 사진을 날짜순 갤러리로 보호자 공개 — **웹에서만 업로드**, 완료) /
   **보호자 확인(읽음)** + 확인 알림 토글(완료 — `guardian_shares.viewed_at`/`view_count`/
   `notify_on_view` + 서버 함수 `mark_share_viewed`) / **항목 단위 공개**(완료).
@@ -59,7 +61,7 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 - **Supabase 미설정(.env 없음)에서도 앱은 떠야 한다.** `useAuth().isConfigured` 로 분기해 훅을
   `enabled: isConfigured` 로 끄고 안내를 렌더한다. 이 폴백을 깨지 말 것.
 - 앱↔웹 실시간은 `useGiokonRealtime`(sessions·session_analyses·guardian_shares·safety_events·
-  profiles·chronicle_entries·session_logs).
+  profiles·chronicle_entries·session_logs·notifications·messages).
 - 어르신 접근은 **배정 모델**(`profile_caregivers`) + **영속 어르신 코드**(`elder_codes`).
 - RLS 가 최종 방어선이다. 화면에서 감추는 것으로 접근통제를 대신하지 않는다.
 

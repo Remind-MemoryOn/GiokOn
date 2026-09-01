@@ -864,7 +864,11 @@ const SCREENS = [
     /text-\[22px\] font-semibold leading-\[24px\]/,
     /lineHeight: '35px'/,
     /평일 오전 9:00 ~ 오후 18:00/,
-    /메시지 전송 자체는 아직 백엔드가 없다/,
+    // 작성 단계는 Figma 에 없다 — 안내를 읽고 확인한 뒤에만 열리고, 보낸 뒤 수정·삭제가 없다.
+    /\*\*작성 화면은 Figma 에 없다\*\*/,
+    /const MAX = 1000;/,
+    /useSendMessage/,
+    /보낸 메시지는 수정하거나 지울 수\n\s*없습니다/,
   ]],
   [`${WEB}/src/components/shell/TopBar.tsx`, '보호자 셸 탑바: 검색 없음 · 벨 1080 · 아바타 1140', [
     /variant\?: 'caregiver' \| 'guardian'/,
