@@ -6,8 +6,9 @@
 // **수치는 전부 `@giokon/core` 관찰 순수함수**로 낸다(앱과 같은 값). 근거가 없으면
 // 값을 만들지 않고 `—`/빈 상태로 둔다 — 0(관찰 0회)과 null(측정 불가)을 구분한다.
 // ⚠️ Figma 의 52명·142회·+22% 같은 숫자와 AI 의견 문장은 **데모 값**이다.
-// ⚠️ 카피("인지 효과 지표"·"향상률")는 Figma 그대로 뒀다 — 모바일과 같은 보류 결정이며,
-//    화면 하단에 관찰 지표 고지를 함께 붙인다(비의료 포지셔닝 보완).
+// ⚠️ 카피는 **시안 그대로**다(사용자 확정 2026-09-01) — "인지 효과 지표"·"향상률·증가율"·
+//    축 카드 "향상/하락". 모바일이 같은 문구로 나가 있어 맞춘 결정이며, 화면 하단에
+//    관찰 지표 고지를 함께 붙인다(비의료 포지셔닝 보완).
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -481,8 +482,16 @@ export function AnalysisPage() {
               <div className="absolute inset-x-0 top-[75px] text-center text-w-section font-bold leading-[35px] text-ink-900">
                 {pct(o?.value ?? null)}
               </div>
+              {/* 시안 그대로 방향 라벨만 둔다(숫자 없음). 견줄 이전 기록이 없으면
+                  방향을 만들지 않고 비워 둔다 — 시안에는 없는 상태다. */}
               <div className="absolute inset-x-0 top-[121px] text-center text-w-body leading-[30px] text-ink-500">
-                {o?.delta == null ? '변화 근거 없음' : `${o.delta >= 0 ? '+' : ''}${o.delta}%p`}
+                {o?.delta == null ? (
+                  '—'
+                ) : (
+                  <span className={cn('font-semibold', o.delta >= 0 ? 'text-live' : 'text-alert')}>
+                    {o.delta >= 0 ? '▲ 향상' : '▼ 하락'}
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -492,14 +501,14 @@ export function AnalysisPage() {
         <Section fx="228:3168" top={745}>
           종합 인지 활동 효과 분석
         </Section>
-        {/* ⚠️ 시안 라벨은 "향상률·증가율"이지만 방향을 단정하는 말이라 **"변화"** 로 둔다
-            (apps/web/CLAUDE.md §4 비의료). 지표·아이콘·자리는 시안 그대로. */}
+        {/* 라벨·단위 모두 시안 그대로(향상률·증가율 · `%`). 값이 백분율의 차이라 엄밀히는
+            %p 지만 표기는 시안을 따른다(사용자 확정 2026-09-01). */}
         {(
           [
-            { axis: 'recall', label: '기억 회상 변화', icon: asset.anTrendRecall, w: 36, h: 19.4 },
-            { axis: 'emotion', label: '감정 표현 변화', icon: asset.anTrendEmotion, w: 36, h: 36 },
-            { axis: 'participation', label: '대화 참여도 변화', icon: asset.anTrendPart, w: 34.5, h: 33.4 },
-            { axis: 'expression', label: '응답 지속 시간 변화', icon: asset.anTrendResp, w: 36, h: 36 },
+            { axis: 'recall', label: '기억 회상 향상률', icon: asset.anTrendRecall, w: 36, h: 19.4 },
+            { axis: 'emotion', label: '감정 표현 증가율', icon: asset.anTrendEmotion, w: 36, h: 36 },
+            { axis: 'participation', label: '대화 참여도 향상률', icon: asset.anTrendPart, w: 34.5, h: 33.4 },
+            { axis: 'expression', label: '응답 지속 시간 증가율', icon: asset.anTrendResp, w: 36, h: 36 },
           ] as const
         ).map((m, i) => {
           const o = axisObs.find((x) => x.axis === m.axis);
@@ -517,7 +526,7 @@ export function AnalysisPage() {
                 <img src={m.icon} alt="" className="block" style={{ width: m.w, height: m.h }} />
                 <span className="text-w-stat font-bold leading-[35px] text-accent">
                   {o?.delta == null ? '—' : `${o.delta >= 0 ? '+' : ''}${o.delta}`}
-                  {o?.delta == null ? '' : <span className="text-w-body font-medium">%p</span>}
+                  {o?.delta == null ? '' : <span className="text-w-body font-medium">%</span>}
                 </span>
               </div>
             </div>
