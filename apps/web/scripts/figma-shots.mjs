@@ -3,11 +3,14 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SCREENS } from './figma-audit.spec.mjs';
 
 const PORT = Number(process.env.PORT || 4183);
 const BASE = process.env.BASE_URL || `http://localhost:${PORT}`;
-const OUT = process.env.AUDIT_OUT || '/tmp/audit';
+const OUT = process.env.AUDIT_OUT || join(tmpdir(), 'giokon-audit');
 const ONLY = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 mkdirSync(OUT, { recursive: true });
 // 잉크 대조(figma-ink.py)가 같은 실측표를 읽도록 내보낸다.
@@ -29,7 +32,7 @@ if (!process.env.BASE_URL && !(await reachable(BASE))) {
     process.exit(1);
   }
   preview = spawn(
-    'node',
+    process.execPath,
     [
       './node_modules/vite/bin/vite.js',
       'preview',
@@ -39,14 +42,17 @@ if (!process.env.BASE_URL && !(await reachable(BASE))) {
       String(PORT),
       '--strictPort',
     ],
-    { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore' },
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore' },
   );
   for (let i = 0; i < 60 && !(await reachable(BASE)); i++) await new Promise((r) => setTimeout(r, 500));
 }
 
 const executablePath =
   process.env.CHROMIUM_PATH ??
-  (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+  (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) ??
+  (existsSync('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe')
+    ? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+    : undefined);
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 
 for (const s of SCREENS) {

@@ -19,6 +19,8 @@ interface Props {
   variant?: 'caregiver' | 'guardian';
   /** 어르신 검색 — 목록형 화면에서만 노출된다(디자인 기준). */
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
+  /** 검색어와 일치하는 어르신 — 현재 업무 화면 안에서 바로 이동한다. */
+  searchResults?: { id: string; label: string; to: string }[];
   /** 미확인 알림 수. 0이면 배지를 숨긴다. */
   notificationCount?: number;
   /** 벨 드롭다운에 표시할 알림(최신순). */
@@ -42,6 +44,7 @@ export interface NotificationItem {
 export function TopBar({
   variant = 'caregiver',
   search,
+  searchResults = [],
   notificationCount = 0,
   notifications = [],
   onReadNotification,
@@ -82,27 +85,55 @@ export function TopBar({
         </Link>
 
         {search ? (
-          <div
-            className="absolute left-[561px] top-[62px] flex h-[40px] w-[466px] items-center rounded-pill bg-mute-field"
-            data-fx="topbar-search"
-          >
-            <img
-              src={asset.iconSearch}
-              alt=""
-              width={21}
-              height={22}
-              className="ml-[24px]"
-              data-fx="topbar-search-icon"
-            />
-            <input
-              value={search.value}
-              onChange={(e) => search.onChange(e.target.value)}
-              /* Figma 탑바 검색은 안내문 없이 돋보기만 둔다 — 보이는 라벨이 없으므로
-                 스크린리더용 이름을 붙인다(렌더에는 영향이 없다, KWCAG 라벨 제공). */
-              aria-label="어르신 검색"
-              placeholder={search.placeholder ?? ''}
-              className="ml-3 h-full flex-1 bg-transparent pr-6 text-w-body text-ink-700 placeholder:text-ink-500 focus:outline-none"
-            />
+          <div className="absolute left-[561px] top-[62px] h-[40px] w-[466px]">
+            <div
+              className="flex h-[40px] w-full items-center rounded-pill bg-mute-field"
+              data-fx="topbar-search"
+            >
+              <img
+                src={asset.iconSearch}
+                alt=""
+                width={21}
+                height={22}
+                className="ml-[24px]"
+                data-fx="topbar-search-icon"
+              />
+              <input
+                value={search.value}
+                onChange={(e) => search.onChange(e.target.value)}
+                /* Figma 탑바 검색은 안내문 없이 돋보기만 둔다 — 보이는 라벨이 없으므로
+                   스크린리더용 이름을 붙인다(렌더에는 영향이 없다, KWCAG 라벨 제공). */
+                aria-label="어르신 검색"
+                placeholder={search.placeholder ?? ''}
+                className="ml-3 h-full flex-1 bg-transparent pr-6 text-w-body text-ink-700 placeholder:text-ink-500 focus:outline-none"
+              />
+            </div>
+            {/* 결과 목록은 시안에 없다 — 검색창이 표시만 되고 아무 데도 못 가던 것을 잇는다.
+                박스는 40px 그대로고 목록은 그 아래에 겹쳐 뜬다(레이아웃 불변). */}
+            {search.value.trim() ? (
+              <div
+                role="listbox"
+                aria-label="어르신 검색 결과"
+                className="absolute inset-x-0 top-[48px] z-10 overflow-hidden rounded-[10px] border border-line bg-white shadow-card"
+              >
+                {searchResults.length ? (
+                  searchResults.map((result) => (
+                    <Link
+                      key={result.id}
+                      to={result.to}
+                      role="option"
+                      aria-selected={false}
+                      onClick={() => search.onChange('')}
+                      className="flex min-h-[48px] items-center px-5 text-w-sub text-ink-700 hover:bg-accent-soft hover:text-accent focus:bg-accent-soft focus:outline-none"
+                    >
+                      {result.label}
+                    </Link>
+                  ))
+                ) : (
+                  <p className="px-5 py-3 text-w-sub text-ink-500">일치하는 어르신이 없어요.</p>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

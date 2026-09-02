@@ -67,3 +67,7 @@ Thumbs.db
 
 # Figma 실측 감사 빌드(pnpm -F @giokon/web audit)
 dist-audit/
+
+# 배포용 산출물 사본·pnpm 스토어는 저장소에 넣지 않는다(2026-09-02)
+deliverables/
+.pnpm-store/

@@ -10,6 +10,7 @@
 // ⚠️ 블록 x 가 190/191/193/194/196/199 로 흘러 있다(Figma 작도 오차) → **190 으로 통일**.
 import type { ReactNode } from 'react';
 import { PublicHeader } from '../../components/shell/PublicHeader';
+import { PublicFooter } from '../../components/shell/PublicFooter';
 
 const Y = (v: number) => v - 122;
 
@@ -362,6 +363,7 @@ export function GuidePage() {
           ]}
         />
       </main>
+      <PublicFooter />
     </div>
   );
 }

@@ -329,7 +329,7 @@ export function OnboardingPage() {
         ))}
         <Link
           data-fx="25:428"
-          to="/guide#privacy"
+          to="/privacy"
           target="_blank"
           className="absolute left-[779px] text-w-sub leading-[21px] text-[#aeaeae] underline"
           style={{ top: Y(946.76) }}

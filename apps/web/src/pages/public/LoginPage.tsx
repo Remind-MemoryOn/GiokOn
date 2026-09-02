@@ -4,7 +4,7 @@
 // ⚠️ 라인박스는 Figma auto(≈1.2) — 토큰 기본값(28/30)을 쓰면 잉크가 2~3px 내려간다.
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { signInWithEmail, signInWithProvider, buildNaverAuthUrl, type NativeSocialProvider } from '@giokon/data';
+import { signInWithEmail, signInWithProvider, buildNaverAuthUrl, getCurrentUserRow, type NativeSocialProvider } from '@giokon/data';
 import { PublicHeader } from '../../components/shell/PublicHeader';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
@@ -44,7 +44,9 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await signInWithEmail({ email, password });
-      navigate('/onboarding', { replace: true });
+      // 소셜 로그인은 이미 역할로 분기하는데 이메일 로그인만 온보딩으로 직행했다.
+      const row = await getCurrentUserRow();
+      navigate(routeForUser(row), { replace: true });
     } catch (err) {
       toast('error', err instanceof Error ? err.message : '로그인에 실패했습니다.');
     } finally {
@@ -220,7 +222,7 @@ export function LoginPage() {
         {/* 법적 문서 — Figma 실측 좌표(처리방침 590 · 구분 731 · 약관 754 @ 992) */}
         <div className="absolute inset-x-0 top-[870px] text-w-sub leading-[21px] text-ink-500">
           <Link
-            to="/guide#privacy"
+            to="/privacy"
             data-fx="22:56"
             className="absolute left-[590px] whitespace-nowrap hover:underline"
           >
@@ -229,7 +231,7 @@ export function LoginPage() {
           {/* 구분자는 1px 선이 아니라 4×21 굵은 막대다(Figma 22:58 실측) */}
           <span className="absolute left-[731px] top-0 h-[21px] w-[4px] bg-ink-500" />
           <Link
-            to="/guide#terms"
+            to="/terms"
             data-fx="22:57"
             className="absolute left-[754px] whitespace-nowrap hover:underline"
           >

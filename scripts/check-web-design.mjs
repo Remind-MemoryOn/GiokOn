@@ -247,6 +247,31 @@ const SCREENS = [
     /\[필수\]<\/span> 개인정보 수집·이용에 동의합니다\./, /가입 완료/,
   ], 'copy'],
 
+  // ── 문의사항·법적 고지·공개 하단 — Figma 에 없는 신규(2026-09-02 사용자 승인) ──
+  // 시안 근거가 없으므로 치수 대신 **규약**을 고정한다: 비공개 게시글의 제목·본문은
+  // 작성자·운영자만 본다(서버가 판정하고 화면은 그 값을 그대로 쓴다).
+  [`${WEB}/src/components/shell/PublicFooter.tsx`, '공개 하단: 개인정보 처리방침·이용약관 단독 링크', [
+    /to="\/privacy"/, /to="\/terms"/,
+  ]],
+  [`${WEB}/src/pages/public/LegalPages.tsx`, '법적 고지: 처리방침·약관 별도 페이지 · 미확정 정보 비생성', [
+    /개인정보 처리방침/, /이용약관/, /처리위탁·국외 이전/,
+    /확정되지 않은 정보를 임의로 표시하지 않습니다/,
+  ], 'copy'],
+  [`${WEB}/src/pages/public/InquiryPages.tsx`, '문의사항: 비공개 판정은 서버(locked)를 따르고 화면이 다시 만들지 않는다', [
+    /item\.locked \? \(/, /useInquiryList/,
+  ]],
+  [`${WEB}/src/pages/public/InquiryPages.tsx`, '문의사항: 네이티브 대화상자 금지 — Dialog·toast 프리미티브만 쓴다', [
+    /<ConfirmDialog/, /useStore\(\(s\) => s\.toast\)/,
+  ]],
+  [`${WEB}/src/pages/public/InquiryPages.tsx`, '문의사항: 비공개·민감정보 카피', [
+    /비공개 문의의 제목과 내용은 작성자와 사이트 운영자만 볼 수 있어요\./,
+    /민감정보나 어르신의 식별정보는 필요한 범위 이상 입력하지 마세요\./,
+  ], 'copy'],
+  [`${WEB}/src/App.tsx`, '문의사항·법적 고지: 공개 라우트 6종', [
+    /path="\/privacy"/, /path="\/terms"/, /path="\/inquiries"/,
+    /path="\/inquiries\/new"/, /path="\/inquiries\/:inquiryId"/, /path="\/inquiries\/:inquiryId\/edit"/,
+  ]],
+
   // ── 대시보드 118:300 ───────────────────────────────────────────────────
   [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 통계 4카드 243×107 r10 shadow-card · 아이콘 50', [
     /h-\[107px\] w-\[243px\][^"]*rounded-\[10px\] bg-white px-6 shadow-card/,
@@ -310,8 +335,8 @@ const SCREENS = [
 
   // ── 정밀 대조(figma-audit)로 확정한 실측 규칙 ─────────────────────────
   // 이 값들은 `pnpm -F @giokon/web figma:audit` 이 Figma 좌표와 1:1로 재서 확정했다.
-  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 라벨 x=118(아이콘 28+26+20) · 로그아웃 하단 86', [
-    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /mb-\[86px\]/,
+  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 라벨 x=118(아이콘 28+26+20) · 로그아웃 하단 86 · nav shrink-0(겹침 방지)', [
+    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /mb-\[86px\]/, /flex shrink-0 flex-col gap-\[22px\]/,
   ]],
   [`${WEB}/src/components/Layout.tsx`, '셸: 본문 세로 flex(하단 고정) · 하단 여백 88', [
     /flex min-w-0 flex-1 flex-col pb-\[88px\]/,

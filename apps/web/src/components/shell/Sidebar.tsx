@@ -9,7 +9,11 @@ import { cn } from '../../lib/utils';
 //   활성 pill 208×57 r10 배경 accent 20% @ left 44
 //   아이콘 left 72~77 · 라벨 left 118 SemiBold 22/30 (아이콘 28 + 26 + 20)
 //   항목 간격 79 (대시보드 186 → 어르신 관리 265 → … → 설정 739)
-//   로그아웃 하단 고정(bottom 84)
+//   로그아웃 하단 고정(bottom 86)
+//   ⚠️ 짧은 화면(≈768px)에서 로그아웃이 설정 항목을 덮던 원인은 하단 고정이 아니라
+//      `<nav>` 이 flex 자식으로 **줄어들어**(기본 flex-shrink:1) 내용보다 낮아진 것이다.
+//      → `shrink-0` 로 막는다. 여유가 없으면 사이드바가 자라고 페이지가 스크롤될 뿐이라
+//      시안의 하단 고정 좌표(로그아웃 @924)는 그대로 남는다.
 export function Sidebar({ items }: { items: NavItem[] }) {
   const navigate = useNavigate();
 
@@ -24,7 +28,7 @@ export function Sidebar({ items }: { items: NavItem[] }) {
 
   return (
     <aside className="flex w-[296px] shrink-0 flex-col pt-[50px]">
-      <nav className="flex flex-col gap-[22px]">
+      <nav className="flex shrink-0 flex-col gap-[22px]">
         {items.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className="block">
             {({ isActive }) => (
@@ -60,7 +64,7 @@ export function Sidebar({ items }: { items: NavItem[] }) {
       <button
         type="button"
         onClick={handleLogout}
-        className="mb-[86px] ml-[72px] mt-auto flex items-center gap-[14px] text-w-nav font-semibold text-ink-500 transition hover:text-accent"
+        className="mb-[86px] ml-[72px] mt-auto flex h-[57px] shrink-0 items-center gap-[14px] text-w-nav font-semibold text-ink-500 transition hover:text-accent"
       >
         <img src={asset.navLogout} alt="" width={28} height={28} className="block" />
         <span data-fx="sidebar-logout">로그아웃</span>

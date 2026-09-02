@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import {
+  toElderProfile,
   useGiokonRealtime,
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useMyMessages,
   useMyNotifications,
+  useProfiles,
   unreadCount,
   type RealtimeEvent,
 } from '@giokon/data';
@@ -24,6 +26,28 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
   const location = useLocation();
   const [search, setSearch] = useState('');
   const hideSearch = variant === 'guardian' && location.pathname === '/guardian';
+
+  // 검색 결과 — 시안에는 입력창만 있고 결과가 없어 아무 데도 갈 수 없었다.
+  // 지금 보고 있는 업무 섹션(어르신·세션·분석·일지·공개) 안에서 그 어르신으로 옮겨 준다.
+  const isCaregiver = location.pathname.startsWith('/caregiver');
+  const profiles = useProfiles({ enabled: isConfigured && isCaregiver });
+  const section = location.pathname.split('/')[2] || 'elders';
+  const sectionRoot = ['elders', 'sessions', 'analysis', 'journal', 'shares'].includes(section)
+    ? section
+    : 'elders';
+  const term = search.trim();
+  const searchResults = useMemo(() => {
+    if (!isCaregiver || !term) return [];
+    return (profiles.data ?? [])
+      .map(toElderProfile)
+      .filter((elder) => elder.name.includes(term))
+      .slice(0, 6)
+      .map((elder) => ({
+        id: elder.id,
+        label: `${elder.name} 어르신`,
+        to: `/caregiver/${sectionRoot}/${elder.id}`,
+      }));
+  }, [isCaregiver, term, profiles.data, sectionRoot]);
 
   // 앱 대화 종료 → 세션·분석·공개 변경을 실시간 반영.
   const onRealtimeEvent = useCallback(
@@ -73,7 +97,12 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
       {/* 보호자 '어르신 연결' 화면만 검색이 없다(Figma 31:616) — 목록 화면은 있다(50:543) */}
       <TopBar
         variant={variant}
-        search={hideSearch ? undefined : { value: search, onChange: setSearch }}
+        search={
+          hideSearch
+            ? undefined
+            : { value: search, onChange: setSearch, placeholder: isCaregiver ? '어르신 검색' : '' }
+        }
+        searchResults={searchResults}
         notificationCount={unreadCount(notificationRows)}
         notifications={notifications}
         onReadNotification={handleReadNotification}
@@ -111,7 +140,7 @@ export function PageHeader({
   tone = 'ink',
   descMax = 640,
 }: {
-  title: string;
+  title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
   tone?: 'accent' | 'ink';

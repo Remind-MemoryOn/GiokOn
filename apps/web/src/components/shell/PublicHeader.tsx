@@ -9,7 +9,8 @@ import { cn } from '../../lib/utils';
 const NAV = [
   { to: '/', label: '서비스 소개', left: 720 },
   { to: '/guide', label: '이용안내', left: 898 },
-  { to: '/guide#contact', label: '문의', left: 1052 },
+  // 라벨·좌표는 Figma 실측 고정. 목적지만 문의사항 게시판으로 바뀌었다(2026-09-02).
+  { to: '/inquiries', label: '문의', left: 1052 },
   { to: '/login', label: '로그인/회원가입', left: 1168 },
 ];
 

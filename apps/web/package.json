@@ -10,9 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke": "node scripts/route-smoke.mjs",
-    "figma:build": "FIGMA_AUDIT=1 vite build --outDir dist-audit",
+    "figma:build": "vite build --mode figma --outDir dist-audit",
     "a11y": "pnpm figma:build && node scripts/a11y-audit.mjs",
-    "figma:audit": "pnpm figma:build && pnpm figma:shots && node scripts/figma-audit.mjs && python3 scripts/figma-ink.py",
+    "figma:audit": "pnpm figma:build && pnpm figma:shots && node scripts/figma-audit.mjs && node scripts/run-figma-ink.mjs",
     "figma:shots": "node scripts/figma-shots.mjs"
   },
   "dependencies": {

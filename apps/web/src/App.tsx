@@ -9,6 +9,12 @@ import { FindIdPage } from './pages/public/FindIdPage';
 import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/public/ResetPasswordPage';
 import { GuidePage } from './pages/public/GuidePage';
+import { PrivacyPolicyPage, TermsPage } from './pages/public/LegalPages';
+import {
+  InquiryDetailPage,
+  InquiryFormPage,
+  InquiryListPage,
+} from './pages/public/InquiryPages';
 import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { EldersPage } from './pages/caregiver/EldersPage';
 import { ElderDetailPage } from './pages/caregiver/ElderDetailPage';
@@ -73,8 +79,15 @@ function App() {
       <Routes>
         {/* ── 공개 ── */}
         <Route path="/" element={<LandingPage />} />
-        {/* 처리방침·약관은 이용안내 한 화면에 통합돼 있다(#privacy · #terms 앵커) */}
         <Route path="/guide" element={<GuidePage />} />
+        {/* 처리방침·약관은 이용안내(#privacy · #terms 앵커) 외에 단독 URL 도 갖는다 —
+            로그인·온보딩의 법적 링크와 푸터가 여기를 가리킨다(2026-09-02 사용자 확정). */}
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/inquiries" element={<InquiryListPage />} />
+        <Route path="/inquiries/new" element={<InquiryFormPage />} />
+        <Route path="/inquiries/:inquiryId" element={<InquiryDetailPage />} />
+        <Route path="/inquiries/:inquiryId/edit" element={<InquiryFormPage edit />} />
         <Route path="/login" element={<LoginPage />} />
         {/* 디자인에는 이메일 가입 폼이 없다 — 회원가입 = 소셜 로그인 후 기본 정보 입력 */}
         <Route path="/signup" element={<OnboardingPage />} />

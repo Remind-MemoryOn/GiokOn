@@ -9,6 +9,7 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { SCREENS } from './figma-audit.spec.mjs';
 
 const PORT = Number(process.env.PORT || 4184);
@@ -33,17 +34,20 @@ if (!process.env.BASE_URL && !(await reachable(BASE))) {
     process.exit(1);
   }
   preview = spawn(
-    'node',
+    process.execPath,
     ['./node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-audit',
      '--port', String(PORT), '--strictPort'],
-    { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore' },
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore' },
   );
   for (let i = 0; i < 60 && !(await reachable(BASE)); i++) await new Promise((r) => setTimeout(r, 500));
 }
 
 const executablePath =
   process.env.CHROMIUM_PATH ??
-  (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+  (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) ??
+  (existsSync('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe')
+    ? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+    : undefined);
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 
 /** 같은 위반이 화면마다 반복되므로 규칙+선택자로 묶어 한 번만 보고한다. */
@@ -58,7 +62,15 @@ const CONTRAST_RX =
 const needed = (px, weight) =>
   Number(px) >= 24 || (Number(px) >= 19 && (weight === 'bold' || Number(weight) >= 600)) ? 3 : 4.5;
 
-for (const s of SCREENS) {
+// Figma 에 없는 신규 공개 화면(2026-09-02) — 좌표 대조 대상은 아니지만 접근성은 같은 기준으로 본다.
+const EXTRA_SCREENS = [
+  { name: '개인정보 처리방침', route: '/privacy', height: 2400 },
+  { name: '이용약관', route: '/terms', height: 2400 },
+  { name: '문의사항 목록', route: '/inquiries', height: 1200 },
+  { name: '문의사항 등록', route: '/inquiries/new', height: 1400 },
+];
+
+for (const s of [...SCREENS, ...EXTRA_SCREENS]) {
   const page = await browser.newPage({ viewport: { width: 1440, height: s.height ?? 1024 } });
   await page.goto(BASE + s.route, { waitUntil: 'networkidle' });
   await page.addScriptTag({ content: AXE });

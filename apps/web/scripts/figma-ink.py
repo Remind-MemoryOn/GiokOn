@@ -8,7 +8,7 @@ DOM 대조(figma-audit.mjs)는 요소 박스를 재지만, 텍스트는 line-hei
 사용: python3 scripts/figma-ink.py [노드id ...]
   구현 렌더는 `pnpm -F @giokon/web figma:shots` 로 /tmp/audit/<node>.png 에 만든다.
 """
-import json, os, re, sys
+import json, os, re, sys, tempfile
 import numpy as np
 from PIL import Image
 
@@ -18,7 +18,7 @@ Image.MAX_IMAGE_PIXELS = None
 S = 4  # export 배율
 WEB = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIGMA_DIR = os.path.join(WEB, 'assets', 'figma')
-SHOT_DIR = os.environ.get('AUDIT_OUT', '/tmp/audit')
+SHOT_DIR = os.environ.get('AUDIT_OUT', os.path.join(tempfile.gettempdir(), 'giokon-audit'))
 PAD = 14  # 상하 탐색 여유(px, 1440 기준)
 TOL = float(os.environ.get('INK_TOL', '1.5'))
 
@@ -113,7 +113,7 @@ def best_shift(pa, pb, limit):
 
 
 def main():
-    spec = json.load(open('/tmp/audit/spec.json'))
+    spec = json.load(open(os.path.join(SHOT_DIR, 'spec.json'), encoding='utf-8'))
     only = [a for a in sys.argv[1:] if not a.startswith('-')]
     fails, checked = [], 0
     for screen in spec:

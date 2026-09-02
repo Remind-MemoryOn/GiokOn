@@ -56,4 +56,7 @@ export const queryKeys = {
   myNotifications: ['notifications', 'mine'] as const,
   messages: (profileId: string) => ['messages', profileId] as const,
   myMessages: ['messages', 'mine'] as const,
+  inquiries: ['inquiries', 'public-list'] as const,
+  inquiry: (id: string) => ['inquiries', 'detail', id] as const,
+  inquiryReplies: (id: string) => ['inquiry_replies', id] as const,
 }

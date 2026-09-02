@@ -3,7 +3,9 @@
 //   중간 흰 섹션 953~1542 · 하단 회색(#f8f8f8) 섹션 1542~2531(989 높이, 상단 중앙에 노치)
 // 일러스트·장식은 SVG 를 받을 수 없어 export PNG(@4x)에서 실측 좌표로 크롭해 쓴다
 // (scripts/crop-web-figma-assets.py). 좌표는 화면 절대값에서 헤더(122)를 뺀 값이다.
+import { BookOpenText, Share2 } from 'lucide-react';
 import { PublicHeader } from '../../components/shell/PublicHeader';
+import { PublicFooter } from '../../components/shell/PublicFooter';
 import { asset } from '../../assets/ui';
 
 /** 중간 섹션의 "…싶으신가요?" 3묶음 — [일러스트, 좌표, 문구] */
@@ -176,20 +178,40 @@ export function LandingPage() {
             >
               {f.title}
             </p>
-            <img
-              data-fx={f.fx[2]}
-              src={f.icon}
-              alt=""
-              width={f.iconW}
-              height={f.iconH}
-              className="absolute"
-              style={{
-                left: f.box[0] + (f.box[2] - f.iconW) / 2,
-                top: Y(f.box[1] + (f.box[3] - f.iconH) / 2),
-                width: f.iconW,
-                height: f.iconH,
-              }}
-            />
+            {/* 2·4번 카드는 @4x 크롭이 흐려 lucide 벡터로 대체했다(2026-09-02 사용자 적용).
+                박스 좌표는 Figma 실측 그대로고 글리프만 바뀐다. */}
+            {f.title === 'AI 회상 기록' ? (
+              <BookOpenText
+                data-fx={f.fx[2]}
+                aria-hidden
+                className="absolute text-accent"
+                strokeWidth={1.8}
+                style={{ left: f.box[0] + 6, top: Y(f.box[1] + 7), width: 64, height: 64 }}
+              />
+            ) : f.title === '보호자 공유' ? (
+              <Share2
+                data-fx={f.fx[2]}
+                aria-hidden
+                className="absolute text-accent"
+                strokeWidth={1.8}
+                style={{ left: f.box[0] - 3, top: Y(f.box[1] + 5), width: 64, height: 64 }}
+              />
+            ) : (
+              <img
+                data-fx={f.fx[2]}
+                src={f.icon}
+                alt=""
+                width={f.iconW}
+                height={f.iconH}
+                className="absolute"
+                style={{
+                  left: f.box[0] + (f.box[2] - f.iconW) / 2,
+                  top: Y(f.box[1] + (f.box[3] - f.iconH) / 2),
+                  width: f.iconW,
+                  height: f.iconH,
+                }}
+              />
+            )}
             <p
               data-fx={f.fx[3]}
               className="absolute text-center text-w-body leading-[30px] text-ink-700"
@@ -212,6 +234,7 @@ export function LandingPage() {
           인지 활동 관리에 필요한 모든 기능을 하나의 웹에서 제공합니다.
         </p>
       </main>
+      <PublicFooter />
     </div>
   );
 }

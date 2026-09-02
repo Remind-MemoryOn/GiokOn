@@ -7,11 +7,27 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { fileURLToPath } from 'node:url';
 
-const PORT = Number(process.env.PORT || 4173);
-const BASE = process.env.BASE_URL || `http://localhost:${PORT}`;
 /** BASE_URL 을 명시했으면 사용자가 띄운 서버를 존중하고, 아니면 직접 띄운다. */
 const SELF_SERVE = !process.env.BASE_URL;
+
+/** 고정 포트(4173)는 개발 서버와 부딪친다 → 직접 띄울 때는 빈 포트를 받아 쓴다. */
+async function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 4173;
+      server.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
+}
+
+const PORT = SELF_SERVE ? await freePort() : Number(process.env.PORT || 4173);
+const BASE = process.env.BASE_URL || `http://127.0.0.1:${PORT}`;
 
 async function reachable(url, timeoutMs = 1500) {
   try {
@@ -28,10 +44,11 @@ async function startPreview() {
     console.error('✗ dist 가 없습니다 — 먼저 `pnpm -F @giokon/web build` 를 실행하세요.');
     process.exit(1);
   }
+  // ⚠️ `new URL().pathname` 은 Windows 에서 `/C:/...` 이라 cwd 로 못 쓴다 → fileURLToPath.
   const child = spawn(
-    'node',
+    process.execPath,
     ['./node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'],
-    { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore', detached: false },
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore', detached: false },
   );
   for (let i = 0; i < 60; i++) {
     if (await reachable(BASE)) return child;
@@ -58,6 +75,16 @@ const CASES = [
   ['/guide', '이용약관', '이용안내 · 약관'],
   ['/guide', '기억온은 의료기기가 아니며', '이용안내 · 비의료 고지'],
   ['/guide', '초안', '이용안내 · 초안 고지'],
+  ['/guide', '개인정보 처리방침', '이용안내 · 하단 처리방침 링크'],
+  ['/privacy', '개인정보의 처리 목적', '개인정보 처리방침(단독)'],
+  ['/privacy', '확정되지 않은 정보를 임의로 표시하지 않습니다', '처리방침 · 미확정 정보 비생성'],
+  ['/terms', '제1조 목적과 적용', '이용약관(단독)'],
+  ['/terms', '비공개 문의의 제목과 본문은 작성자와 운영자만', '약관 · 비공개 문의 규약'],
+  ['/inquiries', '문의사항', '문의사항 목록'],
+  ['/inquiries', '아직 등록된 문의사항이 없어요.', '문의사항 · 빈 상태(미설정)'],
+  ['/inquiries/new', '문의사항 등록', '문의 등록 폼'],
+  ['/inquiries/new', '민감정보나 어르신의 식별정보는', '문의 등록 · 민감정보 안내'],
+  ['/inquiries/demo', '문의사항 목록', '문의 상세(미설정→열람 불가)'],
   ['/signup', '계정으로 로그인해 주세요.', '회원가입(미인증→로그인)'],
   ['/find-id', '아이디(이메일) 찾기', '아이디 찾기'],
   ['/forgot-password', '비밀번호 찾기', '비밀번호 찾기'],

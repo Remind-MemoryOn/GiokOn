@@ -58,6 +58,7 @@ export type Database = {
           role: Database['public']['Enums']['org_role']
           phone: string | null
           onboarded_at: string | null
+          is_site_admin: boolean
           created_at: string
           updated_at: string
         }
@@ -69,6 +70,7 @@ export type Database = {
           role?: Database['public']['Enums']['org_role']
           phone?: string | null
           onboarded_at?: string | null
+          is_site_admin?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -80,6 +82,7 @@ export type Database = {
           role?: Database['public']['Enums']['org_role']
           phone?: string | null
           onboarded_at?: string | null
+          is_site_admin?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -848,6 +851,18 @@ export type Database = {
         }
         Relationships: []
       }
+      inquiries: {
+        Row: { id: string; author_id: string; title: string; content: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; updated_at: string }
+        Insert: { id?: string; author_id: string; title: string; content: string; visibility?: Database['public']['Enums']['inquiry_visibility']; status?: Database['public']['Enums']['inquiry_status']; created_at?: string; updated_at?: string }
+        Update: { id?: string; author_id?: string; title?: string; content?: string; visibility?: Database['public']['Enums']['inquiry_visibility']; status?: Database['public']['Enums']['inquiry_status']; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      inquiry_replies: {
+        Row: { id: string; inquiry_id: string; author_id: string; content: string; created_at: string; updated_at: string }
+        Insert: { id?: string; inquiry_id: string; author_id: string; content: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; inquiry_id?: string; author_id?: string; content?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -893,6 +908,10 @@ export type Database = {
         Args: { p_code: string }
         Returns: Database['public']['Tables']['profile_guardians']['Row']
       }
+      list_inquiries: {
+        Args: Record<PropertyKey, never>
+        Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean }>
+      }
     }
     Enums: {
       chronicle_source: 'caregiver' | 'ai'
@@ -914,6 +933,8 @@ export type Database = {
       journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
       journal_status: 'draft' | 'final'
       share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report' | 'photo'
+      inquiry_visibility: 'public' | 'private'
+      inquiry_status: 'waiting' | 'answered'
       notification_kind: 'safety' | 'share_viewed' | 'message'
     }
     CompositeTypes: { [_ in never]: never }
@@ -962,3 +983,7 @@ export type ShareItemType = Enums<'share_item_type'>
 export type NotificationRow = Tables<'notifications'>
 export type NotificationKind = Enums<'notification_kind'>
 export type MessageRow = Tables<'messages'>
+export type InquiryRow = Tables<'inquiries'>
+export type InquiryReplyRow = Tables<'inquiry_replies'>
+export type InquiryVisibility = Enums<'inquiry_visibility'>
+export type InquiryStatus = Enums<'inquiry_status'>

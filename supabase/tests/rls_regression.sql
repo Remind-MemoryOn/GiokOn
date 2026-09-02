@@ -974,6 +974,92 @@ do $$ begin
     '메시지는 append-only 로 남아야 함';
 end $$;
 
+-- ── 5.12) 문의사항: 비공개는 제목·본문 모두 작성자·운영자만 ────────────────
+-- ⚠️ list_inquiries() 는 security definer 라 RLS 를 우회한다 → 함수 자체가 가리는지 본다.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';  -- 기관A 요양보호사
+insert into public.inquiries (author_id, title, content, visibility) values
+  ('33333333-3333-3333-3333-333333333333', '공개 문의 제목', '공개 본문', 'public'),
+  ('33333333-3333-3333-3333-333333333333', '비공개 문의 제목', '비공개 본문', 'private');
+do $$ begin
+  assert (select count(*) from public.inquiries) = 2, '작성자는 자기 문의 2건을 봐야 함';
+  assert (select count(*) from public.list_inquiries() where locked) = 0,
+    '작성자에게는 잠긴 행이 없어야 함';
+  assert (select bool_and(title <> '비공개 문의입니다') from public.list_inquiries()),
+    '작성자는 비공개 제목 원문을 봐야 함';
+end $$;
+reset role;
+
+-- 같은 기관의 다른 사람 = 남이다. 비공개는 목록에서 제목이 가려지고 본문은 안 보인다.
+set role authenticated;
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- 기관A 관리자(사이트 운영자 아님)
+do $$ begin
+  assert (select count(*) from public.inquiries) = 1,
+    '남의 비공개 문의 본문은 RLS 가 막아야 함(공개 1건만)';
+  assert (select count(*) from public.list_inquiries()) = 2,
+    '목록에는 두 행이 모두 남아야 함(작성일·답변 여부는 게시판 운영에 필요)';
+  assert (select title from public.list_inquiries() where locked) = '비공개 문의입니다',
+    '남에게는 비공개 제목이 잠금 문구로 나가야 함';
+  assert (select masked_author from public.list_inquiries() where locked) = '비공개',
+    '남에게는 비공개 작성자도 가려져야 함';
+end $$;
+reset role;
+
+-- 비로그인(anon)도 같은 함수를 부른다 — 비공개 제목이 새면 안 된다.
+set role anon;
+do $$
+declare blocked boolean := false;
+begin
+  begin
+    perform count(*) from public.inquiries;
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  assert blocked, '비로그인에게는 inquiries 테이블 권한 자체가 없어야 함';
+end $$;
+do $$ begin
+  assert (select count(*) from public.list_inquiries()) = 2,
+    '비로그인도 목록 함수는 부를 수 있어야 함(공개 게시판)';
+  assert (select count(*) from public.list_inquiries() where locked) = 1,
+    '비로그인에게 비공개 문의는 잠긴 행이어야 함';
+  assert (select title from public.list_inquiries() where locked) = '비공개 문의입니다',
+    '비로그인에게 비공개 제목이 새면 안 됨';
+  assert (select title from public.list_inquiries() where not locked) = '공개 문의 제목',
+    '공개 문의 제목은 비로그인에게도 보여야 함';
+end $$;
+reset role;
+
+-- 운영자 플래그는 스스로 켤 수 없다.
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set is_site_admin = true where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '사이트 운영자 권한은 스스로 올릴 수 없어야 함';
+end $$;
+
+-- 답변은 운영자만 단다.
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    insert into public.inquiry_replies (inquiry_id, author_id, content)
+      select id, auth.uid(), '일반 사용자 답변' from public.inquiries limit 1;
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '운영자가 아니면 답변을 달 수 없어야 함';
+end $$;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,

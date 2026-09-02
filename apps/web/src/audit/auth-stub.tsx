@@ -19,6 +19,7 @@ const USER = {
   org_id: ORG.id,
   onboarded_at: '2026-01-01T00:00:00Z',
   phone: '010-1234-5678',
+  is_site_admin: false,  // 감사 빌드는 운영자 전용 UI 를 그리지 않는다
   created_at: '2026-01-01T00:00:00Z',
 };
 

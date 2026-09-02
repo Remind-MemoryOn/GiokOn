@@ -17,6 +17,7 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { SCREENS } from './figma-audit.spec.mjs';
 
 const PORT = Number(process.env.PORT || 4183);
@@ -39,7 +40,7 @@ async function startPreview() {
     process.exit(1);
   }
   const child = spawn(
-    'node',
+    process.execPath,
     [
       './node_modules/vite/bin/vite.js',
       'preview',
@@ -49,7 +50,7 @@ async function startPreview() {
       String(PORT),
       '--strictPort',
     ],
-    { cwd: new URL('..', import.meta.url).pathname, stdio: 'ignore' },
+    { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore' },
   );
   for (let i = 0; i < 60; i++) {
     if (await reachable(BASE)) return child;
@@ -65,7 +66,10 @@ if (!process.env.BASE_URL && !(await reachable(BASE))) preview = await startPrev
 
 const executablePath =
   process.env.CHROMIUM_PATH ??
-  (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+  (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) ??
+  (existsSync('C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe')
+    ? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+    : undefined);
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 
 /** 브라우저 안에서 한 화면의 모든 프로브를 잰다.
