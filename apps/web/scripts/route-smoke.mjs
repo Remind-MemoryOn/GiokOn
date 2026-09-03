@@ -106,6 +106,8 @@ const CASES = [
   ['/caregiver/analysis', '계정으로 로그인해 주세요.', '분석 가드'],
   ['/caregiver/analysis/elders', '계정으로 로그인해 주세요.', '개인별 분석 가드'],
   ['/caregiver/analysis/demo', '계정으로 로그인해 주세요.', '개인별 종합 분석 가드'],
+  // 이관 중 쓰던 경로 — 지금은 개인별 종합 분석(analysis/:elderId)으로 보낸다.
+  ['/caregiver/analysis/demo/overall', '계정으로 로그인해 주세요.', '구 /overall 경로 리다이렉트'],
   ['/caregiver/analysis/demo/sessions', '계정으로 로그인해 주세요.', '대화 분석 목록 가드'],
   ['/caregiver/analysis/demo/sessions/s1', '계정으로 로그인해 주세요.', '대화 분석 상세 가드'],
   ['/caregiver/journal', '계정으로 로그인해 주세요.', '요양일지 가드'],

@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CaregiverLayout, GuardianLayout } from './components/Layout';
 import { ToastShelf } from './components/ui/Toast';
-import { Pending } from './pages/Pending';
 import { LandingPage } from './pages/public/LandingPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { OnboardingPage } from './pages/public/OnboardingPage';
@@ -127,7 +126,9 @@ function App() {
           <Route path="analysis" element={<AnalysisPage />} />
           <Route path="analysis/elders" element={<AnalysisEldersPage />} />
           <Route path="analysis/:elderId" element={<AnalysisElderPage />} />
-          <Route path="analysis/:elderId/overall" element={<Pending title="종합 분석" node="228:4091" />} />
+          {/* 개인별 종합 분석(228:4091)은 위 `analysis/:elderId` 가 그 화면이다.
+              이관 중에 쓰던 `/overall` 경로로 들어오면 그리로 보낸다(예전 링크 보존). */}
+          <Route path="analysis/:elderId/overall" element={<Navigate to=".." relative="path" replace />} />
           <Route path="analysis/:elderId/sessions" element={<ConversationAnalysisListPage />} />
           <Route path="analysis/:elderId/sessions/:sessionId" element={<ConversationAnalysisPage />} />
           <Route path="journal" element={<JournalPage />} />
