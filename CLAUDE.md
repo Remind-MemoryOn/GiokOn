@@ -7,8 +7,9 @@
 - `apps/web` (@giokon/web): **요양보호사·보호자 전용** 관리 웹 (React 19 + Vite + Tailwind).
   어르신 음성 대화(TTS/STT)는 웹에 없음 — 앱 담당. (2026-07-11 웹에서 앱 콘텐츠 전부 제거)
 - `apps/mobile` (@giokon/mobile): **어르신 대화 앱 (Expo SDK 53 + expo-router + NativeWind 4)**.
-  Figma 19화면 추출→구현 완료(2026-07-13). 요양보호사가 조작하는 세션 실행 도구.
-  백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규. TTS=expo-speech, STT는 실연동 전 모의.
+  Figma 19화면 + 설정·동의 확인 = 전 화면 구현. 요양보호사가 조작하는 세션 실행 도구.
+  백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규.
+  **대화 AI = Gemini Live(음성 입출력+LLM 통합, 2026-08-23)** · 미가용 시 expo-speech+타자 폴백.
 - `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
@@ -40,22 +41,85 @@
 
 ## 기술 결정
 - 서버상태 = **TanStack Query**, UI상태 = **Zustand**.
-- AI 스택: **LLM은 현행 프런티어 벤치마크 후 선정(모델명 고정 금지)**,
-  STT = gpt-4o-transcribe(Clova Speech 보완), TTS = Clova Voice, **Structured Outputs**.
-  실연동은 Supabase Edge Functions(서버사이드 키 보호).
+- AI 스택: **앱 대화 = Gemini Live API**(`gemini-3.1-flash-live-preview` — 음성 입력·출력·LLM
+  한 세션에서 처리). 키는 앱에 두지 않고 Edge Function **`live-token`** 이 Supabase JWT 를
+  검증해 ephemeral token 을 발급한다(모델 잠금). 분석·프롬프트는 계속 core(Structured Outputs).
+  ※ 웹/요양일지용 STT(gpt-4o-transcribe)·TTS(Clova Voice) 계획은 별개로 유지.
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
   **로그인 = 소셜 3종(구글·카카오·네이버) + 이메일(아이디)·비밀번호 병행(2026-07-23 재도입 — 이전 "이메일 제거" 결정 사용자 요청으로 철회), 아이디/비밀번호 찾기·회원가입 포함, 회원가입 = 이메일 또는 OAuth 후 온보딩(기본정보 입력). 소셜은 provider 본인인증(이름·전화) 정보를 온보딩에 프리필**
   (구글·카카오=네이티브, 네이버=커스텀 Edge Function `naver-auth`). 계획: PLAN §2′ M17.4~17.7·Phase W1.
+  **앱 소셜 3종 실연동 완료(2026-08-23)** — 구글·카카오는 Supabase PKCE OAuth
+  (client `flowType:'pkce'` + `openAuthSessionAsync`, redirect `giokon://auth/callback`),
+  네이버는 `naver-auth` 함수(code→프로필→magiclink verify, `--no-verify-jwt` 배포).
 - 배포: 웹 = Vercel, 모바일 = EAS.
 
 ## Supabase
-- 프로젝트: **`GiokOn`** (ref `xilmtqnotomuyjifenmo`, 현 **ap-northeast-1 도쿄** → **서울 ap-northeast-2** 신규 프로젝트로 **이전 예정**, 데이터 국내 보관).
-- 마이그레이션 적용·검증 완료(5테이블·RLS·가입 트리거 `handle_new_user`→`public.users`). 서울 이전 시 `organizations`/`consents`/`audit_log` + 조직 RBAC 반영.
+- **운영 프로젝트 = `MemoryOn`(ref `ufkbzpdjomtmxjipmwub`, 서울 ap-northeast-2)** — 앱·웹이 함께
+  쓰는 실 DB다. 데이터 국내 보관 요건 충족. (구 도쿄 `GiokOn`/`xilmtqnotomuyjifenmo` 는 이전 완료로 사용하지 않는다.)
+- 마이그레이션 **36종** 적용·검증 완료(16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·
+  org RBAC·감사 로그). 이력은 `supabase_migrations.schema_migrations` 에 저장소 파일명 기준으로
+  정리돼 있어 `db push` 가 가능하다.
+  ⚠️ MCP `apply_migration` 은 **적용 시각**으로 기록하므로, 쓴 뒤 저장소 파일명 버전으로 맞춰 준다.
 - MCP 연결이 세션 내 **간헐적**(대략 턴당 1콜 성공 후 끊김) — 실패 시 재시도보다
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-08-18)
+## 현재 위치 (2026-09-03)
+
+> 이 세션은 **앱(apps/mobile) 개발용**이다. 웹 작업은 **앱과의 연동 지점만** 기록한다
+> (신규 웹 디자인 이관·보호자 화면 등은 웹 세션 메모리 `apps/web/CLAUDE.md` 참조).
+
+- 🎙 **Gemini Live 음성 대화 연동(2026-08-23, `30d7f58`·`68f5ff3`)** — 앱의 대화가
+  드디어 실제 음성이다. `src/lib/live/`(client·engine·mic·player·pcm).
+  ⚠️ **모델 제약을 코드가 전제한다**(`gemini-3.1-flash-live-preview`):
+  `proactivity`/`affective` 필드는 **보내면 연결이 깨진다**(아예 미포함) · 자동 VAD 를 끄고
+  `NO_INTERRUPTION`(barge-in 차단, 턴 경계는 앱이 소유 — 요양보호사 확인·교정 흐름과 정합) ·
+  초기 맥락은 `system_instruction` 주입(캐싱 미지원 대비).
+  **모델에 넘기는 것은 확정·교정된 텍스트뿐**이다(마이크 오디오는 전사 용도로만 스트리밍) →
+  DB 에 남은 텍스트와 모델이 본 텍스트가 항상 같다(감사 정합). **위기 발화는 모델을 우회**해
+  로컬 안전 응답을 유지한다. 키는 앱에 없다 — Edge Function `live-token` 이 JWT 검증 후
+  ephemeral token 발급(90s/30min). 미가용·실패 시 **기존 파이프라인(expo-speech+타자 입력)으로
+  무중단 폴백**한다. 견고성 4건 보강: sessionResumption 핸들로 1회 자동 재접속 ·
+  타임아웃 `'timeout'` 명시 반환 + 세션당 1회 안내(조용한 폴백 제거) · "다시 듣기"는 엔진 생존과
+  무관하게 플레이어 직접 호출 · loading 인터스티셜은 고정 1.2s 대신 **다음 질문 교체 감지**로
+  복귀(0.5~8s, 모델 대기를 화면이 덮는다) · 세션 종료 시 오디오 캐시 clear.
+  주제 태깅은 core `detectTurnTopic`(Live 질문 텍스트에서 표준 주제를 결정론 판별, 근거 없으면
+  직전 주제 유지) — Live 모드에서도 `switch_topic`·주제 반응 지표가 근거를 갖는다.
+- 🔗 **웹↔앱 세션 설계(planned) 파이프라인(`fd4896b`·`30d7f58`)** — 이 세션의 핵심 동기화 지점.
+  웹이 "회상 세션 설계"를 `sessions(status='planned')` + 설계 7컬럼
+  (`title·goal·content·avoid_topics·keywords·duration_minutes·planned_date`, 마이그레이션
+  #26~27)으로 저장하면, 앱이 **그 행을 받아 진행**한다.
+  앱: `useDuePlannedRow`(기록일 도래분) → 대화 시작 화면이 그 설계로 열고 →
+  `adoptPlannedSession` 이 **같은 행을 active 로 전환**한다(새로 만들면 설계가 유령으로 남고
+  웹 목록에 행이 하나 더 생긴다. 다른 기기가 먼저 가져갔으면 새로 만든다).
+  `useElderSessions`·`useElderLogs` 는 **planned 를 제외**한다(아직 일어나지 않은 일이라
+  턴 0짜리 빈 기록으로 보였다). core: `SessionPlan`/`SessionDesign` ·
+  `buildSystemPrompt` v1.1(설계 주입) · `generateOpener` 가 **설계 키워드로 첫 주제를 정한다** ·
+  `filterAvoidedBanks`.
+  ⚠️ **"피해갈 내용" 의 의미**: AI 가 그 주제로 **열지 않을 뿐**, 어르신이 그 이야기를 꺼내는
+  것은 막지 않는다(회피는 애도 원칙에 반한다). 후보가 전부 빠지면 설계를 무시하고 원래
+  후보로 되돌린다(대화가 멈추는 게 더 나쁘다). 설계가 없으면 예전과 완전히 동일하게 동작한다.
+- 🔑 **소셜 로그인 3종 실연동 + 게시 준비(`68f5ff3`)** — "준비 중" Alert 제거.
+  마이크 권한(app.json `NSMicrophoneUsageDescription`·`RECORD_AUDIO` + 청취 전
+  `ensureMicPermission()`), 앱 아이콘·adaptive-icon·스플래시 연결, `version 1.0.0`,
+  EAS env 4종 등록(사용자), 법적 페이지 배포(https://giokon-legal.vercel.app → `EXPO_PUBLIC_WEB_URL`).
+  ⚠️ `package.json` 의 **BOM** 이 `eas init` JSON 파싱을 깨뜨렸다 → 제거 + `scripts/check-bom.mjs` 게이트.
+- 🧪 **모바일 테스트 도입** — mobile vitest(pcm base64↔bytes·WAV 헤더 4건). 그전까지 core/data 만 있었다.
+- 📄 상태 문서는 `docs/app-readiness-report.md`(화면별 완성도·Live 결함·게시 체크리스트 4차 갱신까지).
+- ⚠️ **앱이 아직 쓰지 않는 신규 DB 기능(전부 웹 전용, 마이그레이션 #28~36)**:
+  `notifications`·`messages`·`inquiries`·`journal_photos`·`share_view_receipt`·
+  `profiles.note`(어르신 특이사항)·`chronicle_entries.title`. Realtime publication 에
+  `journal_photos`·`messages`·`notifications` 가 추가됐지만 **앱은 구독하지 않는다**.
+  앱에서 필요해지면(예: 보호자 메시지 알림) 여기부터 본다.
+- ⏳ **남은 것**: ① **목업 모드 제거**(사용자 지시 — 아직 미착수. `reads.ts` 29곳·`writes.ts` 6곳의
+  `CFG` 분기와 `MOCK_*`·데모 알림이 남아 있다. 키가 없을 때 앱이 어떻게 동작할지 결정 필요:
+  부팅 차단 vs 로그인 화면까지 진입) ② 녹음 저장(`session_logs.audio_url` 3컬럼, v2 합의)
+  ③ `consents_guardian_check` 완화 결정(완화하면 보호자 화면의 성함 필드 제거)
+  ④ 1x 아이콘 @3x/@4x 재추출 ⑤ 스토어 제출(`eas build --profile production` + 리스팅).
+- ✅ 검증(2026-09-03 실행): typecheck 5패키지 · test **237**(core 196 + data 37 + mobile 4) ·
+  `check:figma` 172 · `check:font` 36파일 · `check:copy` 전부 통과. 마이그레이션 **36종**.
+
+## 이전 위치 (2026-08-18)
 - 🔍 **앱 ↔ Supabase 동기화 전수 감사(2026-08-18, `main` `195bb59`)**: 라이브 서울
   `MemoryOn`(`ufkbzpdjomtmxjipmwub`) 스키마를 MCP 로 덤프해 저장소 마이그레이션 24종 +
   앱/웹 코드와 3자 대조했다.
@@ -145,13 +209,13 @@
     동의에 `guardian_name` 을 요구해 **보호자에도 같은 필드를 띄운다**(없으면 저장이 실패).
     제약을 완화할지 결정 필요.
     검증: 폰트 메트릭 잉크 예측 ↔ @4x 대조 11항목 **최대 편차 ≤1.38px**, `check:figma` 172.
-  - ⏳ **남은 결정 사항(사용자)**: (a) `profiles.memories` 컬럼은 아무도 안 쓴다
-    (앱은 주요 기억을 `chronicle_entries`(topic='주요 기억')로 저장) → 유지/삭제 결정.
-    (c) `session_logs.audio_url`·`audio_expires_at`·`duration_ms`·`switch_topic` 미사용
-    (녹음 저장 미구현). (d) 진행 중 세션은 DB 에 없다(종료 시 1회 배치 저장) — 중단 시 유실·
-    웹에서 진행 상황 조회 불가. (e) 앱에 UI 가 없는 DB 기능: `care_journals`·`guardian_shares`·
-    `guardian_invites`·`profile_guardians`·`elder_codes`·`profile_caregivers`(합류 승인)·
-    `organizations`·`audit_log` — 전부 웹 담당(설계대로).
+  - 당시 남겨 둔 결정 사항의 **현재 상태**(2026-09-03 기준):
+    (a) `profiles.memories` → **제거됨**(#25). (c) `switch_topic` → **기록됨**(#25 매퍼),
+    `audio_url`·`audio_expires_at`·`duration_ms` → 여전히 미사용(녹음 저장 v2).
+    (d) 진행 중 세션 DB 저장 → **구현됨**(#25). (e) 앱에 UI 가 없는 DB 기능:
+    `care_journals`·`guardian_shares`·`guardian_invites`·`profile_guardians`·`elder_codes`·
+    `profile_caregivers`(합류 승인)·`organizations`·`audit_log` — **여전히 웹 담당**(설계대로).
+    ※ 어르신 삭제는 이후 설정 화면으로 앱에 들어왔다.
 
 ## 이전 위치 (2026-08-16)
 - 🖥️ **웹 개발 세션 정비 + 완성 디자인 고정(2026-08-16, 브랜치 `claude/web-development-session-6mb8mk`)**:
