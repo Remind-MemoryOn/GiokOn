@@ -375,26 +375,32 @@ const SCREENS = [
     /leading-\[24px\] text-ink-900/,
   ]],
 
-  // ── 이용안내 1:17 ─────────────────────────────────────────────────────
-  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 초안 배너 1204×69 @205 · 카드 1204×2221 @330 / 1204×1461 @2623', [
+  // ── 이용안내 1:17 (2026-09-03 "C안": Figma 좌표 체계 + 새 내용) ─────────
+  // 카드 높이·카드2/3 의 y 는 내용에서 계산되므로 figma-audit 가 못 잡는다 →
+  // **Figma 리듬 상수**를 여기서 고정한다. 이 값이 흔들리면 페이지가 시안에서 벗어난다.
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: Figma 리듬 상수(카드 1204@118 · 열 1055@190 · 제목+71 · 리드+120.32 · 첫블록+218 · 하단71 · 간격72)', [
+    /const CARD_X = 118;/, /const CARD_W = 1204;/, /const COL_X = 190;/, /const COL_W = 1055;/,
+    /const TITLE_DY = 71;/, /const LEAD_DY = 120\.32;/, /const FIRST_DY = 218;/,
+    /const CARD_PAD_B = 71;/, /const CARD_GAP = 72;/,
+  ]],
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 배너 1204×69 @205 · 본문 20/40 tracking -0.2 · 제목 30/30', [
     /h-\[69px\] w-\[1204px\] rounded-\[10px\] border border-ink-400 bg-\[#f5f5f5\]\/50/,
-    /top: Y\(205\)/, /h-\[2221px\] w-\[1204px\]/, /top: Y\(330\)/,
-    /h-\[1461px\] w-\[1204px\]/, /top: Y\(2623\)/,
+    /top: Y\(BANNER_Y\)/, /text-\[20px\] leading-\[40px\] tracking-\[-0\.2px\]/,
+    /text-w-page font-semibold leading-\[30px\] text-ink-900/,
   ]],
-  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 본문 20/40 tracking -0.2 · 좌열 190 통일 · 표 0.5px', [
-    /text-\[20px\] leading-\[40px\] tracking-\[-0\.2px\]/, /absolute left-\[190px\]/,
-    /border-\[0\.5px\] border-ink-400/,
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 비의료 고지 박스 1059×128 accent 10% · 문구 x227 w987 Bold', [
+    /h-\[128px\] w-\[1059px\] rounded-\[10px\] border border-accent bg-accent\/10/,
+    /left-\[227px\] w-\[987px\] text-\[20px\] font-bold leading-\[35px\]/,
   ]],
-  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 비의료 고지 박스 1059×128 @2959 accent 10%', [
-    /h-\[128px\] w-\[1059px\] rounded-\[10px\] border border-accent bg-accent\/10/, /top: Y\(2959\)/,
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 법률 전문은 단독 페이지로 — 이용안내는 링크만 건다(중복 금지)', [
+    /to="\/privacy"/, /to="\/terms"/,
   ]],
-  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 처리방침·약관 앵커(로그인 화면 링크 대상)', [
-    /id="privacy"/, /id="terms"/, /id="contact"/,
-  ]],
-  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 카피(Figma 문구)', [
-    /개인정보 처리방침/, /이용약관/, /기억온은 의료기기가 아니며/,
-    /대화는 사람이 아닌 AI가 진행하며, 화면에 그 사실을 표시합니다\./,
-    /외부 법무 자문 검토 후 확정·시행됩니다/,
+  [`${WEB}/src/pages/public/GuidePage.tsx`, '이용안내: 카피(웹·앱 사용 흐름 + 비의료/AI 고지)', [
+    /관리 웹 사용 방법/, /어르신 대화 앱 사용 방법/, /꼭 확인해 주세요/,
+    /기억온은 의료기기가 아니며/,
+    /AI 생성 질문·요약·번역에는 오류가 있을 수 있어/,
+    /보호자는 요양보호사가 명시적으로 공개한 기록만 볼 수 있습니다\./,
+    /한국어 원문을 AI로 번역한 보조본/,
   ], 'copy'],
 
   // ── 어르신 상세 161:373 ────────────────────────────────────────────────

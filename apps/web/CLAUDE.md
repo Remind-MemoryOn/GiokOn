@@ -57,8 +57,16 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
   목록은 `security definer` 함수 `list_inquiries()` 가 판정해 잠금 문구로 바꿔 보내고
   (`locked`), 본문은 RLS 가 막는다(anon 은 테이블 권한 자체가 없다). **화면에서 다시 판정하지
   말고 서버가 준 값을 그대로 쓴다.** 회귀는 `rls_regression.sql` §5.12.
-- **`/privacy`·`/terms` 단독 라우트**(2026-09-02 확정 — 이용안내 앵커와 병존). 공개 화면 하단
-  `PublicFooter` 가 두 곳을 가리킨다. 법인명·보호책임자·수탁자는 **미확정이라 적지 않는다**.
+- **`/privacy`·`/terms` 단독 라우트**(2026-09-02 확정). 공개 화면 하단 `PublicFooter` 가 두 곳을
+  가리킨다. 법인명·보호책임자·수탁자는 **미확정이라 적지 않는다**.
+- **이용안내는 법률 전문을 담지 않는다**(2026-09-03 "C안" 확정). Figma `1:17` 은 처리방침·약관
+  전문을 이 화면에 넣어 뒀지만 단독 페이지로 분리되면서 중복이라 **내용을 웹·앱 사용 흐름
+  안내로 교체**했다. ⛔ **치수·색·타이포·좌표 체계는 Figma `1:17` 그대로**다 — `GuidePage.tsx`
+  상단 상수(`CARD_X` 118 · `CARD_W` 1204 · `COL_X` 190 · `COL_W` 1055 · `TITLE_DY` 71 ·
+  `LEAD_DY` 120.32 · `FIRST_DY` 218 · `CARD_PAD_B` 71 · `CARD_GAP` 72)가 그 실측이고
+  `check:design` 이 고정한다. 카드 높이와 2·3번 카드의 y 는 **내용에서 계산**되므로
+  `figma-audit.spec.mjs` 의 해당 프로브는 어느 쪽이 Figma 실측이고 어느 쪽이 파생인지
+  주석으로 갈라 뒀다(파생 y 는 잉크 대조가 불가능해 `acceptInk`).
 
 **디자인에 더해서 살리는 것**(사용자 확정): 동의 모달의 **의사능력 기록·대리동의(성년후견인/가족
 보호자)·법적 한계 고지** — 컴플라이언스 근거라 유지한다.
@@ -116,7 +124,7 @@ pnpm web:smoke           # 빌드 + 라우트 스모크(preview 를 스스로 �
 pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (소스 정규식, 이관 완료 화면만)
 pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px)
 pnpm check:copy          # 비의료 카피 린트
-pnpm check:a11y          # ★ axe(WCAG 2.1 A/AA) 52화면 + 모달 키보드 동작
+pnpm check:a11y          # ★ axe(WCAG 2.1 A/AA) 56화면 + 모달 키보드 동작
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
 ```
 

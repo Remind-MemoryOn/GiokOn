@@ -128,6 +128,11 @@ create policy inquiry_replies_admin_delete on public.inquiry_replies for delete 
 
 grant select, insert, update, delete on public.inquiries to authenticated;
 grant select, insert, update, delete on public.inquiry_replies to authenticated;
+-- ⚠️ Supabase 는 public 스키마 신규 테이블에 anon 권한을 기본으로 붙인다(alter default privileges).
+--    이 두 테이블의 정책은 전부 `to authenticated` 라 RLS 만으로도 anon 은 0건이지만,
+--    문의 본문은 권한 자체를 떼어 이중으로 막는다. anon 의 유일한 경로는 list_inquiries() 다.
+revoke all on public.inquiries from anon;
+revoke all on public.inquiry_replies from anon;
 
 -- 작성자·상태는 본인이 못 바꾼다(상태는 답변 유무에서 파생).
 create or replace function app.protect_inquiry_admin_fields() returns trigger language plpgsql security definer set search_path = public as $$
