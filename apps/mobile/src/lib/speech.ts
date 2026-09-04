@@ -3,7 +3,7 @@
 // TTS: expo-speech(단말 내장 음성)로 AI 질문을 자동 재생한다. 실 서비스에서는
 //   Clova Voice(Edge Function)로 교체하되 이 계약은 유지한다.
 // STT: 실 STT(gpt-4o-transcribe/Clova) 연동 전이라 여기선 미지원(null)으로 두고,
-//   화면은 모의 STT(mockStt)로 어르신 발화를 시뮬레이션한다. 실연동 시 startStt가
+//   Live 미가용 시 요양보호사가 들은 말을 직접 입력한다. 실연동 시 startStt가
 //   onFinal 콜백으로 인식 텍스트를 전달하도록 교체한다.
 
 import * as Speech from 'expo-speech';

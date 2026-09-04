@@ -230,7 +230,13 @@ export default function Talk() {
    *  대기 화면(/session/loading)으로 **먼저** 넘어가 모델 응답 시간을 덮는다 —
    *  loading 이 질문 교체를 감지해 자동 복귀한다(§리포트 ② 개선). */
   async function handleConfirm() {
-    const finalText = draft.trim() || (pending ?? '');
+    const finalText = (draft.trim() || (pending ?? '')).trim();
+    // 빈 발화는 기록하지 않는다 — 폴백 입력은 이제 빈 칸으로 열리므로(모의 발화 제거),
+    // 그대로 저장하면 어르신 턴이 빈 줄로 DB 에 남아 분석·감사 기록이 왜곡된다.
+    if (!finalText) {
+      Alert.alert('입력 확인', '어르신께서 하신 말씀을 입력해 주세요.');
+      return;
+    }
     router.push('/session/loading');
     const engine = peekLiveEngine();
     let livePayload: { question: string } | undefined;

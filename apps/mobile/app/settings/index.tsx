@@ -38,7 +38,6 @@ import { useAuth } from '../../src/auth/AuthProvider';
 import { webUrl, WEB_ROUTES } from '../../src/lib/webUrl';
 import { useElders } from '../../src/data/reads';
 import { useDeleteElder } from '../../src/data/writes';
-import { isSupabaseConfigured } from '../../src/lib/supabase';
 import { NO_VALUE } from '../../src/lib/format';
 import iconEdit from '../../assets/brand/icon-edit.png';
 import socialNaver from '../../assets/brand/social-naver.png';
@@ -69,7 +68,7 @@ const SOCIALS = [
 export default function Settings() {
   const { userRow, user, authed, signOut } = useAuth();
   // 목업 모드·로그인 전에는 조회하지 않는다(초기화 전 호출 방지).
-  const org = useOrganization({ enabled: isSupabaseConfigured && authed });
+  const org = useOrganization({ enabled: authed });
   const elders = useElders();
   const deleteElder = useDeleteElder();
 
@@ -372,16 +371,6 @@ export default function Settings() {
             v.{version}
           </Text>
         </View>
-
-        {/* 목업 모드에서는 이 화면의 값도 예시다 — 오해하지 않도록 한 줄 고지 */}
-        {!isSupabaseConfigured ? (
-          <Text
-            className="text-[12px] font-normal"
-            style={{ marginTop: 16, lineHeight: 18, color: SETTINGS.muted }}
-          >
-            서버에 연결되지 않아 예시 데이터로 표시하고 있어요.
-          </Text>
-        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

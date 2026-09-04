@@ -1,4 +1,4 @@
-// 앱 상태 스토어 (Zustand) — 요양보호사 세션 실행 런타임 + 목업 데이터.
+// 앱 상태 스토어 (Zustand) — 요양보호사 세션 실행 런타임(UI 상태) 전용.
 //
 // 백엔드 로직은 전부 @giokon/core를 재사용한다(신규 도메인 로직 없음):
 //   - 대화 진행: openConversation / respondToUserTurn (안전 가드 통합)
@@ -18,11 +18,7 @@ import {
   screenAiUtterance,
   nowIso,
   uid,
-  pickAvatarColor,
-  DEFAULT_APPEARANCE,
   type ChronicleEntry,
-  type ConsentType,
-  type ConversationLog,
   type ConversationTurn,
   type ElderProfile,
   type SafetyEventDraft,
@@ -32,8 +28,6 @@ import {
   type SessionRecommendation,
   type TherapyType,
 } from '@giokon/core';
-import { MOCK_CHRONICLES, MOCK_ELDERS, MOCK_LOGS, MOCK_SESSIONS, seedAnalyses } from '../lib/mockData';
-import { pickElderUtterance } from '../lib/mockStt';
 
 export interface RuntimeSafety {
   escalate: boolean;
@@ -72,7 +66,7 @@ export interface ActiveSession {
   /**
    * 세션 시작 시 넘겨받은 어르신 연대기(대화 개인화·종료 분석의 근거).
    *
-   * ⚠️ 종료 분석이 `chroniclesByElder()`(목업 스토어)를 다시 읽으면 **라이브 모드에서
+   * ⚠️ 종료 분석이 연대기를 다시 조회하면 **라이브 모드에서
    * 빈 배열**이 된다 — 라이브 어르신 id 는 목업 배열에 없다. 그러면 대화는 실제
    * 연대기로 열어 놓고 저장되는 분석의 추천 주제만 근거 없이 계산된다.
    * 시작 시점의 연대기를 그대로 들고 있다가 분석에 쓴다.
@@ -102,7 +96,7 @@ export interface ActiveSession {
 /**
  * 종료된 세션 1건의 전체 묶음 — 라이브 영속화 레이어(useSessionPersistence)가
  * DB(sessions·session_logs·session_analyses·safety_events)에 쓰기 위한 스냅샷.
- * finishSession이 목업 갱신과 함께 이 값을 채우고, 영속화 후 clearLastFinished로 비운다.
+ * finishSession이 이 값을 채우고, 영속화 후 clearLastFinished로 비운다.
  */
 export interface FinishedSessionBundle {
   logId: string;
@@ -129,45 +123,13 @@ const SAFE_INITIAL: RuntimeSafety = {
 };
 
 interface AppState {
-  // ── 인증(요양보호사) — 시연용 목업 ──
-  caregiver: { name: string } | null;
-  login: (name: string) => void;
-  logout: () => void;
-
-  // ── 데이터(목업) ──
-  elders: ElderProfile[];
-  sessions: Session[];
-  chronicles: ChronicleEntry[];
-  logs: ConversationLog[];
-  analyses: Record<string, SessionAnalysis>; // key: logId
-
-  getElder: (id: string) => ElderProfile | undefined;
-  eldersSorted: () => ElderProfile[];
-  chroniclesByElder: (elderId: string) => ChronicleEntry[];
-  sessionsByElder: (elderId: string) => Session[];
-  logsByElder: (elderId: string) => ConversationLog[];
-  getLog: (id: string) => ConversationLog | undefined;
-  getAnalysis: (logId: string) => SessionAnalysis | undefined;
-
-  upsertElder: (
-    patch: Partial<ElderProfile> & Pick<ElderProfile, 'name' | 'birthYear'> & { id?: string },
-  ) => ElderProfile;
-  upsertChronicle: (
-    c: Omit<ChronicleEntry, 'id' | 'recordedAt' | 'updatedAt' | 'source'> & { id?: string },
-  ) => ChronicleEntry;
-  /** 연대기 항목 삭제(연대기 수정 화면의 주요 기억 X 버튼). */
-  deleteChronicle: (id: string) => void;
-  /** 어르신 삭제(설정 → 담당 어르신 관리). 딸린 기록도 함께 지운다. */
-  deleteElder: (id: string) => void;
-
-  // ── 동의 게이팅(어르신별) — @giokon/core consent 카탈로그 사용 ──
-  consentsByElder: Record<string, ConsentType[]>;
-  grantElderConsents: (elderId: string, types: ConsentType[]) => void;
-  elderConsents: (elderId: string) => ConsentType[];
-
   // ── 세션 실행 런타임 ──
+  //
+  // 이 스토어는 **진행 중인 대화 한 건**만 들고 있다(UI 상태). 어르신·연대기·기록·
+  // 분석·동의는 전부 DB 가 SoT 이고 src/data/reads.ts·writes.ts 로만 오간다.
+  // (2026-09-04 목업 컬렉션 제거 — 예시 데이터가 실제 기록처럼 보이던 경로를 없앴다.)
   active: ActiveSession | null;
-  // 어르신·연대기는 호출자(화면)가 어댑터로 조회해 넘긴다 — 런타임을 목업 데이터에서
+  // 어르신·연대기는 호출자(화면)가 어댑터로 조회해 넘긴다 — 런타임을 데이터 조회에서
   // 분리(라이브 어르신으로도 세션 시작 가능).
   beginSession: (
     elder: ElderProfile,
@@ -176,7 +138,7 @@ interface AppState {
     /** 웹 설계 값(planned 채택 시) — 대화 진행 입력으로 보존된다. */
     design?: SessionDesign,
   ) => void;
-  /** 마이크(모의 STT) — 어르신 발화를 인식해 확인 화면으로 넘긴다. */
+  /** 마이크(폴백) — 요양보호사가 들은 말을 입력할 빈 패널을 연다. */
   captureUtterance: () => void;
   setPendingStt: (text: string) => void;
   /** 확인 취소 → 대기 중 STT 폐기하고 마이크 대기 상태로. */
@@ -225,114 +187,6 @@ function makeTurn(
 }
 
 export const useApp = create<AppState>((set, get) => ({
-  caregiver: { name: '홍길동' }, // 시연: 이미 로그인된 상태로 시작(스플래시→메인)
-  login: (name) => set({ caregiver: { name: name.trim() || '요양보호사' } }),
-  logout: () => set({ caregiver: null, active: null }),
-
-  elders: MOCK_ELDERS,
-  sessions: MOCK_SESSIONS,
-  chronicles: MOCK_CHRONICLES,
-  logs: MOCK_LOGS,
-  analyses: seedAnalyses(),
-
-  getElder: (id) => get().elders.find((e) => e.id === id),
-  eldersSorted: () => [...get().elders].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-  chroniclesByElder: (elderId) =>
-    get()
-      .chronicles.filter((c) => c.elderId === elderId)
-      .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
-  sessionsByElder: (elderId) =>
-    get()
-      .sessions.filter((s) => s.elderId === elderId)
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-  logsByElder: (elderId) =>
-    get()
-      .logs.filter((l) => l.elderId === elderId)
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
-  getLog: (id) => get().logs.find((l) => l.id === id),
-  getAnalysis: (logId) => get().analyses[logId],
-
-  upsertElder: (patch) => {
-    const ts = nowIso();
-    const existing = patch.id ? get().elders.find((e) => e.id === patch.id) : undefined;
-    if (existing) {
-      const updated: ElderProfile = { ...existing, ...patch, updatedAt: ts };
-      set((s) => ({ elders: s.elders.map((e) => (e.id === updated.id ? updated : e)) }));
-      return updated;
-    }
-    const created: ElderProfile = {
-      id: patch.id ?? uid('eld_'),
-      name: patch.name,
-      birthYear: patch.birthYear,
-      birthDate: patch.birthDate,
-      hometown: patch.hometown,
-      job: patch.job,
-      family: patch.family,
-      hobbies: patch.hobbies,
-      photoPath: patch.photoPath,
-      gender: patch.gender,
-      guardian: patch.guardian,
-      appearance: patch.appearance ?? DEFAULT_APPEARANCE,
-      avatarColor: patch.avatarColor ?? pickAvatarColor(patch.name + ts),
-      createdAt: ts,
-      updatedAt: ts,
-    };
-    set((s) => ({ elders: [created, ...s.elders] }));
-    return created;
-  },
-
-  upsertChronicle: (patch) => {
-    const ts = nowIso();
-    const existing = patch.id ? get().chronicles.find((c) => c.id === patch.id) : undefined;
-    if (existing) {
-      const updated: ChronicleEntry = { ...existing, ...patch, updatedAt: ts };
-      set((s) => ({ chronicles: s.chronicles.map((c) => (c.id === updated.id ? updated : c)) }));
-      return updated;
-    }
-    const created: ChronicleEntry = {
-      id: patch.id ?? uid('chr_'),
-      elderId: patch.elderId,
-      topic: patch.topic,
-      content: patch.content,
-      keywords: patch.keywords,
-      source: 'Caregiver',
-      recordedAt: ts,
-      updatedAt: ts,
-    };
-    set((s) => ({ chronicles: [created, ...s.chronicles] }));
-    return created;
-  },
-
-  deleteChronicle: (id) => set((s) => ({ chronicles: s.chronicles.filter((c) => c.id !== id) })),
-
-  // 라이브에서는 DB 가 FK cascade 로 지운다(useDeleteProfile). 목업도 같은 결과가 되도록
-  // 어르신에 딸린 연대기·세션·대화·분석·동의를 함께 비운다.
-  deleteElder: (id) =>
-    set((st) => {
-      const logIds = new Set(st.logs.filter((l) => l.elderId === id).map((l) => l.id));
-      const analyses = { ...st.analyses };
-      for (const lid of logIds) delete analyses[lid];
-      const consents = { ...st.consentsByElder };
-      delete consents[id];
-      return {
-        elders: st.elders.filter((e) => e.id !== id),
-        chronicles: st.chronicles.filter((c) => c.elderId !== id),
-        sessions: st.sessions.filter((x) => x.elderId !== id),
-        logs: st.logs.filter((l) => l.elderId !== id),
-        analyses,
-        consentsByElder: consents,
-      };
-    }),
-
-  consentsByElder: {},
-  grantElderConsents: (elderId, types) =>
-    set((s) => {
-      const have = new Set(s.consentsByElder[elderId] ?? []);
-      for (const t of types) have.add(t);
-      return { consentsByElder: { ...s.consentsByElder, [elderId]: [...have] } };
-    }),
-  elderConsents: (elderId) => get().consentsByElder[elderId] ?? [],
-
   active: null,
   lastFinished: null,
   clearLastFinished: () => set({ lastFinished: null }),
@@ -372,11 +226,19 @@ export const useApp = create<AppState>((set, get) => ({
     });
   },
 
+  /**
+   * 폴백(Live 미가용) 입력 — **빈** 입력 패널을 연다.
+   *
+   * ⚠️ 예전에는 여기서 `pickElderUtterance()` 가 미리 써 둔 어르신 발화를 골라
+   * 넣었다(mockStt). 요양보호사가 그대로 저장하면 **어르신이 하지 않은 말**이
+   * session_logs 에 실제 기록으로 남았다 — 개인 기록을 임의값으로 만드는 것이라
+   * 비의료·정부심사 기준에서 특히 위험하다. 근거 없는 값은 만들지 않는다.
+   * 이제 요양보호사가 실제로 들은 말을 직접 입력한다(빈 문자열 = 패널 열림).
+   */
   captureUtterance: () => {
     const a = get().active;
     if (!a) return;
-    const text = pickElderUtterance(a.currentTopic, a.turns.length);
-    set({ active: { ...a, pendingStt: text, phase: 'processing' } });
+    set({ active: { ...a, pendingStt: '', phase: 'processing' } });
   },
   setPendingStt: (text) => {
     const a = get().active;
@@ -508,27 +370,9 @@ export const useApp = create<AppState>((set, get) => ({
     // 대화 시간은 전문만 보는 analyzeSession 이 알 수 없다 → 여기서 붙인다(보호자 요약 화면이 읽는다).
     const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
     const analysis = { ...analyzeSession(a.elder, a.turns, a.chronicles), durationMinutes };
+    // 로컬 id — 영속화가 DB 세션 id 를 받기 전까지 화면이 이 세션을 가리키는 임시 키다.
     const logId = uid('log_');
-    const log: ConversationLog = {
-      id: logId,
-      sessionId: a.session.id,
-      elderId: a.elder.id,
-      therapyType: a.session.therapyType,
-      turns: a.turns,
-      status: 'ended',
-      startedAt: a.startedAt,
-      endedAt,
-      chronicleEntriesAdded: [],
-    };
-    const session: Session = {
-      ...a.session,
-      durationMinutes,
-      updatedAt: endedAt,
-    };
-    set((s) => ({
-      logs: [log, ...s.logs],
-      sessions: [session, ...s.sessions],
-      analyses: { ...s.analyses, [logId]: analysis },
+    set(() => ({
       lastFinished: {
         logId,
         elder: a.elder,

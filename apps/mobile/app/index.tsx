@@ -11,24 +11,26 @@ import { useEffect } from 'react';
 import { Text, Pressable, Image, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAuth } from '../src/auth/AuthProvider';
+import { useEnforceAppAccess } from '../src/auth/useEnforceAppAccess';
 import wordmark from '../assets/brand/wordmark.png';
 
 const FRAME_H = 852; // Figma 프레임 높이 기준 비율 계산용
 
 export default function Splash() {
-  const { isConfigured, authed, loading } = useAuth();
   const { height } = useWindowDimensions();
+  // 이미 로그인된(영속) 세션이면 자격을 판정해 메인으로, 아니면 로그인으로.
+  // 보호자·미온보딩 계정은 여기서 사유를 안내하고 로그아웃한다(useEnforceAppAccess).
+  const { ready, target } = useEnforceAppAccess();
 
-  // 라이브에서 이미 로그인된(영속) 세션이면 메인으로, 아니면 로그인으로.
   useEffect(() => {
-    if (loading) return;
-    const target = isConfigured && authed ? '/main' : '/login';
+    if (!ready) return;
     const t = setTimeout(() => router.replace(target), 1600);
     return () => clearTimeout(t);
-  }, [isConfigured, authed, loading]);
+  }, [ready, target]);
 
-  const go = () => router.replace(isConfigured && authed ? '/main' : '/login');
+  const go = () => {
+    if (ready) router.replace(target);
+  };
 
   return (
     <Pressable onPress={go} accessibilityRole="button" accessibilityLabel="시작하기" className="flex-1 bg-white">

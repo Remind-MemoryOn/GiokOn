@@ -12,7 +12,6 @@ import { getSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult } from './client';
 import { micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback } from './player';
-import { isSupabaseConfigured } from '../supabase';
 
 const DEFAULT_MODEL = 'gemini-3.1-flash-live-preview';
 
@@ -76,7 +75,7 @@ export class LiveConversationEngine {
    * false — 호출부는 기존 파이프라인으로 폴백한다.
    */
   async start(): Promise<boolean> {
-    if (!isSupabaseConfigured || !micStreamingSupported()) return false;
+    if (!micStreamingSupported()) return false;
     try {
       const { token, model } = await fetchLiveToken();
       this.lastToken = token;

@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { useAuth } from '../src/auth/AuthProvider';
 import { webUrl, WEB_ROUTES } from '../src/lib/webUrl';
+import { evaluateAppAccess } from '../src/auth/appAccess';
 import { signInWithSupabaseProvider, signInWithNaver } from '../src/auth/social';
 import { C } from '../src/theme';
 import wordmark from '../assets/brand/wordmark.png';
@@ -35,18 +36,32 @@ export default function Login() {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
-  const { signIn, isConfigured, refreshUserRow } = useAuth();
+  const { signIn, signOut, refreshUserRow } = useAuth();
   const { width, height } = useWindowDimensions();
 
   // 가로는 Figma 좌표를 화면 폭 비율로 환산(393 기준 디자인 → 좁은 기기에서도 비율 유지).
   const x = (v: number) => (v / FRAME_W) * width;
 
+  /**
+   * 로그인 후 진입 자격을 확인한다 — 보호자 계정·미온보딩 계정은 통과시키지 않는다.
+   * 통과하지 못하면 사유를 알리고 로그아웃한다(세션이 남으면 곧바로 다시 들어온다).
+   */
+  const enterIfAllowed = async (row: Awaited<ReturnType<typeof refreshUserRow>>) => {
+    const access = evaluateAppAccess({ authed: true, loading: false, userRow: row });
+    if (access.status === 'blocked') {
+      Alert.alert(access.title, access.message);
+      await signOut();
+      return;
+    }
+    router.replace('/main');
+  };
+
   const onLogin = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await signIn(id, pw);
-      router.replace('/main');
+      const row = await signIn(id, pw);
+      await enterIfAllowed(row);
     } catch (e) {
       Alert.alert('로그인 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
     } finally {
@@ -57,7 +72,6 @@ export default function Login() {
   const notOnApp = (what: string) => Alert.alert(what, `${what}은(는) 웹에서 진행해 주세요.`);
 
   const onFindPassword = async () => {
-    if (!isConfigured) return onLogin();
     if (!id.trim()) return Alert.alert('비밀번호 찾기', '가입한 이메일(아이디)을 입력해 주세요.');
     try {
       // 재설정 링크는 **웹의 실제 라우트**로 보낸다(/reset-password). 도메인은 env.
@@ -78,7 +92,6 @@ export default function Login() {
   const [socialBusy, setSocialBusy] = useState<string | null>(null);
 
   const onSocial = async (key: string) => {
-    if (!isConfigured) return onLogin();
     if (socialBusy) return;
     setSocialBusy(key);
     try {
@@ -87,12 +100,8 @@ export default function Login() {
           ? await signInWithNaver()
           : await signInWithSupabaseProvider(key as 'google' | 'kakao');
       if (!r.ok) return; // 사용자가 창을 닫음 — 아무 것도 하지 않는다
-      // 미온보딩 계정은 웹 온보딩이 필요하다(앱에는 온보딩 화면이 없다 — 설계 확정).
-      const row = await refreshUserRow();
-      if (row && !row.onboarded_at) {
-        Alert.alert('환영해요!', '웹에서 기본 정보 등록을 먼저 완료해 주세요.');
-      }
-      router.replace('/main');
+      // 미온보딩·보호자 계정은 앱에 들어올 수 없다(온보딩은 웹 담당 — 설계 확정).
+      await enterIfAllowed(await refreshUserRow());
     } catch (e) {
       Alert.alert('소셜 로그인', e instanceof Error ? e.message : '다시 시도해 주세요.');
     } finally {
@@ -169,7 +178,7 @@ export default function Login() {
 
       {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 — Figma 행 시작 x 80, 잉크 top 519 */}
       <View className="absolute flex-row items-center" style={{ left: x(80), top: top(515, height) }}>
-        <Pressable onPress={() => (isConfigured ? notOnApp('아이디 찾기') : onLogin())} hitSlop={8}>
+        <Pressable onPress={() => notOnApp('아이디 찾기')} hitSlop={8}>
           <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
             아이디 찾기
           </Text>
@@ -185,7 +194,7 @@ export default function Login() {
         <Text className="text-[12px] text-line mx-3 font-normal" style={{ lineHeight: 20 }}>
           |
         </Text>
-        <Pressable onPress={() => (isConfigured ? notOnApp('회원가입') : onLogin())} hitSlop={8}>
+        <Pressable onPress={() => notOnApp('회원가입')} hitSlop={8}>
           <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
             회원가입
           </Text>

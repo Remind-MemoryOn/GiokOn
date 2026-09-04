@@ -1,11 +1,11 @@
-// 앱 데이터 쓰기 어댑터 — 어르신 등록/수정·연대기·동의를 라이브 DB 또는 목업에 쓴다.
+// 앱 데이터 쓰기 어댑터 — 어르신 등록/수정·연대기·동의를 라이브 DB 에 쓴다.
 //
-// 읽기(reads.ts)와 대칭: Supabase 설정 시 @giokon/data 뮤테이션 훅 + mappers로 DB에
-// 쓰고(RLS·기관 인가), 미설정 시 기존 목업 스토어 액션을 호출한다(시연 보존).
-// 반환 타입은 목업 액션과 동일한 코어 도메인 타입 → 화면 변경 최소.
+// 읽기(reads.ts)와 대칭: @giokon/data 뮤테이션 훅 + mappers 로 DB 에 쓴다(RLS·기관 인가).
+// 반환 타입은 코어 도메인 타입이라 화면은 DB 스키마를 몰라도 된다.
+// 뮤테이션이 비동기라 어댑터도 async 함수를 반환한다 — 화면 핸들러는 await 하고
+// 실패를 안내한다.
 //
-// 목업 액션은 동기, 라이브 뮤테이션은 비동기라 어댑터는 async 함수를 반환한다 —
-// 화면 핸들러는 await 하고 실패를 안내한다.
+// ⚠️ 목업 모드는 없다(2026-09-04 제거). reads.ts 헤더 참고.
 
 import { useCallback } from 'react';
 import {
@@ -36,8 +36,6 @@ import {
   type ConsentType,
   type ElderProfile,
 } from '@giokon/core';
-import { isSupabaseConfigured as CFG } from '../lib/supabase';
-import { useApp } from '../store/appStore';
 import { useAuth } from '../auth/AuthProvider';
 
 /**
@@ -69,20 +67,11 @@ export type ChronicleUpsertInput = Omit<ChronicleWriteInput, 'source'> & {
 /** 어르신 등록/수정. id 있으면 수정, 없으면 신규(연대기 소유=현재 요양보호사). */
 export function useUpsertElder(): (input: ElderUpsertInput) => Promise<ElderProfile> {
   const { user, userRow } = useAuth();
-  const mockUpsert = useApp((s) => s.upsertElder);
   const createProfile = useCreateProfile();
   const updateProfile = useUpdateProfile();
 
   return useCallback(
     async (input: ElderUpsertInput): Promise<ElderProfile> => {
-      // 목업 도메인 타입은 "지움"을 null 로 표현하지 않는다(undefined 만) → 정규화.
-      if (!CFG)
-        return mockUpsert({
-          ...input,
-          gender: input.gender ?? undefined,
-          guardian: input.guardian ?? undefined,
-          note: input.note ?? undefined,
-        });
       const userId = requireWriteIdentity(user, userRow);
       if (input.id) {
         const row = await updateProfile.mutateAsync({ id: input.id, patch: toProfileUpdate(input) });
@@ -91,20 +80,18 @@ export function useUpsertElder(): (input: ElderUpsertInput) => Promise<ElderProf
       const row = await createProfile.mutateAsync(toProfileInsert(input, userId));
       return toElderProfile(row);
     },
-    [mockUpsert, createProfile, updateProfile, user, userRow],
+    [createProfile, updateProfile, user, userRow],
   );
 }
 
 /** 연대기 항목 등록/수정(기본 출처=요양보호사). */
 export function useUpsertChronicle(): (input: ChronicleUpsertInput) => Promise<ChronicleEntry> {
   const { user, userRow } = useAuth();
-  const mockUpsert = useApp((s) => s.upsertChronicle);
   const createChronicle = useCreateChronicle();
   const updateChronicle = useUpdateChronicle();
 
   return useCallback(
     async (input: ChronicleUpsertInput): Promise<ChronicleEntry> => {
-      if (!CFG) return mockUpsert(input);
       const userId = requireWriteIdentity(user, userRow);
       const full: ChronicleWriteInput = {
         elderId: input.elderId,
@@ -120,48 +107,37 @@ export function useUpsertChronicle(): (input: ChronicleUpsertInput) => Promise<C
       const row = await createChronicle.mutateAsync(toChronicleInsert(full, userId));
       return toChronicleEntry(row);
     },
-    [mockUpsert, createChronicle, updateChronicle, user, userRow],
+    [createChronicle, updateChronicle, user, userRow],
   );
 }
 
 /** 연대기 항목 삭제(주요 기억 목록의 X). */
 export function useDeleteChronicle(): (input: { id: string; elderId: string }) => Promise<void> {
-  const mockDelete = useApp((s) => s.deleteChronicle);
   const deleteChronicle = useDeleteChronicleData();
 
   return useCallback(
     async ({ id, elderId }: { id: string; elderId: string }): Promise<void> => {
-      if (!CFG) {
-        mockDelete(id);
-        return;
-      }
       await deleteChronicle.mutateAsync({ id, profileId: elderId });
     },
-    [mockDelete, deleteChronicle],
+    [deleteChronicle],
   );
 }
 
 /**
  * 어르신 삭제(설정 → 담당 어르신 관리).
  *
- * 라이브에서는 `useDeleteProfile` 이 **Storage 사진을 먼저 파기하고** 행을 지운다
- * (행을 먼저 지우면 Storage 정책이 기관을 확인할 수 없어 파일이 남는다). 나머지
- * 연대기·세션·대화·분석·동의·안전 이벤트는 DB 의 FK cascade 로 함께 사라진다.
- * 목업 모드도 같은 결과가 되도록 스토어에서 딸린 기록을 함께 비운다.
+ * `useDeleteProfile` 이 **Storage 사진을 먼저 파기하고** 행을 지운다(행을 먼저 지우면
+ * Storage 정책이 기관을 확인할 수 없어 파일이 남는다). 나머지 연대기·세션·대화·분석·
+ * 동의·안전 이벤트는 DB 의 FK cascade 로 함께 사라진다.
  */
 export function useDeleteElder(): (id: string) => Promise<void> {
-  const mockDelete = useApp((s) => s.deleteElder);
   const deleteProfile = useDeleteProfileData();
 
   return useCallback(
     async (id: string): Promise<void> => {
-      if (!CFG) {
-        mockDelete(id);
-        return;
-      }
       await deleteProfile.mutateAsync(id);
     },
-    [mockDelete, deleteProfile],
+    [deleteProfile],
   );
 }
 
@@ -189,15 +165,10 @@ export function useGrantConsents(): (
   detail: ConsentSubjectDetail,
 ) => Promise<void> {
   const { user, userRow } = useAuth();
-  const mockGrant = useApp((s) => s.grantElderConsents);
   const recordConsent = useRecordConsent();
 
   return useCallback(
     async (elderId: string, types: ConsentType[], detail: ConsentSubjectDetail): Promise<void> => {
-      if (!CFG) {
-        mockGrant(elderId, types);
-        return;
-      }
       const userId = requireWriteIdentity(user, userRow);
 
       const { data: existing, error } = await getGiokonClient()
@@ -230,6 +201,6 @@ export function useGrantConsents(): (
         });
       }
     },
-    [mockGrant, recordConsent, user, userRow],
+    [recordConsent, user, userRow],
   );
 }

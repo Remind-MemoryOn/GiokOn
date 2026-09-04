@@ -30,15 +30,13 @@ import {
   type SessionLogOwner,
 } from '@giokon/data';
 import type { ConversationTurn } from '@giokon/core';
-import { isSupabaseConfigured, queryClient } from '../lib/supabase';
+import { queryClient } from '../lib/supabase';
 import { useApp, type FinishedSessionBundle, type SessionSafetyEvent } from '../store/appStore';
 import { useAuth } from '../auth/AuthProvider';
 
 /** 세션 저장 결과 — 화면이 이동/재시도를 결정하는 근거. */
 export type SessionSaveResult =
-  /** 목업 모드(Supabase 미설정) — 로컬 기록만 남았다. */
-  | { status: 'mock'; logId: string | null }
-  /** 라이브 저장 성공 — logId 는 DB 세션 id. */
+  /** 저장 성공 — logId 는 DB 세션 id. */
   | { status: 'saved'; logId: string }
   /** 라이브 저장 실패 — 대화가 온전히 남지 않았다(재시도 가능). */
   | { status: 'failed'; logId: null; message: string };
@@ -253,7 +251,7 @@ export function useSessionPersistence(): {
   const { user } = useAuth();
 
   const openRemoteSession = useCallback(async (): Promise<void> => {
-    if (!isSupabaseConfigured || !user) return;
+    if (!user) return;
     const a = useApp.getState().active;
     if (!a || a.remoteId) return;
     try {
@@ -288,7 +286,7 @@ export function useSessionPersistence(): {
    */
   const adoptPlannedSession = useCallback(
     async (sessionId: string, startedAt: string): Promise<void> => {
-      if (!isSupabaseConfigured || !user) return;
+      if (!user) return;
       try {
         await withRetry(async () => {
           const { error } = await getGiokonClient()
@@ -309,7 +307,7 @@ export function useSessionPersistence(): {
   );
 
   const syncProgress = useCallback(async (): Promise<void> => {
-    if (!isSupabaseConfigured || !user || syncing) return;
+    if (!user || syncing) return;
     const a = useApp.getState().active;
     if (!a?.remoteId) return;
     syncing = true;
@@ -351,11 +349,7 @@ export function useSessionPersistence(): {
   }, [user]);
 
   const finishAndPersist = useCallback(async (): Promise<SessionSaveResult> => {
-    const logId = useApp.getState().finishSession();
-    if (!isSupabaseConfigured) {
-      useApp.getState().clearLastFinished();
-      return { status: 'mock', logId }; // 목업 흐름 보존
-    }
+    useApp.getState().finishSession();
     return save();
   }, [save]);
 
@@ -365,7 +359,7 @@ export function useSessionPersistence(): {
     // 진행 중에 만들어 둔 세션이 있으면 'active' 로 남겨 두지 않는다 — 그대로 두면
     // 웹에서 영원히 "진행 중"으로 보인다. 여기까지 기록된 대화는 그대로 남긴다
     // (사용자가 포기한 것은 재시도이지, 이미 저장된 기록이 아니다).
-    if (!isSupabaseConfigured || !bundle?.remoteId) return;
+    if (!bundle?.remoteId) return;
     void withRetry(async () => {
       const { error } = await getGiokonClient()
         .from('sessions')

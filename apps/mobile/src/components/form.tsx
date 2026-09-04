@@ -454,7 +454,7 @@ export function MemoryList({
   setItems: (next: MemoryItem[]) => void;
   placeholder: string;
   addLabel: string;
-  /** 새 항목 키 생성기(호출부가 제공 — 라이브/목업 공통). */
+  /** 새 항목 키 생성기(호출부가 제공). */
   newKey: () => string;
 }) {
   const rows = items.length > 0 ? items : [{ key: '__first', text: '' }];

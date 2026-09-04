@@ -4,11 +4,10 @@
 // 발급받아 <Image source={{ uri }}> 로 렌더한다. 경로 규약 `<profile_id>/<uuid>.<ext>`는
 // Storage RLS(같은 기관·보호자 배제)가 검증한다. 얼굴 사진은 민감정보 취급.
 //
-// 미설정(목업) 모드에서는 Supabase 를 호출하지 않고 null 을 돌려 이니셜 아바타로 폴백한다.
+// 발급에 실패하면 null 을 돌려 이니셜 아바타로 폴백한다.
 
 import { useEffect, useState } from 'react';
 import { getGiokonClient, removeStorageObject } from '@giokon/data';
-import { isSupabaseConfigured } from '../lib/supabase';
 
 const BUCKET = 'elder-photos';
 /** signed URL 유효기간(초). 화면 체류 중 만료되지 않을 정도로 넉넉히. */
@@ -68,17 +67,13 @@ export async function uploadElderPhoto(profileId: string, photo: PickedPhoto): P
   return path;
 }
 
-/** 로컬 파일 uri 인지(목업 모드에서는 경로 대신 로컬 uri 를 그대로 보관한다). */
+/** 로컬 파일 uri 인지(아직 업로드되지 않은 값·구버전 행 방어). */
 function isLocalUri(path: string): boolean {
   return /^(file|content|ph|assets-library|data):/.test(path);
 }
 
-/**
- * 사진 저장 — 설정 시 Storage 에 올리고 경로를, 미설정(목업)이면 로컬 uri 를 그대로
- * 돌려준다. 반환값을 `profiles.photo_path`(또는 목업 elder.photoPath)에 넣는다.
- */
+/** 사진 저장 — Storage 에 올리고 경로를 돌려준다(`profiles.photo_path` 에 넣는다). */
 export async function saveElderPhoto(profileId: string, photo: PickedPhoto): Promise<string> {
-  if (!isSupabaseConfigured) return photo.uri;
   return uploadElderPhoto(profileId, photo);
 }
 
@@ -87,17 +82,16 @@ export async function saveElderPhoto(profileId: string, photo: PickedPhoto): Pro
  *
  * 업로드는 매번 새 경로를 만들기 때문에, 지우지 않으면 바꾼 만큼 옛 사진이 Storage 에
  * 계속 쌓인다(감사 지적). 얼굴 사진은 민감정보라 남겨 두면 안 된다.
- * 목업 모드의 로컬 uri 나 빈 값은 지울 대상이 아니다.
+ * 아직 올리지 않은 로컬 uri 나 빈 값은 지울 대상이 아니다.
  */
 export async function removeElderPhoto(photoPath: string | null | undefined): Promise<void> {
-  if (!photoPath || isLocalUri(photoPath) || !isSupabaseConfigured) return;
+  if (!photoPath || isLocalUri(photoPath)) return;
   await removeStorageObject(BUCKET, photoPath);
 }
 
-/** 경로 → 표시용 signed URL(실패·미설정 시 null). */
+/** 경로 → 표시용 signed URL(발급 실패 시 null). */
 export async function getElderPhotoUrl(photoPath: string): Promise<string | null> {
   if (isLocalUri(photoPath)) return photoPath;
-  if (!isSupabaseConfigured) return null;
   const { data, error } = await getGiokonClient()
     .storage.from(BUCKET)
     .createSignedUrl(photoPath, SIGNED_TTL);
@@ -115,7 +109,7 @@ export function useElderPhotoUrl(photoPath: string | undefined): string | null {
   const [fetched, setFetched] = useState<{ path: string; url: string | null } | null>(null);
 
   useEffect(() => {
-    if (!photoPath || !isSupabaseConfigured) return;
+    if (!photoPath) return;
     if (fetched?.path === photoPath) return; // 이미 이 경로로 발급 완료
     let active = true;
     getElderPhotoUrl(photoPath)

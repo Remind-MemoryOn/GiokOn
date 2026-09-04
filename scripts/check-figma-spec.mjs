@@ -619,8 +619,33 @@ const SPECS = [
   ],
   [
     `${APP}/src/data/reads.ts`,
-    '파생 객체는 Zustand 셀렉터 밖에서 합성(무한 리렌더 방지)',
-    [/function datedFromMock/, /useMemo\(\s*\(\) => \(CFG \? datedFromRows/],
+    '파생 객체는 useMemo 안에서 합성(무한 리렌더 방지)',
+    [/function datedFromRows/, /useMemo\(\(\) => datedFromRows\(rows\), \[rows\]\)/],
+  ],
+  [
+    `${APP}/src/data/reads.ts`,
+    '목업 모드 제거 — 읽기 어댑터에 설정 분기가 없다',
+    [{ absent: /isSupabaseConfigured|CFG|useApp/ }],
+  ],
+  [
+    `${APP}/app/_layout.tsx`,
+    '부팅 게이트 — 서버 연결 정보가 없으면 앱을 열지 않는다',
+    [/if \(!isSupabaseConfigured\)/, /<ConfigError reason=/],
+  ],
+  [
+    `${APP}/src/lib/live/playback.ts`,
+    '안전: 출력 가드에 막힌 원음은 재생하지 않고 캐시에서 버린다',
+    [/if \(adopted !== raw\)/, /cache\.delete\(raw\)/],
+  ],
+  [
+    `${APP}/src/store/appStore.ts`,
+    '안전: Live 오프너도 출력 가드를 통과해야 채택된다',
+    [/overrideQuestion: \(text\) => \{[\s\S]{0,400}?screenAiUtterance\(text\)/],
+  ],
+  [
+    `${APP}/src/auth/appAccess.ts`,
+    '진입 자격: 보호자·미온보딩·기관 없음 계정은 앱에 들어오지 못한다',
+    [/role === 'guardian'/, /!input\.userRow\.onboarded_at \|\| !input\.userRow\.org_id/],
   ],
 
   // ── 설정 (Figma 584:470, 프레임 393×1072) / 담당 어르신 관리 (584:559, 393×852) ────
@@ -700,7 +725,17 @@ for (const [file, name, patterns] of SPECS) {
     fails.push({ name, file, missing: ['파일 없음'] });
     continue;
   }
-  const missing = patterns.filter((p) => !p.test(src)).map(String);
+  // 패턴은 두 가지다:
+  //   · RegExp            — 반드시 **있어야** 한다(구현이 스펙대로인지)
+  //   · { absent: RegExp } — 반드시 **없어야** 한다(제거한 것이 되살아나지 않는지)
+  const missing = [];
+  for (const p of patterns) {
+    if (p instanceof RegExp) {
+      if (!p.test(src)) missing.push(`누락: ${p}`);
+    } else if (p.absent.test(src)) {
+      missing.push(`있으면 안 되는 패턴: ${p.absent}`);
+    }
+  }
   if (missing.length) fails.push({ name, file, missing });
   else ok++;
 }
@@ -709,7 +744,7 @@ if (fails.length) {
   console.error('✗ Figma 스펙 불일치:\n');
   for (const f of fails) {
     console.error(`  ${f.name}  [${f.file}]`);
-    for (const m of f.missing) console.error(`      누락: ${m}`);
+    for (const m of f.missing) console.error(`      ${m}`);
   }
   console.error(`\n일치 ${ok} / 불일치 ${fails.length}`);
   process.exit(1);

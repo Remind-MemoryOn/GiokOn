@@ -1,12 +1,11 @@
-// 모바일 인증 컨텍스트 — 웹 apps/web/src/auth/AuthProvider.tsx 미러(+목업 브리지).
+// 모바일 인증 컨텍스트 — 웹 apps/web/src/auth/AuthProvider.tsx 미러.
 //
-// Supabase 설정 시: 실제 Auth 세션 + public.users row(역할·이름·기관)를 앱 전역에
-//   제공한다(웹과 동일 패턴 — getSession·onAuthStateChange·getCurrentUserRow).
-// 미설정 시: 기존 목업(useApp.caregiver)으로 브리지해 시연 흐름을 그대로 유지한다
-//   (로그인=useApp.login, 로그아웃=useApp.logout, 이름=caregiver.name).
+// 실제 Auth 세션 + public.users row(역할·이름·기관)를 앱 전역에 제공한다
+// (웹과 동일 패턴 — getSession·onAuthStateChange·getCurrentUserRow).
+// 화면은 이 컨텍스트(useAuth)만 본다.
 //
-// 화면은 이 컨텍스트(useAuth)만 보면 두 모드에서 동일하게 동작한다 — 화면 코드에
-// isSupabaseConfigured 분기를 두지 않기 위한 단일 진입점.
+// ⚠️ 목업 브리지는 없다(2026-09-04 제거). Supabase 미설정이면 app/_layout.tsx 가
+// 설정 오류 화면에서 멈추므로 여기까지 내려오지 않는다.
 
 import {
   createContext,
@@ -26,53 +25,45 @@ import {
   type User,
   type UserRow,
 } from '@giokon/data';
-import { isSupabaseConfigured } from '../lib/supabase';
-import { useApp } from '../store/appStore';
 
 interface MobileAuthState {
-  isConfigured: boolean;
   session: Session | null;
   user: User | null;
-  /** public.users row — 역할·기관·이름(라이브 모드만, 없으면 null). */
+  /** public.users row — 역할·기관·이름(조회 전이면 null). */
   userRow: UserRow | null;
-  /** 로그인 여부(모드 무관). */
+  /** 로그인 여부. */
   authed: boolean;
   /** 화면 표시용 요양보호사 이름. */
   caregiverName: string;
   /** 세션·row 초기 판별 중(가드는 이 동안 렌더를 미룬다). */
   loading: boolean;
-  /** 이메일(아이디)+비밀번호 로그인. 미설정 시 목업 login. */
-  signIn: (email: string, password: string) => Promise<void>;
-  /** 로그아웃. 미설정 시 목업 logout. */
+  /** 이메일(아이디)+비밀번호 로그인. 진입 자격 판정에 쓰도록 users row 를 돌려준다. */
+  signIn: (email: string, password: string) => Promise<UserRow | null>;
+  /** 로그아웃. */
   signOut: () => Promise<void>;
-  /** 온보딩·연결 변경 직후 users row 재조회(라이브 모드만). */
+  /** 온보딩·연결 변경 직후 users row 재조회. */
   refreshUserRow: () => Promise<UserRow | null>;
 }
 
 const AuthContext = createContext<MobileAuthState>({
-  isConfigured: false,
   session: null,
   user: null,
   userRow: null,
   authed: false,
   caregiverName: '요양 보호사',
   loading: false,
-  signIn: async () => {},
+  signIn: async () => null,
   signOut: async () => {},
   refreshUserRow: async () => null,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [sessionLoading, setSessionLoading] = useState(isSupabaseConfigured);
+  const [sessionLoading, setSessionLoading] = useState(true);
   // users row는 uid별로 캐시·파생한다(로그아웃 시 null 파생 — effect 내 동기 setState 회피).
   const [fetched, setFetched] = useState<{ uid: string; row: UserRow | null } | null>(null);
 
-  // 목업 모드 인증 상태(useApp.caregiver 구독).
-  const mockCaregiver = useApp((s) => s.caregiver);
-
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
     let active = true;
     getSession()
       .then((s) => {
@@ -94,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const uid = session?.user?.id ?? null;
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !uid) return;
+    if (!uid) return;
     if (fetched?.uid === uid) return; // 이미 이 사용자로 조회 완료
     let active = true;
     getCurrentUserRow()
@@ -110,7 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [uid, fetched]);
 
   const refreshUserRow = useCallback(async (): Promise<UserRow | null> => {
-    if (!isSupabaseConfigured) return null;
     try {
       const row = await getCurrentUserRow();
       if (row) setFetched({ uid: row.id, row });
@@ -121,39 +111,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(
-    async (email: string, password: string): Promise<void> => {
-      if (!isSupabaseConfigured) {
-        // 목업: 아이디를 표시 이름으로 사용(기존 시연 동작 유지).
-        useApp.getState().login(email);
-        return;
-      }
+    async (email: string, password: string): Promise<UserRow | null> => {
       await signInWithEmail({ email, password });
-      await refreshUserRow();
+      return refreshUserRow();
     },
     [refreshUserRow],
   );
 
   const signOut = useCallback(async (): Promise<void> => {
-    if (!isSupabaseConfigured) {
-      useApp.getState().logout();
-      return;
-    }
     await authSignOut();
     setFetched(null);
   }, []);
 
   const userRow = uid && fetched?.uid === uid ? fetched.row : null;
 
-  const authed = isSupabaseConfigured ? Boolean(session) : Boolean(mockCaregiver);
-  const caregiverName = isSupabaseConfigured
-    ? (userRow?.name ?? session?.user?.email ?? '요양 보호사')
-    : (mockCaregiver?.name ?? '요양 보호사');
+  const authed = Boolean(session);
+  const caregiverName = userRow?.name ?? session?.user?.email ?? '요양 보호사';
   const loading = sessionLoading || (Boolean(uid) && fetched?.uid !== uid);
 
   return (
     <AuthContext.Provider
       value={{
-        isConfigured: isSupabaseConfigured,
         session,
         user: session?.user ?? null,
         userRow,
