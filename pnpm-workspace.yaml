@@ -5,10 +5,18 @@ packages:
 # pnpm 10부터 버전 오버라이드는 package.json 의 "pnpm.overrides" 가 아니라 여기에 둔다.
 # (구 위치는 무시되며 [WARN] "pnpm.overrides" ignored 경고가 난다.)
 overrides:
-  react-native-reanimated: 3.17.4
+  # Expo SDK 54 는 Reanimated 4 를 쓴다(New Architecture 전용). NativeWind 4.2.6 /
+  # react-native-css-interop 0.2.6 의 peer 가 reanimated >=3.6.2 라 함께 쓸 수 있다.
+  react-native-reanimated: 4.1.1
+  # Reanimated 4 는 react-native-worklets 를 별도 패키지로 쓴다. 범위가 느슨해
+  # pnpm 이 0.12.1(RN 0.83~0.87 전용)을 골라 peer 경고가 났다 → SDK 54 가 지정한
+  # 0.5.1 로 고정한다.
+  react-native-worklets: 0.5.1
+  # expo-router 6 이 요구하는 런타임. 호이스트가 구버전(5.x)을 남겨 경고가 났다.
+  "@expo/metro-runtime": 6.1.2
   # @types/react 단일 버전 강제 — 웹(19.2.x)·모바일(19.0.x)이 각각 다른 타입을 쓰면
   # 루트 호이스트 대상이 설치 순서에 따라 흔들려, @expo/vector-icons 의 Icon 이
   # 다른 @types/react 로 타입 결정되어 ui.tsx JSX 에서 TS2786 이 터진다(2026-08-23).
-  # 모든 패키지를 하나의 타입 버전으로 묶는다(모바일 핀과 일치).
-  "@types/react": 19.0.10
-  "@types/react-dom": 19.0.4
+  # 모든 패키지를 하나의 타입 버전으로 묶는다(웹 19.2 에 맞춘다 — RN 0.81 은 19.x 면 된다).
+  "@types/react": 19.2.14
+  "@types/react-dom": 19.2.3

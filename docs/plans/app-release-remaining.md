@@ -22,7 +22,11 @@
 | 비밀번호 재설정 링크 404 (`/reset` → `/reset-password`) | `829a242` |
 | `package.json` 한글 깨짐 + mojibake 게이트 | `829a242` |
 | `journal_photos` Realtime 구독 누락 | 이번 커밋 |
-| `check:a11y` 종료 문구가 "통과" 로 읽히던 문제 | 이번 커밋 |
+| `check:a11y` 종료 문구가 "통과" 로 읽히던 문제 | `5c1a2cc` |
+| **A** 번들 ID `kr.gieokon.app` → **`kr.giokon.app`** (브랜드 통일) | 이번 커밋 |
+| **B** **Expo SDK 53 → 54** (RN 0.81.5 · React 19.1.0 · Reanimated 4 · NativeWind 4.2.6) | 이번 커밋 |
+| **D** `supportsTablet` → **false** | 이번 커밋 |
+| Android **API 36 명시 고정**(`expo-build-properties`) — 기본값에 기대지 않는다 | 이번 커밋 |
 
 ---
 
@@ -132,15 +136,53 @@ Playwright 로 웹 preview 를 1440px 뷰포트에서 열어 웹 라우트(`/pri
 
 여기부터는 **결정 또는 외부 계정·계약**이 있어야 움직입니다. 코드로 해결할 수 없습니다.
 
-### 5.1 결정만 해 주시면 제가 바로 진행합니다
+### 5.1 결정된 것 (2026-09-04) — 반영 완료
 
-| # | 결정할 것 | 왜 지금인가 | 선택지 |
-|---|---|---|---|
-| **A** | **번들 ID** `kr.gieokon.app` ↔ 브랜드 `giokon` | **첫 출시 후에는 영원히 못 바꿉니다.** 지금이 마지막 기회입니다 | ① `kr.giokon.app` 로 통일 ② 현행 유지 |
-| **B** | **Expo SDK 상향** 착수 | Google Play 는 2026-08-31부터 API 36, Apple 은 2026-04-28부터 iOS 26 SDK 를 요구합니다. **SDK 53 으로는 신규 등록이 불가능합니다** | ① SDK 54+ 로 올린다(→ `expo-av`→`expo-audio` 전환, `react-native-live-audio-stream` New Architecture 호환 확인이 따라옵니다) ② 대안 제시 |
-| **C** | **주황 `#e9822b` 대비 2.73:1** (AA 4.5:1 · 큰 글씨 3:1 둘 다 미달) | 고령자 대상 + 정부심사·KWCAG 목표. 다만 **브랜드 색이라 제가 임의로 못 바꿉니다** | ① 본문 텍스트에 쓰는 곳만 진한 톤으로 ② 팔레트 자체 조정 ③ 현행 유지(위험 수용 기록) |
-| **D** | **`supportsTablet`** | 현재 `true` 인데 `orientation: portrait` 이고 태블릿 UI 검증 근거가 없습니다 | ① `false` 로 내린다(권장) ② 태블릿 대응을 P1 로 올린다 |
-| **E** | **녹음 저장** (`session_logs.audio_url` 3컬럼 미사용) | v2 합의 상태입니다. 저장한다면 동의 문구·보존기간이 함께 바뀝니다 | ① v2 로 유지 ② 지금 넣는다 |
+| # | 결정 | 반영 |
+|---|---|---|
+| **A** | 번들 ID `kr.giokon.app` 로 통일 | ✅ `app.json` ios·android 동시 변경 |
+| **B** | Expo SDK 54 로 상향 | ✅ 아래 §5.1.1 |
+| **C** | 주황 `#e9822b` 대비 **현행 유지** | ⏳ **배포 직전에 다시 여쭙는다**(§5.3) |
+| **D** | `supportsTablet: false` | ✅ 반영. ⏳ **배포 직전에 다시 여쭙는다**(§5.3) |
+| **E** | 녹음 저장 v2 유지 — 사업 확장 후 | ⏸ 보류(코드 변경 없음) |
+
+#### 5.1.1 SDK 54 상향 결과
+
+`expo@54.0.37` 의 `bundledNativeModules.json` 을 그대로 따랐다(추정 없음).
+
+- `react-native 0.79.6 → 0.81.5` · `react 19.0.0 → 19.1.0`
+- `react-native-reanimated 3.17.4 → 4.1.1` — **New Architecture 전용**. 별도 패키지가 된
+  `react-native-worklets` 는 pnpm 이 0.12.1(RN 0.83~0.87 전용)을 골라 SDK 54 지정본 **0.5.1** 로 고정
+- `nativewind 4.1.23 → 4.2.6` (+ `react-native-css-interop 0.1.22 → 0.2.6`) — 4.1.x 는 Reanimated 3 대상이다
+- `expo-linear-gradient ~14.1.5 → ~15.0.8`, `expo-router 5 → 6`, 그 외 expo-* 전량 정렬
+- `@expo/metro-runtime` 6.1.2 고정(expo-router 6 요구, 호이스트가 5.x 를 남겼다)
+- `@types/react` 오버라이드 19.0.10 → **19.2.14** (웹 19.2 에 맞춤 — RN 0.81 은 19.x 면 된다)
+- **Android API 36 을 `expo-build-properties` 로 명시 고정**
+  (`compileSdk/targetSdk 36`, `minSdk 24`, iOS deployment target 15.1).
+  SDK 기본값에 기대지 않는다 — 판올림마다 달라지고, Play 요건은 못 어긴다.
+- `expo-file-system` 이 새 API(File/Paths)로 바뀌어 `player.ts` 를 `expo-file-system/legacy` 로
+  옮겼다(상향의 변경 범위를 좁히기 위함 — 아래 후속 참고)
+
+**검증**: typecheck 5패키지 · lint 0 · test 249 · **Metro 번들 Android·iOS 양쪽 성공**
+(각 5.8MB hbc). 번들이 되는 것이 RN 상향의 실질 시험이다.
+
+**후속(코드, P1)**
+- [ ] `expo-av` → `expo-audio` 전환 (SDK 54 에서 deprecated, SDK 55 에서 제거). `live/player.ts`·`live/mic.ts`
+- [ ] `expo-file-system` 새 API 로 이관 — `File.write(Uint8Array)` 로 **WAV base64 왕복을 없앨 수 있다**
+      (지금은 턴마다 전체 WAV 를 base64 로 인코딩한다)
+- [ ] ⚠️ **`react-native-live-audio-stream@1.1.1` New Architecture 호환은 아직 미검증**이다.
+      config plugin 없는 bare 모듈이라 **네이티브 빌드(EAS)로만 확인된다** — JS 번들 성공이
+      이걸 보증하지 않는다. 첫 EAS 빌드에서 반드시 확인할 것
+
+### 5.3 배포 직전에 다시 여쭐 것 (사용자 요청)
+
+**⚠️ 스토어 제출 직전에 이 두 가지를 반드시 다시 언급한다.**
+
+1. **주황 `#e9822b` 대비 2.73:1** — AA 4.5:1 · 큰 글씨 3:1 **둘 다 미달**이다. 현행 유지로
+   결정했으나, 고령자 대상 + 정부심사·KWCAG 목표를 고려하면 출시 전 마지막 판단이 필요하다.
+   (§3.5 대비 게이트가 만들어지면 정확한 미달 목록을 함께 올린다.)
+2. **`supportsTablet: false`** — 태블릿을 지원하지 않기로 했다. 요양기관에서 태블릿 사용
+   가능성이 있다면 출시 전에 다시 정해야 한다(출시 후 추가는 가능하나 UI 작업이 따른다).
 
 ### 5.2 사용자만 할 수 있는 외부 작업
 

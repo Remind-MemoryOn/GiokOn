@@ -70,6 +70,37 @@
 ## 현재 위치 (2026-09-04)
 
 > 이 세션은 **앱(apps/mobile) 개발용**이다. 웹 작업은 **앱과의 연동 지점만** 기록한다.
+> 📋 **배포까지 남은 일 = `docs/plans/app-release-remaining.md`**(실행 목록) ·
+> 감사 대조 근거 = `docs/plans/app-release-plan.md`.
+
+### 사용자 결정 반영 (2026-09-04)
+- **번들 ID = `kr.giokon.app`** (구 `kr.gieokon.app` → 브랜드 통일). **출시 후 변경 불가**.
+  ⚠️ EAS 프로젝트·구글/카카오/네이버 OAuth 콘솔에 등록된 패키지명·키해시·URL 스킴을
+  **새 ID 로 갱신해야 한다**(사용자 작업).
+- **Expo SDK 53 → 54** (RN 0.81.5 · React 19.1.0 · Reanimated **4** · NativeWind 4.2.6).
+  `expo@54.0.37` 의 `bundledNativeModules.json` 을 그대로 따랐다(추정 금지).
+  · `react-native-worklets` 는 pnpm 이 0.12.1(RN 0.83~0.87 전용)을 골라 **0.5.1 로 고정**했다.
+  · **Android API 36 을 `expo-build-properties` 로 명시 고정**한다 — SDK 기본값은 판올림마다
+    달라지는데 Play 요건(2026-08-31~ API 36)은 못 어긴다. 기본값에 기대지 않는다.
+  · `expo-file-system` 새 API 전환 때문에 `live/player.ts` 는 **`expo-file-system/legacy`** 를 쓴다.
+  · **검증 = Metro 번들 Android·iOS 양쪽 성공**(각 5.8MB hbc). RN 상향은 typecheck 로는
+    증명되지 않는다 — 번들이 되는지가 실질 시험이다.
+- **`supportsTablet: false`** (태블릿 UI 검증 근거 없음).
+- **주황 `#e9822b` 대비 2.73:1 = 현행 유지** — ⚠️ **배포 직전에 사용자에게 다시 언급할 것**.
+- **녹음 저장(`session_logs.audio_url` 3컬럼) = v2 유지**, 사업 확장 후 추가.
+
+### ⏳ 배포 직전 재확인 (사용자 요청 — 잊지 말 것)
+1. 주황 `#e9822b` 대비(AA·큰 글씨 기준 둘 다 미달) 최종 판단
+2. `supportsTablet: false` 유지 여부
+
+### 남은 코드 후속(P1)
+- `expo-av` → `expo-audio`(SDK 55에서 제거) · `expo-file-system` 새 API(WAV base64 왕복 제거)
+- ⚠️ **`react-native-live-audio-stream@1.1.1` New Architecture 호환 미검증** — config plugin 없는
+  bare 모듈이라 **네이티브 빌드(EAS)로만 확인된다**. JS 번들 성공이 이를 보증하지 않는다.
+
+### 그 이전(같은 날) 작업
+
+> 이 세션은 **앱(apps/mobile) 개발용**이다. 웹 작업은 **앱과의 연동 지점만** 기록한다.
 
 - 📋 **배포 전 감사 → 계획 문서 신설: `docs/plans/app-release-plan.md`**. 사용자 제출 감사
   보고서(2026-09-03)의 **모든 주장을 코드로 재검증**했다. 확인 12건 · **반증/과장 3건** ·

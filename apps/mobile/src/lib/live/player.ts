@@ -5,7 +5,11 @@
 // 기준으로 잠긴다(기존 expo-speech 흐름과 동일한 계약).
 
 import { Audio, type AVPlaybackStatus } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+// SDK 54 의 expo-file-system 은 새 API(File/Paths)로 바뀌었고, cacheDirectory·
+// writeAsStringAsync·EncodingType 은 `/legacy` 진입점으로 옮겨졌다. 여기서는
+// 상향의 변경 범위를 좁히려고 legacy 를 쓴다 — expo-av→expo-audio 전환과 함께
+// 새 API(File.write 로 Uint8Array 직접 쓰기, base64 왕복 제거)로 옮긴다.
+import * as FileSystem from 'expo-file-system/legacy';
 import { base64ToBytes, bytesToBase64, wrapWav } from './pcm';
 
 let current: { sound: Audio.Sound; fileUri: string } | null = null;
