@@ -27,6 +27,7 @@ import {
   peekLiveEngine,
 } from '../../src/lib/live/engine';
 import { playPcmTurn } from '../../src/lib/live/player';
+import { playableChunks } from '../../src/lib/live/playback';
 import { ensureMicPermission } from '../../src/lib/live/mic';
 import { useApp } from '../../src/store/appStore';
 import {
@@ -74,6 +75,19 @@ export default function Talk() {
   // 확정 텍스트만 모델로 전달. 미가용(키 미설정·네트워크·네이티브 모듈 부재)이면
   // 기존 파이프라인(expo-speech + 타자/모의 입력)으로 조용히 폴백한다.
   const liveAudioChunks = useRef<Map<string, string[]>>(new Map());
+
+  /**
+   * ⚠️ 안전 — **재생해도 되는 오디오만** 돌려준다.
+   *
+   * 모델 원문(`raw`)은 출력 가드(screenAiUtterance)에 막힐 수 있다. 막히면 스토어가
+   * 화면 질문을 안전 대체문으로 바꾸는데, 오디오는 **원문 키**로 캐시돼 있어 그대로
+   * 재생하면 화면엔 안전한 문장 · 스피커엔 막힌 발화가 나간다(어긋남).
+   * 그래서 채택된 텍스트와 원문이 다르면 원문 오디오를 **캐시에서 버리고** 빈 배열을
+   * 돌려준다 → 자동 재생 이펙트가 안전 대체문을 기기 TTS 로 읽는다.
+   * "다시 듣기" 도 같은 이유로 막힌 원음을 다시 찾지 못한다.
+   */
+  const adoptedAudio = (raw: string): string[] =>
+    playableChunks(liveAudioChunks.current, raw, useApp.getState().active?.currentQuestion ?? raw);
   const [liveListening, setLiveListening] = useState(false);
   /** 모델 응답 대기 중(저장 버튼 이중 탭 방지 + 처리 중 표시). */
   const [confirming, setConfirming] = useState(false);
@@ -99,13 +113,17 @@ export default function Talk() {
         if (res.audioChunksB64.length > 0) liveAudioChunks.current.set(res.text, res.audioChunksB64);
         else liveAudioChunks.current.delete(res.text);
         useApp.getState().overrideQuestion(res.text);
-        void (async () => {
-          try {
-            await engine.playTurn(res.audioChunksB64);
-          } finally {
-            setSpokenDone(res.text);
-          }
-        })();
+        // 채택된 텍스트로만 재생한다 — 아래 adoptedAudio 주석 참고.
+        const chunks = adoptedAudio(res.text);
+        if (chunks.length > 0) {
+          void (async () => {
+            try {
+              await engine.playTurn(chunks);
+            } finally {
+              setSpokenDone(useApp.getState().active?.currentQuestion ?? res.text);
+            }
+          })();
+        }
       }
     })();
     return () => {
@@ -241,15 +259,16 @@ export default function Talk() {
     setEdited(null);
     setLiveListening(false);
     if (livePayload) {
-      const q = livePayload.question;
-      const chunks = liveAudioChunks.current.get(q) ?? [];
-      void (async () => {
-        try {
-          await engine?.playTurn(chunks);
-        } finally {
-          setSpokenDone(q);
-        }
-      })();
+      const chunks = adoptedAudio(livePayload.question);
+      if (chunks.length > 0) {
+        void (async () => {
+          try {
+            await engine?.playTurn(chunks);
+          } finally {
+            setSpokenDone(useApp.getState().active?.currentQuestion ?? livePayload.question);
+          }
+        })();
+      }
     }
     // 확정된 턴을 곧바로 DB 에 남긴다(진행 중 저장). 실패해도 대화는 막지 않고
     // 다음 턴·종료 때 다시 시도한다.

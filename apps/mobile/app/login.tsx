@@ -17,6 +17,7 @@ import { View, Text, Pressable, TextInput, Image, Alert, useWindowDimensions } f
 import { router } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { useAuth } from '../src/auth/AuthProvider';
+import { webUrl, WEB_ROUTES } from '../src/lib/webUrl';
 import { signInWithSupabaseProvider, signInWithNaver } from '../src/auth/social';
 import { C } from '../src/theme';
 import wordmark from '../assets/brand/wordmark.png';
@@ -59,7 +60,15 @@ export default function Login() {
     if (!isConfigured) return onLogin();
     if (!id.trim()) return Alert.alert('비밀번호 찾기', '가입한 이메일(아이디)을 입력해 주세요.');
     try {
-      await sendPasswordResetEmail(id.trim(), 'https://giokon.app/reset');
+      // 재설정 링크는 **웹의 실제 라우트**로 보낸다(/reset-password). 도메인은 env.
+      const redirect = webUrl(WEB_ROUTES.resetPassword);
+      if (!redirect) {
+        return Alert.alert(
+          '비밀번호 찾기',
+          '웹 주소가 설정되지 않아 재설정 메일을 보낼 수 없어요.\n관리자에게 문의해 주세요.',
+        );
+      }
+      await sendPasswordResetEmail(id.trim(), redirect);
       Alert.alert('비밀번호 찾기', '재설정 메일을 보냈어요. 메일함을 확인해 주세요.');
     } catch (e) {
       Alert.alert('비밀번호 찾기', e instanceof Error ? e.message : '다시 시도해 주세요.');
@@ -81,7 +90,7 @@ export default function Login() {
       // 미온보딩 계정은 웹 온보딩이 필요하다(앱에는 온보딩 화면이 없다 — 설계 확정).
       const row = await refreshUserRow();
       if (row && !row.onboarded_at) {
-        Alert.alert('환영해요!', '웹(giokon.app)에서 기본 정보 등록을 먼저 완료해 주세요.');
+        Alert.alert('환영해요!', '웹에서 기본 정보 등록을 먼저 완료해 주세요.');
       }
       router.replace('/main');
     } catch (e) {

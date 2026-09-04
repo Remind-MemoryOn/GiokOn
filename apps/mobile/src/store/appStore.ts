@@ -189,7 +189,11 @@ interface AppState {
    * 않는다 — 로컬 안전 응답이 우선이다.
    */
   confirmUtterance: (finalText: string, live?: { question: string }) => void;
-  /** 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다. */
+  /**
+   * 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다.
+   * 출력 가드를 통과한 텍스트만 채택한다. 채택 결과는 `active.currentQuestion` 으로
+   * 확인한다(호출부가 오디오 재생 여부를 그걸로 판단한다).
+   */
   overrideQuestion: (text: string) => void;
   acknowledgeSafety: () => void;
   cancelSession: () => void;
@@ -447,15 +451,21 @@ export const useApp = create<AppState>((set, get) => ({
   overrideQuestion: (text) => {
     const a = get().active;
     if (!a || !text.trim()) return;
+    // 출력 가드(screenAiUtterance)를 **오프너에도** 적용한다.
+    // 그전에는 첫 질문만 검열을 건너뛰어, 모델 인사가 화면과 음성으로 그대로 나갔다.
+    // 막히면 안전 대체문으로, 대체문조차 없으면 기존(로컬 생성) 질문을 유지한다.
+    const screen = screenAiUtterance(text);
+    const adopted = screen.allowed ? text : (screen.safeAlternative ?? a.currentQuestion);
+    if (!adopted) return;
     // 첫 AI 턴(오프너)만 교체한다 — Live 모델의 인사가 도착했을 때 사용.
     const turns = a.turns.slice();
     for (let i = turns.length - 1; i >= 0; i--) {
       if (turns[i].speaker === 'AI') {
-        turns[i] = { ...turns[i], text };
+        turns[i] = { ...turns[i], text: adopted };
         break;
       }
     }
-    set({ active: { ...a, turns, currentQuestion: text } });
+    set({ active: { ...a, turns, currentQuestion: adopted } });
   },
 
   acknowledgeSafety: () => {

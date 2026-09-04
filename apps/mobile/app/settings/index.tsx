@@ -35,6 +35,7 @@ import {
   SmallChevron,
 } from '../../src/components/settings';
 import { useAuth } from '../../src/auth/AuthProvider';
+import { webUrl, WEB_ROUTES } from '../../src/lib/webUrl';
 import { useElders } from '../../src/data/reads';
 import { useDeleteElder } from '../../src/data/writes';
 import { isSupabaseConfigured } from '../../src/lib/supabase';
@@ -50,8 +51,7 @@ const TAP = 12;
 /** 설정 화면에 미리 보여 주는 어르신 수(Figma 프레임에 2장). */
 const PREVIEW_ELDERS = 2;
 
-/** 법적 문서는 웹이 담당한다 — 앱에는 화면이 없다. */
-const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL;
+// 법적 문서는 웹이 담당한다 — 앱에는 화면이 없다. 주소·경로는 src/lib/webUrl 이 SoT.
 
 const ROLE_LABEL: Record<string, string> = {
   caregiver: '요양보호사',
@@ -86,11 +86,12 @@ export default function Settings() {
   const version = Constants.expoConfig?.version ?? NO_VALUE;
 
   const openWeb = (path: string, what: string) => {
-    if (!WEB_URL) {
+    const href = webUrl(path);
+    if (!href) {
       Alert.alert(what, `${what}은(는) 웹에서 확인할 수 있어요.`);
       return;
     }
-    void Linking.openURL(`${WEB_URL}${path}`);
+    void Linking.openURL(href);
   };
 
   const confirmDelete = (id: string, name: string) => {
@@ -321,7 +322,7 @@ export default function Settings() {
           }}
         >
           <Pressable
-            onPress={() => openWeb('/privacy', '개인정보처리방침')}
+            onPress={() => openWeb(WEB_ROUTES.privacy, '개인정보처리방침')}
             accessibilityRole="button"
             className="absolute active:opacity-60"
             style={{ left: 0, top: 12, right: 0, height: 52, justifyContent: 'center' }}
@@ -340,7 +341,7 @@ export default function Settings() {
           <Divider top={69} />
 
           <Pressable
-            onPress={() => openWeb('/terms', '이용약관')}
+            onPress={() => openWeb(WEB_ROUTES.terms, '이용약관')}
             accessibilityRole="button"
             className="absolute active:opacity-60"
             style={{ left: 0, top: 74, right: 0, height: 52, justifyContent: 'center' }}
