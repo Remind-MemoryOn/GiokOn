@@ -25,6 +25,7 @@ export type RealtimeTable =
   | 'safety_events'
   | 'notifications'
   | 'messages'
+  | 'journal_photos'
 
 export interface RealtimeEvent {
   table: RealtimeTable
@@ -48,6 +49,11 @@ export interface UseGiokonRealtimeOptions {
  * 따라잡았고, 화면을 켜 둔 채로는 영영 반영되지 않았다.
  * session_logs 는 진행 중 대화를 다른 화면(웹 대시보드)에서 지켜보기 위한 것이다.
  * notifications 는 탑바 벨 배지를 즉시 갱신한다(트리거가 만드는 행이라 폴링만으로는 늦다).
+ *
+ * ⚠️ journal_photos 는 **DB publication 에는 2026-08-28부터 있었지만 여기에 없어서
+ * 아무도 구독하지 않았다**(2026-09-04 발견). DB 가 변경을 방송해도 받는 쪽이 없어
+ * 요양일지 사진은 실시간 갱신되지 않았다 — "publication 에 있다"와 "연결돼 있다"는
+ * 다른 이야기다. care_journals 는 아직 publication 자체에 없다(마이그레이션 필요).
  */
 const DEFAULT_TABLES: RealtimeTable[] = [
   'profiles',
@@ -59,6 +65,7 @@ const DEFAULT_TABLES: RealtimeTable[] = [
   'safety_events',
   'notifications',
   'messages',
+  'journal_photos',
 ]
 
 function invalidateFor(
@@ -116,6 +123,14 @@ function invalidateFor(
       void qc.invalidateQueries({ queryKey: queryKeys.myMessages })
       if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.messages(profileId) })
       break
+    case 'journal_photos': {
+      // 사진 행은 일지에 매달린다 — profile_id 가 아니라 journal_id 를 본다.
+      const journalId =
+        typeof event.row?.journal_id === 'string' ? (event.row.journal_id as string) : undefined
+      void qc.invalidateQueries({ queryKey: queryKeys.orgJournalPhotos })
+      if (journalId) void qc.invalidateQueries({ queryKey: queryKeys.journalPhotos(journalId) })
+      break
+    }
   }
 }
 

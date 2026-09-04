@@ -193,6 +193,19 @@ if (fails.length > 0 || modalFails.length > 0) {
   console.error(`\n화면 ${screens}개 검사 · 위반 ${fails.length}건 · 모달 키보드 ${modalFails.length}건`);
   process.exit(1);
 }
-console.log(
-  `\n✓ KWCAG 검사 통과 (${screens}개 화면 axe WCAG 2.1 A/AA · 모달 ${MODALS.length}종 키보드 동작)`,
-);
+
+// 대비(color-contrast)는 **의도적으로 비차단**이다 — 시안이 정한 브랜드 색이라
+// 코드가 임의로 바꾸지 않는다(디자인 결정 대기). 다만 미달이 남아 있는데 "통과" 라고
+// 적으면 그 결과가 "접근성 전체 통과" 로 읽힌다. 남은 항목을 종료 문구에 명시한다.
+const contrastLeft = [...contrast.values()].filter((c) => c.ratio < c.need);
+const scope = `${screens}개 화면 axe WCAG 2.1 A/AA · 모달 ${MODALS.length}종 키보드 동작`;
+if (contrastLeft.length > 0) {
+  const total = contrastLeft.reduce((n, c) => n + c.count, 0);
+  console.log(
+    `\n△ 차단 항목 없음 (${scope})\n` +
+      `  단, 대비 미달 ${contrastLeft.length}종 · ${total}곳이 남아 있다 — 디자인 결정 대기라 비차단으로 둔 것이며\n` +
+      `  "접근성 통과" 가 아니다. 이 검사는 **웹 전용**이다(모바일 앱 대비는 아직 측정하지 않는다).`,
+  );
+} else {
+  console.log(`\n✓ KWCAG 검사 통과 (${scope}) — 대비 미달 없음. ※ 웹 전용 검사다.`);
+}

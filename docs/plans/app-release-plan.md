@@ -1,6 +1,7 @@
 # 기억온 앱(apps/mobile) 배포 계획
 
-- 작성일: 2026-09-04
+- 작성일: 2026-09-04 (2026-09-04 재검토 반영)
+- ▶ **실행 목록은 `app-release-remaining.md` 를 본다.** 이 문서는 감사 대조·검증 근거 기록이다.
 - 대상: **모바일 앱 스토어 배포**. 웹은 *앱이 의존하는 지점*(비밀번호 재설정·법적 고지·계정 삭제 URL)만 포함한다.
 - 근거: 사용자 제출 감사 보고서(2026-09-03) 전 항목 + 저장소 코드 재검증 + 신규 발견.
 - 검증 한계: 컨테이너 egress 가 `*.supabase.co`·`figma.com`·DNS 조회를 막는다. **실 API 응답·DNS·스토어 콘솔·서명 빌드는 이 문서에서 확정할 수 없다** → §6 외부 확인.
@@ -33,7 +34,7 @@
 | 보고서 주장 | 실제 |
 |---|---|
 | Live 요청의 `snake_case` 필드가 규격 위반 | **과장.** protobuf JSON 매핑은 snake_case·camelCase 양쪽을 받는다. 응답은 camelCase 로 오고 코드도 그렇게 읽는다(`client.ts:100` `sessionResumptionUpdate`). 진짜 위험은 **엔드포인트 경로와 토큰 전달 방식**뿐이다 |
-| Realtime 에 `journal_photos` 누락 | **틀림.** 이미 publication 에 있다. 실제 누락은 `care_journals`·`profile_guardians`·`profile_caregivers`·`consents`·`elder_codes`·`inquiries` |
+| Realtime 에 `journal_photos` 누락 | **보고서가 맞았다(2026-09-04 정정).** DB publication 에는 있었지만 클라이언트가 구독하지도, 캐시를 무효화하지도 않아 **끝에서 끝까지 보면 연결돼 있지 않았다**. DB 계층만 보고 반증으로 처리한 것은 성급했다 → 연결 완료. `care_journals`·`profile_guardians`·`profile_caregivers`·`consents`·`elder_codes`·`inquiries` 는 publication 자체에 없는 것이 맞다 |
 | `check:a11y` 가 잘못 통과 | 앱과 무관. `apps/web/scripts/a11y-audit.mjs` = **웹 전용**. 문제는 오히려 **앱에는 대비 검사 자체가 없다**는 것 |
 
 ### 1.3 신규 발견 (보고서에 없음)
