@@ -37,6 +37,9 @@
 - 비밀키는 **커밋 금지**(`.env`는 gitignore). 원격 세션은 환경 설정 env +
   `.claude/hooks/session-start.sh`가 `.env` 자동 생성. 로컬 dev는 `apps/web/.env`
   수동 작성(`VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`).
+  **앱은 `EXPO_PUBLIC_` 접두사 필수** — Expo(Metro)는 그 접두사가 붙은 변수만 번들에
+  인라인한다. 접두사를 빼면 값이 있어도 `process.env` 로 안 보인다(앱이 목업으로
+  돌던 원인). **앱에 목업 모드는 없다(2026-09-04 제거)** — 키가 없으면 부팅이 막힌다.
 - 검증: `pnpm -r typecheck` · `lint` · `test` · `build`.
 
 ## 기술 결정
@@ -64,7 +67,67 @@
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-09-03)
+## 현재 위치 (2026-09-04)
+
+> 이 세션은 **앱(apps/mobile) 개발용**이다. 웹 작업은 **앱과의 연동 지점만** 기록한다.
+
+- 📋 **배포 전 감사 → 계획 문서 신설: `docs/plans/app-release-plan.md`**. 사용자 제출 감사
+  보고서(2026-09-03)의 **모든 주장을 코드로 재검증**했다. 확인 12건 · **반증/과장 3건** ·
+  **신규 발견 7건**. 반증된 것을 그대로 따르면 안 된다:
+  ① Live 요청의 `snake_case` 는 **규격 위반이 아니다**(protobuf JSON 은 양쪽 다 받는다.
+  응답은 camelCase 이고 코드도 그렇게 읽는다) — 진짜 위험은 **엔드포인트 경로**뿐이다.
+  ② Realtime 에 `journal_photos` 는 **이미 있다**(실제 누락은 `care_journals`·
+  `profile_guardians`·`profile_caregivers`·`consents`·`elder_codes`·`inquiries`).
+  ③ `check:a11y` 는 **웹 전용** 스크립트라 앱과 무관 — 문제는 앱에 대비 검사가 **없다**는 것.
+- 🔴 **P0 안전 — 검열 안 된 AI 원본 음성이 재생됐다(`829a242`)**: 출력 가드
+  (`screenAiUtterance`)가 모델 원문을 막으면 스토어는 화면 질문을 안전 대체문으로 바꾸는데,
+  오디오는 **원문 키**로 캐시돼 있어 그대로 재생됐다 → **화면과 스피커가 다른 말을 했다**.
+  오프너(`overrideQuestion`)는 검열을 아예 건너뛰었다.
+  → `src/lib/live/playback.ts`(채택≠원문이면 빈 배열 + 캐시 파기 → 자동 재생 이펙트가 안전
+  대체문을 기기 TTS 로 읽는다) · `overrideQuestion` 에 가드 적용 · 회귀 테스트 4건.
+  ("다시 듣기"는 원래 화면 텍스트 키로 조회해 우연히 안전했다.)
+- 🔴 **P0 — 어르신이 하지 않은 말이 실제 기록으로 저장됐다(`72ce705`)**: Live 미가용 시
+  마이크를 누르면 `pickElderUtterance()`(`src/lib/mockStt.ts`)가 미리 써 둔 발화
+  ("전주 남부시장 근처에서 오래 살았지" 등)를 입력칸에 채웠고, 요양보호사가 그대로 저장하면
+  `session_logs` 에 남았다. **목업 모드보다 위험했다.** → mockStt 삭제, 폴백 입력은 **빈 칸**,
+  빈 발화는 저장 차단.
+- ✅ **목업 모드 제거 완료(`72ce705`, 사용자 지시)** — `CFG` 분기 35곳(reads 29 · writes 6)·
+  `MOCK_*`·`mockData.ts`·`DemoModeNotice`·AuthProvider 목업 브리지·`SessionSaveResult.'mock'`
+  전부 삭제. `appStore` 는 **진행 중 대화 한 건만 들고 있는 런타임**으로 축소(539→393줄).
+  **키가 없을 때 = 부팅 차단**(`ConfigError` 화면 + `supabaseConfigProblem` 사유 진단).
+  예시 데이터로 조용히 도는 것보다 멈추는 편이 안전하다 — 요양보호사가 "저장됐다"고 믿는
+  오해는 감당할 수 없다.
+- ✅ **앱 진입 자격 가드(`72ce705`)** — 그전엔 로그인만 되면 메인으로 갔다(보호자 계정도
+  들어왔고, 기관 없는 계정은 어르신 등록 때 `org_id` not-null 위반을 날것으로 봤다).
+  `src/auth/appAccess.ts` 순수 판정 + 테스트 8건 → 스플래쉬·로그인(이메일·소셜) 양쪽 집행.
+  미달이면 사유 안내 후 **로그아웃**(세션이 남으면 곧바로 다시 들어온다).
+  ⚠️ **로그인됐는데 users 행을 못 읽으면 통과시키지 않는다** — 빈 화면을 "기록 없음"으로
+  오해하게 두지 않기 위해서다.
+- ✅ **빌드 차단 3건(`829a242`)**: `expo-linear-gradient` `^57.0.1`→`~14.1.5`(SDK 53 과
+  버전 체계가 달라 **prebuild 실패 확정**, 스플래쉬가 실제로 쓴다) · `NSPhotoLibraryUsageDescription`
+  추가(`ProfileForm` 이 사진 권한을 부르는데 키가 없어 **iOS 크래시 + 심사 거부**) ·
+  `package.json` `description` **한글 깨짐** 복구(CP949 왕복 — BOM 이 없어 `check:bom` 통과).
+- ✅ **비밀번호 재설정 링크 404 수정(`829a242`)** — `https://giokon.app/reset` 하드코딩 ↔
+  실제 웹 라우트 `/reset-password`. `src/lib/webUrl.ts` 로 경로를 모으고 도메인은
+  `EXPO_PUBLIC_WEB_URL` 에서만 받는다.
+- 🛡 **게이트 강화**: `check-figma-spec` 러너에 **`{ absent: /…/ }` 패턴** 지원 추가
+  (제거한 것이 되살아나지 않는지 검사) → 스펙 **177**. `check-bom` 에 **mojibake 검사**
+  추가(한 줄 2개 이상 — 정규식 문자클래스 오탐 방지). 둘 다 일부러 되살려 실패를 확인했다.
+- ⏳ **남은 P0 는 코드가 아니라 결정·외부 계약이다**(상세: `docs/plans/app-release-plan.md`):
+  ① **Expo SDK 상향**(Play API 36 / Apple iOS 26 SDK — SDK 53 으로는 신규 등록 불가.
+  `expo-av`→`expo-audio`, `react-native-live-audio-stream` New Arch 호환 확인이 뒤따름)
+  ② **번들 ID 확정**(`kr.gieokon.app` ↔ 브랜드 `giokon` — 출시 후 변경 불가)
+  ③ **도메인·법률 문서·앱 내 계정 삭제·Apple 로그인**(전부 심사 차단 사유)
+  ④ **Gemini Paid tier + DPA**(무료 tier 는 약관상 어르신 음성에 쓸 수 없다).
+  P1 코드 작업: 오류 상태 노출(`reads.ts` 에 error 참조 **0건** — RLS 거부가 "기록 없음"으로
+  보인다) · 세션 소유권/복구(`cancelSession` 이 원격 세션을 안 닫아 좀비가 남고,
+  `adoptPlannedSession` 이 갱신 행 수를 안 봐 두 기기가 같은 세션을 잡을 수 있다) ·
+  Storage 크기/MIME 제한 · 주황 `#e9822b` 대비 **2.73:1**(AA 미달, 브랜드 색이라 사용자 결정 필요).
+- ✅ 검증(2026-09-04): typecheck 5패키지 · lint 0 · test **249**(core 196 + data 37 +
+  mobile 16) · `check:figma` 177 · `check:font` 37 · `check:copy` · `check:bom` 337 ·
+  웹 빌드 통과. 마이그레이션 36종.
+
+## 이전 위치 (2026-09-03)
 
 > 이 세션은 **앱(apps/mobile) 개발용**이다. 웹 작업은 **앱과의 연동 지점만** 기록한다
 > (신규 웹 디자인 이관·보호자 화면 등은 웹 세션 메모리 `apps/web/CLAUDE.md` 참조).

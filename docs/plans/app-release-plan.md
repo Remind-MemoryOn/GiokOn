@@ -46,6 +46,7 @@
 | N4 | `ios.config.usesNonExemptEncryption` 미설정 → 제출마다 수출규정 문답 반복 | P2 |
 | N5 | `eas.json` 에 `env` 블록 없음 · `submit.production` 비어 있음 | P1 |
 | N6 | `orientation: portrait` 인데 `supportsTablet: true` — 태블릿 심사 시 불일치 | P2 |
+| **N7** | **어르신이 하지 않은 말이 실제 기록으로 저장됐다.** Live 미가용 시 마이크를 누르면 `pickElderUtterance()`(`src/lib/mockStt.ts`)가 미리 써 둔 발화("전주 남부시장 근처에서 오래 살았지")를 입력칸에 채웠고, 그대로 저장하면 `session_logs` 에 남았다 | **P0** |
 
 ---
 
@@ -66,25 +67,26 @@ talk.tsx  confirm(finalText, livePayload)      → 스토어가 screenAiUtteranc
 "다시 듣기"는 우연히 안전하다(화면 텍스트 키로 조회 → 미스 → 기기 TTS 폴백).
 
 **할 일**
-- [ ] 오디오를 **채택된 질문 텍스트**를 키로만 저장·재생한다. 검열에 막히면 오디오를 버리고 안전 대체문을 기기 TTS 로 읽는다.
-- [ ] `overrideQuestion` 에 `screenAiUtterance` 를 적용한다(반환값으로 채택 여부를 알린다).
-- [ ] 위 두 경로에 회귀 테스트를 붙인다(막힌 발화 → 원본 오디오가 재생되지 않음).
+- [x] 오디오를 **채택된 질문 텍스트**를 키로만 재생한다(`src/lib/live/playback.ts`). 막히면 캐시에서 버리고 안전 대체문을 기기 TTS 로 읽는다. — `829a242`
+- [x] `overrideQuestion` 에 `screenAiUtterance` 적용(오프너도 검열). — `829a242`
+- [x] 회귀 테스트 4건. — `829a242`
+- [x] **N7**: 조작된 어르신 발화 생성기 삭제. 폴백 입력은 빈 칸으로 열리고, 빈 발화는 저장을 막는다. — `72ce705`
 
 ### P0-2. 스토어 빌드가 실제로 통과하게 만들기
 
-- [ ] `expo-linear-gradient` 를 SDK 정렬 버전으로 내린다 (`npx expo install --check`). 지금 `^57.0.1` 은 **prebuild 실패 확정**.
-- [ ] `NSPhotoLibraryUsageDescription` 추가 (N1) — 없으면 iOS 사진 선택에서 죽는다.
+- [x] `expo-linear-gradient` `^57.0.1` → `~14.1.5` (설치 확인). — `829a242`
+- [x] `NSPhotoLibraryUsageDescription` 추가 (N1). — `829a242`
 - [ ] `react-native-live-audio-stream` 의 New Architecture 호환 확인. 불가하면 `expo-audio` 계열로 교체하거나 `newArchEnabled: false` 로 내린다 (N3).
 - [ ] `expo-av` → `expo-audio`/`expo-video` 전환 계획 (SDK 54+ 에서 제거됨). 현재 `live/player.ts`·`live/mic.ts`·`live/pcm.ts` 3곳.
 - [ ] Expo SDK 상향 판단: Google Play 는 2026-08-31부터 **API 36**, Apple 은 2026-04-28부터 **iOS 26 SDK** 요구. SDK 53 기본값으로는 신규 등록이 막힌다 → **SDK 54+ 필요**.
 - [ ] `kr.gieokon.app` ↔ 브랜드 `giokon` 불일치. **첫 출시 후에는 변경 불가** → 지금 확정.
-- [ ] `package.json` `description` 복구 + 인코딩 회귀 게이트 (N2).
+- [x] `package.json` `description` 복구 + `check:bom` 에 mojibake 검사 추가 (N2). — `829a242`
 
 ### P0-3. 인증·접근 통제
 
-- [ ] `app/index.tsx` 에 **역할·온보딩 가드** 추가. 보호자 계정·기관 없는 계정은 앱 메인에 들어오면 안 된다.
+- [x] **역할·온보딩 가드** — `src/auth/appAccess.ts`(순수 판정 + 테스트 8건), 스플래쉬·로그인 양쪽에서 집행. 미달이면 사유를 알리고 로그아웃. — `72ce705`
 - [ ] `live-token` 에 역할·기관·배정·발급 쿼터 검사 추가. CORS `*` 제거. 지금은 **보호자 계정도 AI 비용을 발생시킬 수 있다.**
-- [ ] 비밀번호 재설정 URL 을 `/reset-password` 로 고치고, 도메인을 `EXPO_PUBLIC_WEB_URL` 에서 읽는다(하드코딩 제거).
+- [x] 비밀번호 재설정 URL → `/reset-password`, 도메인은 `EXPO_PUBLIC_WEB_URL`(`src/lib/webUrl.ts`). — `829a242`
 
 ### P0-4. 스토어 정책 필수 기능
 
@@ -104,7 +106,7 @@ talk.tsx  confirm(finalText, livePayload)      → 스토어가 screenAiUtteranc
 
 ## 3. P1 — 공개 베타 전
 
-- [ ] **목업 모드 제거** (사용자 지시). `reads.ts` 29곳·`writes.ts` 6곳 `CFG` 분기 + `MOCK_*` + `DemoModeNotice`. 키 미설정 시 예시 데이터 대신 **설정 오류 화면**으로 멈춘다.
+- [x] **목업 모드 제거** — `CFG` 분기 35곳·`MOCK_*`·`DemoModeNotice` 삭제. 키가 없으면 `ConfigError` 화면에서 부팅을 멈춘다. — `72ce705`
 - [ ] **오류 ≠ 빈 상태.** `reads.ts` 가 error 를 전혀 노출하지 않는다 → RLS 거부·네트워크 실패가 "기록 없음"으로 보인다. 어르신 기록 시스템에서 이건 사실 왜곡이다.
 - [ ] **세션 소유권·복구.** `cancelSession` 이 원격 세션을 ended 로 닫게 하고, `adoptPlannedSession` 은 갱신 행 수를 검사해 0이면 새 세션을 만든다. 앱 강제 종료 후 active 세션 복구 경로.
 - [ ] **Storage 제한.** 버킷에 `file_size_limit`·`allowed_mime_types` 설정, 업로드 전 리사이즈, EXIF 제거.
@@ -133,7 +135,8 @@ talk.tsx  confirm(finalText, livePayload)      → 스토어가 screenAiUtteranc
 
 | Phase | 내용 | 선행 |
 |---|---|---|
-| **R1** | P0-1 안전(음성) · P1 목업 제거 · P1 오류상태 — **코드만으로 가능, 지금 시작** | — |
+| ~~R1~~ | ✅ P0-1 안전(음성)·N7 · 목업 제거 · 진입 자격 가드 · 재설정 URL · 빌드 차단 3건 | 완료 (`829a242`·`72ce705`) |
+| **R1′** | 남은 P1 코드 작업 — 오류 상태 노출 · 세션 소유권/복구 · Storage 제한 | — |
 | **R2** | P0-2 빌드(SDK·의존성·권한·번들 ID) | 사용자: SDK 상향 승인 |
 | **R3** | P0-3 인증 가드 · live-token 강화 | — |
 | **R4** | P0-4 도메인·계정삭제·Apple 로그인·법률 | 사용자: 도메인·법률 검토 |
@@ -158,6 +161,13 @@ talk.tsx  confirm(finalText, livePayload)      → 스토어가 screenAiUtteranc
 
 **공개 배포 불가. 내부 QA / 제한 테스트까지만 가능.**
 
-가장 급한 하나를 꼽으면 **P0-1** 이다 — 화면에는 안전한 문장이 뜨는데 스피커에서는 차단된 발화가 나갈 수 있다. 어르신 대상 서비스에서 이건 다른 어떤 항목보다 먼저다.
+2026-09-04 에 **코드만으로 끝낼 수 있는 P0 는 전부 처리했다** — AI 음성 안전 경로, 조작된 어르신 발화(N7), 목업 모드, 진입 자격 가드, 빌드 차단 3건, 재설정 URL.
 
-두 번째는 **P0-2** 다. 지금 상태로는 `expo-linear-gradient` 하나 때문에 EAS 빌드가 시작도 못 한다.
+남은 P0 는 성격이 다르다. **코드가 아니라 결정과 외부 계약**이다.
+
+1. **Expo SDK 상향** — Google Play API 36 / Apple iOS 26 SDK 요구. SDK 53 으로는 신규 등록이 막힌다. `expo-av`→`expo-audio` 전환과 `react-native-live-audio-stream` 의 New Architecture 호환 확인이 뒤따른다.
+2. **번들 ID 확정** — `kr.gieokon.app` ↔ 브랜드 `giokon`. 첫 출시 후에는 못 바꾼다.
+3. **도메인·법률 문서·계정 삭제·Apple 로그인** — 전부 스토어 심사 차단 사유.
+4. **Gemini 실연동 + Paid tier + DPA** — 무료 tier 는 약관상 어르신 음성에 쓸 수 없다.
+
+이 넷은 사용자 결정이 있어야 움직인다.
