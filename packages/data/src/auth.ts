@@ -58,6 +58,24 @@ export function buildNaverAuthUrl(supabaseUrl: string, redirectTo: string): stri
   return `${base}/functions/v1/naver-auth/authorize?redirect_to=${encodeURIComponent(redirectTo)}`
 }
 
+/**
+ * 서버가 발급한 access/refresh 토큰으로 세션을 세운다.
+ * 네이버는 Supabase 네이티브 provider 가 아니라 detectSessionInUrl 이 잡지 못한다 —
+ * naver-auth 가 돌려준 토큰을 호출자가 직접 넘겨 준다(웹=URL 프래그먼트, 앱=POST 응답).
+ */
+export async function setSessionFromTokens(
+  accessToken: string,
+  refreshToken: string,
+): Promise<Session> {
+  const { data, error } = await getGiokonClient().auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
+  if (error) throw error
+  if (!data.session) throw new Error('세션을 세우지 못했습니다.')
+  return data.session
+}
+
 // ── 이메일/비밀번호 인증(소셜과 병행, 2026-07-23 재도입) ─────────────────────
 // 소셜 3종에 더해 일반 이메일(아이디)+비밀번호 로그인·회원가입·비밀번호 재설정·
 // 아이디(이메일) 찾기를 제공한다. 이메일 회원가입도 최초 로그인 후 온보딩

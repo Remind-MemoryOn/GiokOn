@@ -202,10 +202,18 @@ const SCREENS = [
   // ── 아이디/비밀번호 찾기·재설정 111:148 / 111:170 / 114:247 ────────────
   // 세 화면은 골격이 완전히 같다(실측): 돌아가기 187 · 제목 287 · 부제 325 ·
   // 입력 576×57 @431/560 · CTA 576×71 @672 · 하단 링크 793.
+  // 실측(187/287/325 · 라벨 395 · 입력 431→560 · CTA 672 · 하단 793)을 그대로 고정하되,
+  // 회원가입이 같은 리듬을 한 칸 더 쓰므로 뒤 세 개는 pitch/오프셋으로 적혀 있다.
+  //   FIELD_TOP(0)=395 · INPUT_TOP(0)=431 · INPUT_TOP(1)=431+129=560
+  //   CTA=INPUT_TOP(n-1)+112 → 2칸이면 672 · 하단 링크=CTA+121 → 793
   [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 공통 골격 좌표(187/287/325/431·560/672/793)', [
-    /top: Y\(187\)/, /top: Y\(287\)/, /top: Y\(325\)/, /top: Y\(672\)/,
-    /footerLink\.top \?\? 793/, /const STAR_TOP = \[386, 517\]/,
-    /const FIELD_TOP = \[395, 524\]/, /const INPUT_TOP = \[431, 560\]/,
+    /top: Y\(187\)/, /top: Y\(287\)/, /top: Y\(325\)/,
+    /const PITCH = 129;/,
+    /const FIELD_TOP = \(i: number\) => 395 \+ i \* PITCH;/,
+    /const INPUT_TOP = \(i: number\) => 431 \+ i \* PITCH;/,
+    /const ctaTop = \(n: number\) => INPUT_TOP\(n - 1\) \+ 112;/,
+    /footerLink\.top \?\? ctaTop\(fields\.length\) \+ 121/,
+    /relative top-\[-9px\]/, // 별표 라인박스는 라벨보다 9px 위(395→386)
   ]],
   [`${WEB}/src/components/shell/AuthFormScreen.tsx`, '인증 폼: 입력 576×57 r10 · CTA 576×71 accent · 필수 별표', [
     /h-\[57px\] w-\[576px\] rounded-\[10px\] border border-line/,

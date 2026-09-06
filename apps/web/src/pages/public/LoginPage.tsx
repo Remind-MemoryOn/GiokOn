@@ -2,9 +2,16 @@
 //   콘텐츠 열 568 @ x436 · 필드 그룹 높이 110(라벨 22 + 간격 + 입력 68)
 //   아이디 254 · 비밀번호 389 · 아이디 저장 537 · 로그인 600(568×71) · 또는 706 · 소셜 758
 // ⚠️ 라인박스는 Figma auto(≈1.2) — 토큰 기본값(28/30)을 쓰면 잉크가 2~3px 내려간다.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { signInWithEmail, signInWithProvider, buildNaverAuthUrl, getCurrentUserRow, type NativeSocialProvider } from '@giokon/data';
+import {
+  signInWithEmail,
+  signInWithProvider,
+  buildNaverAuthUrl,
+  getCurrentUserRow,
+  setSessionFromTokens,
+  type NativeSocialProvider,
+} from '@giokon/data';
 import { PublicHeader } from '../../components/shell/PublicHeader';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
@@ -19,19 +26,79 @@ const SOCIAL = [
   { key: 'google', label: '구글', chip: 'bg-white shadow-chip', mark: asset.markGoogle, left: 824, fx: '72:872', fxChip: '72:833' },
 ] as const;
 
+/** "아이디 저장" — 기기에 남는 것은 이메일뿐이다(비밀번호·토큰은 절대 두지 않는다). */
+const REMEMBER_KEY = 'giokon.login.email';
+
+function readRememberedEmail(): string {
+  try {
+    return window.localStorage.getItem(REMEMBER_KEY) ?? '';
+  } catch {
+    return ''; // 사생활 보호 모드 등 — 저장이 막혀도 로그인은 되어야 한다
+  }
+}
+
+type NaverCallback =
+  | { ok: false; error: string }
+  | { ok: true; access: string; refresh: string };
+
+/** naver-auth 가 프래그먼트로 돌려준 결과를 읽는다(읽기만 — 지우는 것은 이펙트에서). */
+function readNaverCallback(): NaverCallback | null {
+  const hash = window.location.hash;
+  if (!/(?:^|[#&])(access_token|naver_error)=/.test(hash)) return null;
+  const p = new URLSearchParams(hash.replace(/^#/, ''));
+  const failed = p.get('naver_error');
+  if (failed) return { ok: false, error: failed };
+  const access = p.get('access_token');
+  const refresh = p.get('refresh_token');
+  if (!access || !refresh) return { ok: false, error: '네이버 로그인 응답이 올바르지 않습니다.' };
+  return { ok: true, access, refresh };
+}
+
 export function LoginPage() {
   const { session, userRow, loading } = useAuth();
   const toast = useStore((s) => s.toast);
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('');
+  const [remembered] = useState(readRememberedEmail);
+  const [email, setEmail] = useState(remembered);
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(Boolean(remembered));
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  // 네이버 콜백 처리 중에는 로그인 폼을 그리지 않는다(눌러도 소용없는 화면).
+  const [callback] = useState(readNaverCallback);
+  const [naverReturning, setNaverReturning] = useState(Boolean(callback));
 
-  if (loading) return null; // 세션 판별 중 — 깜빡임 방지
+  // 네이버는 Supabase 네이티브 provider 가 아니라 detectSessionInUrl 이 잡지 못한다 —
+  // naver-auth 가 프래그먼트로 넘긴 토큰을 여기서 직접 세션으로 세운다.
+  useEffect(() => {
+    if (!callback) return;
+    // 토큰이 주소창·히스토리·Referer 에 남지 않게 즉시 지운다.
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    let alive = true;
+    void (async () => {
+      if (!callback.ok) {
+        toast('error', callback.error);
+        if (alive) setNaverReturning(false);
+        return;
+      }
+      try {
+        await setSessionFromTokens(callback.access, callback.refresh);
+        const row = await getCurrentUserRow();
+        if (alive) navigate(routeForUser(row), { replace: true });
+      } catch (err) {
+        if (!alive) return;
+        toast('error', err instanceof Error ? err.message : '네이버 로그인에 실패했습니다.');
+        setNaverReturning(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [callback, navigate, toast]);
+
+  if (loading || naverReturning) return null; // 세션 판별 중 — 깜빡임 방지
   if (session) return <Navigate to={routeForUser(userRow)} replace />;
 
   async function submit() {
@@ -44,6 +111,13 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await signInWithEmail({ email, password });
+      // 체크했을 때만 이메일을 남기고, 껐으면 남아 있던 것도 지운다.
+      try {
+        if (remember) window.localStorage.setItem(REMEMBER_KEY, email.trim());
+        else window.localStorage.removeItem(REMEMBER_KEY);
+      } catch {
+        /* 저장이 막힌 브라우저 — 로그인 자체는 그대로 진행한다 */
+      }
       // 소셜 로그인은 이미 역할로 분기하는데 이메일 로그인만 온보딩으로 직행했다.
       const row = await getCurrentUserRow();
       navigate(routeForUser(row), { replace: true });

@@ -68,6 +68,8 @@ const EXTRA_SCREENS = [
   { name: '이용약관', route: '/terms', height: 2400 },
   { name: '문의사항 목록', route: '/inquiries', height: 1200 },
   { name: '문의사항 등록', route: '/inquiries/new', height: 1400 },
+  // Figma 에 프레임이 없는 화면(찾기 화면 골격을 한 칸 연장) — 그래도 접근성은 같은 기준.
+  { name: '회원가입(이메일)', route: '/signup', height: 1200 },
 ];
 
 for (const s of [...SCREENS, ...EXTRA_SCREENS]) {

@@ -4,6 +4,7 @@ import { ToastShelf } from './components/ui/Toast';
 import { LandingPage } from './pages/public/LandingPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { OnboardingPage } from './pages/public/OnboardingPage';
+import { SignUpPage } from './pages/public/SignUpPage';
 import { FindIdPage } from './pages/public/FindIdPage';
 import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/public/ResetPasswordPage';
@@ -88,8 +89,9 @@ function App() {
         <Route path="/inquiries/:inquiryId" element={<InquiryDetailPage />} />
         <Route path="/inquiries/:inquiryId/edit" element={<InquiryFormPage edit />} />
         <Route path="/login" element={<LoginPage />} />
-        {/* 디자인에는 이메일 가입 폼이 없다 — 회원가입 = 소셜 로그인 후 기본 정보 입력 */}
-        <Route path="/signup" element={<OnboardingPage />} />
+        {/* 디자인엔 이메일 가입 폼이 없지만(시안은 소셜 가입 전제) 이메일 로그인이 살아 있어
+            가입 경로가 필요하다 — 찾기 화면의 실측 골격을 한 칸 연장해 쓴다. */}
+        <Route path="/signup" element={<SignUpPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/find-id" element={<FindIdPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
