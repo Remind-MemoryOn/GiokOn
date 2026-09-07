@@ -20,23 +20,37 @@ import {
   useCreateGuardianShare,
   useGuardianLinks,
   useJournalPhotos,
+  useJournalPhotosByJournals,
   useCurrentUser,
   useGuardianShares,
   useProfile,
   useRevokeGuardianShare,
   useSessionAnalyses,
   useSetShareNotifyOnView,
+  type GuardianShareRow,
+  type JournalPhotoRow,
   type ShareItemType,
 } from '@giokon/data';
 import { dateDot } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { Badge } from '../../components/ui/Badge';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ShareSettingsDialog, type ShareTarget } from '../../components/share-settings';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 
 const Y = (v: number) => v - 122;
+
+/**
+ * 공개 행의 신원은 **(유형, 항목)** 이다. `session_summary` 와 `analysis` 는 같은
+ * 분석 행 id 를 가리키므로 항목 id 만으로는 서로를 구분하지 못한다.
+ */
+const shareKey = (type: ShareItemType, id: string) => `${type}:${id}`;
+
+/** 행의 요약 줄이 어떤 유형으로 공개되는가 — 일지는 그대로, AI 요약은 session_summary. */
+const summaryTypeOf = (type: 'journal' | 'analysis'): ShareItemType =>
+  type === 'journal' ? 'journal' : 'session_summary';
 
 const CARD_TOP = 343;
 const ROW_TOP = 394.24;
@@ -82,6 +96,8 @@ export function ShareItemsPage() {
   // 공개 기록 설정 모달(146:422) — 항목 단위로 무엇을 공개할지 고른다.
   // `?settings=<항목 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
   const [setting, setSetting] = useState<ShareTarget | null>(null);
+  /** 비공개 전환 확인 대상 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
+  const [revoking, setRevoking] = useState<Item | null>(null);
   const guardians = useGuardianLinks(elderId);
   const guardianName = useMemo(() => {
     const approved = (guardians.data ?? []).find((g) => g.status === 'approved');
@@ -94,14 +110,32 @@ export function ShareItemsPage() {
     [profileQuery.data],
   );
 
-  /** item_id → 철회되지 않은 공개 행. 없으면 미공개다. */
+  /**
+   * (유형, 항목) → 철회되지 않은 공개 행. 없으면 미공개다.
+   * ⚠️ **유형까지 넣어야 한다** — 요약(`session_summary`)과 AI 분석(`analysis`)은
+   * 같은 분석 행 id 를 쓴다. item_id 만으로 키를 잡으면 하나가 다른 하나를 덮어
+   * "AI 분석 체크 해제"가 요약 공개를 철회하는 일이 생긴다.
+   */
   const activeShare = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, GuardianShareRow>();
     for (const s of shares.data ?? []) {
-      if (!s.revoked_at) map.set(s.item_id, s.id);
+      if (!s.revoked_at) map.set(shareKey(s.item_type, s.item_id), s);
     }
     return map;
   }, [shares.data]);
+
+  // 행마다 "비공개 전환"이 그 일지의 사진 공개까지 함께 내려야 한다 → 일지↔사진 지도.
+  const journalIds = useMemo(() => (journals.data ?? []).map((j) => j.id), [journals.data]);
+  const allPhotos = useJournalPhotosByJournals(journalIds);
+  const photosByJournal = useMemo(() => {
+    const map = new Map<string, JournalPhotoRow[]>();
+    for (const ph of allPhotos.data ?? []) {
+      const list = map.get(ph.journal_id) ?? [];
+      list.push(ph);
+      map.set(ph.journal_id, list);
+    }
+    return map;
+  }, [allPhotos.data]);
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
@@ -141,17 +175,17 @@ export function ShareItemsPage() {
   /** 모달의 처음 체크 상태 = 지금 공개돼 있는 것 그대로. */
   const openInitial = useMemo(() => {
     if (!open) return undefined;
-    const live = (shares.data ?? []).filter((s) => !s.revoked_at);
-    // 요약 줄은 요양일지=journal · AI 요약=session_summary 로 공개된다(두 번째 줄과 유형이 다르다).
-    const summaryType = open.type === 'journal' ? 'journal' : 'session_summary';
-    const first = live.find((s) => s.item_type === summaryType && s.item_id === open.id);
+    const first = activeShare.get(shareKey(summaryTypeOf(open.type), open.id));
+    // 두 번째 줄: 일지=이 일지에 붙은 사진 · AI 요약=그 분석 자체.
+    // ⚠️ 사진은 **이 일지의 사진**만 본다 — 예전에는 어떤 사진 하나만 공개돼 있어도
+    //    모든 일지의 사진 체크가 켜져 보였다.
     const second = open.type === 'journal'
-      ? live.some((s) => s.item_type === 'photo')
-      : live.some((s) => s.item_type === 'analysis' && s.item_id === open.id);
+      ? (openPhotos.data ?? []).some((ph) => activeShare.has(shareKey('photo', ph.id)))
+      : activeShare.has(shareKey('analysis', open.id));
     // 아직 아무것도 공개되지 않았으면 시안대로 둘 다 체크한 상태에서 시작한다.
     if (!first && !second) return undefined;
     return { summary: Boolean(first), second, notify: Boolean(first?.notify_on_view) };
-  }, [open, shares.data]);
+  }, [open, activeShare, openPhotos.data]);
 
   const rowsEnd = ROW_TOP + Math.max(items.length, 1) * ROW_PITCH - (ROW_PITCH - ROW_H);
   const dividerTop = rowsEnd + 49.12;
@@ -166,10 +200,9 @@ export function ShareItemsPage() {
     notify: boolean,
   ) {
     if (!elderId || !me.data?.id) return;
-    const live = new Map((shares.data ?? []).filter((s) => !s.revoked_at).map((s) => [s.item_id, s]));
     try {
       for (const p of picked) {
-        const cur = live.get(p.id);
+        const cur = activeShare.get(shareKey(p.type, p.id));
         if (p.checked && !cur) {
           await publish.mutateAsync({
             profile_id: elderId,
@@ -190,17 +223,35 @@ export function ShareItemsPage() {
       toast('error', e instanceof Error ? e.message : '저장하지 못했어요.');
     }
   }
-  function onRevoke(item: Item) {
-    const shareId = activeShare.get(item.id);
-    if (!shareId || !me.data?.id) return;
-    if (!window.confirm('보호자 화면에서 즉시 사라집니다. 비공개로 전환할까요?')) return;
-    revoke.mutate(
-      { id: shareId, userId: me.data.id },
-      {
-        onSuccess: () => toast('success', '비공개로 전환했어요.'),
-        onError: (e) => toast('error', e.message),
-      },
-    );
+  /**
+   * 이 행에 걸린 **모든** 공개 행(요약 + 두 번째 줄). 비공개 전환은 하나만 내리면
+   * 안 된다 — 요약만 내리고 사진·AI 분석을 남기면 보호자 화면에 그대로 남는다.
+   */
+  function liveSharesOf(item: Item): GuardianShareRow[] {
+    const keys = [shareKey(summaryTypeOf(item.type), item.id)];
+    if (item.type === 'analysis') keys.push(shareKey('analysis', item.id));
+    const out = keys
+      .map((k) => activeShare.get(k))
+      .filter((v): v is GuardianShareRow => Boolean(v));
+    if (item.type === 'journal') {
+      // 사진은 일지 id 가 아니라 사진 id 로 공개된다 → 이 일지 소속 사진만 고른다.
+      const mine = new Set((photosByJournal.get(item.id) ?? []).map((ph) => ph.id));
+      for (const s of shares.data ?? []) {
+        if (!s.revoked_at && s.item_type === 'photo' && mine.has(s.item_id)) out.push(s);
+      }
+    }
+    return out;
+  }
+
+  async function revokeAll(item: Item) {
+    const rows = liveSharesOf(item);
+    if (!rows.length || !me.data?.id) return;
+    try {
+      for (const row of rows) await revoke.mutateAsync({ id: row.id, userId: me.data.id });
+      toast('success', '비공개로 전환했어요.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : '전환하지 못했어요.');
+    }
   }
 
   return (
@@ -286,7 +337,7 @@ export function ShareItemsPage() {
       ) : (
         items.map((item, i) => {
           const top = ROW_TOP + i * ROW_PITCH;
-          const shared = activeShare.has(item.id);
+          const shared = liveSharesOf(item).length > 0;
           return (
             <div key={item.key}>
               <div
@@ -339,7 +390,7 @@ export function ShareItemsPage() {
                   <button
                     type="button"
                     data-fx={i === 0 ? '142:791' : undefined}
-                    onClick={() => onRevoke(item)}
+                    onClick={() => setRevoking(item)}
                     className="absolute h-[57px] w-[152px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
                     style={{ left: 909, top: Y(top + 145.76) }}
                   >
@@ -402,6 +453,21 @@ export function ShareItemsPage() {
       </div>
 
       {/* 공개 기록 설정 — 무엇을 공개할지 항목 단위로 고른다(146:422) */}
+      <ConfirmDialog
+        open={Boolean(revoking)}
+        title="비공개로 전환할까요?"
+        description={
+          revoking
+            ? `"${revoking.title}" 과(와) 여기에 함께 공개된 항목이 보호자 화면에서 즉시 사라집니다.`
+            : ''
+        }
+        confirmLabel="비공개로 전환"
+        onConfirm={() => {
+          if (revoking) void revokeAll(revoking);
+        }}
+        onClose={() => setRevoking(null)}
+      />
+
       <ShareSettingsDialog
         open={Boolean(open)}
         onClose={() => {

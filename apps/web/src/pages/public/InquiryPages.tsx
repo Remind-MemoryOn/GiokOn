@@ -22,7 +22,7 @@ import {
 import { PublicHeader } from '../../components/shell/PublicHeader';
 import { PublicFooter } from '../../components/shell/PublicFooter';
 import { Button } from '../../components/ui/Button';
-import { Dialog } from '../../components/ui/Dialog';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Field, Input, Textarea } from '../../components/ui/Input';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
@@ -41,51 +41,6 @@ function Shell({ children }: { children: ReactNode }) {
       <main className="mx-auto min-h-[760px] w-full max-w-[1204px] py-20">{children}</main>
       <PublicFooter />
     </div>
-  );
-}
-
-/** window.confirm 대체 — 초점 가둠·Esc·스크린리더 이름이 붙는다(KWCAG). */
-function ConfirmDialog({
-  open,
-  title,
-  description,
-  confirmLabel,
-  onConfirm,
-  onClose,
-}: {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={title}
-      description={description}
-      size="md"
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>
-            취소
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-          >
-            {confirmLabel}
-          </Button>
-        </>
-      }
-    >
-      <span className="sr-only">{description}</span>
-    </Dialog>
   );
 }
 

@@ -478,6 +478,11 @@ begin
   insert into public.sessions (user_id, profile_id, status, turn_count, ended_at)
     values ('33333333-3333-3333-3333-333333333333', pid, 'ended', 6, now())
     returning id into sid;
+  -- 대화 원문 2턴 — 5.13(보호자 공개 열람)이 이 행들을 본다.
+  insert into public.session_logs (user_id, session_id, profile_id, turn_index, role, content)
+    values
+      ('33333333-3333-3333-3333-333333333333', sid, pid, 1, 'ai', '고향은 어디셨어요?'),
+      ('33333333-3333-3333-3333-333333333333', sid, pid, 2, 'user', '전주에서 나고 자랐지.');
   insert into public.session_analyses (user_id, session_id, profile_id, analysis, version)
     values (
       '33333333-3333-3333-3333-333333333333', sid, pid,
@@ -496,6 +501,11 @@ set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 �
 do $$ begin
   assert (select count(*) from public.session_analyses) = 0,
     'guardian 은 연결 승인 후에도 분석을 직접 볼 수 없어야 함(커밋 경유만)';
+  -- 공개 전에는 세션 원본도 닫혀 있어야 한다(5.13 이 공개 후를 본다).
+  assert (select count(*) from public.sessions) = 0,
+    'guardian 은 공개 전 세션을 볼 수 없어야 함';
+  assert (select count(*) from public.session_logs) = 0,
+    'guardian 은 공개 전 대화 원문을 볼 수 없어야 함';
 end $$;
 
 set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
@@ -637,6 +647,12 @@ do $$ begin
     '보호자는 공개된 일지 원본을 볼 수 있어야 함(기대 1)';
   assert (select count(*) from public.session_analyses) = 1,
     '보호자는 공개된 분석 원본을 볼 수 있어야 함(기대 1)';
+  -- W-2a: 분석이 공개되면 그 세션의 원본(세션 행·대화 원문)도 함께 열린다.
+  -- 분석 카드가 셋을 같이 읽는데 앞의 둘이 닫혀 있어 화면이 비어 보였다.
+  assert (select count(*) from public.sessions) = 1,
+    '분석이 공개된 세션은 보호자가 볼 수 있어야 함(기대 1)';
+  assert (select count(*) from public.session_logs) = 2,
+    '분석이 공개된 세션의 대화 원문을 보호자가 볼 수 있어야 함(기대 2)';
 end $$;
 
 -- 연결 없는 보호자 G(같은 기관): 0건.
@@ -653,6 +669,53 @@ set test.uid = '22222222-2222-2222-2222-222222222222';
 do $$ begin
   assert (select count(*) from public.guardian_shares) = 0,
     '다른 기관은 공개 커밋을 볼 수 없어야 함';
+end $$;
+
+-- W-2d: 다른 어르신의 기록을 이 어르신 이름으로 공개하려는 시도는 차단된다.
+-- (RLS 는 profile_id 만 보므로 A 담당 요양보호사가 B 의 일지를 A 로 붙일 수 있었다.)
+-- ⚠️ 실제 id 를 집으려면 **RLS 밖에서** 읽어야 한다 — 직전 블록이 남긴 역할을 먼저 푼다.
+reset role;
+do $$
+declare
+  other_pid uuid;
+  jid uuid;
+  blocked boolean := false;
+begin
+  select id into other_pid from public.profiles where name = 'A어르신';
+  select id into jid from public.care_journals where status = 'final' limit 1;
+  assert other_pid is not null and jid is not null, '테스트 준비: 어르신·일지 id 를 찾지 못함';
+  set role authenticated;
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', true); -- 관리자 A
+  begin
+    -- A어르신 앞으로 C어르신의 일지를 공개하려 한다.
+    insert into public.guardian_shares (shared_by, profile_id, item_type, item_id)
+      values ('11111111-1111-1111-1111-111111111111', other_pid, 'journal', jid);
+  exception when check_violation or insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '다른 어르신의 기록을 공개하는 조합은 차단되어야 함';
+end $$;
+
+-- 존재하지 않는 항목도 공개할 수 없다(빈 공개 행이 남으면 이력이 거짓말을 한다).
+reset role;
+do $$
+declare
+  pid uuid;
+  blocked boolean := false;
+begin
+  select id into pid from public.profiles where name = 'C어르신';
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    insert into public.guardian_shares (shared_by, profile_id, item_type, item_id)
+      values ('33333333-3333-3333-3333-333333333333', pid, 'journal',
+              '00000000-0000-0000-0000-0000000000ff');
+  exception when foreign_key_violation or insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '없는 항목은 공개할 수 없어야 함';
 end $$;
 
 -- 보호자의 공개 시도(커밋 생성): 차단.
@@ -1059,6 +1122,37 @@ begin
   reset role;
   assert blocked, '운영자가 아니면 답변을 달 수 없어야 함';
 end $$;
+
+-- ── 5.13) 공개된 세션 원본: 철회하면 즉시 닫힌다 · 남의 보호자는 못 본다 ────
+-- 5.10 에서 열린 것이 **분석 공개에 매달려 있는지** 확인한다. 매달려 있지 않으면
+-- 한 번 공개한 세션이 철회 후에도 계속 보인다(감사·동의 철회 요건 위반).
+
+-- 연결 없는 보호자 G(같은 기관): 공개돼 있어도 남의 어르신이라 0건.
+set role authenticated;
+set test.uid = '44444444-4444-4444-4444-444444444444';
+do $$ begin
+  assert (select count(*) from public.sessions) = 0,
+    '연결되지 않은 보호자는 공개된 세션도 볼 수 없어야 함';
+  assert (select count(*) from public.session_logs) = 0,
+    '연결되지 않은 보호자는 공개된 대화 원문도 볼 수 없어야 함';
+end $$;
+
+-- 요양보호사 C 가 분석 공개를 철회한다.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.guardian_shares
+  set revoked_at = now(), revoked_by = '33333333-3333-3333-3333-333333333333'
+  where item_type = 'analysis';
+
+set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H
+do $$ begin
+  assert (select count(*) from public.session_analyses) = 0,
+    '철회 즉시 분석 원본이 닫혀야 함';
+  assert (select count(*) from public.sessions) = 0,
+    '철회 즉시 세션 원본도 닫혀야 함';
+  assert (select count(*) from public.session_logs) = 0,
+    '철회 즉시 대화 원문도 닫혀야 함';
+end $$;
+reset role;
 
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin

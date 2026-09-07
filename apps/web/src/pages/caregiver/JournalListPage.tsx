@@ -16,6 +16,7 @@ import { toElderProfile, useCareJournals, useDeleteCareJournal, useProfile } fro
 import { dateDot } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { Badge } from '../../components/ui/Badge';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useStore } from '../../store/store';
 
 const Y = (v: number) => v - 122;
@@ -49,6 +50,8 @@ export function JournalListPage() {
   const remove = useDeleteCareJournal();
   const toast = useStore((s) => s.toast);
   const [day, setDay] = useState('');
+  /** 삭제 확인 대상 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
+  const [deleting, setDeleting] = useState<{ id: string; label: string } | null>(null);
 
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
@@ -213,21 +216,11 @@ export function JournalListPage() {
               >
                 <img src={asset.iconPencilLg} alt="" className="block h-full w-full" />
               </Link>
-              {/* 삭제 확인 화면이 디자인에 없어 브라우저 확인으로 되돌릴 수 없는 동작을 막는다 */}
+              {/* 삭제 확인 화면이 디자인에 없어 확인 대화상자로 되돌릴 수 없는 동작을 막는다 */}
               <button
                 type="button"
                 aria-label={`${rowTitle(j.journal_date)} 삭제`}
-                onClick={() => {
-                  if (!elderId) return;
-                  if (!window.confirm(`${rowTitle(j.journal_date)}를 삭제할까요? 되돌릴 수 없어요.`)) return;
-                  remove.mutate(
-                    { id: j.id, profileId: elderId },
-                    {
-                      onSuccess: () => toast('success', '요양일지를 삭제했어요.'),
-                      onError: (e) => toast('error', e.message),
-                    },
-                  );
-                }}
+                onClick={() => setDeleting({ id: j.id, label: rowTitle(j.journal_date) })}
                 className="absolute block"
                 style={{ left: 1179, top: Y(top + 104.07), width: 26.97, height: 27.02 }}
               >
@@ -237,6 +230,24 @@ export function JournalListPage() {
           );
         })
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="요양일지를 삭제할까요?"
+        description={deleting ? `${deleting.label}를 삭제합니다. 되돌릴 수 없어요.` : ''}
+        confirmLabel="삭제"
+        onConfirm={() => {
+          if (!deleting || !elderId) return;
+          remove.mutate(
+            { id: deleting.id, profileId: elderId },
+            {
+              onSuccess: () => toast('success', '요양일지를 삭제했어요.'),
+              onError: (e) => toast('error', e.message),
+            },
+          );
+        }}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }

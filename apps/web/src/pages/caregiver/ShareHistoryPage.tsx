@@ -25,6 +25,7 @@ import {
 } from '@giokon/data';
 import { birthLabel, elderAge } from '@giokon/core';
 import { asset } from '../../assets/ui';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
 import { ShareReceiptDialog, type ShareReceipt } from '../../components/share-receipt';
 import { useStore } from '../../store/store';
@@ -73,6 +74,8 @@ export function ShareHistoryPage() {
   // `?receipt=<공개 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
   const [search, setSearch] = useSearchParams();
   const [picked, setPicked] = useState<string | null>(null);
+  /** 공개 취소 확인 대상(share id) — 되돌릴 수 없어 확인을 받는다. */
+  const [revoking, setRevoking] = useState<string | null>(null);
   const receiptId = picked ?? search.get('receipt');
   const setReceiptId = (id: string | null) => {
     setPicked(id);
@@ -142,7 +145,6 @@ export function ShareHistoryPage() {
 
   function onRevoke(id: string) {
     if (!me.data?.id) return;
-    if (!window.confirm('보호자 화면에서 즉시 사라집니다. 공개를 취소할까요?')) return;
     revoke.mutate(
       { id, userId: me.data.id },
       {
@@ -318,7 +320,7 @@ export function ShareHistoryPage() {
                 <button
                   type="button"
                   data-fx={i === 0 ? '146:1310' : undefined}
-                  onClick={() => onRevoke(s.id)}
+                  onClick={() => setRevoking(s.id)}
                   className="absolute h-[39px] w-[117px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
                   style={{ left: COLS.actionLeft, top: Y(mid + 24.5) }}
                 >
@@ -343,6 +345,17 @@ export function ShareHistoryPage() {
         더보기
         <img src={asset.iconChevronDownSm} alt="" style={{ width: 18.73, height: 12.18 }} className="block" />
       </div>
+
+      <ConfirmDialog
+        open={Boolean(revoking)}
+        title="공개를 취소할까요?"
+        description="보호자 화면에서 즉시 사라집니다. 취소한 공개는 이력에 남습니다."
+        confirmLabel="공개 취소"
+        onConfirm={() => {
+          if (revoking) onRevoke(revoking);
+        }}
+        onClose={() => setRevoking(null)}
+      />
 
       {/* 공개 이력 상세 — 공개 정보 + 보호자 확인 정보(153:1811) */}
       <ShareReceiptDialog

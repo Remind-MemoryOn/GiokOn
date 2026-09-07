@@ -6,19 +6,19 @@
 // ⚠️ 기간 pill 의 ∨ 는 반전 노드라 metadata x(1358)가 렌더 위치가 아니다 — 프레임 오른끝 − 폭.
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { toElderProfile, useMyGuardianLinks, useProfile } from '@giokon/data';
+import { toElderProfile, useProfile } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
+import { useGuardianElder } from '../../lib/guardianElder';
 import { ElderAnalysisCards } from '../../components/analysis-comprehensive';
 import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { PERIODS, Y, type Months } from '../../lib/analysis';
 
 export function AnalysisPage() {
-  const { isConfigured, userRow } = useAuth();
+  const { userRow } = useAuth();
   const [months, setMonths] = useState<Months>(3);
-  const links = useMyGuardianLinks({ enabled: isConfigured });
-  const approved = (links.data ?? []).find((l) => l.status === 'approved');
-  const profileQuery = useProfile(approved?.profile_id);
+  const { link: approvedLink } = useGuardianElder();
+  const profileQuery = useProfile(approvedLink?.profile_id);
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
     [profileQuery.data],
@@ -98,7 +98,7 @@ export function AnalysisPage() {
         </select>
       </div>
 
-      <ElderAnalysisCards elderId={approved?.profile_id} months={months} />
+      <ElderAnalysisCards elderId={approvedLink?.profile_id} months={months} />
     </div>
   );
 }

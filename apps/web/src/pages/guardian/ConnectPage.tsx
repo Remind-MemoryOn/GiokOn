@@ -28,6 +28,8 @@ import { asset } from '../../assets/ui';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { useAuth } from '../../auth/AuthProvider';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { feedHref } from '../../lib/guardianElder';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
@@ -287,6 +289,8 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
   const shared = useMySharedContent({ enabled: isConfigured });
   const revoke = useRevokeGuardianLink();
   const toast = useStore((s) => s.toast);
+  /** 연결 해제 확인 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
 
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
@@ -301,7 +305,6 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
   const linkedAt = link.approved_at ?? link.created_at;
 
   function unlink() {
-    if (!window.confirm('연결을 해제하면 공개된 기록을 더 이상 볼 수 없어요. 해제할까요?')) return;
     revoke.mutate(
       { id: link.id },
       {
@@ -328,7 +331,7 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
         현재 연결된 어르신 정보를 확인하고 공개된 요양일지와 AI 회상 대화 요약을 확인할 수 있어요.
       </p>
       <Link
-        to="/guardian/feed"
+        to={feedHref(link.profile_id)}
         data-fx="69:615"
         className="absolute flex items-center gap-[9px] text-[20px] font-semibold leading-[24px] text-ink-700"
         style={{ left: 1285, top: Y(197.14) }}
@@ -474,12 +477,21 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
         <button
           type="button"
           data-fx="50:455"
-          onClick={unlink}
+          onClick={() => setConfirmUnlink(true)}
           className="absolute h-[57px] w-[158px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
           style={{ left: 469, top: 255 }}
         >
           연결 해제하기
         </button>
+
+        <ConfirmDialog
+          open={confirmUnlink}
+          title="연결을 해제할까요?"
+          description="해제하면 공개된 기록을 더 이상 볼 수 없어요. 연결 코드로 다시 연결할 수 있습니다."
+          confirmLabel="연결 해제"
+          onConfirm={unlink}
+          onClose={() => setConfirmUnlink(false)}
+        />
 
         <span data-fx="50:460" className="absolute left-[768px] top-[107.61px] whitespace-nowrap text-[22px] font-semibold leading-[30px] text-ink-900">
           다시 연결하기
@@ -650,7 +662,7 @@ function MultiConnectView({ links }: { links: ProfileGuardianRow[] }) {
               />
             )}
             <Link
-              to="/guardian/feed"
+              to={feedHref(link.profile_id)}
               data-fx={i === 0 ? '69:326' : undefined}
               className="absolute whitespace-nowrap text-[35px] font-bold leading-[70px] text-ink-900"
               style={{ left: MULTI.name.left, top: MULTI.name.top }}
@@ -701,7 +713,7 @@ function MultiConnectView({ links }: { links: ProfileGuardianRow[] }) {
               연결됨
             </Badge>
             <Link
-              to="/guardian/feed"
+              to={feedHref(link.profile_id)}
               data-fx={i === 0 ? '69:508' : undefined}
               className="absolute whitespace-nowrap text-[22px] leading-[30px] text-ink-700"
               style={{ left: MULTI.more.left, top: MULTI.more.top }}

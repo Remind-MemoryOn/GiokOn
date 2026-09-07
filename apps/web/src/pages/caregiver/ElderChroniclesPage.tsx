@@ -14,6 +14,7 @@ import { Link, Outlet, useParams } from 'react-router-dom';
 import { useChronicles, useDeleteChronicle, useProfile } from '@giokon/data';
 import { dateDot, isKeyMemory, relativeDay } from '@giokon/core';
 import { asset } from '../../assets/ui';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 
@@ -44,6 +45,10 @@ export function ElderChroniclesPage() {
   const chronicles = useChronicles(elderId);
   const remove = useDeleteChronicle();
   const [day, setDay] = useState('');
+  /** 삭제 확인 대상 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
+  const [deleting, setDeleting] = useState<{ id: string; profileId: string; label: string } | null>(
+    null,
+  );
 
   const rows = useMemo(() => {
     const all = [...(chronicles.data ?? [])]
@@ -205,16 +210,7 @@ export function ElderChroniclesPage() {
                 type="button"
                 data-fx={i === 0 ? '198:909' : undefined}
                 aria-label={`${label} 삭제`}
-                onClick={() => {
-                  if (!window.confirm(`"${label}" 연대기를 삭제할까요? 되돌릴 수 없습니다.`)) return;
-                  remove.mutate(
-                    { id: c.id, profileId: c.profile_id },
-                    {
-                      onSuccess: () => toast('success', '연대기를 삭제했어요.'),
-                      onError: (err) => toast('error', err.message),
-                    },
-                  );
-                }}
+                onClick={() => setDeleting({ id: c.id, profileId: c.profile_id, label })}
                 className="absolute left-[1200px] block"
                 style={{ top: Y(rowTop + 74.06) }}
               >
@@ -242,6 +238,24 @@ export function ElderChroniclesPage() {
       {profileQuery.data ? (
         <span className="sr-only">{profileQuery.data.name} 어르신의 연대기 목록</span>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="연대기를 삭제할까요?"
+        description={deleting ? `"${deleting.label}" 을(를) 삭제합니다. 되돌릴 수 없습니다.` : ''}
+        confirmLabel="삭제"
+        onConfirm={() => {
+          if (!deleting) return;
+          remove.mutate(
+            { id: deleting.id, profileId: deleting.profileId },
+            {
+              onSuccess: () => toast('success', '연대기를 삭제했어요.'),
+              onError: (err) => toast('error', err.message),
+            },
+          );
+        }}
+        onClose={() => setDeleting(null)}
+      />
 
       {/* 연대기 추가·상세 모달 — 이 목록 위에 뜬다 */}
       <Outlet />

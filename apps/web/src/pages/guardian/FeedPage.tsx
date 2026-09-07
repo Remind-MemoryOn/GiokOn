@@ -26,7 +26,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
   toElderProfile,
-  useMyGuardianLinks,
   useMySharedContent,
   useProfile,
   type ShareItemType,
@@ -36,6 +35,7 @@ import { asset } from '../../assets/ui';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge, type BadgeTone } from '../../components/ui/Badge';
 import { useAuth } from '../../auth/AuthProvider';
+import { useGuardianElder } from '../../lib/guardianElder';
 import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { MessageNoticeDialog } from '../../components/guardian-message';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
@@ -105,10 +105,9 @@ export function FeedPage() {
     setSearch(t === 'all' ? {} : { tab: t }, { replace: true });
   };
 
-  const links = useMyGuardianLinks({ enabled: isConfigured });
+  const { link: approvedLink } = useGuardianElder();
   const shared = useMySharedContent({ enabled: isConfigured });
-  const approved = (links.data ?? []).find((l) => l.status === 'approved');
-  const profileQuery = useProfile(approved?.profile_id);
+  const profileQuery = useProfile(approvedLink?.profile_id);
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
     [profileQuery.data],
@@ -384,7 +383,7 @@ export function FeedPage() {
       {/* 메시지 이용 안내 — 보내기 전에 반드시 읽는다(69:195) */}
       <MessageNoticeDialog
         open={compose}
-        profileId={approved?.profile_id}
+        profileId={approvedLink?.profile_id}
         senderUserId={userRow?.id}
         onClose={() => setSearch(tab === 'all' ? {} : { tab }, { replace: true })}
       />

@@ -703,7 +703,7 @@ const SCREENS = [
     /tone="journal"[\s\S]{0,20}tag/,
   ]],
   [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
-    /window\.confirm\(/, /useDeleteCareJournal/,
+    /<ConfirmDialog$/m, /useDeleteCareJournal/, { absent: /window\.confirm\(/ },
     /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
   ]],
 
@@ -736,8 +736,10 @@ const SCREENS = [
     /width: 100 \}/,
   ]],
   [`${WEB}/src/pages/caregiver/ShareItemsPage.tsx`, '공개 여부는 철회되지 않은 guardian_shares 로 판정 · 철회는 확인 후', [
-    /if \(!s\.revoked_at\) map\.set\(s\.item_id, s\.id\)/,
-    /useCreateGuardianShare/, /useRevokeGuardianShare/, /window\.confirm\(/,
+    /map\.set\(shareKey\(s\.item_type, s\.item_id\), s\)/,
+    { absent: /map\.set\(s\.item_id, s\.id\)/ },   // 유형 무시 키(요약↔분석 충돌) 재발 방지,
+    /useCreateGuardianShare/, /useRevokeGuardianShare/, /<ConfirmDialog$/m,
+    { absent: /window\.confirm\(/ },
     /공개할 수 있는 기록이 아직 없습니다/,
   ]],
   [`${WEB}/src/pages/caregiver/ShareHistoryPage.tsx`, '공개 이력: 카드 x=329(이 프레임만) · 머리글 81 · 작업 117×39 · 열 좌표 고정', [
@@ -805,7 +807,7 @@ const SCREENS = [
   ]],
   [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 후: 어르신 코드는 보호자에게 공개하지 않는다 · 해제는 확인 후', [
     /어르신 코드는 보호자에게 공개하지 않는다/,
-    /useRevokeGuardianLink/, /window\.confirm\(/,
+    /useRevokeGuardianLink/, /<ConfirmDialog$/m, { absent: /window\.confirm\(/ },
   ]],
   // ── 보호자 공개된 소식 50:543 ─────────────────────────────────────────
   [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 카드 1054 @343 · 항목 피치 236 · 어르신 pill 322×57 · 담당 카드 1054×211', [
@@ -867,10 +869,23 @@ const SCREENS = [
     /const CARD_TOP = 259\.15;/, /const BAR_W = 593;/,
     /요양보호사\(228:4430\)와 보호자\(104:1830\)가 \*\*같은 카드\*\*/,
   ]],
+  // 보호자가 여러 어르신에 연결된 경우 — 화면은 목록에서 고른 어르신을 본다.
+  // 예전에는 전부 `links.find(approved)`(첫 어르신)라 둘째를 눌러도 같은 화면이 떴다.
+  [`${WEB}/src/lib/guardianElder.ts`, '보호자 어르신 선택: URL(?elder=) 우선 · 승인 목록 안에서만', [
+    /export const ELDER_PARAM = 'elder';/,
+    /byId\(wanted\) \?\? byId\(readStored\(\)\) \?\? approved\[0\]/,
+    /l\.status === 'approved'/,
+    /export function feedHref/,
+  ]],
+  [`${WEB}/src/pages/guardian/ConnectPage.tsx`, '보호자 연결 목록: 카드가 그 어르신을 골라 소식으로 보낸다', [
+    /to=\{feedHref\(link\.profile_id\)\}/,
+    { absent: /to="\/guardian\/feed"/ },
+  ]],
   [`${WEB}/src/pages/guardian/AnalysisPage.tsx`, '보호자 종합 분석: 탭 426/598 · 밑줄 81 @341 · 기간 pill 1249', [
     /left: 426, top: Y\(301\)/, /left: 598, top: Y\(301\)/,
     /h-\[3px\] w-\[81px\] bg-accent/,
-    /<ElderAnalysisCards elderId=\{approved\?\.profile_id\} months=\{months\} \/>/,
+    /<ElderAnalysisCards elderId=\{approvedLink\?\.profile_id\} months=\{months\} \/>/,
+    /useGuardianElder\(\)/,,
   ]],
   [`${WEB}/src/pages/guardian/AnalysisSessionsPage.tsx`, '보호자 대화 분석 목록: 카드 343 · 행 458 피치 180 · 끝난 대화만', [
     /const CARD_TOP = 343;/, /const ROW_TOP = 458;/,
@@ -943,11 +958,18 @@ const SCREENS = [
   ]],
 ];
 
+// 패턴은 정규식(있어야 함) 또는 `{ absent: /…/ }`(없어야 함) 둘 중 하나다.
+// 후자는 **제거한 것이 되살아나지 않는지** 본다 — 모바일 check:figma 와 같은 규약.
 for (const [file, name, patterns, mode = 'code'] of SCREENS) {
   const text = mode === 'copy' ? flat(file) : src(file);
   if (!text) { fails.push({ section: '화면', name, detail: `파일 없음: ${file}` }); continue; }
-  const missing = patterns.filter((p) => !p.test(text));
-  check('화면', name, missing.length === 0, `[${file}] 누락 ${missing.map(String).join(' , ')}`);
+  const missing = patterns.filter((p) => (p.absent ? false : !p.test(text)));
+  const revived = patterns.filter((p) => p.absent && p.absent.test(text));
+  const detail = [
+    missing.length ? `누락 ${missing.map(String).join(' , ')}` : '',
+    revived.length ? `되살아남(있으면 안 됨) ${revived.map((p) => String(p.absent)).join(' , ')}` : '',
+  ].filter(Boolean).join(' / ');
+  check('화면', name, missing.length === 0 && revived.length === 0, `[${file}] ${detail}`);
 }
 
 // ── 결과 ────────────────────────────────────────────────────────────────

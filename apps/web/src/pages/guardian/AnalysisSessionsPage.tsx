@@ -9,11 +9,12 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  toElderProfile, useMyGuardianLinks, useProfile, useSessions,
+  toElderProfile, useProfile, useSessions,
 } from '@giokon/data';
 import { withinMonths } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
+import { useGuardianElder } from '../../lib/guardianElder';
 import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
@@ -25,12 +26,11 @@ const ROW_TOP = 458;
 const CARD_PAD_BOTTOM = 66;
 
 export function AnalysisSessionsPage() {
-  const { isConfigured, userRow } = useAuth();
+  const { userRow } = useAuth();
   const [months, setMonths] = useState<Months>(3);
-  const links = useMyGuardianLinks({ enabled: isConfigured });
-  const approved = (links.data ?? []).find((l) => l.status === 'approved');
-  const profileQuery = useProfile(approved?.profile_id);
-  const sessionsQuery = useSessions(approved?.profile_id);
+  const { link: approvedLink } = useGuardianElder();
+  const profileQuery = useProfile(approvedLink?.profile_id);
+  const sessionsQuery = useSessions(approvedLink?.profile_id);
 
   const elder = useMemo(
     () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
