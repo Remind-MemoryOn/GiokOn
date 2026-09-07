@@ -467,48 +467,6 @@ export type Database = {
         }
         Relationships: []
       }
-      guardian_invites: {
-        Row: {
-          id: string
-          org_id: string
-          profile_id: string
-          code: string
-          created_by: string | null
-          expires_at: string
-          used_by: string | null
-          used_at: string | null
-          revoked_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          org_id?: string
-          profile_id: string
-          code?: string
-          created_by?: string | null
-          expires_at?: string
-          used_by?: string | null
-          used_at?: string | null
-          revoked_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          org_id?: string
-          profile_id?: string
-          code?: string
-          created_by?: string | null
-          expires_at?: string
-          used_by?: string | null
-          used_at?: string | null
-          revoked_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profile_guardians: {
         Row: {
           id: string
@@ -516,7 +474,6 @@ export type Database = {
           profile_id: string
           guardian_user_id: string
           status: Database['public']['Enums']['guardian_link_status']
-          invited_via: string | null
           approved_by: string | null
           approved_at: string | null
           revoked_at: string | null
@@ -529,7 +486,6 @@ export type Database = {
           profile_id: string
           guardian_user_id: string
           status?: Database['public']['Enums']['guardian_link_status']
-          invited_via?: string | null
           approved_by?: string | null
           approved_at?: string | null
           revoked_at?: string | null
@@ -542,7 +498,6 @@ export type Database = {
           profile_id?: string
           guardian_user_id?: string
           status?: Database['public']['Enums']['guardian_link_status']
-          invited_via?: string | null
           approved_by?: string | null
           approved_at?: string | null
           revoked_at?: string | null
@@ -911,10 +866,6 @@ export type Database = {
         Returns: string | null
       }
       // 구 1회성 초대(폐기·감사 이력용). 신규 코드는 elder_codes 로 대체.
-      redeem_guardian_invite: {
-        Args: { p_code: string }
-        Returns: Database['public']['Tables']['profile_guardians']['Row']
-      }
       list_inquiries: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean; total: number }>
@@ -974,7 +925,6 @@ export type ConsentCapacity = Enums<'consent_capacity'>
 export type AuditLogRow = Tables<'audit_log'>
 export type SafetyEventRow = Tables<'safety_events'>
 export type SafetyEventLevel = Enums<'safety_event_level'>
-export type GuardianInviteRow = Tables<'guardian_invites'>
 export type ProfileGuardianRow = Tables<'profile_guardians'>
 export type GuardianLinkStatus = Enums<'guardian_link_status'>
 export type ElderCodeRow = Tables<'elder_codes'>
