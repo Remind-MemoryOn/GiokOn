@@ -17,7 +17,6 @@ delete from public.notifications;
 delete from public.messages;
 delete from public.safety_events;
 delete from public.profile_guardians;
-delete from public.guardian_invites;
 delete from public.consents;
 delete from public.session_logs;
 delete from public.sessions;
