@@ -12,6 +12,7 @@ import {
   type RealtimeEvent,
 } from '@giokon/data';
 import { TopBar } from './shell/TopBar';
+import { QueryErrorBanner } from './QueryErrorBanner';
 import { Sidebar } from './shell/Sidebar';
 import { CAREGIVER_NAV, GUARDIAN_NAV, type NavItem } from './shell/nav';
 import { useAuth } from '../auth/AuthProvider';
@@ -108,6 +109,8 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
         onReadNotification={handleReadNotification}
         onReadAllNotifications={handleReadAllNotifications}
       />
+      {/* 조회 실패를 "기록 없음" 으로 오해하지 않게 — 레이아웃은 건드리지 않는다 */}
+      <QueryErrorBanner />
       <div className="mx-auto flex w-full max-w-[1440px] min-h-[calc(100vh-122px)]">
         <Sidebar items={nav} />
         <main

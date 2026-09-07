@@ -86,7 +86,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: 의존성 취약점 스캔 (SCA)
-        run: pnpm audit --audit-level high
-        # 초기에는 정보성으로 두고, 트리아지 정착 후 게이트로 승격한다.
-        continue-on-error: true
+      # 배포본(apps/web)에 닿는 high/critical 만 막고, 나머지(모바일 개발·빌드 도구)는
+      # 목록으로 보고한다. 전부를 막으면 게이트가 상시 빨간불이라 아무도 안 보게 된다.
+      # 판정 근거·예외는 scripts/check-audit.mjs 주석에 있다.
+      - name: 의존성 취약점 게이트 (SCA)
+        run: pnpm check:audit

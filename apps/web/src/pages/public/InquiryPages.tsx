@@ -32,6 +32,9 @@ const dateLabel = (value: string) =>
     new Date(value),
   );
 
+/** 한 번에 받아 오는 문의 수. "더보기" 마다 이만큼 늘린다(서버가 100 에서 자른다). */
+const PAGE = 20;
+
 const ROW = 'grid w-full grid-cols-[1fr_160px_140px_130px] items-center px-8';
 
 function Shell({ children }: { children: ReactNode }) {
@@ -48,7 +51,10 @@ export function InquiryListPage() {
   const { session, isConfigured } = useAuth();
   const navigate = useNavigate();
   const toast = useStore((s) => s.toast);
-  const list = useInquiryList({ enabled: isConfigured });
+  // "더보기" 는 limit 만 키운다 — offset 페이징은 새 글이 끼어들면 행이 밀린다.
+  const [limit, setLimit] = useState(PAGE);
+  const list = useInquiryList(limit, { enabled: isConfigured });
+  const items = list.data?.items ?? [];
 
   const requireLogin = (to: string) => {
     if (!session) {
@@ -82,11 +88,20 @@ export function InquiryListPage() {
         {list.isLoading ? (
           <p className="px-8 py-16 text-center text-ink-500">문의사항을 불러오고 있어요.</p>
         ) : list.isError ? (
-          <p className="px-8 py-16 text-center text-ink-500">문의사항을 불러오지 못했어요.</p>
-        ) : !list.data?.length ? (
+          // 실패를 "없음"으로 보이게 두지 않는다 — 다시 시도할 길을 준다.
+          <div className="px-8 py-16 text-center" role="alert">
+            <p className="text-ink-700">문의사항을 불러오지 못했어요.</p>
+            <p className="mt-2 text-w-label text-ink-500">
+              {list.error instanceof Error ? list.error.message : '잠시 후 다시 시도해 주세요.'}
+            </p>
+            <Button variant="outline" size="sm" className="mt-5" onClick={() => void list.refetch()}>
+              다시 시도
+            </Button>
+          </div>
+        ) : items.length === 0 ? (
           <p className="px-8 py-16 text-center text-ink-500">아직 등록된 문의사항이 없어요.</p>
         ) : (
-          list.data.map((item) => {
+          items.map((item) => {
             const title = (
               <span className="flex min-w-0 items-center gap-3">
                 <span
@@ -134,7 +149,15 @@ export function InquiryListPage() {
         )}
       </div>
 
-      {list.data?.some((item) => item.locked) ? (
+      {list.data && list.data.total > items.length ? (
+        <div className="mt-8 text-center">
+          <Button variant="outline" onClick={() => setLimit((n) => n + PAGE)} disabled={list.isFetching}>
+            {list.isFetching ? '불러오는 중...' : `더보기 (${items.length}/${list.data.total})`}
+          </Button>
+        </div>
+      ) : null}
+
+      {items.some((item) => item.locked) ? (
         <p className="mt-5 text-w-label text-ink-500">
           비공개 문의의 제목과 내용은 작성자와 사이트 운영자만 볼 수 있어요.
         </p>

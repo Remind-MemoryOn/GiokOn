@@ -13,16 +13,36 @@ export interface InquiryListItem {
   reply_count: number
   /** true = 비공개 문의를 남이 본 것. 제목·작성자는 서버가 이미 가려서 보냈고 본문은 열 수 없다. */
   locked: boolean
+  /** 필터 없는 전체 건수(행마다 같다) — "더보기" 가 남은 개수를 안다. */
+  total: number
 }
 
-export function useInquiryList(options?: { enabled?: boolean }): UseQueryResult<InquiryListItem[]> {
+export interface InquiryPage {
+  items: InquiryListItem[]
+  /** 서버가 센 전체 건수. 0건이면 0(빈 목록과 조회 실패를 화면이 구분할 수 있게). */
+  total: number
+}
+
+/**
+ * 문의 목록 한 페이지. `limit` 만 늘려 "더보기" 를 구현한다(offset 페이징은 새 글이
+ * 끼어들면 행이 밀린다 — 목록이 짧고 최신순이라 누적 조회가 더 정확하다).
+ * 서버가 100건에서 자른다.
+ */
+export function useInquiryList(
+  limit = 20,
+  options?: { enabled?: boolean },
+): UseQueryResult<InquiryPage> {
   return useQuery({
-    queryKey: queryKeys.inquiries,
+    queryKey: [...queryKeys.inquiries, limit],
     enabled: options?.enabled ?? true,
     queryFn: async () => {
-      const { data, error } = await getGiokonClient().rpc('list_inquiries')
+      const { data, error } = await getGiokonClient().rpc('list_inquiries', {
+        p_limit: limit,
+        p_offset: 0,
+      })
       if (error) throw new Error(error.message)
-      return (data ?? []) as InquiryListItem[]
+      const items = (data ?? []) as InquiryListItem[]
+      return { items, total: items[0]?.total ?? 0 }
     },
   })
 }

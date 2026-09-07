@@ -126,7 +126,12 @@ DB 로 재검증**하고, **웹 배포에 필요한 것만** 추려 실행 순�
   누수 해제, **일지 수정 UI**.
   · 완료 기준: 화면이 설명하는 기능이 전부 실제로 동작한다.
 
-### W-5 · 배포 하드닝 (P0)
+### W-5 · 배포 하드닝 (P0) — ✅ 코드 완료 (2026-09-06)
+
+> 다섯 항목 모두 처리했다. CSP 는 **문서가 아니라 시험**이다 — route-smoke 가 배포
+> 헤더를 그대로 씌워 돌리므로 위반이 생기면 65/65 가 깨진다. 취약점 게이트는
+> 배포본(apps/web)에 닿는 것만 막는다(모바일 개발 도구 18건은 목록으로 보고).
+> ⚠️ 마이그레이션 `20260906030000_inquiries_pagination` 적용 필요.
 
 - **W-5a 보안 헤더** — `vercel.json` 에 CSP(Supabase 도메인만 허용)·`frame-ancestors 'none'`·
   `X-Content-Type-Options: nosniff`·`Referrer-Policy: strict-origin-when-cross-origin`·

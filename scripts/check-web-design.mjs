@@ -964,6 +964,29 @@ const SCREENS = [
     /webPalette\.series/, /v == null \? null/,
   ]],
 
+  // ── 배포 하드닝(W-5) ───────────────────────────────────────────────────
+  // CSP 는 route-smoke 가 배포 헤더를 그대로 씌워 **실제로 시험한다**(콘솔 오류 0건 판정).
+  // 여기서는 문구가 지워지지 않았는지만 지킨다.
+  [`${WEB}/vercel.json`, '배포 헤더: CSP(인라인 금지·supabase 만) · frame-ancestors none · nosniff', [
+    /"default-src 'self'; script-src 'self'; style-src 'self';/,
+    /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co/,
+    /frame-ancestors 'none'/, /X-Content-Type-Options/, /Strict-Transport-Security/,
+    /Permissions-Policy/, /camera=\(\), microphone=\(\), geolocation=\(\)/,
+    { absent: /unsafe-inline/ },   // React 는 CSSOM 으로 스타일을 쓴다 — 열어 둘 이유가 없다
+    { absent: /unsafe-eval/ },
+  ]],
+  [`${WEB}/scripts/route-smoke.mjs`, '스모크: 배포 헤더를 씌워 CSP 를 실제로 시험한다', [
+    /vercel\.json/, /page\.route\('\*\*\/\*'/, /deployHeaders/,
+  ]],
+  [`${WEB}/src/components/QueryErrorBanner.tsx`, '조회 실패를 "기록 없음" 으로 보이게 두지 않는다', [
+    /role="alert"/, /기록이\s*\n?\s*없다는 뜻이 아닙니다/,
+    /state\.status === 'error'/, /refetchQueries/,
+  ]],
+  [`${WEB}/src/pages/public/InquiryPages.tsx`, '문의 목록: 더보기 페이지네이션 · 실패는 재시도', [
+    /const PAGE = 20;/, /useInquiryList\(limit/, /setLimit\(\(n\) => n \+ PAGE\)/,
+    /list\.data\.total > items\.length/, /void list\.refetch\(\)/,
+  ]],
+
   // ── 프리미티브 ─────────────────────────────────────────────────────────
   [`${WEB}/src/components/ui/Badge.tsx`, '배지: r-pill · SemiBold 18 · 높이 25/32 · 톤 7종', [
     /rounded-pill[^']*font-semibold text-w-sub/, /h-\[32px\]/, /h-\[25px\]/,

@@ -6,7 +6,7 @@
 //   - Chromium 경로는 CHROMIUM_PATH 로 재지정.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -139,6 +139,31 @@ const executablePath =
   (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const page = await browser.newPage();
+
+// ── 배포 헤더를 그대로 씌워 CSP 를 **실제로 시험한다** ──────────────────────
+// `vite preview` 는 vercel.json 의 헤더를 모른다 → 여기서 주입한다. CSP 위반은
+// 콘솔 오류로 잡히므로 아래 "콘솔 오류 0건" 판정이 그대로 검증이 된다.
+// (헤더 문구는 배포본과 한 벌이어야 한다 — 어긋나면 여기서 통과하고 배포에서 깨진다.)
+const vercel = JSON.parse(
+  readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'),
+);
+const deployHeaders = Object.fromEntries(
+  (vercel.headers ?? [])
+    .filter((h) => h.source === '/(.*)')
+    .flatMap((h) => h.headers)
+    // HSTS 는 http 프리뷰에서 무의미하고, COOP 는 로컬에서 경고만 낸다.
+    .filter((h) => h.key !== 'Strict-Transport-Security')
+    .map((h) => [h.key, h.value]),
+);
+await page.route('**/*', async (route) => {
+  const res = await route.fetch();
+  const isDoc = route.request().resourceType() === 'document';
+  await route.fulfill({
+    response: res,
+    headers: isDoc ? { ...res.headers(), ...deployHeaders } : res.headers(),
+  });
+});
+
 const consoleErrors = [];
 page.on('console', (msg) => {
   if (msg.type() === 'error') consoleErrors.push(`${page.url()}: ${msg.text()}`);

@@ -916,8 +916,8 @@ export type Database = {
         Returns: Database['public']['Tables']['profile_guardians']['Row']
       }
       list_inquiries: {
-        Args: Record<PropertyKey, never>
-        Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean }>
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean; total: number }>
       }
     }
     Enums: {

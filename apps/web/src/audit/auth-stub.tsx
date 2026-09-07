@@ -75,6 +75,9 @@ const iso = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOStrin
 
 /** 어르신 상세(161:373) 감사용 — 시안과 같은 구성(동의 3종 완료 · 연대기 2 · 세션 3 · 안전 1). */
 const E1 = 'e1';
+// 감사 전용: 실패한 쿼리를 밖에서 확인할 수 있게 노출한다(이 파일은 배포본에 없다).
+;(window as unknown as { __giokonQC?: unknown }).__giokonQC = queryClient;
+
 function seedElderDetail(q: typeof queryClient) {
   // 상세 화면만 시안과 같은 값으로 채운다(목록 카드의 "청주 · 식당 운영" 은 그대로 둔다).
   q.setQueryData(queryKeys.profile(E1), {
@@ -326,6 +329,12 @@ function seedJournals(q: typeof queryClient) {
     j('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
     j('j4', '2026-07-13', '오후에 꽃을 심고 꾸미는 원예 활동을 진행했습니다. 완성된 화분을 보며 매우 좋아하셨어요.'),
   ]);
+  // 공개 관리가 일지↔사진 지도를 만든다(W-2c: "비공개 전환" 이 사진 공개까지 함께 내린다).
+  // 심어 두지 않으면 이 쿼리가 실패하고 셸의 오류 배너가 떠 레이아웃이 밀린다.
+  q.setQueryData([...queryKeys.orgJournalPhotos, ['j1', 'j2', 'j3', 'j4']], []);
+  // 공개 설정 모달이 연결된 보호자 이름을 읽는다. **빈 배열**로 둔다 —
+  // 이름을 심으면 라벨이 "연결된 보호자가 없어요"(실측 197)에서 길어져 프로브가 깨진다.
+  q.setQueryData(queryKeys.guardianLinks(E1), []);
 }
 
 /** 공개 관리(140:121·146:1067) 감사용 — 일지 4건 중 3건·분석 1건을 공개해 둔다. */
