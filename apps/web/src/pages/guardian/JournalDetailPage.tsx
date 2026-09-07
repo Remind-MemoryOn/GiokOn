@@ -17,6 +17,9 @@ import {
 
 /** 본문 끝 → 다음 섹션 제목 상자 top. */
 const SEC_GAP = 35.35;
+
+/** `09:00:00` → `09:00`. 없으면 만들지 않고 `—`. */
+const hhmm = (t: string | null | undefined) => t?.slice(0, 5) ?? '—';
 /** 사진 — 3열(281/282/281 × 177), x 408/708/1009 → 카드 안 오프셋 0/300/601. */
 const PHOTO = { w: 281, h: 177, xs: [0, 300, 601] };
 
@@ -76,8 +79,11 @@ export function JournalDetailPage() {
       >
         <SectionTitle fx="50:1083">오늘의 활동</SectionTitle>
         <SectionBody fx="50:1084" under>
-          {/* 활동 요약은 아직 care_journals 에 칸이 없다 — 지어내지 않고 빈 값으로 둔다. */}
-          —
+          {/* 활동 시간(20260906020000) — 요양보호사가 적었을 때만 나온다.
+              적지 않았으면 지어내지 않고 `—`. */}
+          {journal?.activity_from || journal?.activity_to
+            ? `${hhmm(journal.activity_from)} ~ ${hhmm(journal.activity_to)}`
+            : '—'}
         </SectionBody>
 
         <SectionTitle fx="50:1088" gap={SEC_GAP}>요양일지</SectionTitle>

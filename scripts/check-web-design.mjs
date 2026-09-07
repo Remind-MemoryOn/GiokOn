@@ -716,11 +716,24 @@ const SCREENS = [
     /h-\[57px\] w-\[140px\] rounded-\[10px\] bg-accent/,
     /const SLOT = \{ w: 187, h: 193, top: 363, xs: \[87, 318, 549, 780\] \}/,
   ]],
-  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 실 STT·LLM 연동 전에는 결과를 만들지 않는다 · 저장→업로드→첨부 순서', [
-    /disabled\s*\n?\s*data-fx=\{mode === 'typed'/,
-    /AI 초안은 실 연동 후 제공됩니다/,
-    /음성 인식 연동 전이라 아래 원문은 직접 적어 주세요/,
+  // W-4: 음성 인식·AI 초안이 실제로 붙었다. 결과를 **만들어 내지 않는 것**은 그대로다 —
+  // 실패하면 이유를 말하고(조용한 실패 금지), 시각은 적은 만큼만 저장한다.
+  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: STT·AI 초안 배선 · 조용한 실패 금지 · 저장→업로드→첨부 순서', [
+    /transcribeAudio\(file\)/, /SttUnavailableError/,
+    /buildJournalDraft\(\{/,
+    /disabled=\{!content\.trim\(\) \|\| saving\}/,
     /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
+    /await removeJournalPhotoFiles\(uploaded\)/,           // 첨부 실패 시 파일 되돌리기
+    /URL\.revokeObjectURL/,                                 // 미리보기 URL 해제
+    /activity_from: from \|\| null/, /activity_to: to \|\| null/,
+    /const \[from, setFrom\] = useState\(''\);/,          // 시각 기본값을 지어내지 않는다
+    { absent: /AI 초안은 실 연동 후 제공됩니다/ },
+    { absent: /음성 인식 연동 전이라 아래 원문은 직접 적어 주세요/ },
+  ]],
+  [`${WEB}/src/lib/stt.ts`, '음성 인식: 서버 함수 경유 · 배포/키/권한 실패를 구분해 알린다', [
+    /functions\.invoke<\{/, /'stt-transcribe'/,
+    /status === 404/, /배포되지 않았어요/,
+    /음성에서 텍스트를 찾지 못했어요/,   // 빈 결과를 성공으로 취급하지 않는다
   ]],
   [`${WEB}/src/lib/journalPhotos.ts`, '일지 사진: private 버킷 signed URL · 경로는 profile_id 로 시작 · 파일을 먼저 파기', [
     /const BUCKET = 'journal-photos'/, /createSignedUrls/,
@@ -849,7 +862,8 @@ const SCREENS = [
   [`${WEB}/src/pages/guardian/JournalDetailPage.tsx`, '요양일지 상세: 섹션 간격 35.35 · 사진 281×177 3열(0/300/601)', [
     /const SEC_GAP = 35\.35;/, /w: 281, h: 177, xs: \[0, 300, 601\]/,
     /<SectionBody fx="50:1089" under pre width=\{690\}>/,
-    /활동 요약은 아직 care_journals 에 칸이 없다/,
+    /journal\?\.activity_from \|\| journal\?\.activity_to/,   // 활동 시간이 붙었다(W-4)
+    { absent: /활동 요약은 아직 care_journals 에 칸이 없다/ },
     /공개된 활동 사진이 아직 없어요/,
   ]],
   [`${WEB}/src/pages/guardian/SummaryDetailPage.tsx`, '대화 요약 상세: 2열(704) · 인용 상자 876×118 · 간격 35.5/27.4/36', [

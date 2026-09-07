@@ -109,7 +109,12 @@ DB 로 재검증**하고, **웹 배포에 필요한 것만** 추려 실행 순�
   (`useApproveCaregiverAssignment`). 기관 관리 화면에 붙인다.
   · 완료 기준: 관리자 SQL 없이 보호자 연결·요양보호사 합류를 제품에서 처리.
 
-### W-4 · 일지 화면을 사실과 맞추기 (P0)
+### W-4 · 일지 화면을 사실과 맞추기 (P0) — ✅ 코드 완료 (2026-09-06)
+
+> 사용자 확정대로 **완성**했다(제거 아님). 음성 인식·AI 초안·활동 시간·수정 화면이
+> 다 붙었다. ⚠️ **`stt-transcribe` 배포와 NCP CLOVA 시크릿 등록은 사용자 작업**이다(§2) —
+> 미배포 상태에서는 "아직 서버에 배포되지 않았어요" 라고 분명히 알린다(조용한 실패 아님).
+> 마이그레이션 `20260906020000_care_journal_activity_time` 적용 필요.
 
 시안이 약속한 기능이 동작하지 않는다. **둘 중 하나로 정리한다** — 어중간한 상태가 가장 나쁘다.
 
@@ -173,6 +178,7 @@ DB 로 재검증**하고, **웹 배포에 필요한 것만** 추려 실행 순�
 | Supabase **Auth Redirect URL** 등록 | 로그인 왕복·비밀번호 재설정 |
 | **SMTP** 설정 (+ SPF·DKIM·DMARC) | 가입 확인·비밀번호 재설정 메일 |
 | **소셜 OAuth 3종** 콘솔 등록 | 소셜 로그인 |
+| **`stt-transcribe` 배포**(JWT 검증 켠 채) + `NCP_CLOVA_CLIENT_ID/SECRET` 시크릿 | 요양일지 음성 인식 |
 | Edge Function 시크릿 (`NAVER_CLIENT_ID/SECRET`) + **`WEB_ORIGINS`**(웹 오리진 목록, 쉼표 구분) | 네이버 로그인 · `WEB_ORIGINS` 가 비면 `/authorize` 가 400 으로 거절한다(오픈 리다이렉트 차단) |
 | 네이버 개발자센터 **Callback URL** = `<프로젝트URL>/functions/v1/naver-auth/callback` | 네이버 로그인 왕복 |
 | `naver-auth` **재배포**(`--no-verify-jwt`) — GET 경로가 이번에 추가됐다 | 웹 네이버 로그인 |

@@ -667,6 +667,9 @@ export type Database = {
           source: Database['public']['Enums']['journal_source']
           photo_path: string | null
           status: Database['public']['Enums']['journal_status']
+          /** 활동 시작·종료 시각(HH:MM:SS). 미입력이면 null — 0시가 아니다. */
+          activity_from: string | null
+          activity_to: string | null
           created_at: string
           updated_at: string
         }
@@ -680,6 +683,8 @@ export type Database = {
           source?: Database['public']['Enums']['journal_source']
           photo_path?: string | null
           status?: Database['public']['Enums']['journal_status']
+          activity_from?: string | null
+          activity_to?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -693,6 +698,8 @@ export type Database = {
           source?: Database['public']['Enums']['journal_source']
           photo_path?: string | null
           status?: Database['public']['Enums']['journal_status']
+          activity_from?: string | null
+          activity_to?: string | null
           created_at?: string
           updated_at?: string
         }

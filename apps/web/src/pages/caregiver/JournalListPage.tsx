@@ -21,6 +21,9 @@ import { useStore } from '../../store/store';
 
 const Y = (v: number) => v - 122;
 
+/** `09:00:00` → `09:00`. 없으면 만들지 않고 `—`. */
+const hhmm = (t: string | null | undefined) => t?.slice(0, 5) ?? '—';
+
 const CARD_TOP = 376;
 const ROW_TOP = 427.27;
 const ROW_H = 235.15;
@@ -194,6 +197,16 @@ export function JournalListPage() {
               >
                 {dateDot(j.journal_date)}
               </span>
+              {/* 활동 시간 — 적었을 때만 날짜 뒤에 붙인다. 없으면 만들지 않는다.
+                  (날짜 span 은 실측 프로브라 건드리지 않고 옆에 따로 놓는다.) */}
+              {j.activity_from || j.activity_to ? (
+                <span
+                  className="absolute left-[700px] whitespace-nowrap text-w-body leading-[28px] text-ink-500"
+                  style={{ top: Y(top + 46.03) }}
+                >
+                  {hhmm(j.activity_from)} ~ {hhmm(j.activity_to)}
+                </span>
+              ) : null}
               <p
                 data-fx={i === 0 ? '210:1650' : undefined}
                 className="absolute left-[478px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900"

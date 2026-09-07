@@ -11,22 +11,36 @@
 //     활동 입력 라벨 @(88,252.42) · 방식 탭 262/261/262×57 @(87|396|704, 288.45) ·
 //     임시 저장 140×57 @(656,813) · 저장 140×57 @(826,813)
 //
-// ⚠️ 실 STT(CLOVA)·실 LLM 은 아직 붙지 않았다(MVP 이후 무변경 전환). 음성 파일을 올리면
-//    **파일만 보관**하고 텍스트는 자동으로 채우지 않는다 — 없는 인식 결과를 만들지 않는다.
+// ⚠️ 음성 인식은 Edge Function `stt-transcribe`(NCP CLOVA)를 부른다. **함수가 배포되지
+//    않았거나 키가 없으면 분명한 오류를 보여 준다** — 조용히 빈 칸을 남기면 요양보호사는
+//    "인식이 안 되는 음성"으로 오해하고 다시 녹음한다. 인식 결과는 원문 칸에 넣고
+//    **사람이 확인·수정한 뒤** 저장한다(자동 저장 금지).
+// ⚠️ AI 초안은 `@giokon/core` 의 `buildJournalDraft`(규칙 기반)다. 원문을 관찰 항목으로
+//    묶어 줄 뿐 없는 내용을 만들지 않는다. 초안도 저장 전 사람이 확인한다.
 // ⚠️ 사진은 `journal_photos`(20260822030000) 에 여러 장 저장한다. Storage 정책이 경로의
 //    profile_id 로 기관을 확인하므로 경로는 `<profile_id>/…` 이고, **일지 행이 먼저** 있어야
 //    첨부를 붙일 수 있다(저장 → 업로드 → 첨부 행 순서).
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   useAddJournalPhoto,
+  useCareJournals,
   useCreateCareJournal,
   useCurrentUser,
+  useJournalPhotos,
+  useProfile,
+  useUpdateCareJournal,
 } from '@giokon/data';
+import { buildJournalDraft } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
-import { uploadJournalPhoto } from '../../lib/journalPhotos';
+import {
+  removeJournalPhotoFiles,
+  uploadJournalPhoto,
+  useJournalPhotoUrls,
+} from '../../lib/journalPhotos';
+import { SttUnavailableError, transcribeAudio } from '../../lib/stt';
 import { cn } from '../../lib/utils';
 
 const Y = (v: number) => v - 122;
@@ -55,7 +69,7 @@ function today(): string {
 }
 
 export function JournalWritePage() {
-  const { elderId } = useParams<{ elderId: string }>();
+  const { elderId, journalId } = useParams<{ elderId: string; journalId: string }>();
   const [search, setSearch] = useSearchParams();
   const navigate = useNavigate();
   const { isConfigured } = useAuth();
@@ -67,43 +81,146 @@ export function JournalWritePage() {
 
   const me = useCurrentUser();
   const createJournal = useCreateCareJournal();
+  const updateJournal = useUpdateCareJournal();
   const addPhoto = useAddJournalPhoto();
 
+  // 수정 모드 — 목록의 연필이 `/journal/:elderId/:journalId` 로 온다.
+  const editing = Boolean(journalId);
+  const journals = useCareJournals(editing ? elderId : undefined);
+  const existing = useMemo(
+    () => (journals.data ?? []).find((j) => j.id === journalId) ?? null,
+    [journals.data, journalId],
+  );
+  const existingPhotos = useJournalPhotos(journalId);
+  const existingUrls = useJournalPhotoUrls(
+    (existingPhotos.data ?? []).map((p) => p.path),
+    isConfigured,
+  );
+  const profile = useProfile(elderId);
+
   const [date, setDate] = useState(today());
-  const [from, setFrom] = useState('09:00');
-  const [to, setTo] = useState('17:00');
+  // ⚠️ 시각은 **비워 둔 채** 시작한다. 09:00~17:00 을 미리 채우면 관찰하지 않은 시각이
+  //    기록으로 남는다(자리표시자 금지). 적은 만큼만 저장한다.
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [content, setContent] = useState('');
   /** 아직 올리지 않은 사진(저장 시 일지 행을 만든 뒤 올린다). */
   const [photos, setPhotos] = useState<File[]>([]);
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
   const [saving, setSaving] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const voiceInput = useRef<HTMLInputElement>(null);
 
   const previews = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
+  /** 수정 모드에서 이미 붙어 있는 사진(슬롯 앞자리를 차지한다). */
+  const attached = useMemo(() => (editing ? (existingPhotos.data ?? []) : []), [editing, existingPhotos.data]);
+  // 미리보기 URL 은 해제하지 않으면 파일이 메모리에 계속 남는다.
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
+
+  // 수정 모드에서 서버 값을 한 번 심는다(사용자가 고치기 시작하면 덮지 않는다).
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!existing || seeded.current) return;
+    seeded.current = true;
+    setDate(existing.journal_date);
+    setFrom(existing.activity_from?.slice(0, 5) ?? '');
+    setTo(existing.activity_to?.slice(0, 5) ?? '');
+    setContent(existing.content);
+  }, [existing]);
+
+  /** 음성 파일 → 텍스트. 실패는 이유를 그대로 보여 준다(조용한 실패 금지). */
+  async function runTranscribe(file: File) {
+    setVoiceFile(file);
+    setTranscribing(true);
+    try {
+      const text = await transcribeAudio(file);
+      // 이미 쓴 원문이 있으면 지우지 않고 이어 붙인다.
+      setContent((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text).slice(0, 2000));
+      toast('success', '음성을 텍스트로 옮겼어요. 저장 전 꼭 확인해 주세요.');
+    } catch (e) {
+      toast(
+        'error',
+        e instanceof SttUnavailableError || e instanceof Error
+          ? e.message
+          : '음성 인식에 실패했어요.',
+      );
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  /** 원문을 관찰 항목으로 묶은 초안으로 바꾼다(사람이 확인·수정한 뒤 저장). */
+  function makeDraft() {
+    const raw = content.trim();
+    if (!raw) return toast('error', '먼저 원문을 적거나 음성을 올려 주세요.');
+    try {
+      setContent(
+        buildJournalDraft({
+          elderName: profile.data?.name ?? '어르신',
+          source: mode,
+          rawText: raw,
+          date,
+        }).slice(0, 5000),
+      );
+      toast('success', '초안을 정리했어요. 확인·수정한 뒤 저장해 주세요.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : '초안을 만들지 못했어요.');
+    }
+  }
 
   async function save(status: 'draft' | 'final') {
     if (!elderId) return;
     if (!isConfigured) return toast('error', 'Supabase 연동 후 저장할 수 있어요.');
     if (!content.trim()) return toast('error', '활동 내용을 입력해주세요.');
+    // 한쪽만 적은 것은 허용한다(진행 중 기록). 뒤집힌 구간만 막는다.
+    if (from && to && to < from) return toast('error', '종료 시각이 시작 시각보다 빠릅니다.');
     setSaving(true);
+    // 업로드는 성공했는데 첨부 행이 실패하면 Storage 에 주인 없는 파일이 남는다 → 되돌린다.
+    const uploaded: string[] = [];
     try {
-      const row = await createJournal.mutateAsync({
-        profile_id: elderId,
-        author_id: me.data?.id ?? null,
+      const fields: {
+        journal_date: string;
+        content: string;
+        source: 'photo' | 'voice' | 'typed';
+        status: 'draft' | 'final';
+        activity_from: string | null;
+        activity_to: string | null;
+      } = {
         journal_date: date,
         content: content.trim(),
         source: mode === 'photo' ? 'photo' : mode === 'voice' ? 'voice' : 'typed',
         status,
-      });
+        // 적지 않았으면 null 이다 — 09:00 같은 기본값을 채우지 않는다.
+        activity_from: from || null,
+        activity_to: to || null,
+      };
+      const row = editing && journalId
+        ? await updateJournal.mutateAsync({ id: journalId, patch: fields })
+        : await createJournal.mutateAsync({
+            ...fields,
+            profile_id: elderId,
+            author_id: me.data?.id ?? null,
+          });
       // 일지 행이 생긴 뒤에야 Storage 정책을 통과한다 → 저장 → 업로드 → 첨부 행 순서.
+      const base = editing ? (existingPhotos.data ?? []).length : 0;
       for (const [i, file] of photos.entries()) {
         const path = await uploadJournalPhoto(elderId, file);
-        await addPhoto.mutateAsync({ journal_id: row.id, path, sort: i });
+        uploaded.push(path);
+        await addPhoto.mutateAsync({ journal_id: row.id, path, sort: base + i });
       }
-      toast('success', status === 'final' ? '요양일지를 저장했어요.' : '임시 저장했어요.');
+      toast(
+        'success',
+        editing
+          ? '요양일지를 수정했어요.'
+          : status === 'final'
+            ? '요양일지를 저장했어요.'
+            : '임시 저장했어요.',
+      );
       navigate(`/caregiver/journal/${elderId}`);
     } catch (e) {
+      // 붙지 못한 파일은 지운다(정리에 실패해도 원래 오류를 덮지 않는다).
+      if (uploaded.length) await removeJournalPhotoFiles(uploaded).catch(() => {});
       toast('error', e instanceof Error ? e.message : '저장하지 못했어요.');
     } finally {
       setSaving(false);
@@ -118,7 +235,7 @@ export function JournalWritePage() {
         className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-ink-900"
         style={{ top: Y(169) }}
       >
-        새 요양일지 작성
+        {editing ? '요양일지 수정' : '새 요양일지 작성'}
       </h1>
       <p
         data-fx="221:343"
@@ -324,13 +441,14 @@ export function JournalWritePage() {
               <button
                 type="button"
                 data-fx="221:1045"
+                disabled={transcribing}
                 onClick={() => voiceInput.current?.click()}
                 className="absolute flex h-[52.04px] w-[179px] items-center rounded-[10px] border border-accent bg-white"
                 style={{ left: 30, top: 78.06 }}
               >
                 <img src={asset.iconUpload} alt="" className="absolute left-[26px] block" style={{ width: 16, height: 15.59 }} />
                 <span className="absolute left-[50px] whitespace-nowrap text-[18px] leading-[21px] text-accent">
-                  {voiceFile ? '다른 파일 선택' : '음성 파일 선택'}
+                  {transcribing ? '인식 중...' : voiceFile ? '다른 파일 선택' : '음성 파일 선택'}
                 </span>
               </button>
               <input
@@ -338,17 +456,22 @@ export function JournalWritePage() {
                 type="file"
                 accept="audio/*"
                 className="hidden"
-                onChange={(e) => setVoiceFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void runTranscribe(f);
+                }}
               />
               <p
                 data-fx="221:1040"
                 className="absolute left-[30px] w-[674px] text-[18px] leading-[25px] text-ink-500"
                 style={{ top: 145.11, wordBreak: 'keep-all' }}
               >
-                {/* 실 STT 연동 전에는 인식 결과를 만들지 않는다 — 파일만 보관한다 */}
-                {voiceFile
-                  ? `${voiceFile.name} 을(를) 첨부했어요. 음성 인식 연동 전이라 아래 원문은 직접 적어 주세요.`
-                  : '녹음한 음성 파일(mp3·m4a·wav 등)을 올리면 CLOVA 음성 인식으로 텍스트로 옮겨 아래 원문에 붙습니다. 인식 결과는 저장 전 꼭 확인해 주세요.'}
+                {/* 인식 결과를 만들어 내지 않는다 — 실패하면 이유를 토스트로 알린다 */}
+                {transcribing
+                  ? `${voiceFile?.name ?? '음성'} 을(를) 인식하고 있어요...`
+                  : voiceFile
+                    ? `${voiceFile.name} 을(를) 올렸어요. 아래 원문을 확인·수정한 뒤 저장해 주세요.`
+                    : '녹음한 음성 파일(mp3·m4a·wav 등)을 올리면 CLOVA 음성 인식으로 텍스트로 옮겨 아래 원문에 붙습니다. 인식 결과는 저장 전 꼭 확인해 주세요.'}
               </p>
             </div>
             <div
@@ -370,8 +493,12 @@ export function JournalWritePage() {
         {mode === 'photo' ? (
           <>
             {SLOT.xs.map((x, i) => {
-              const file = photos[i];
-              const src = previews[i];
+              // 수정 모드에서는 이미 붙은 사진이 먼저 온다 — 안 보이면 지운 줄 알고 다시 올린다.
+              const kept = attached[i];
+              const file = kept ? undefined : photos[i - attached.length];
+              const src = kept
+                ? existingUrls.data?.[kept.path]
+                : previews[i - attached.length];
               return (
                 <button
                   key={x}
@@ -381,8 +508,12 @@ export function JournalWritePage() {
                   className="absolute overflow-hidden rounded-[10px] border border-line bg-mute-pale"
                   style={{ left: x, top: SLOT.top, width: SLOT.w, height: SLOT.h }}
                 >
-                  {file ? (
-                    <img src={src} alt={file.name} className="h-full w-full object-cover" />
+                  {kept || file ? (
+                    <img
+                      src={src}
+                      alt={kept ? (kept.caption ?? '첨부된 사진') : (file?.name ?? '')}
+                      className="h-full w-full object-cover"
+                    />
                   ) : i === 0 ? (
                     <>
                       <img
@@ -427,12 +558,14 @@ export function JournalWritePage() {
           </>
         ) : null}
 
-        {/* AI 초안 만들기 — 실 LLM 연동 전이라 아직 누를 수 없다(없는 초안을 만들지 않는다) */}
+        {/* AI 초안 만들기 — 원문을 관찰 항목으로 묶는다(core buildJournalDraft, 규칙 기반).
+            없는 내용을 만들지 않는다. 원문이 비어 있으면 누를 것이 없어 잠근다. */}
         <button
           type="button"
-          disabled
+          disabled={!content.trim() || saving}
+          onClick={makeDraft}
           data-fx={mode === 'typed' ? '221:1031' : undefined}
-          title="AI 초안은 실 연동 후 제공됩니다."
+          title={content.trim() ? '원문을 관찰 항목으로 정리합니다' : '먼저 원문을 적어 주세요'}
           className="absolute flex h-[57.04px] items-center rounded-[10px] border border-line bg-white disabled:cursor-not-allowed disabled:opacity-60"
           style={{ left: mode === 'typed' ? 253 : COL, top: mode === 'photo' ? 587.67 : 714.77, width: 195 }}
         >

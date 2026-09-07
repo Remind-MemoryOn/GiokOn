@@ -136,6 +136,8 @@ function App() {
           <Route path="journal" element={<JournalPage />} />
           <Route path="journal/:elderId" element={<JournalListPage />} />
           <Route path="journal/:elderId/new" element={<JournalWritePage />} />
+          {/* 목록의 연필 — 같은 화면을 수정 모드로 연다(서버 값을 한 번 심는다) */}
+          <Route path="journal/:elderId/:journalId" element={<JournalWritePage />} />
           <Route path="shares" element={<SharesPage />} />
           <Route path="shares/:elderId" element={<ShareItemsPage />} />
           <Route path="shares/:elderId/history" element={<ShareHistoryPage />} />
