@@ -44,7 +44,6 @@ import anTrendPart from './an-trend-part.png';
 import anTrendResp from './an-trend-resp.png';
 import iconBell from './icon-bell.png';
 import iconChevronDown from './icon-chevron-down.png';
-import iconChevronRight from './icon-chevron-right.png';
 import avatarDefault from './avatar-default.png';
 import navDashboard from './nav-dashboard.png';
 import navDashboardOn from './nav-dashboard-on.png';
@@ -144,7 +143,6 @@ export const asset = {
   anTrendResp,
   iconBell,
   iconChevronDown,
-  iconChevronRight,
   iconKey,
   iconPencil,
   iconCaregiver,

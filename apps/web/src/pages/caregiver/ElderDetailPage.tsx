@@ -490,7 +490,7 @@ export function ElderDetailPage() {
         style={{ left: 1144, top: Y(1216.71) }}
       >
         연결·승인 상세보기
-        <img src={asset.iconChevronRight} alt="" width={12} height={19} className="block" />
+        <img src={asset.iconChevronRightSm} alt="" width={12} height={19} className="block" />
       </Link>
       <Sub fx="178:705" left={384} top={1253.73} width={544}>
         {elder.name} 어르신의 코드 하나로 보호자 연결과 담당 요양보호사 인계를 처리해요.

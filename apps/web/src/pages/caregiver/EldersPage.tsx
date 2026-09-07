@@ -165,7 +165,7 @@ export function EldersPage() {
                 </div>
               </div>
               <img
-                src={asset.iconChevronRight}
+                src={asset.iconChevronRightSm}
                 alt=""
                 width={11}
                 height={18}

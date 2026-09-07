@@ -149,16 +149,28 @@ pnpm web                 # 개발 서버
 pnpm web:preview         # 빌드 + 프리뷰
 pnpm web:smoke           # 빌드 + 라우트 스모크(preview 를 스스로 띄우고 끔)
 pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (소스 정규식, 이관 완료 화면만)
-pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px)
+pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px + 이미지 비율)
+pnpm -F @giokon/web img:audit   # ★ 이미지 비율만 따로 (위 검사에 이미 포함)
 pnpm check:copy          # 비의료 카피 린트
 pnpm check:a11y          # ★ axe(WCAG 2.1 A/AA) 57화면 + 모달 키보드 동작
 pnpm check:audit         # ★ 의존성 취약점 — **배포본(apps/web)에 닿는 것만 차단**(CI 게이트)
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
 ```
 
-**현재 통과 수치(2026-09-06)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
-잉크 810** · `route-smoke` **65/65** · `check:a11y` **57화면**(차단 0) · 테스트 249.
+**현재 통과 수치(2026-09-07)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
+잉크 810 + 이미지 581** · `route-smoke` **65/65** · `check:a11y` **57화면**(차단 0) · 테스트 249.
 숫자가 줄면 무언가를 지운 것이다 — 늘리는 방향으로만 움직인다.
+
+- **이미지 비율 검사(`scripts/img-aspect-audit.mjs`)** — 좌표 프로브가 **못 보는 종류의 결함**을
+  잡는다. Tailwind preflight 의 `img { height: auto }` 가 HTML `height="19"` 속성을 **덮으므로**,
+  `align-items: stretch`(flex 기본) 행에 들어간 아이콘은 **행 높이만큼 세로로 늘어난다**.
+  코드에는 height 가 박혀 있어 리뷰로는 안 잡히고, `data-fx` 앵커가 없으면 좌표 프로브도 못 본다
+  (실제로 대시보드 "담당 어르신" chevron 이 12×19 대신 **12×75** 로 렌더되고 있었다 — 2026-09-07 사용자 신고).
+  → 좌표 대신 **렌더 비율 vs 원본 비율**을 보므로 앵커가 없어도 잡힌다(허용 3%).
+  · **고치는 법**: flex 부모 안이면 이미지에 `self-start`(+`shrink-0`), 내보낸 글리프와 시안 박스의
+    비율 자체가 다르면 `object-contain`(박스는 실측 그대로, 그림만 비율 유지).
+  · `object-fit` 이 `fill`(기본) 이 아닌 이미지는 **판정 대상에서 제외**한다 — contain·cover 는
+    상자 비율과 무관하게 원본 비율이 지켜지므로 상자만 재는 이 검사로는 판정할 수 없다.
 
 - **`check:design` 은 `{ absent: /…/ }` 패턴을 지원한다** — "있어야 할 것" 뿐 아니라
   **"되살아나면 안 되는 것"** 도 검사한다(모바일 `check:figma` 와 같은 규약).

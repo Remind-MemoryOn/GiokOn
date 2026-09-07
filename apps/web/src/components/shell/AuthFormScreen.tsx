@@ -71,7 +71,7 @@ export function AuthFormScreen({
           style={{ top: Y(187) }}
         >
           <img
-            src={asset.iconChevronRight}
+            src={asset.iconChevronRightSm}
             alt=""
             width={12}
             height={19}

@@ -386,7 +386,14 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
           className="absolute h-[239px] w-[319px] rounded-[10px] bg-accent/[0.05]"
           style={{ left: 647, top: 48 }}
         >
-          <img src={asset.iconCaregiver} alt="" className="absolute block" style={{ left: 60.92, top: 47.32, width: 19, height: 20.01 }} />
+          {/* ⚠️ 내보낸 글리프(88×87)와 Figma 박스(19×20.01) 의 비율이 6% 다르다.
+              object-contain 이라야 박스는 실측 그대로 두면서 그림이 눌리지 않는다. */}
+          <img
+            src={asset.iconCaregiver}
+            alt=""
+            className="absolute block object-contain"
+            style={{ left: 60.92, top: 47.32, width: 19, height: 20.01 }}
+          />
           <span className="absolute whitespace-nowrap text-w-body leading-[30px] text-ink-500" style={{ left: 97, top: 42.31 }}>
             담당 요양보호사
           </span>
@@ -680,11 +687,12 @@ function MultiConnectView({ links }: { links: ProfileGuardianRow[] }) {
 
             {MULTI_ROWS.map((row) => (
               <div key={row.key}>
+                {/* object-contain: 내보낸 글리프와 Figma 박스의 비율이 어긋나도 눌리지 않는다 */}
                 <img
                   src={row.icon}
                   alt=""
                   aria-hidden
-                  className="absolute block"
+                  className="absolute block object-contain"
                   style={{ left: row.iconAt[0], top: row.iconAt[1], width: row.iconAt[2], height: row.iconAt[3] }}
                 />
                 <span

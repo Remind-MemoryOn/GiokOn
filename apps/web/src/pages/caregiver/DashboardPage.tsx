@@ -188,7 +188,7 @@ export function DashboardPage() {
             className="mt-[45px] flex items-center gap-[15px] text-w-body font-semibold leading-[21px] text-ink-700"
           >
             <span data-fx="221:142">전체 보기</span>
-            <img src={asset.iconChevronRight} alt="" width={12} height={19} className="block" />
+            <img src={asset.iconChevronRightSm} alt="" width={12} height={19} className="block" />
           </Link>
         </div>
         <div className="mt-[31px] pb-[7px]">
@@ -241,12 +241,15 @@ export function DashboardPage() {
                       </Badge>
                     </div>
                   </div>
+                  {/* ⚠️ 이 행은 `align-items:stretch`(기본)인 flex 다. Tailwind preflight 의
+                      `img{height:auto}` 가 height 속성을 덮으므로, self-start 가 없으면
+                      아이콘이 행 높이(75px)만큼 세로로 늘어난다. shrink-0 은 가로 눌림 방지. */}
                   <img
-                    src={asset.iconChevronRight}
+                    src={asset.iconChevronRightSm}
                     alt=""
                     width={12}
                     height={19}
-                    className="mr-[47px] mt-[59px] block"
+                    className="mr-[47px] mt-[59px] block shrink-0 self-start"
                   />
                 </Link>
               </div>

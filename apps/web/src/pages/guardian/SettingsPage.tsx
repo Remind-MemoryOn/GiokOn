@@ -143,7 +143,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
           {/* 여는 화면이 디자인에 없고 알림 센터도 배선 전이라 아직 누를 수 없다 */}
           <img
             data-fx="334:584"
-            src={asset.iconChevronRight}
+            src={asset.iconChevronRightSm}
             alt=""
             aria-hidden
             className="absolute block opacity-40"
