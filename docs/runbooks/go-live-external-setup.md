@@ -30,42 +30,34 @@
 세부는 [`seoul-region-migration.md`](./seoul-region-migration.md). **리전은 반드시
 `Northeast Asia (Seoul) = ap-northeast-2`**(데이터 국내보관).
 
-### 1-1. 마이그레이션 (번호 순서 엄수 — 총 21개)
+### 1-1. 마이그레이션 (총 **42개** · 파일명 순서 = 적용 순서)
 > 실 Supabase에는 `auth.users`·`auth.uid()`·`authenticated`·`anon` 롤이 이미 존재하므로
 > **로컬 테스트 심(`supabase/tests/_supabase_shims.sql`)은 적용하지 않는다.**
 
-**방법 A — CLI(권장, 자동 순서):**
 ```bash
-supabase link --project-ref <서울_project_ref>
-supabase db push          # supabase/migrations/ 전체를 순서대로 적용
+supabase link --project-ref ufkbzpdjomtmxjipmwub   # 운영 = 서울 MemoryOn
+supabase db push          # supabase/migrations/ 전체를 파일명 순서대로 적용
 ```
-**방법 B — 대시보드 SQL Editor:** 아래 순서대로 각 파일을 끝까지 실행.
 
-| # | 파일 | 내용 |
-|---|---|---|
-| 1 | `20260521131723_initial_schema.sql` | 5테이블·인덱스·기본 RLS |
-| 2 | `20260624090000_supabase_auth_rls.sql` | Auth 전환·가입 트리거·auth.uid() RLS |
-| 3 | `20260703120000_organizations_rbac.sql` | 조직·RBAC·org_id·조직 RLS |
-| 4 | `20260703130000_audit_log.sql` | 감사로그·2년 보관 |
-| 5 | `20260703140000_consents.sql` | 동의(민감·국외이전·대리동의) |
-| 6 | `20260703150000_consent_retention.sql` | 동의 증빙 보존 |
-| 7 | `20260711100000_safety_events.sql` | 안전 이벤트(위기 에스컬레이션) |
-| 8 | `20260718100000_safety_events_guardian_rls.sql` | safety_events guardian 배제 가드 |
-| 9 | `20260718110000_auth_onboarding.sql` | 최소 가입 트리거 + complete_onboarding |
-| 10 | `20260718120000_guardian_links.sql` | 보호자 연결(구 초대·감사 이력) |
-| 11 | `20260718125000_realtime_publication.sql` | Realtime 퍼블리케이션 |
-| 12 | `20260718130000_session_analyses.sql` | 세션 분석 |
-| 13 | `20260718140000_care_journals.sql` | 요양일지 + Storage 정책 |
-| 14 | `20260718150000_guardian_shares.sql` | 공개 커밋(보호자 노출) |
-| 15 | `20260722100000_elder_codes_caregiver_assignment.sql` | 어르신 영속 코드·배정·9테이블 RLS 재작성 |
-| 16 | `20260722110000_caregiver_assignment_pending.sql` | 배정 pending 상태 추가 |
-| 17 | `20260722120000_caregiver_org_join_approval.sql` | 요양보호사 기관 합류 승인형 |
-| 18 | `20260722130000_elder_code_generation_hardening.sql` | 코드 생성 CSPRNG·혼동문자 제거 |
-| 19 | `20260722140000_email_auth_support.sql` | 이메일 인증 보조(find_login_email·전화 캡처) |
-| 20 | `20260722150000_onboarding_caregiver_org_name.sql` | 온보딩 기관명 단순화(요양보호사 새 기관 생성) |
-| 21 | `20260801000000_realtime_safety_events.sql` | Realtime publication에 safety_events 추가(위기 알림 실시간) |
+- [ ] `supabase migration list` 로 로컬·원격이 같은지 확인한다.
+- [ ] ⚠️ **MCP `apply_migration` 으로 적용했다면** 이력이 *적용 시각*으로 남는다 →
+      `supabase_migrations.schema_migrations` 의 version 을 **저장소 파일명**으로 맞춰 준다.
+      맞춰 두지 않으면 다음 `db push` 가 같은 파일을 다시 적용하려 한다.
+- [ ] 개별 파일 목록은 저장소가 유일한 출처다(`ls supabase/migrations`). 여기에 표로
+      옮겨 적지 않는다 — 마이그레이션이 늘 때마다 이 문서가 먼저 낡는다.
 
-- [ ] 21개 전부 오류 없이 적용됐는지 확인. (`13`은 Storage 버킷 정책 포함 → §6과 연계.)
+**대시보드 SQL Editor 로 붙일 때**는 `ls supabase/migrations` 순서 그대로 하나씩 끝까지
+실행한다. Storage 버킷·정책을 만드는 파일이 섞여 있어 §6 과 연계된다.
+
+#### 2026-09-06 웹 배포 준비로 추가된 것 (아직 라이브 미적용일 수 있음)
+| 파일 | 없으면 생기는 일 |
+|---|---|
+| `20260906000000_guardian_shared_session_read` | 보호자 "대화 분석" 이 **항상 빈 화면** |
+| `20260906010000_guardian_share_item_owner` | 다른 어르신 기록을 공개할 수 있다 |
+| `20260906020000_care_journal_activity_time` | 일지 활동 시간 저장이 **실패** |
+| `20260906030000_inquiries_pagination` | 문의 목록이 전량을 내려보낸다 |
+| `20260906040000_security_advisor_hardening` | 트리거 함수가 RPC 로 열려 있다 |
+| `20260906050000_realtime_and_storage_limits` | 승인·코드 회전이 실시간 반영 안 됨 · 업로드 무제한 |
 
 ---
 
@@ -169,15 +161,41 @@ Supabase 콜백 URL은 보통 `https://<project-ref>.supabase.co/auth/v1/callbac
 
 ---
 
-## 7. 실 AI 키·STT/TTS (앱 음성·분석 실연동 시)
-> 현재 AI는 mock(사람 확인 게이트). 실연동은 서버 Edge Function으로 키를 보호한다.
-- [ ] `supabase secrets set OPENAI_API_KEY=sk-...` (LLM·STT gpt-4o-transcribe — Bearer 단일 키).
-- [ ] CLOVA(TTS=Voice, STT 보완=Speech)는 **Client ID+Secret 한 쌍**(NCP AI·NAVER API):
-      `supabase secrets set NCP_CLOVA_CLIENT_ID=... NCP_CLOVA_CLIENT_SECRET=...`
-      (헤더 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY`. 서비스별 애플리케이션을 따로
-      등록했다면 `CLOVA_VOICE_*`/`CLOVA_SPEECH_*` 로 분리 — `supabase/.env.example` 참조.)
-- [ ] STT=gpt-4o-transcribe(+Clova 보완), TTS=Clova Voice, LLM=현행 프런티어(Structured Outputs).
-- [ ] AI 파이프라인 Edge Function 구현·배포 후, 앱/웹의 mock 자리에 배선(코드 변경 최소).
+## 7. Edge Function 배포 + 시크릿
+
+키는 **서버에만** 둔다. 클라이언트 번들에 provider 키를 넣지 않는다.
+
+### 7-1. `live-token` — 앱 음성 대화(Gemini Live)
+- [ ] `supabase secrets set GEMINI_API_KEY=...`
+- [ ] `supabase functions deploy live-token`  (JWT 검증 **켠 채** — 로그인한 앱만 부른다)
+- [ ] ⚠️ 어르신 음성을 다루므로 **Gemini 유료 tier + DPA** 가 필요하다. 무료 tier 는
+      약관상 학습에 쓰일 수 있어 쓸 수 없다.
+
+### 7-2. `naver-auth` — 네이버 로그인 (웹 GET 경로가 2026-09-06 에 추가됨 → **재배포 필요**)
+- [ ] `supabase secrets set NAVER_CLIENT_ID=... NAVER_CLIENT_SECRET=...`
+- [ ] `supabase secrets set WEB_ORIGINS="https://<웹도메인>"` (쉼표로 여러 개)
+      · 비어 있으면 `/authorize` 가 **400 으로 거절**한다(오픈 리다이렉트 차단).
+- [ ] `supabase functions deploy naver-auth --no-verify-jwt`
+      · ⚠️ 이 함수만 `--no-verify-jwt` 다 — **로그인 전** 호출이 정상 흐름이다.
+- [ ] 네이버 개발자센터 **Callback URL** =
+      `https://<project-ref>.supabase.co/functions/v1/naver-auth/callback`
+
+### 7-3. `stt-transcribe` — 요양일지 음성 인식 (NCP CLOVA CSR)
+- [ ] `supabase secrets set NCP_CLOVA_CLIENT_ID=... NCP_CLOVA_CLIENT_SECRET=...`
+      (헤더 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY`)
+- [ ] `supabase functions deploy stt-transcribe`
+      · ⚠️ **`--no-verify-jwt` 를 쓰지 않는다.** 붙이면 누구나 쓰는 전사 API 가 되고
+        호출마다 비용이 나간다.
+- [ ] 미배포 상태에서도 웹은 깨지지 않는다 — "아직 서버에 배포되지 않았어요" 라고
+      분명히 안내하고 원문을 직접 적게 한다(조용한 실패 없음).
+- [ ] CSR 는 1분 이내 짧은 음성용이다. 장문이 필요해지면 CLOVA Speech(장문)로 교체한다
+      (인증 방식이 다르다 — `supabase/.env.example` 주석 참조).
+
+### 7-4. 분석·프롬프트
+- [ ] 대화 분석·요양일지 초안은 현재 **`@giokon/core` 의 규칙 기반 순수 함수**다
+      (`analyzeSession`·`buildJournalDraft`). 비용 0이고 결정론적이라 같은 입력이면 같은
+      결과가 나온다. 실 LLM 으로 바꿀 때 **같은 시그니처의 Edge Function 호출**로 교체하면
+      화면 코드는 그대로다.
 
 ---
 

@@ -148,7 +148,20 @@ DB 로 재검증**하고, **웹 배포에 필요한 것만** 추려 실행 순�
   · 완료 기준: RLS·네트워크 실패가 "기록 없음"으로 보이지 않는다.
 - **W-5e 문의 목록 pagination** — `list_inquiries(p_limit, p_offset)` + 더보기.
 
-### W-6 · Supabase 정리 (P1)
+### W-6 · Supabase 정리 (P1) — 🟡 부분 완료 (2026-09-06)
+
+> **한 것**: W-6a 보안 advisor(트리거 함수 RPC 노출 회수 · `search_path` 고정 2건 ·
+> 로그인 필요한 RPC 에서 anon 회수) · W-6c Realtime 6종 · W-6d Storage 크기/MIME 제한 ·
+> W-6f 런북 갱신(42개 · Edge Function 3종 배포 절차 · 낡은 `OPENAI_API_KEY` 표기 제거).
+>
+> **안 한 것과 이유**:
+> · **W-6b 성능 advisor 113건** — 순수 성능이고 지금 행 수는 세 자리다. `auth.uid()` →
+>   `(select auth.uid())` 재작성은 정책 34개를 손대는 일이라 **정책을 약하게 만들 위험**이
+>   이득보다 크다. 실데이터가 쌓여 느려지는 게 관측된 뒤에 근거를 갖고 한다.
+> · **W-6e 타입 드리프트 CI** — 라이브 스키마를 읽으려면 CI 에 서비스 키가 필요하다.
+>   키를 CI 에 두는 것은 별도 결정이라 사용자 판단 없이 넣지 않는다.
+> · **`elder-photos` 읽기를 배정 기준으로 좁히기** — 같은 기관이면 읽히는 현행이 교대
+>   근무와 정합적인지는 운영 정책 문제다(사용자 결정 필요).
 
 - **W-6a 보안 advisor** — 트리거 함수(`handle_new_user`·`sync_inquiry_answered` 등)
   `EXECUTE` 회수 · `search_path` 고정 2건 · security definer 함수의 불필요한 `anon` 실행 권한 회수.
