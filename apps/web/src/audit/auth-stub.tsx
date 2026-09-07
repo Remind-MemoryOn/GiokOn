@@ -99,6 +99,22 @@ function seedElderDetail(q: typeof queryClient) {
       created_at: '2026-06-08T00:00:00Z', caregiver: { id: USER.id, name: USER.name, phone: USER.phone, email: USER.email },
     },
   ]);
+  // 승인 대기 카드(Figma 에 없는 화면) — 두 종류가 다 그려지는지 보려면 대기 건이 있어야
+  // 한다. 카드2 아래라 위쪽 실측 프로브에는 영향이 없다.
+  q.setQueryData(queryKeys.orgPendingAssignments, [
+    {
+      id: 'pc-pending', profile_id: E1, caregiver_user_id: 'u-new', status: 'pending',
+      assigned_at: iso(2), created_at: iso(2),
+      caregiver: { id: 'u-new', name: '박신입', phone: null, email: 'park@gieokon.co.kr' },
+    },
+  ]);
+  q.setQueryData(queryKeys.orgGuardianLinks, [
+    {
+      id: 'pg-pending', profile_id: E1, guardian_user_id: 'u-guardian', status: 'pending',
+      created_at: iso(1), approved_at: null, revoked_at: null,
+      guardian: { id: 'u-guardian', name: '김보호', phone: null, email: 'guardian@example.kr' },
+    },
+  ]);
   q.setQueryData(queryKeys.consents(E1), [
     { id: 'c1', profile_id: E1, consent_type: 'sensitive_health_voice', revoked_at: null },
     { id: 'c2', profile_id: E1, consent_type: 'cross_border_transfer', revoked_at: null },

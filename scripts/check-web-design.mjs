@@ -758,6 +758,16 @@ const SCREENS = [
     /h-\[57\.05px\] w-\[576px\]/, /h-\[57\.05px\] w-\[102px\] rounded-\[10px\] bg-accent/,
     /const MEMBER_PITCH = 122;/, /h-\[33px\] w-\[119px\] items-center justify-center rounded-pill/, /px=\{79\}/,
   ]],
+  // 승인 대기 카드는 Figma 에 없다 — 카드2(구성원)의 실측 리듬을 그대로 쓴다.
+  // 대기 건이 없으면 카드를 그리지 않고, 본인 요청은 스스로 승인하지 못한다.
+  [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 승인 대기 카드(구성원 리듬 재사용) · 자가승인 차단', [
+    /\{waiting\.length > 0 \? \(/,
+    /const top = MEMBER_TOP \+ i \* MEMBER_PITCH;/,
+    /selfRequest: a\.caregiver_user_id === me\.data\?\.id/,
+    /본인 요청은 다른 담당자가 승인해요/,
+    /useApproveCaregiverAssignment/, /useApproveGuardianLink/,
+    /<ConfirmDialog$/m,
+  ]],
   [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 이름 수정은 기관 관리자만 · 값이 없으면 만들지 않는다', [
     /const isAdmin = me\.data\?\.role === 'org_admin'/,
     /disabled=\{!isAdmin\}/, /기관 이름은 기관 관리자만 바꿀 수 있어요/,

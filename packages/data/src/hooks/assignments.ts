@@ -110,6 +110,7 @@ export function useClaimElderByCode(): UseMutationResult<
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: queryKeys.profileCaregivers(row.profile_id) })
       void qc.invalidateQueries({ queryKey: queryKeys.myAssignments })
+      void qc.invalidateQueries({ queryKey: queryKeys.orgPendingAssignments })
       void qc.invalidateQueries({ queryKey: queryKeys.profiles })
       void qc.invalidateQueries({ queryKey: queryKeys.recentSessions })
     },
@@ -137,6 +138,7 @@ export function useApproveCaregiverAssignment(): UseMutationResult<
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: queryKeys.profileCaregivers(row.profile_id) })
       void qc.invalidateQueries({ queryKey: queryKeys.myAssignments })
+      void qc.invalidateQueries({ queryKey: queryKeys.orgPendingAssignments })
     },
   })
 }
@@ -156,6 +158,29 @@ export function useMyPendingAssignments(
         .eq('status', 'pending')
       if (error) throw new Error(error.message)
       return data
+    },
+  })
+}
+
+/**
+ * 기관에 들어온 **승인 대기 배정 전부**(합류 승인 화면).
+ * RLS 가 같은 기관·비보호자만 통과시키므로 여기서 기관을 다시 거르지 않는다.
+ * ⚠️ 자기 자신의 요청은 승인할 수 없다(서버가 3중으로 막는다) — 화면도 그렇게 그린다.
+ */
+export function useOrgPendingAssignments(options?: {
+  enabled?: boolean
+}): UseQueryResult<CaregiverAssignmentWithUser[]> {
+  return useQuery({
+    queryKey: queryKeys.orgPendingAssignments,
+    enabled: options?.enabled ?? true,
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient()
+        .from('profile_caregivers')
+        .select('*')
+        .eq('status', 'pending')
+        .order('assigned_at', { ascending: true })
+      if (error) throw new Error(error.message)
+      return attachCaregivers(data)
     },
   })
 }
@@ -181,6 +206,7 @@ export function useRemoveCaregiverAssignment(): UseMutationResult<
     onSuccess: (row) => {
       void qc.invalidateQueries({ queryKey: queryKeys.profileCaregivers(row.profile_id) })
       void qc.invalidateQueries({ queryKey: queryKeys.myAssignments })
+      void qc.invalidateQueries({ queryKey: queryKeys.orgPendingAssignments })
     },
   })
 }

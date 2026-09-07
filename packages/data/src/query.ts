@@ -41,6 +41,7 @@ export const queryKeys = {
   elderCode: (profileId: string) => ['elder_codes', profileId] as const,
   profileCaregivers: (profileId: string) => ['profile_caregivers', profileId] as const,
   myAssignments: ['profile_caregivers', 'mine'] as const,
+  orgPendingAssignments: ['profile_caregivers', 'org', 'pending'] as const,
   guardianLinks: (profileId: string) => ['profile_guardians', profileId] as const,
   orgGuardianLinks: ['profile_guardians', 'org'] as const,
   myGuardianLinks: ['profile_guardians', 'mine'] as const,
