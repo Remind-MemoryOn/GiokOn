@@ -1153,6 +1153,124 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 5.14) 권한 상승 차단 — 본인 role 셀프 승격 불가 (2026-09-08 발견 취약점) ──
+--
+-- 그전에는 users_update_scope 의 WITH CHECK 가 role 을 전혀 제약하지 않아
+--   update public.users set role = 'org_admin' where id = auth.uid();
+-- 가 통과했다. 요양보호사·보호자 누구나 publishable 키만으로 기관 관리자가 되어
+-- 기관 전체 어르신 기록을 볼 수 있었다.
+--
+-- ⚠️ 이 테스트가 도는 시점에는 _grants.sql 이 테이블 단위 UPDATE 를 이미 다시
+--    부여한 상태다(러너가 마이그레이션 뒤에 실행). 즉 **1차 컬럼 권한이 없는 조건**
+--    에서 2차 트리거·3차 정책만으로 막히는지를 본다. 1차는 (g) 에서 따로 확인한다.
+
+-- (a) 요양보호사 C 의 셀프 승격 — 막혀야 한다.
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set role = 'org_admin' where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '요양보호사가 본인 역할을 org_admin 으로 올릴 수 있으면 안 됨';
+  assert (select role from public.users where id = '33333333-3333-3333-3333-333333333333')
+         = 'caregiver', '차단 후에도 역할이 caregiver 로 남아야 함';
+end $$;
+
+-- (b) 본인 소속 기관 변경 — 막혀야 한다(타 기관 데이터로 갈아타기 차단).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users
+      set org_id = (select org_id from public.users where id = '22222222-2222-2222-2222-222222222222')
+      where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '본인 소속 기관을 직접 바꿀 수 있으면 안 됨';
+end $$;
+
+-- (c) 사이트 운영자 플래그 셀프 부여 — 막혀야 한다(inquiries 트리거).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set is_site_admin = true where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '사이트 운영자 플래그를 스스로 켤 수 있으면 안 됨';
+end $$;
+
+-- (d) 과차단 아님 — 본인 표시 이름은 계속 바꿀 수 있어야 한다(useUpdateMyName).
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.users set name = '요양보호사C수정' where id = auth.uid();
+do $$ begin
+  assert (select name from public.users where id = auth.uid()) = '요양보호사C수정',
+    '본인 이름 수정은 계속 허용되어야 함';
+end $$;
+reset role;
+
+-- (e) 정상 기능 유지 — 기관 관리자는 **다른** 구성원의 역할을 바꿀 수 있다.
+set role authenticated;
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- org_admin A
+update public.users set role = 'org_admin'
+  where id = '33333333-3333-3333-3333-333333333333';
+do $$ begin
+  assert (select role from public.users where id = '33333333-3333-3333-3333-333333333333')
+         = 'org_admin', '기관 관리자는 소속 구성원 역할을 바꿀 수 있어야 함';
+end $$;
+reset role;
+-- 뒤 섹션(§6)이 C 를 비관리자로 전제하므로 되돌린다(superuser 문맥 = 트리거 우회).
+update public.users set role = 'caregiver'
+  where id = '33333333-3333-3333-3333-333333333333';
+
+-- (f) 관리자도 **본인** 역할은 직접 못 바꾼다(마지막 관리자 자멸·자기 승격 방지).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', true);
+  begin
+    update public.users set role = 'caregiver' where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '기관 관리자도 본인 역할은 직접 바꿀 수 없어야 함';
+end $$;
+
+-- (g) 1차 방어(컬럼 권한) 단독 확인 — 마이그레이션이 준 권한 상태를 복원하고 검사.
+revoke update on public.users from authenticated;
+grant update (name) on public.users to authenticated;
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set role = 'org_admin' where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '컬럼 권한만으로도 role 갱신이 막혀야 함(RLS·트리거 이전 단계)';
+end $$;
+-- 뒤 섹션을 위해 러너 기본 권한으로 되돌린다.
+grant update on public.users to authenticated;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,

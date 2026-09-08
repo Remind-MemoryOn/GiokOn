@@ -18,6 +18,22 @@ create or replace function auth.uid() returns uuid
   select nullif(current_setting('test.uid', true), '')::uuid;
 $$;
 
+-- 실 Supabase 의 auth.role() = JWT 의 role 클레임('authenticated'·'anon'·'service_role').
+-- ⚠️ 없으면 이걸 쓰는 트리거(app.protect_site_admin_flag)가 undefined_function 으로
+-- 죽는데, 그 예외를 잡는 테스트가 '차단됨'으로 오인해 통과한다(2026-09-08 발견).
+-- ⚠️ auth.role() 은 **JWT 클레임**이라 current_user 와 무관하다 —
+-- SECURITY DEFINER 함수 안에서도 'authenticated' 그대로다. 이걸 current_user 에
+-- 연결하면 definer 트리거 안에서 'service_role' 로 보여 보호가 통째로 뚫린다.
+-- 그래서 주입된 test.uid(= 로그인 요청) 유무로만 판별한다.
+create or replace function auth.role() returns text
+  language sql stable as $$
+  select coalesce(
+    nullif(current_setting('test.role', true), ''),
+    case when nullif(current_setting('test.uid', true), '') is not null
+         then 'authenticated' else 'service_role' end
+  );
+$$;
+
 do $$
 begin
   create role authenticated nologin;

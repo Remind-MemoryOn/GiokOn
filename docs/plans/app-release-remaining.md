@@ -26,7 +26,9 @@
 | **A** 번들 ID `kr.gieokon.app` → **`kr.giokon.app`** (브랜드 통일) | 이번 커밋 |
 | **B** **Expo SDK 53 → 54** (RN 0.81.5 · React 19.1.0 · Reanimated 4 · NativeWind 4.2.6) | 이번 커밋 |
 | **D** `supportsTablet` → **false** | 이번 커밋 |
-| Android **API 36 명시 고정**(`expo-build-properties`) — 기본값에 기대지 않는다 | 이번 커밋 |
+| Android **API 36 명시 고정**(`expo-build-properties`) — 기본값에 기대지 않는다 | `e366a8e` |
+| 🔴 **users 권한 상승 취약점**(누구나 본인 role 을 org_admin 으로) 3중 차단 | 이번 커밋 |
+| RLS 회귀 하네스가 **잘못 통과하던 문제** 3건 정정(auth 스키마 권한·`auth.role()` 심) | 이번 커밋 |
 
 ---
 
@@ -183,6 +185,17 @@ Playwright 로 웹 preview 를 1440px 뷰포트에서 열어 웹 라우트(`/pri
    (§3.5 대비 게이트가 만들어지면 정확한 미달 목록을 함께 올린다.)
 2. **`supportsTablet: false`** — 태블릿을 지원하지 않기로 했다. 요양기관에서 태블릿 사용
    가능성이 있다면 출시 전에 다시 정해야 한다(출시 후 추가는 가능하나 UI 작업이 따른다).
+
+### 5.1.2 ⚠️ 라이브 DB 적용 대기 — `20260908000000_users_privilege_hardening.sql`
+
+**권한 상승 취약점 수정본이 아직 운영 DB(`MemoryOn`)에 적용되지 않았습니다.**
+저장소에만 있고, 라이브는 여전히 취약합니다. 운영 DB 변경은 되돌리기 어려워
+제 판단으로 적용하지 않았습니다 — **적용을 지시해 주시면 바로 진행하겠습니다**
+(또는 대시보드 SQL Editor 로 직접 붙여넣어도 됩니다).
+
+적용 전까지의 위험: 요양보호사·**보호자** 계정 누구나 publishable 키와 본인 JWT 만으로
+`update users set role='org_admin' where id=auth.uid()` 를 실행해 기관 관리자가 될 수 있고,
+그러면 **기관 전체 어르신의 기록·구성원·organizations** 를 읽고 쓸 수 있습니다.
 
 ### 5.2 사용자만 할 수 있는 외부 작업
 
