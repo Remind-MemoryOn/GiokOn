@@ -1271,6 +1271,56 @@ end $$;
 -- 뒤 섹션을 위해 러너 기본 권한으로 되돌린다.
 grant update on public.users to authenticated;
 
+-- (h) 트리거 단독: RLS 없이도 정확히 해당 가드가 차단해야 한다.
+-- SECURITY DEFINER로 되돌리면 이 테스트는 실패한다. 변경은 항상 롤백한다.
+begin;
+alter table public.users disable row level security;
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  assert auth.uid() = '33333333-3333-3333-3333-333333333333'::uuid;
+  begin
+    update public.users set role = 'org_admin' where id = auth.uid();
+  exception when insufficient_privilege then
+    assert sqlerrm = '본인의 역할은 변경할 수 없습니다',
+      '다른 권한 오류를 트리거 성공으로 오인하면 안 됨';
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, 'RLS 없이 트리거만으로 셀프 승격을 차단해야 함';
+end $$;
+rollback;
+
+-- (i) 정책 단독: 트리거 없이 일반 사용자/관리자 모두 자기 역할 변경 불가.
+begin;
+alter table public.users disable trigger users_protect_privileges;
+do $$
+declare actor uuid; blocked boolean;
+begin
+  foreach actor in array array[
+    '33333333-3333-3333-3333-333333333333'::uuid,
+    '11111111-1111-1111-1111-111111111111'::uuid
+  ] loop
+    blocked := false;
+    set role authenticated;
+    perform set_config('test.uid', actor::text, true);
+    begin
+      update public.users set role = case when role = 'org_admin'
+        then 'caregiver'::public.org_role else 'org_admin'::public.org_role end
+        where id = auth.uid();
+    exception when insufficient_privilege then
+      assert sqlerrm like '%row-level security%',
+        '정책 검증은 실제 RLS 오류여야 함';
+      blocked := true;
+    end;
+    reset role;
+    assert blocked, '트리거 없이 정책만으로 자기 역할 변경을 차단해야 함';
+  end loop;
+end $$;
+rollback;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,

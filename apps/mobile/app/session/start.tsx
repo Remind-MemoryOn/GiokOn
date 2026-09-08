@@ -8,11 +8,13 @@
 //   취소     336×57 r10 흰색+border #cccdce @ top 706 · 라벨 SemiBold 18/30 #7b7c7c
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 // AI 이용 고지는 원본에 없지만 법·정책상 필수 → 배경/아이콘 없는 작은 회색 한 줄로 유지.
-import { View, Text, Pressable, useWindowDimensions } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, View, Text, Pressable, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { recommendNextTopics } from '@giokon/core';
-import type { SessionDesign } from '@giokon/core';
+import { canStartElderSession, recommendNextTopics } from '@giokon/core';
+import type { ConsentType, SessionDesign } from '@giokon/core';
+import { useConsents } from '@giokon/data';
 import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
@@ -29,12 +31,39 @@ export default function SessionStart() {
   const begin = useApp((s) => s.beginSession);
   const { openRemoteSession, adoptPlannedSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
+  const consentQuery = useConsents(id);
+  const starting = useRef(false);
+  const [checkingConsent, setCheckingConsent] = useState(false);
 
   if (!elder || !id) {
     return <SafeAreaView className="flex-1 bg-white" />;
   }
 
-  const onStart = () => {
+  const onStart = async () => {
+    if (starting.current) return;
+    starting.current = true;
+    setCheckingConsent(true);
+    try {
+      // 시작 화면을 열어 둔 동안 철회되거나 Realtime을 놓친 경우도 재검증한다.
+      const result = await consentQuery.refetch();
+      if (result.isError || !result.data) {
+        Alert.alert('동의 확인 실패', '동의 상태를 확인하지 못했어요. 다시 시도해 주세요.');
+        return;
+      }
+      const granted = result.data.filter((c) => c.granted && !c.revoked_at)
+        .map((c) => c.consent_type as ConsentType);
+      if (!canStartElderSession(granted)) {
+        router.replace(`/consent/${id}`);
+        return;
+      }
+      startSession();
+    } finally {
+      starting.current = false;
+      setCheckingConsent(false);
+    }
+  };
+
+  const startSession = () => {
     // 웹 설계(planned) 채택 — 설계 값(goal/content/avoid_topics/keywords)이 그대로
     // 이번 대화의 진행 입력이 된다(B1-a·B1-b). 근거가 없는 필드는 넣지 않는다.
     let design: SessionDesign | undefined;
@@ -118,6 +147,7 @@ export default function SessionStart() {
         </View>
         <Pressable
           onPress={onStart}
+          disabled={checkingConsent}
           accessibilityRole="button"
           className="items-center justify-center active:opacity-90"
           style={{ width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}

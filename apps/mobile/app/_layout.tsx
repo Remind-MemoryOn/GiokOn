@@ -1,4 +1,5 @@
 import '../global.css';
+import { useCallback } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -6,11 +7,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { View } from 'react-native';
-import { useGiokonRealtime } from '@giokon/data';
+import { useGiokonRealtime, type RealtimeEvent } from '@giokon/data';
 import { initSupabase, isSupabaseConfigured, supabaseConfigProblem, queryClient } from '../src/lib/supabase';
 import { installFetchGuard } from '../src/lib/fetchGuard';
 import { useAppStateRefetch } from '../src/lib/queryFocus';
-import { AuthProvider } from '../src/auth/AuthProvider';
+import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { ConfigError } from '../src/components/ConfigError';
 import { FONT_MAP } from '../src/lib/fonts';
@@ -25,9 +26,15 @@ initSupabase();
  * 무효화한다(다기기·웹↔앱 동기).
  */
 function RealtimeBridge() {
-  useGiokonRealtime();
-  // Realtime publication 에 없는 테이블(profiles·chronicle_entries)은 이벤트가 오지
-  // 않으므로, 앱 복귀 시 재조회로 웹 수정 사항을 따라잡는다.
+  const { authed, user, refreshUserRow } = useAuth();
+  const onEvent = useCallback((event: RealtimeEvent) => {
+    if (event.table === 'profile_caregivers' || event.table === 'profile_guardians') {
+      // users row는 Query 캐시 밖에 있으므로 별도로 갱신한다.
+      void refreshUserRow();
+    }
+  }, [refreshUserRow]);
+  useGiokonRealtime({ enabled: authed, onEvent, scopeKey: user?.id });
+  // 연결이 끊긴 동안 놓친 변경은 복귀 시 재검증한다.
   useAppStateRefetch();
   return null;
 }

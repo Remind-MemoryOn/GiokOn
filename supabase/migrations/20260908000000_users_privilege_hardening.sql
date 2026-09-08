@@ -20,7 +20,8 @@
 -- ■ 방어를 3중으로 둔다. 순서가 곧 강도다.
 --   1차 컬럼 권한 — 권한 검사는 **RLS·트리거보다 먼저** 돈다. 정책을 잘못 고쳐도
 --        여기서 막힌다. 허용 목록 방식이라 users 에 컬럼이 추가돼도 기본이 '쓰기 불가'다.
---   2차 트리거   — SECURITY DEFINER 함수의 실수까지 잡고, 오류 메시지를 사람이 읽게 한다.
+--   2차 트리거   — 직접 쓰기의 권한 변경을 차단하고, 오류 메시지를 사람이 읽게 한다.
+--                 신뢰된 SECURITY DEFINER RPC는 우회하므로 RPC 자체의 검증은 별도다.
 --   3차 정책     — 의도를 정책 본문에 남긴다(읽는 사람이 규칙을 알 수 있게).
 --
 -- ⚠️ 트리거는 auth.role() 이 아니라 **current_user** 로 판별한다.
@@ -51,6 +52,7 @@ grant update (name) on public.users to authenticated;
 create or replace function app.protect_user_privileges()
 returns trigger
 language plpgsql
+security invoker
 set search_path = public
 as $$
 begin
@@ -104,6 +106,6 @@ with check (
     -- 본인 수정: 역할을 그대로 유지해야 한다.
     (id = auth.uid() and role = app.current_org_role())
     -- 기관 관리자가 같은 기관 구성원을 수정.
-    or app.is_org_admin()
+    or (id <> auth.uid() and app.is_org_admin())
   )
 );
