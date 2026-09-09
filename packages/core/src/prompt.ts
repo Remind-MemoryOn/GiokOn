@@ -10,8 +10,8 @@
 
 import type { ChronicleEntry, ElderProfile, SessionDesign } from './types'
 
-/** 프롬프트 버전 — 문구 변경 시 상향(평가·회귀 추적용). v1.1: 세션 설계(goal/content/avoid/keywords) 주입. */
-export const PROMPT_VERSION = 'v1.1'
+/** 프롬프트 버전 — 문구 변경 시 상향(평가·회귀 추적용). v1.2: 구조화 응답과 Live 음성 출력 지침 분리. */
+export const PROMPT_VERSION = 'v1.2'
 
 /** 설계 블록 — 웹에서 요양보호사가 지정한 세션 방향. 근거 없는 필드는 넣지 않는다. */
 function formatSessionDesign(design?: SessionDesign): string {
@@ -56,6 +56,7 @@ export function buildSystemPrompt(
   elder: ElderProfile,
   chronicle: ChronicleEntry[],
   design?: SessionDesign,
+  output: 'structured' | 'speech' = 'structured',
 ): string {
   return `당신은 "기억온"의 말동무 AI입니다. 어르신과 1:1 음성 회상 대화를 나눕니다.
 당신의 목적은 어르신이 자신의 삶을 즐겁게 떠올리고 이야기하시도록 곁에서 돕는 것입니다.
@@ -91,11 +92,14 @@ ${formatSessionDesign(design)}
 위기 신호가 보이면:
 1. 짧고 따뜻하게 어르신 마음을 받아주고, "지금 바로 선생님을 불러드릴게요"라고 안내만 합니다.
 2. 절대 혼자 상담하거나 해결하려 하지 않습니다. 원인을 캐묻지 않습니다.
-3. 응답의 safety.risk를 "crisis"로, 해당 분류를 safety.categories에 표기합니다.
-슬픔·그리움 수준(위기가 아님)은 safety.risk를 "grief"로, 정서적으로 많이 힘들어 보이시면 "watch"로 표기합니다.
+${output === 'structured'
+    ? '3. 응답의 safety.risk를 "crisis"로, 해당 분류를 safety.categories에 표기합니다.\n슬픔·그리움 수준(위기가 아님)은 safety.risk를 "grief"로, 정서적으로 많이 힘들어 보이시면 "watch"로 표기합니다.'
+    : '3. 안전 안내 외에 분석 결과나 내부 분류를 소리 내어 말하지 않습니다.'}
 
 ## 출력 형식
-반드시 지정된 JSON 형식으로만 응답합니다. question에는 어르신께 드릴 말만 담습니다(지문·괄호 설명 금지).`
+${output === 'structured'
+    ? '반드시 지정된 JSON 형식으로만 응답합니다. question에는 어르신께 드릴 말만 담습니다(지문·괄호 설명 금지).'
+    : '어르신께 드릴 말만 자연스러운 한국어 음성으로 응답합니다. 구조화된 필드·지문·괄호 설명은 읽지 않습니다. 요양보호사가 확인한 텍스트가 음성 전사와 다르면 확인된 텍스트를 기준으로 대화를 이어갑니다.'}`
 }
 
 /**

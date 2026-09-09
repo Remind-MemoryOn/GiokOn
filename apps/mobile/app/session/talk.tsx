@@ -217,8 +217,13 @@ export default function Talk() {
         return;
       }
       if (!peekLiveEngine()?.available) return; // 대기 중 세션이 끊긴 경우
-      engine.startListening();
-      setLiveListening(true);
+      try {
+        engine.startListening();
+        setLiveListening(engine.isListening);
+      } catch {
+        setLiveListening(false);
+        Alert.alert('마이크 시작 실패', '마이크를 시작하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      }
       return;
     }
     // 폴백 파이프라인(기존 동작)

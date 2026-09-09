@@ -1,9 +1,10 @@
 // Live 대화 엔진 — 토큰 발급 → 접속 → (전사 기반) 청취 → 확정 텍스트 턴.
 //
 // 앱의 세션 상태 머신과의 계약:
-//   - listening 중 마이크 오디오는 전사용으로만 스트리밍되고, 실시간 전사가 onDraft 로
+//   - listening 중 마이크 오디오가 Live로 전달되고, 실시간 전사가 onDraft 로
 //     흘러 요양보호사 확인·수정 패널(pendingStt)을 채운다.
-//   - 확정 텍스트만 submitUserTurn 으로 모델에 넘긴다 → 응답(텍스트+음성)을 돌려준다.
+//   - 확인 텍스트를 submitUserTurn으로 추가하고 activityEnd로 응답 생성을 요청한다.
+//     같은 세션의 모델이 원래 오디오도 처리한다는 점을 전제로 한다.
 //   - 어떤 단계든 실패하면 start() 가 false 를 반환해 호출부가 기존 파이프라인
 //     (expo-speech TTS + 타자/모의 입력)으로 조용히 폴백한다.
 
@@ -57,6 +58,7 @@ export class LiveConversationEngine {
   private resumeHandle = '';
   private resumedOnce = false;
   private closing = false;
+  private resumeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly elder: ElderProfile,
@@ -78,14 +80,16 @@ export class LiveConversationEngine {
     if (!micStreamingSupported()) return false;
     try {
       const { token, model } = await fetchLiveToken();
+      if (this.closing) return false;
       this.lastToken = token;
       this.model = model;
-      this.systemInstruction = buildSystemPrompt(this.elder, this.chronicles, this.design);
+      this.systemInstruction = buildSystemPrompt(this.elder, this.chronicles, this.design, 'speech');
       this.client = this.makeClient();
       await this.client.connect(token, this.systemInstruction);
       return true;
     } catch (e) {
       console.info('[giokon] live 미가용 — 기존 파이프라인으로 진행', e);
+      this.client?.close();
       this.client = null;
       return false;
     }
@@ -113,7 +117,7 @@ export class LiveConversationEngine {
         this.client = null;
         if (this.resumeHandle && !this.resumedOnce && this.lastToken) {
           this.resumedOnce = true;
-          setTimeout(() => void this.tryResume(), 1200);
+          this.resumeTimer = setTimeout(() => void this.tryResume(), 1200);
         }
       },
     });
@@ -121,9 +125,12 @@ export class LiveConversationEngine {
 
   /** 재개 핸들로 재접속. 실패하면 폴백 파이프라인으로 자연 강하한다. */
   private async tryResume(): Promise<void> {
+    this.resumeTimer = null;
+    if (this.closing) return;
     try {
       const client = this.makeClient();
       await client.connect(this.lastToken, this.systemInstruction, this.resumeHandle);
+      if (this.closing) { client.close(); return; }
       this.client = client;
       console.info('[giokon] live 세션 재개 성공');
     } catch (e) {
@@ -205,6 +212,8 @@ export class LiveConversationEngine {
 
   async close(): Promise<void> {
     this.closing = true; // 의도 종료 — onClose 에서 재접속 시도하지 않는다
+    if (this.resumeTimer) clearTimeout(this.resumeTimer);
+    this.resumeTimer = null;
     this.clearSilenceTimer();
     this.micStop?.stop();
     this.micStop = null;

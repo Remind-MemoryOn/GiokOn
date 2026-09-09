@@ -1335,4 +1335,134 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 7) R002: 실제 부모 세션의 소속과 제출한 소속은 반드시 같아야 한다. ──
+-- 합성 자료만 쓰며 뒤의 정상 공유/분석 회귀와 격리한다.
+begin;
+do $$
+declare
+  own_profile uuid := (select id from public.profiles where name = 'C어르신');
+  other_profile uuid;
+  own_org uuid := (select org_id from public.profiles where id = own_profile);
+  other_org uuid;
+  own_session uuid;
+  other_session uuid;
+  target_table text;
+  violated text;
+  blocked boolean;
+begin
+  insert into public.sessions(user_id, profile_id, org_id, status, ended_at)
+    values ('33333333-3333-3333-3333-333333333333', own_profile, own_org, 'ended', now())
+    returning id into own_session;
+  -- 정상 로그/분석/안전 이벤트 저장은 계속 허용되어야 한다.
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  insert into public.session_logs(user_id, profile_id, session_id, turn_index, role, content)
+    values (auth.uid(), own_profile, own_session, 1, 'user', '합성 검증 발화');
+  insert into public.session_analyses(user_id, profile_id, session_id, analysis, version)
+    values (auth.uid(), own_profile, own_session, '{"summary":"합성 검증"}', 'test');
+  insert into public.safety_events(user_id, profile_id, session_id, level, caregiver_alert)
+    values (auth.uid(), own_profile, own_session, 'watch', '합성 검증 알림');
+  reset role;
+
+  for other_profile, other_org in
+    select id, org_id from public.profiles where name in ('A어르신', 'B어르신')
+  loop
+    insert into public.sessions(profile_id, org_id, status, ended_at)
+      values (other_profile, other_org, 'ended', now()) returning id into other_session;
+    foreach target_table in array array['session_logs', 'session_analyses', 'safety_events'] loop
+      blocked := false;
+      set role authenticated;
+      perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+      begin
+        if target_table = 'session_logs' then
+          insert into public.session_logs(user_id, profile_id, session_id, turn_index, role, content)
+            values (auth.uid(), own_profile, other_session, 1, 'user', '잘못된 연결');
+        elsif target_table = 'session_analyses' then
+          insert into public.session_analyses(user_id, profile_id, session_id, analysis, version)
+            values (auth.uid(), own_profile, other_session, '{"summary":"잘못된 연결"}', 'test');
+        else
+          insert into public.safety_events(user_id, profile_id, session_id, level, caregiver_alert)
+            values (auth.uid(), own_profile, other_session, 'watch', '잘못된 연결');
+        end if;
+      exception when foreign_key_violation then
+        get stacked diagnostics violated = constraint_name;
+        assert violated = target_table || '_session_profile_org_fk', '예상한 소속 FK로 차단해야 함';
+        blocked := true;
+      end;
+      reset role;
+      assert blocked, '동일/다른 기관 세션을 자기 어르신 기록에 연결할 수 없어야 함';
+      blocked := false;
+      set role authenticated;
+      perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+      begin
+        execute format('update public.%I set session_id = $1 where session_id = $2', target_table)
+          using other_session, own_session;
+      exception when foreign_key_violation then
+        get stacked diagnostics violated = constraint_name;
+        assert violated = target_table || '_session_profile_org_fk';
+        blocked := true;
+      end;
+      reset role;
+      assert blocked, '기존 하위 행의 session_id를 타 세션으로 바꿀 수 없어야 함';
+    end loop;
+
+    -- org_id만 다른 세션도 FK가 차단해야 한다(RLS를 우회하는 서버 쓰기 포함).
+    if other_org <> own_org then
+      blocked := false;
+      begin
+        insert into public.sessions(profile_id, org_id) values (other_profile, own_org);
+      exception when foreign_key_violation then blocked := true;
+      end;
+      assert blocked, '세션과 어르신의 기관이 달라서는 안 됨';
+    end if;
+  end loop;
+
+  -- 세션 삭제 시 안전 이벤트의 대상은 유지하고 세션 연결만 비운다.
+  delete from public.sessions where id = own_session;
+  assert exists (select 1 from public.safety_events
+    where profile_id = own_profile and session_id is null and caregiver_alert = '합성 검증 알림'),
+    '세션 삭제가 안전 이벤트 대상/기관까지 지워서는 안 됨';
+end $$;
+rollback;
+
+-- 8) FK가 없던 시절의 불일치 분석이 있어도 공유 헬퍼 자체가 부모 소속을 확인한다.
+begin;
+alter table public.session_analyses drop constraint session_analyses_session_profile_org_fk;
+do $$
+declare
+  own_profile uuid := (select id from public.profiles where name = 'C어르신');
+  own_org uuid := (select org_id from public.profiles where id = own_profile);
+  target record;
+  sid uuid;
+  aid uuid;
+begin
+  update public.profile_guardians set status = 'approved', revoked_at = null
+    where profile_id = own_profile and guardian_user_id = '55555555-5555-5555-5555-555555555555';
+  assert found, '정상 공유 대조군의 보호자 연결이 있어야 함';
+  for target in select id, org_id from public.profiles where name in ('C어르신', 'A어르신', 'B어르신') loop
+    insert into public.sessions(profile_id, org_id, status, ended_at)
+      values (target.id, target.org_id, 'ended', now()) returning id into sid;
+    insert into public.session_analyses(profile_id, org_id, session_id, analysis, version)
+      values (own_profile, own_org, sid, '{"summary":"합성 검증"}', 'test') returning id into aid;
+    insert into public.guardian_shares(profile_id, org_id, item_type, item_id)
+      values (own_profile, own_org, 'analysis', aid);
+    set role authenticated;
+    perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
+    assert app.is_session_shared_to_me(sid) = (target.id = own_profile),
+      '실제 부모 세션이 공유 대상과 다르면 읽기 권한이 열려서는 안 됨';
+    assert (select count(*) from public.sessions where id = sid) =
+      case when target.id = own_profile then 1 else 0 end,
+      '실제 SELECT 정책도 타 세션을 숨겨야 함';
+    reset role;
+    if target.id = own_profile then
+      update public.sessions set status = 'active', ended_at = null where id = sid;
+      set role authenticated;
+      perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
+      assert not app.is_session_shared_to_me(sid), '진행 중 세션은 분석이 있어도 공개하지 않음';
+      reset role;
+    end if;
+  end loop;
+end $$;
+rollback;
+
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;

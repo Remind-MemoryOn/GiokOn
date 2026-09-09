@@ -28,6 +28,17 @@ const chronicle: ChronicleEntry[] = [
 describe('buildSystemPrompt', () => {
   const prompt = buildSystemPrompt(elder, chronicle)
 
+  it('Live 음성 모드는 개인화·안전 규칙을 유지하고 JSON 출력 요구를 제거한다', () => {
+    const speech = buildSystemPrompt(elder, chronicle, undefined, 'speech')
+    expect(speech).toContain(elder.name)
+    expect(speech).toContain('위기 대응')
+    expect(speech).toContain('비의료')
+    expect(speech).toContain('한국어 음성')
+    expect(speech).not.toContain('JSON 형식으로만')
+    expect(speech).not.toContain('safety.risk')
+    expect(prompt).toContain('JSON 형식으로만')
+  })
+
   it('어르신 개인화 정보(연대기)를 포함한다', () => {
     expect(prompt).toContain('이순자')
     expect(prompt).toContain('전주')
