@@ -1,7 +1,7 @@
 // Edge Function: naver-auth — 네이버 소셜 로그인 세션 발급
 //
 // Supabase 에 네이버 네이티브 provider 가 없어(설계 확정 M17.5) 이 함수가 다음을 한다:
-//   앱: 네이버 인가 코드 획득(openAuthSessionAsync) → POST { code, state }
+//   앱: S256 challenge → 서버 authorize/callback → 일회성 handoff + verifier 교환
 //   웹: GET /authorize → 네이버 동의 화면 → GET /callback → 웹으로 되돌림
 //   서버: ① 네이버 토큰 교환(client secret 보관) → ② 프로필 조회
 //         → ③ users 보장(admin.createUser, 이미 있으면 생략)
@@ -15,7 +15,7 @@
 // **HttpOnly 쿠키의 nonce 와 대조**한다. 브라우저는 남이 만든 인가 URL 로도 끌려갈 수
 // 있어 서명만으로는 부족하다(쿠키가 있어야 이 브라우저가 시작한 로그인임이 증명된다).
 // 서명 키는 서비스 롤 키에서 파생한다(새 시크릿을 요구하지 않는다 — 서버에만 있는 값).
-// 앱(POST) 흐름의 state 는 앱이 만들고 앱이 대조한 뒤 code 만 넘어온다.
+// 앱도 서버 서명 state/쿠키를 검증한다. 딥링크에는 세션 토큰/네이버 코드를 싣지 않는다.
 // redirect_to 는 **허용 오리진 목록**(WEB_ORIGINS, 없으면 SITE_URL)로 제한한다 —
 // 열려 있으면 토큰을 임의 사이트로 실어 보내는 오픈 리다이렉트가 된다.
 
@@ -39,7 +39,7 @@ const CORS = {
 function json(obj: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { ...CORS, 'Content-Type': 'application/json', ...extraHeaders },
+    headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...extraHeaders },
   })
 }
 
@@ -47,8 +47,6 @@ function serviceKey(): string {
   return (
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
     Deno.env.get('SUPABASE_SECRET_KEY') ??
-    Deno.env.get('SUPABASE_SECRET_KEYS') ??
-    Deno.env.get('SUPABASE_ANON_KEY') ??
     ''
   )
 }
@@ -85,25 +83,36 @@ async function signState(payload: Record<string, unknown>): Promise<string> {
 
 /** 서명·만료를 확인하고 payload 를 돌려준다(위조·만료면 null). */
 async function readState(state: string): Promise<Record<string, unknown> | null> {
-  const [body, sig] = String(state ?? '').split('.')
-  if (!body || !sig) return null
-  const expected = new Uint8Array(
-    await crypto.subtle.sign('HMAC', await hmacKey(), enc.encode(body)),
-  )
-  const got = unb64url(sig)
-  // 길이·내용 모두 상수시간 비교(타이밍으로 서명을 흘리지 않는다).
-  if (got.length !== expected.length) return null
-  let diff = 0
-  for (let i = 0; i < expected.length; i++) diff |= got[i] ^ expected[i]
-  if (diff !== 0) return null
-  let payload: Record<string, unknown>
   try {
-    payload = JSON.parse(new TextDecoder().decode(unb64url(body)))
+    if (typeof state !== 'string' || state.length > 4096 || state.split('.').length !== 2) return null
+    const [body, sig] = state.split('.')
+    if (!body || !sig) return null
+    const expected = new Uint8Array(
+      await crypto.subtle.sign('HMAC', await hmacKey(), enc.encode(body)),
+    )
+    const got = unb64url(sig)
+    // 길이·내용 모두 상수시간 비교(타이밍으로 서명을 흘리지 않는다).
+    if (got.length !== expected.length) return null
+    let diff = 0
+    for (let i = 0; i < expected.length; i++) diff |= got[i] ^ expected[i]
+    if (diff !== 0) return null
+    const payload = JSON.parse(new TextDecoder().decode(unb64url(body)))
+    if (!payload || typeof payload.exp !== 'number' || payload.exp <= Date.now()) return null
+    return payload
   } catch {
     return null
   }
-  if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null
-  return payload
+}
+
+function allowedMobileRedirect(raw: string): string | null {
+  const allowed = (Deno.env.get('MOBILE_AUTH_REDIRECTS') ?? 'giokon://auth/callback').split(',').map(s => s.trim())
+  return allowed.includes(raw) ? raw : null
+}
+
+function handoffClient() {
+  return createClient(Deno.env.get('SUPABASE_URL') ?? '', serviceKey(), {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
 }
 
 /** 허용 오리진 안에서만 되돌린다 — 오픈 리다이렉트 차단. */
@@ -126,7 +135,9 @@ function cookieValue(req: Request, name: string): string {
   const raw = req.headers.get('cookie') ?? ''
   for (const part of raw.split(';')) {
     const [k, ...v] = part.trim().split('=')
-    if (k === name) return decodeURIComponent(v.join('='))
+    if (k === name) {
+      try { return decodeURIComponent(v.join('=')) } catch { return '' }
+    }
   }
   return ''
 }
@@ -147,6 +158,7 @@ async function exchange(
   code: string,
   clientId: string,
   clientSecret: string,
+  state: string,
 ): Promise<{ ok: true; access_token: string; refresh_token: string; email: string } | { ok: false; status: number; error: string }> {
   // ① 네이버 토큰 교환
   const tokenRes = await fetch(`${TOKEN_URL}?grant_type=authorization_code`, {
@@ -157,6 +169,7 @@ async function exchange(
       client_id: clientId,
       client_secret: clientSecret,
       code,
+      state,
     }),
   })
   const tokenText = await tokenRes.text()
@@ -232,22 +245,33 @@ serve(async (req: Request) => {
 
   const clientId = Deno.env.get('NAVER_CLIENT_ID')
   const clientSecret = Deno.env.get('NAVER_CLIENT_SECRET')
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !serviceKey()) {
     return json({ error: 'NAVER_CLIENT_ID/SECRET 시크릿이 없습니다.' }, 500)
   }
 
   const reqUrl = new URL(req.url)
   // 함수 경로는 `/functions/v1/naver-auth[/...]` — 뒤쪽 한 조각만 본다.
   const leaf = reqUrl.pathname.replace(/\/+$/, '').split('/').pop() ?? ''
-  const selfBase = `${reqUrl.origin}${reqUrl.pathname.replace(/\/(authorize|callback)$/, '')}`
+  // Gateway rewrites req.url to an internal http URL without /functions/v1.
+  // Build provider callbacks from the public project URL, never that internal URL.
+  const selfBase = `${(Deno.env.get('SUPABASE_URL') ?? '').replace(/\/$/, '')}/functions/v1/naver-auth`
 
   // ── 웹 ① 동의 화면으로 보낸다 ────────────────────────────────────────────
   if (req.method === 'GET' && leaf === 'authorize') {
-    const redirectTo = allowedRedirect(reqUrl.searchParams.get('redirect_to') ?? '')
+    const mobile = reqUrl.searchParams.get('mode') === 'mobile'
+    const redirectTo = (mobile ? allowedMobileRedirect : allowedRedirect)(reqUrl.searchParams.get('redirect_to') ?? '')
     if (!redirectTo) return json({ error: '허용되지 않은 redirect_to 입니다.' }, 400)
 
+    const challenge = reqUrl.searchParams.get('challenge') ?? ''
+    const appState = reqUrl.searchParams.get('app_state') ?? ''
+    if (mobile && (!/^[A-Za-z0-9_-]{43}$/.test(challenge) || !/^[A-Za-z0-9_-]{16,256}$/.test(appState))) {
+      return json({ error: '올바른 앱 인증 요청이 필요합니다.' }, 400)
+    }
+
     const nonce = crypto.randomUUID()
-    const state = await signState({ nonce, redirectTo, exp: Date.now() + STATE_TTL_MS })
+    const state = await signState({ nonce, redirectTo, exp: Date.now() + STATE_TTL_MS,
+      ...(mobile ? { mobile: true, challenge, appState } : {}),
+    })
     const naver = new URL(AUTHORIZE_URL)
     naver.searchParams.set('response_type', 'code')
     naver.searchParams.set('client_id', clientId)
@@ -271,7 +295,8 @@ serve(async (req: Request) => {
     const state = await readState(reqUrl.searchParams.get('state') ?? '')
     // state 가 깨졌으면 되돌릴 곳도 신뢰할 수 없다 — 그대로 400.
     if (!state) return json({ error: '로그인 요청이 만료되었거나 올바르지 않습니다.' }, 400)
-    const redirectTo = allowedRedirect(String(state.redirectTo ?? ''))
+    const mobile = state.mobile === true
+    const redirectTo = (mobile ? allowedMobileRedirect : allowedRedirect)(String(state.redirectTo ?? ''))
     if (!redirectTo) return json({ error: '허용되지 않은 redirect_to 입니다.' }, 400)
 
     const clear = `${NONCE_COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=None`
@@ -289,7 +314,19 @@ serve(async (req: Request) => {
     const code = reqUrl.searchParams.get('code') ?? ''
     if (!code) return withClear(backWithError(redirectTo, '인가 코드를 받지 못했습니다.'))
 
-    const out = await exchange(code, clientId, clientSecret)
+    if (mobile) {
+      if (code.length > 2048) return withClear(backWithError(redirectTo, '인가 코드가 올바르지 않습니다.'))
+      const { data, error } = await handoffClient().rpc('store_naver_mobile_handoff', {
+        p_id: state.nonce, p_challenge: state.challenge, p_code: code,
+        p_state: reqUrl.searchParams.get('state'), p_expires_at: new Date(Number(state.exp)).toISOString(),
+      })
+      if (error || data !== true) return withClear(backWithError(redirectTo, '로그인 요청이 만료되었거나 사용되었습니다.'))
+      const back = new URL(redirectTo)
+      back.hash = new URLSearchParams({ transaction_id: String(state.nonce), state: String(state.appState) }).toString()
+      return withClear(new Response(null, { status: 302, headers: { Location: back.toString(), 'Cache-Control': 'no-store' } }))
+    }
+
+    const out = await exchange(code, clientId, clientSecret, reqUrl.searchParams.get('state') ?? '')
     if (!out.ok) return withClear(backWithError(redirectTo, out.error))
 
     // 토큰은 **프래그먼트**로 넘긴다 — 쿼리스트링은 서버 로그·Referer 에 남는다.
@@ -306,17 +343,38 @@ serve(async (req: Request) => {
     )
   }
 
-  // ── 앱: 인가 코드를 직접 들고 온다(딥링크로 이미 받은 뒤) ─────────────────
+  // 앱이 보관한 verifier로만 일회성 서버 인가 코드를 가져올 수 있다.
   if (req.method === 'POST') {
-    let code = ''
+    let input: { transaction_id?: string; code_verifier?: string }
     try {
-      const body = (await req.json()) as { code?: string; state?: string }
-      code = body.code ?? ''
-      if (!code) return json({ error: 'code 가 필요합니다.' }, 400)
+      const reader = req.body?.getReader()
+      const decoder = new TextDecoder()
+      let body = ''
+      let bytes = 0
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          bytes += value.byteLength
+          if (bytes > 1024) {
+            await reader.cancel()
+            return json({ error: '요청이 너무 큽니다.' }, 413)
+          }
+          body += decoder.decode(value, { stream: true })
+        }
+        body += decoder.decode()
+      }
+      input = JSON.parse(body)
+      if (!input || Object.keys(input).some(k => !['transaction_id','code_verifier'].includes(k))) throw new Error('invalid')
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.transaction_id ?? '') || !/^[A-Za-z0-9._~-]{43,128}$/.test(input.code_verifier ?? '')) throw new Error('invalid')
     } catch {
       return json({ error: '잘못된 요청 본문입니다.' }, 400)
     }
-    const out = await exchange(code, clientId, clientSecret)
+    const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(input.code_verifier))))
+    const { data, error } = await handoffClient().rpc('consume_naver_mobile_handoff', { p_id: input.transaction_id, p_challenge: challenge })
+    if (error) return json({ error: '로그인 요청을 확인할 수 없습니다.' }, 503)
+    if (!data?.code || !data?.state) return json({ error: '로그인 요청이 만료되었거나 올바르지 않습니다.' }, 400)
+    const out = await exchange(data.code, clientId, clientSecret, data.state)
     if (!out.ok) return json({ error: out.error }, out.status)
     return json({ access_token: out.access_token, refresh_token: out.refresh_token, email: out.email })
   }

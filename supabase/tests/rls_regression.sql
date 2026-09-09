@@ -1544,4 +1544,27 @@ begin
 end $$;
 rollback;
 
+begin;
+do $$
+declare sid uuid := gen_random_uuid(); proof text := repeat('a',43); result jsonb;
+begin
+  assert not has_function_privilege('anon','public.store_naver_mobile_handoff(uuid,text,text,text,timestamptz)','EXECUTE');
+  assert not has_function_privilege('authenticated','public.consume_naver_mobile_handoff(uuid,text)','EXECUTE');
+  assert has_function_privilege('service_role','public.consume_naver_mobile_handoff(uuid,text)','EXECUTE');
+  assert not has_table_privilege('authenticated','app.naver_mobile_handoffs','SELECT');
+  assert public.store_naver_mobile_handoff(sid,proof,'synthetic-code','synthetic-state',now()+interval '9 minutes');
+  assert not public.store_naver_mobile_handoff(sid,proof,'replacement','replacement',now()+interval '9 minutes'), 'Callback replay must not overwrite original';
+  assert public.consume_naver_mobile_handoff(sid,repeat('b',43)) is null, 'Wrong verifier must not consume';
+  result := public.consume_naver_mobile_handoff(sid,proof);
+  assert result = '{"code":"synthetic-code","state":"synthetic-state"}'::jsonb;
+  assert public.consume_naver_mobile_handoff(sid,proof) is null, 'One-time redemption';
+  assert (select auth_code is null and auth_state is null and consumed_at is not null from app.naver_mobile_handoffs where id=sid), 'Erase redeemed credentials, retain replay tombstone';
+  assert not public.store_naver_mobile_handoff(sid,proof,'replacement','replacement',now()+interval '9 minutes'), 'Consumed ID must not be re-created';
+  sid := gen_random_uuid();
+  assert public.store_naver_mobile_handoff(sid,proof,'expired','expired',now()+interval '9 minutes');
+  update app.naver_mobile_handoffs set expires_at=now()-interval '1 second' where id=sid;
+  assert public.consume_naver_mobile_handoff(sid,proof) is null, 'Expired handoff must not redeem';
+end $$;
+rollback;
+
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;

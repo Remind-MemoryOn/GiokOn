@@ -10,7 +10,7 @@
 // 세션을 발급한다(PLAN M17.5 확정 아키텍처). 함수는 --no-verify-jwt 로 배포한다
 // (로그인 전 호출이라 익명 요청이 정상이다 — 코드 검증은 서버가 한다).
 import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
+import { AuthRequest, CodeChallengeMethod, makeRedirectUri } from 'expo-auth-session';
 import { getGiokonClient } from '@giokon/data';
 
 /** 독립빌드=giokon://auth/callback · Expo Go/dev-client=exp+<slug>://… 자동 해석 */
@@ -27,7 +27,7 @@ function callbackParams(urlStr: string): URLSearchParams {
 }
 
 /** 구글·카카오 — Supabase 네이티브 OAuth(PKCE). */
-let oauthInFlight: { provider: 'google' | 'kakao'; promise: Promise<SocialResult> } | null = null;
+let oauthInFlight: { provider: 'google' | 'kakao' | 'naver'; promise: Promise<SocialResult> } | null = null;
 
 export function signInWithSupabaseProvider(provider: 'google' | 'kakao'): Promise<SocialResult> {
   // 두 브라우저가 같은 PKCE verifier를 덮어쓰거나 코드를 중복 교환하지 않게 한다.
@@ -86,40 +86,61 @@ async function completeSupabaseSignIn(
 
 /**
  * 네이버 — naver-auth Edge Function 경유.
- * 앱은 네이버 인가 코드만 얻고, 세션 발급은 서버(client secret 보관)가 한다.
+ * 네이버 코드는 HTTPS 서버 콜백으로만 받는다. 앱의 verifier로 일회성 교환한다.
  */
-export async function signInWithNaver(): Promise<SocialResult> {
-  const clientId = process.env.EXPO_PUBLIC_NAVER_CLIENT_ID?.trim();
+export function signInWithNaver(): Promise<SocialResult> {
+  if (oauthInFlight) {
+    return oauthInFlight.provider === 'naver' ? oauthInFlight.promise
+      : Promise.reject(new Error('진행 중인 로그인을 먼저 완료해 주세요.'));
+  }
+  const promise = completeNaverSignIn().finally(() => { oauthInFlight = null; });
+  oauthInFlight = { provider: 'naver', promise };
+  return promise;
+}
+
+async function completeNaverSignIn(): Promise<SocialResult> {
   const fnUrl =
     process.env.EXPO_PUBLIC_LIVE_TOKEN_URL?.trim().replace(/\/live-token$/, '/naver-auth') ||
     `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/naver-auth`;
-  if (!clientId || !process.env.EXPO_PUBLIC_SUPABASE_URL) {
-    throw new Error('네이버 로그인 설정(EXPO_PUBLIC_NAVER_CLIENT_ID)이 없어요.');
+  if (!process.env.EXPO_PUBLIC_SUPABASE_URL) {
+    throw new Error('네이버 로그인 서버 설정이 없어요.');
   }
 
-  const state = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-  const authUrl =
-    'https://nid.naver.com/oauth2.0/authorize' +
-    `?response_type=code&client_id=${encodeURIComponent(clientId)}` +
-    `&redirect_uri=${encodeURIComponent(redirectTo)}&state=${state}`;
+  // Expo가 네이티브 암호학적 난수와 SHA-256으로 verifier/challenge를 만든다.
+  // verifier는 브라우저 URL·딥링크에 넣지 않고 이 호출의 메모리에만 보관한다.
+  const request = new AuthRequest({ clientId: 'naver-mobile', redirectUri: redirectTo,
+    responseType: 'code', usePKCE: true, codeChallengeMethod: CodeChallengeMethod.S256 });
+  await request.getAuthRequestConfigAsync();
+  if (!request.codeVerifier || !request.codeChallenge) throw new Error('보안 요청을 만들지 못했어요.');
+  const state = request.codeChallenge;
+  const authUrl = new URL(`${fnUrl}/authorize`);
+  authUrl.search = new URLSearchParams({ mode: 'mobile', redirect_to: redirectTo,
+    challenge: request.codeChallenge, app_state: state }).toString();
 
-  const res = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo);
-  if (res.type !== 'success' || !res.url) return { ok: false, canceled: true };
+  const res = await WebBrowser.openAuthSessionAsync(authUrl.toString(), redirectTo);
+  if (res.type === 'cancel' || res.type === 'dismiss') return { ok: false, canceled: true };
+  if (res.type !== 'success' || !res.url) throw new Error('로그인 결과를 확인하지 못했어요.');
 
+  const callback = new URL(res.url);
+  const expected = new URL(redirectTo);
+  if (callback.protocol !== expected.protocol || callback.host !== expected.host ||
+      callback.pathname !== expected.pathname || callback.username || callback.password) {
+    throw new Error('로그인 콜백 주소가 올바르지 않아요.');
+  }
   const params = callbackParams(res.url);
-  const code = params.get('code');
+  if (params.has('naver_error')) throw new Error('네이버 로그인을 완료하지 못했어요. 다시 시도해 주세요.');
+  const transactionId = params.get('transaction_id');
   const returnedState = params.get('state');
-  if (!code) throw new Error('네이버 인가에 실패했어요.');
+  if (!transactionId) throw new Error('네이버 인가에 실패했어요.');
   if (returnedState !== state) throw new Error('보안 검증(state)에 실패했어요.');
 
   const r = await fetch(fnUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, state }),
+    body: JSON.stringify({ transaction_id: transactionId, code_verifier: request.codeVerifier }),
   });
   if (!r.ok) {
-    const body = await r.text().catch(() => '');
-    throw new Error(`네이버 로그인 실패 (${r.status}) ${body.slice(0, 80)}`);
+    throw new Error(`네이버 로그인 실패 (${r.status}). 다시 시도해 주세요.`);
   }
   const json = (await r.json()) as { access_token?: string; refresh_token?: string };
   if (!json.access_token || !json.refresh_token) {

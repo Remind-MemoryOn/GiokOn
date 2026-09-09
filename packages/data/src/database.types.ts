@@ -828,6 +828,16 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      /** 서버 전용: 서명·브라우저 쿠키 검증을 마친 네이버 콜백 보관. */
+      store_naver_mobile_handoff: {
+        Args: { p_id: string; p_challenge: string; p_code: string; p_state: string; p_expires_at: string }
+        Returns: boolean
+      }
+      /** 서버 전용: S256 검증 후 일회성 인가 코드 소비. */
+      consume_naver_mobile_handoff: {
+        Args: { p_id: string; p_challenge: string }
+        Returns: Json
+      }
       /** Live 토큰 발급 자격 검증 및 사용자·기관·프로젝트 발급 한도 예약. */
       reserve_live_token: {
         Args: { p_session_id: string }

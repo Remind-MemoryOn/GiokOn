@@ -30,4 +30,23 @@ R005 커밋: `1c7171a` — origin/main 푸시 완료.
 
 계약 근거: [Supabase exchangeCodeForSession](https://supabase.com/docs/reference/javascript/auth-exchangecodeforsession).
 
-다음: R007 모바일 네이버 서버 서명 state 흐름.
+R006 커밋: `0809f0c` — origin/main 푸시 및 CI 통과.
+
+## R007 — 네이버 모바일 일회성 인증 요청
+
+코드 수정·격리 검증·운영 배포 완료. 실제 네이버 계정 로그인은 후속 실기기/외부 설정 검증 항목이다.
+
+- 앱은 Expo AuthRequest의 암호학적 verifier/S256 challenge를 생성한다. challenge를 서버 authorize에 보내고 verifier는 앱 메모리에만 둔다. Google/Kakao/Naver의 동시 요청은 하나로 제한한다.
+- 서버는 challenge·앱 요청 상태·허용된 콜백·만료 시각을 서명하고 HttpOnly nonce 쿠키로 시작 브라우저를 확인한다. 네이버 인가 코드는 HTTPS 서버 콜백으로만 받는다.
+- 딥링크에는 일회성 transaction_id와 요청 상태만 반환한다. 앱이 verifier로 교환할 때 서버에서 S256을 계산하고 DB가 원자적으로 한 번만 소비한다. 구형 POST {code,state} 경로는 닫았다. 구버전 앱은 수정본 업데이트가 필요하다.
+- 저장/소비 RPC는 service_role 전용이고 anon/authenticated는 실행할 수 없다. 사용 후 인가 코드·state를 비우되 만료까지 재사용 차단 행을 유지한다. 만료된 행은 다음 저장 요청에서 정리하며, 동시 저장을 직렬화하고 최대 10,000행으로 제한한다. 이는 IP별 남용 방어 전체를 대체하지 않는다(R052 후속).
+- 서버 서명키는 비밀 서비스 키에서만 파생하고 anon 키 폴백을 제거했다. 요청 본문 1KB 제한, no-store 응답, 변조/만료 state 및 잘못된 쿠키의 안전한 거절을 추가했다.
+- 운영 검증에서 발견한 Supabase 내부 URL 재작성 문제도 수정했다. req.url의 내부 http 경로 대신 SUPABASE_URL을 기준으로 공개 HTTPS 콜백을 생성한다.
+
+검증: Edge 11개(서명 변조, 쿠키/만료, 다른 verifier, 재사용, 기존 직접 POST 거절, 웹 흐름 유지, 내부 URL 재작성 포함), 모바일 소셜 16개(기존 R006 12개+네이버 4개), 전체 SQL 회귀, 타입 검사·린트 통과. SQL은 잘못된 challenge·만료·재사용·사용 후 코드 파기 및 RPC ACL을 검사한다. 테스트에서 공급자/API 값은 합성 값만 사용했다.
+
+운영: CLI로 `20260909020000_naver_mobile_handoff`와 이력을 같은 트랜잭션에 적용했고 naver-auth만 ACTIVE v4로 배포했다. 로그인 전 함수의 기존 verify_jwt=false를 유지했다. RPC 권한, 마이그레이션 이력, 배포 소스 일치, 빈 POST 400/no-store 및 authorize 302를 확인했다. live-token(v5)/stt-transcribe(v1)는 변경하지 않았다. 배포 전 소스는 `%TEMP%/memoryon-r007-20260909/before`에 보관했다.
+
+후속 검증: 네이버 개발자센터 Callback URL에 `https://ufkbzpdjomtmxjipmwub.supabase.co/functions/v1/naver-auth/callback`이 등록되어야 한다. 이번에는 네이버 개발자센터 설정이나 시크릿을 열지 않았으며 실제 등록 여부는 확인되지 않았다. 앱 반환 주소는 기본 `giokon://auth/callback`만 허용하며, 개발 빌드의 다른 주소가 필요하면 서버 MOBILE_AUTH_REDIRECTS의 정확한 허용 목록으로 관리한다. 실제 공급자 로그인·취소·독립 앱 복귀 검증은 사용자 요청에 따라 후속으로 남긴다.
+
+다음: R008 앱 전체 라우트 및 실행 중 권한 변경 보호.

@@ -6,6 +6,10 @@
 -- ⚠️ 테스트 전용. 실 프로젝트에는 적용하지 않는다.
 
 create schema if not exists auth;
+do $$ begin
+  create role service_role nologin;
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists auth.users (
   id uuid primary key default gen_random_uuid(),

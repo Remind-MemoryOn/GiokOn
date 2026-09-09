@@ -1,15 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  open: vi.fn(), oauth: vi.fn(), exchange: vi.fn(), setSession: vi.fn(),
+  open: vi.fn(), oauth: vi.fn(), exchange: vi.fn(), setSession: vi.fn(), fetch: vi.fn(),
 }));
 vi.mock('expo-web-browser', () => ({ openAuthSessionAsync: mocks.open }));
-vi.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'giokon://auth/callback' }));
+vi.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'giokon://auth/callback',
+  CodeChallengeMethod: { S256: 'S256' },
+  AuthRequest: class {
+    codeChallenge = 'c'.repeat(43);
+    codeVerifier = 'v'.repeat(64);
+    async getAuthRequestConfigAsync() { return {}; }
+  },
+}));
 vi.mock('@giokon/data', () => ({ getGiokonClient: () => ({ auth: {
   signInWithOAuth: mocks.oauth, exchangeCodeForSession: mocks.exchange, setSession: mocks.setSession,
 } }) }));
 
-import { signInWithSupabaseProvider } from './social';
+import { signInWithNaver, signInWithSupabaseProvider } from './social';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -17,7 +24,12 @@ beforeEach(() => {
   mocks.open.mockResolvedValue({ type: 'success', url: 'giokon://auth/callback?code=auth%2Bcode%2F123' });
   mocks.exchange.mockResolvedValue({ error: null });
   mocks.setSession.mockResolvedValue({ error: null });
+  mocks.fetch.mockResolvedValue(Response.json({ access_token: 'synthetic-access', refresh_token: 'synthetic-refresh' }));
+  vi.stubGlobal('fetch', mocks.fetch);
+  vi.stubEnv('EXPO_PUBLIC_SUPABASE_URL', 'https://synthetic.invalid');
+  vi.stubEnv('EXPO_PUBLIC_LIVE_TOKEN_URL', '');
 });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('모바일 Supabase PKCE', () => {
   it.each(['google', 'kakao'] as const)('%s의 URL에서 인가 코드만 디코딩해 교환한다', async (provider) => {
@@ -73,5 +85,48 @@ describe('모바일 Supabase PKCE', () => {
     expect(await signInWithSupabaseProvider('google')).toEqual({ ok: true });
     expect(mocks.setSession).toHaveBeenCalledExactlyOnceWith({ access_token: 'synthetic-access', refresh_token: 'synthetic-refresh' });
     expect(mocks.exchange).not.toHaveBeenCalled();
+  });
+});
+
+describe('모바일 Naver 일회성 교환', () => {
+  const callback = (state = 'c'.repeat(43)) => ({ type: 'success',
+    url: `giokon://auth/callback#transaction_id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa&state=${state}` });
+
+  it('서버 authorize에 challenge만 보내고 verifier는 최종 POST로 전달한다', async () => {
+    mocks.open.mockResolvedValueOnce(callback());
+    expect(await signInWithNaver()).toEqual({ ok: true });
+    const url = new URL(mocks.open.mock.calls[0][0]);
+    expect(url.origin + url.pathname).toBe('https://synthetic.invalid/functions/v1/naver-auth/authorize');
+    expect(url.searchParams.get('challenge')).toBe('c'.repeat(43));
+    expect(url.toString()).not.toContain('v'.repeat(64));
+    expect(JSON.parse(mocks.fetch.mock.calls[0][1].body)).toEqual({
+      transaction_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', code_verifier: 'v'.repeat(64),
+    });
+    expect(mocks.setSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('다른 로그인 요청의 콜백은 교환하지 않는다', async () => {
+    mocks.open.mockResolvedValueOnce(callback('other-request'));
+    await expect(signInWithNaver()).rejects.toThrow('state');
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.setSession).not.toHaveBeenCalled();
+  });
+
+  it('취소 후 재시도하며 중복 탭은 하나의 시도만 수행한다', async () => {
+    mocks.open.mockResolvedValueOnce({ type: 'cancel' });
+    const first = signInWithNaver();
+    expect(signInWithNaver()).toBe(first);
+    await expect(signInWithSupabaseProvider('google')).rejects.toThrow('진행 중인 로그인');
+    expect(await first).toEqual({ ok: false, canceled: true });
+    mocks.open.mockResolvedValueOnce(callback());
+    expect(await signInWithNaver()).toEqual({ ok: true });
+    expect(mocks.open).toHaveBeenCalledTimes(2);
+  });
+
+  it('만료/재사용으로 서버가 거부하면 세션을 설정하지 않는다', async () => {
+    mocks.open.mockResolvedValueOnce(callback());
+    mocks.fetch.mockResolvedValueOnce(Response.json({ error: 'expired' }, { status: 400 }));
+    await expect(signInWithNaver()).rejects.toThrow('400');
+    expect(mocks.setSession).not.toHaveBeenCalled();
   });
 });
