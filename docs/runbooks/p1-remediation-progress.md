@@ -18,4 +18,16 @@
 
 운영: Supabase CLI `db query --linked --file`로 이 마이그레이션만 적용하고 같은 트랜잭션에 버전 이력을 기록했다. 이전 SQL Editor 적용분은 재실행하지 않았다. CLI로 live-token 단일 함수를 배포했으며 ACTIVE v5, verify_jwt=true와 운영 한도·RPC 권한·마이그레이션 이력을 확인했다. 운영 소스를 다시 내려받아 저장소 파일과 일치 여부를 검증한다. `.env` 등 민감 파일은 읽지 않는다.
 
-다음: R006 모바일 OAuth PKCE 콜백 교환.
+R005 커밋: `1c7171a` — origin/main 푸시 완료.
+
+## R006 — 모바일 Google/Kakao PKCE 코드 교환
+
+코드 수정·자동 검증 완료. exchangeCodeForSession에 callback URL 전체를 넘기던 호출을 URL에서 추출한 code 전달로 수정했다. 같은 공급자의 중복 호출은 진행 중 Promise를 재사용하고 다른 공급자의 동시 로그인은 거절하여 PKCE verifier가 덮어써지는 것을 막는다. 완료·오류·취소 후에는 재시도할 수 있다.
+
+콜백 프로토콜/호스트/경로를 요청한 redirectTo와 대조하고, OAuth 오류는 고정 안내로 전달한다. 취소와 콜백 실패를 구분한다. 기존 암시적 콜백의 두 토큰을 이용한 세션 설정은 유지했다. 네이버 서버 state 흐름은 R007에서 별도로 수정한다.
+
+검증: Google/Kakao 각각 code 전달, 취소/dismiss, 오류·잘못된 경로, 중복/교차 공급자 호출, 교환 실패 후 재시도, 기존 암시적 콜백을 다루는 12개 테스트와 모바일 타입 검사·린트 통과. 실제 독립 앱에서 두 공급자 신규/기존 계정 로그인·userRow·라우팅 확인은 사용자 요청에 따라 후속 실기기 검증으로 남긴다. 모바일 코드 변경이며 이번 항목에 Supabase 함수 배포는 필요 없다.
+
+계약 근거: [Supabase exchangeCodeForSession](https://supabase.com/docs/reference/javascript/auth-exchangecodeforsession).
+
+다음: R007 모바일 네이버 서버 서명 state 흐름.

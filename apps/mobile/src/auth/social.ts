@@ -27,7 +27,21 @@ function callbackParams(urlStr: string): URLSearchParams {
 }
 
 /** 구글·카카오 — Supabase 네이티브 OAuth(PKCE). */
-export async function signInWithSupabaseProvider(
+let oauthInFlight: { provider: 'google' | 'kakao'; promise: Promise<SocialResult> } | null = null;
+
+export function signInWithSupabaseProvider(provider: 'google' | 'kakao'): Promise<SocialResult> {
+  // 두 브라우저가 같은 PKCE verifier를 덮어쓰거나 코드를 중복 교환하지 않게 한다.
+  if (oauthInFlight) {
+    return oauthInFlight.provider === provider
+      ? oauthInFlight.promise
+      : Promise.reject(new Error('진행 중인 로그인을 먼저 완료해 주세요.'));
+  }
+  const promise = completeSupabaseSignIn(provider).finally(() => { oauthInFlight = null; });
+  oauthInFlight = { provider, promise };
+  return promise;
+}
+
+async function completeSupabaseSignIn(
   provider: 'google' | 'kakao',
 ): Promise<SocialResult> {
   const client = getGiokonClient();
@@ -39,12 +53,26 @@ export async function signInWithSupabaseProvider(
   if (!data?.url) throw new Error('인증 화면을 시작하지 못했어요.');
 
   const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (res.type !== 'success' || !res.url) return { ok: false, canceled: true };
+  if (res.type === 'cancel' || res.type === 'dismiss') return { ok: false, canceled: true };
+  if (res.type !== 'success' || !res.url) throw new Error('로그인 결과를 확인하지 못했어요.');
+
+  const callback = new URL(res.url);
+  const expected = new URL(redirectTo);
+  if (callback.protocol !== expected.protocol || callback.host !== expected.host ||
+      callback.pathname !== expected.pathname || callback.username || callback.password) {
+    throw new Error('로그인 콜백 주소가 올바르지 않아요.');
+  }
+  const fragment = new URLSearchParams(callback.hash.slice(1));
+  if (callback.searchParams.has('error') || callback.searchParams.has('error_description') ||
+      fragment.has('error') || fragment.has('error_description')) {
+    // 공급자 오류 원문에 인증 정보가 섞일 수 있어 화면에는 고정 문구만 표시한다.
+    throw new Error('소셜 로그인이 거절되었어요. 다시 시도해 주세요.');
+  }
 
   const params = callbackParams(res.url);
   const code = params.get('code');
   if (code) {
-    const { error: exErr } = await client.auth.exchangeCodeForSession(res.url);
+    const { error: exErr } = await client.auth.exchangeCodeForSession(code);
     if (exErr) throw exErr;
     return { ok: true };
   }
