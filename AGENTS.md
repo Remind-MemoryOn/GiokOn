@@ -33,6 +33,7 @@
   접근성·멀티테넌시(organizations/RBAC)·부하/백업/DR을 상시 준수. 상세는 PLAN §2′·§3 +
   `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.
 - **커밋은 `main` 브랜치에 직접** (사용자 승인).
+- **Supabase 배포 기본 방식(2026-09-09 사용자 확정)**: 특별한 호환성·운영 문제가 없으면 Supabase CLI를 우선 사용한다. 대상 프로젝트와 함수명을 명시하고, 기존 JWT 검증 등 운영 설정을 확인·유지하며, 배포 후 상태와 소스를 검증한다. SQL Editor로 이미 적용한 DB 변경은 이력·실제 스키마를 대조한 뒤 처리하고 무조건 재실행하지 않는다. `.env` 등 민감한 파일 접근 금지는 유지한다.
 - 비밀키는 **커밋 금지**(`.env`는 gitignore). 원격 세션은 환경 설정 env +
   `.Codex/hooks/session-start.sh`가 `.env` 자동 생성. 로컬 dev는 `apps/web/.env`
   수동 작성(`VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY`).
