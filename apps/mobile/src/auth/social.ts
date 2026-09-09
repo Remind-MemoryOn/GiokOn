@@ -11,7 +11,7 @@
 // (로그인 전 호출이라 익명 요청이 정상이다 — 코드 검증은 서버가 한다).
 import * as WebBrowser from 'expo-web-browser';
 import { AuthRequest, CodeChallengeMethod, makeRedirectUri } from 'expo-auth-session';
-import { getGiokonClient } from '@giokon/data';
+import { getGiokonClient, waitForSignOut } from '@giokon/data';
 
 /** 독립빌드=giokon://auth/callback · Expo Go/dev-client=exp+<slug>://… 자동 해석 */
 const redirectTo = makeRedirectUri({ scheme: 'giokon', path: 'auth/callback' });
@@ -44,6 +44,7 @@ export function signInWithSupabaseProvider(provider: 'google' | 'kakao'): Promis
 async function completeSupabaseSignIn(
   provider: 'google' | 'kakao',
 ): Promise<SocialResult> {
+  await waitForSignOut();
   const client = getGiokonClient();
   const { data, error } = await client.auth.signInWithOAuth({
     provider,
@@ -99,6 +100,7 @@ export function signInWithNaver(): Promise<SocialResult> {
 }
 
 async function completeNaverSignIn(): Promise<SocialResult> {
+  await waitForSignOut();
   const fnUrl =
     process.env.EXPO_PUBLIC_LIVE_TOKEN_URL?.trim().replace(/\/live-token$/, '/naver-auth') ||
     `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/naver-auth`;

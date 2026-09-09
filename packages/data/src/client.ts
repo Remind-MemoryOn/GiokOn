@@ -5,6 +5,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
+import { logoutStorage } from './logout-storage'
 
 export type GiokonClient = SupabaseClient<Database>
 
@@ -42,15 +43,82 @@ export interface GiokonClientConfig {
 
 /** 새 Supabase 클라이언트를 만든다. 앱 진입점에서 한 번 호출한다. */
 export function createGiokonClient(config: GiokonClientConfig): GiokonClient {
-  return createClient<Database>(config.url, config.publishableKey, {
+  const memory = new Map<string, string>()
+  const fallback: GiokonAuthStorage = {
+    getItem: key => memory.get(key) ?? null,
+    setItem: (key, value) => { memory.set(key, value) },
+    removeItem: key => { memory.delete(key) },
+  }
+  let browserStorage: GiokonAuthStorage | undefined
+  try { if (typeof localStorage !== 'undefined') browserStorage = localStorage } catch { /* memory fallback */ }
+  const storageKey = `sb-${new URL(config.url).hostname.split('.')[0]}-auth-token`
+  const gate = logoutStorage(config.storage ?? browserStorage ?? fallback, storageKey)
+  const client = createClient<Database>(config.url, config.publishableKey, {
     auth: {
-      ...(config.storage ? { storage: config.storage } : {}),
+      storage: gate.storage,
+      storageKey,
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: config.detectSessionInUrl ?? true,
       flowType: config.flowType ?? 'pkce',
     },
   })
+  let accessToken: string | null = null
+  let localLogout = false
+  let pending: Promise<void> | null = null
+  client.auth.onAuthStateChange((_event, session) => {
+    if (!localLogout || !session) accessToken = session?.access_token ?? null
+  })
+  logoutControls.set(client, {
+    blocked: () => localLogout,
+    wait: () => pending?.catch(() => {}) ?? Promise.resolve(),
+    signOut: () => {
+      if (pending) return pending
+      const token = accessToken
+      localLogout = true
+      pending = (async () => {
+        try {
+          await gate.clear()
+          // With the local storage empty, the public SDK API removes its runtime
+          // session and emits SIGNED_OUT without requiring an HTTP request.
+          const { error } = await client.auth.signOut({ scope: 'local' })
+          if (error) throw error
+        } finally {
+          localLogout = false
+          gate.resume()
+        }
+        if (token) {
+          // Preserve global revocation semantics, but failure cannot restore local auth.
+          const { error } = await client.auth.admin.signOut(token, 'global')
+          if (error) throw error
+        }
+      })().finally(() => { pending = null })
+      return pending
+    },
+  })
+  return client
+}
+
+const logoutControls = new WeakMap<GiokonClient, {
+  blocked: () => boolean
+  wait: () => Promise<void>
+  signOut: () => Promise<void>
+}>()
+
+export function isLocalLogoutPending(): boolean {
+  return logoutControls.get(getGiokonClient())?.blocked() ?? false
+}
+
+export async function waitForSignOut(): Promise<void> {
+  await logoutControls.get(getGiokonClient())?.wait()
+}
+
+export async function signOutGiokonClient(): Promise<void> {
+  const client = getGiokonClient()
+  const control = logoutControls.get(client)
+  if (control) return control.signOut()
+  const { error } = await client.auth.signOut()
+  if (error) throw error
 }
 
 // ── 모듈 레지스트리 ─────────────────────────────────────────────────────

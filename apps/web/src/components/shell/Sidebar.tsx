@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { signOut } from '@giokon/data';
+import { useAuth } from '../../auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { asset, navIcon } from '../../assets/ui';
 import type { NavItem } from './nav';
@@ -15,15 +15,13 @@ import { cn } from '../../lib/utils';
 //      → `shrink-0` 로 막는다. 여유가 없으면 사이드바가 자라고 페이지가 스크롤될 뿐이라
 //      시안의 하단 고정 좌표(로그아웃 @924)는 그대로 남는다.
 export function Sidebar({ items }: { items: NavItem[] }) {
+  const { signOut } = useAuth();
   const navigate = useNavigate();
 
-  async function handleLogout() {
-    try {
-      await signOut();
-    } catch {
-      /* 로그아웃 실패해도 화면은 이동 */
-    }
+  function handleLogout() {
+    const pending = signOut();
     navigate('/', { replace: true });
+    void pending.catch(() => {});
   }
 
   return (

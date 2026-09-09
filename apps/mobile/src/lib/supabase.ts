@@ -8,7 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createGiokonClient,
-  createGiokonQueryClient,
+  AuthQueryScope,
   initGiokonData,
   type GiokonAuthStorage,
 } from '@giokon/data';
@@ -50,7 +50,7 @@ export const supabaseConfigProblem: string | null = (() => {
 })();
 
 /** 앱 전역 QueryClient (서버 상태 SoT). */
-export const queryClient = createGiokonQueryClient();
+export const queryScope = new AuthQueryScope();
 
 // AsyncStorage를 @giokon/data가 기대하는 저장소 계약으로 감싼다.
 const asyncStorageAdapter: GiokonAuthStorage = {

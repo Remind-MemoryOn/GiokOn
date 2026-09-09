@@ -18,6 +18,41 @@ export function createGiokonQueryClient(): QueryClient {
   })
 }
 
+export interface QueryLease {
+  client: QueryClient
+  generation: number
+  current: () => boolean
+  assertCurrent: () => void
+}
+
+/** Each authentication boundary gets a fresh cache, including for late mutation callbacks. */
+export class AuthQueryScope {
+  private snapshot = { client: createGiokonQueryClient(), generation: 0 }
+  private listeners = new Set<() => void>()
+  private lease: QueryLease | null = null
+  getSnapshot = () => this.snapshot
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+  reset(): void {
+    const previous = this.snapshot.client
+    this.snapshot = { client: createGiokonQueryClient(), generation: this.snapshot.generation + 1 }
+    this.lease = null
+    void previous.cancelQueries()
+    previous.clear()
+    for (const listener of this.listeners) listener()
+  }
+  capture(): QueryLease {
+    if (this.lease) return this.lease
+    const snapshot = this.snapshot
+    const current = () => this.snapshot === snapshot
+    return this.lease = { ...snapshot, current, assertCurrent: () => {
+      if (!current()) throw new Error('인증 상태가 변경되어 이전 작업을 중단했어요.')
+    } }
+  }
+}
+
 /** 쿼리 키 팩토리 — 무효화(invalidate)와 캐시 키를 한곳에서 관리한다. */
 export const queryKeys = {
   profiles: ['profiles'] as const,

@@ -25,7 +25,7 @@ const ASSETS = `${WEB}/assets/figma`;
 const cache = new Map();
 function src(file) {
   if (!cache.has(file)) {
-    try { cache.set(file, readFileSync(file, 'utf8')); } catch { cache.set(file, null); }
+    try { cache.set(file, readFileSync(file, 'utf8').replace(/\r\n/g, '\n')); } catch { cache.set(file, null); }
   }
   return cache.get(file);
 }

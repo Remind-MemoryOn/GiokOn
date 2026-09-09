@@ -16,7 +16,7 @@ import type {
   Subscription,
   User,
 } from '@supabase/supabase-js'
-import { getGiokonClient } from './client'
+import { getGiokonClient, signOutGiokonClient, isLocalLogoutPending, waitForSignOut } from './client'
 import type { ProfileCaregiverRow, ProfileGuardianRow, UserRow } from './database.types'
 import type { ConsentType } from '@giokon/core'
 
@@ -39,6 +39,7 @@ export async function signInWithProvider(
   provider: NativeSocialProvider,
   options?: { redirectTo?: string },
 ): Promise<void> {
+  await waitForSignOut()
   const { error } = await getGiokonClient().auth.signInWithOAuth({
     provider,
     options: options?.redirectTo ? { redirectTo: options.redirectTo } : undefined,
@@ -67,6 +68,7 @@ export async function setSessionFromTokens(
   accessToken: string,
   refreshToken: string,
 ): Promise<Session> {
+  await waitForSignOut()
   const { data, error } = await getGiokonClient().auth.setSession({
     access_token: accessToken,
     refresh_token: refreshToken,
@@ -89,6 +91,7 @@ export interface EmailCredentials {
 
 /** 이메일(아이디)+비밀번호 로그인. */
 export async function signInWithEmail(params: EmailCredentials): Promise<Session> {
+  await waitForSignOut()
   const { data, error } = await getGiokonClient().auth.signInWithPassword({
     email: params.email.trim(),
     password: params.password,
@@ -106,6 +109,7 @@ export async function signInWithEmail(params: EmailCredentials): Promise<Session
 export async function signUpWithEmail(
   params: EmailCredentials & { redirectTo?: string },
 ): Promise<{ session: Session | null; needsConfirm: boolean }> {
+  await waitForSignOut()
   const { data, error } = await getGiokonClient().auth.signUp({
     email: params.email.trim(),
     password: params.password,
@@ -145,8 +149,7 @@ export async function findLoginEmail(name: string, phone: string): Promise<strin
 
 /** 로그아웃. */
 export async function signOut(): Promise<void> {
-  const { error } = await getGiokonClient().auth.signOut()
-  if (error) throw error
+  await signOutGiokonClient()
 }
 
 /** 현재 세션(없으면 null). */
@@ -243,6 +246,8 @@ export async function claimElderByCode(code: string): Promise<ProfileCaregiverRo
 export function onAuthStateChange(
   callback: (event: AuthChangeEvent, session: Session | null) => void,
 ): Subscription {
-  const { data } = getGiokonClient().auth.onAuthStateChange(callback)
+  const { data } = getGiokonClient().auth.onAuthStateChange((event, session) => {
+    callback(event, isLocalLogoutPending() ? null : session)
+  })
   return data.subscription
 }

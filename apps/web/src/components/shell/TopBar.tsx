@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signOut } from '@giokon/data';
 import { dateDotTime } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
@@ -52,7 +51,7 @@ export function TopBar({
 }: Props) {
   const guardian = variant === 'guardian';
   const X = guardian ? { bell: 1080, avatar: 1140, chevron: 219 } : { bell: 1045, avatar: 1105, chevron: 254 };
-  const { user, userRow } = useAuth();
+  const { user, userRow, signOut } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -61,13 +60,10 @@ export function TopBar({
   const roleLabel = userRow?.role === 'guardian' ? '보호자님' : '요양보호사님';
   const displayName = name ? `${name} ${roleLabel}` : (user?.email ?? roleLabel);
 
-  async function handleLogout() {
-    try {
-      await signOut();
-    } catch {
-      /* 로그아웃 실패해도 화면은 이동 */
-    }
+  function handleLogout() {
+    const pending = signOut();
     navigate('/', { replace: true });
+    void pending.catch(() => {});
   }
 
   return (

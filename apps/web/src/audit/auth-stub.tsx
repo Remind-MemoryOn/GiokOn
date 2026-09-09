@@ -8,7 +8,10 @@
 // ⚠️ 제품 빌드에는 포함되지 않는다(FIGMA_AUDIT 없을 때 alias 미적용).
 import type { ReactNode } from 'react';
 import { queryKeys } from '@giokon/data';
-import { queryClient } from '../lib/supabase';
+import { queryScope } from '../lib/supabase';
+import { QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = queryScope.getSnapshot().client;
 
 const ORG = { id: 'org-1', name: '햇살 요양원', created_at: '2026-01-01T00:00:00Z' };
 const USER = {
@@ -559,7 +562,7 @@ seed();
 
 /* eslint-disable react-refresh/only-export-components -- 감사 전용 스텁(제품 번들 미포함) */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 
 export function useAuth() {
@@ -582,5 +585,6 @@ export function useAuth() {
     // 훅은 유휴 상태로 두고(네트워크 없음) 위에서 심은 캐시만 읽게 한다.
     isConfigured: false,
     refreshUserRow: async () => null,
+    signOut: async () => {},
   } as never;
 }

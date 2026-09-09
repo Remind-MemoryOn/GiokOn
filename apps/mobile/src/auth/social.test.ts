@@ -12,7 +12,7 @@ vi.mock('expo-auth-session', () => ({ makeRedirectUri: () => 'giokon://auth/call
     async getAuthRequestConfigAsync() { return {}; }
   },
 }));
-vi.mock('@giokon/data', () => ({ getGiokonClient: () => ({ auth: {
+vi.mock('@giokon/data', () => ({ waitForSignOut: async () => {}, getGiokonClient: () => ({ auth: {
   signInWithOAuth: mocks.oauth, exchangeCodeForSession: mocks.exchange, setSession: mocks.setSession,
 } }) }));
 

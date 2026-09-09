@@ -148,9 +148,10 @@ export default function Settings() {
 
           {/* 로그아웃 — 글리프 13 @(307,154) · 라벨 Medium 12/21 @(323,146) */}
           <Pressable
-            onPress={async () => {
-              await signOut();
+            onPress={() => {
+              const pending = signOut();
               router.replace('/');
+              void pending.catch(() => {});
             }}
             accessibilityRole="button"
             accessibilityLabel="로그아웃"

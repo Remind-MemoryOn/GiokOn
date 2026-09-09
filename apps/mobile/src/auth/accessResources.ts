@@ -1,5 +1,5 @@
 import { getCurrentUserRow, getGiokonClient } from '@giokon/data';
-import { queryClient } from '../lib/supabase';
+import { queryScope } from '../lib/supabase';
 import { useApp } from '../store/appStore';
 import { closeLiveEngine } from '../lib/live/engine';
 import { ExpoSpeechProvider } from '../lib/speech';
@@ -10,8 +10,7 @@ export function resetAccessResources(): void {
   void closeLiveEngine().catch(() => {});
   ExpoSpeechProvider.cancelSpeak();
   useApp.setState({ active: null, lastFinished: null });
-  void queryClient.cancelQueries();
-  queryClient.clear();
+  queryScope.reset();
 }
 
 export async function loadAccessSnapshot(uid: string): Promise<AccessSnapshot> {

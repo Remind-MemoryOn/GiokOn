@@ -15,18 +15,31 @@ interface ToastItem {
 }
 
 interface State {
+  resetForAuth: () => void;
   toasts: ToastItem[];
   /** 3.2초 뒤 자동으로 사라진다(디자인 실측). */
   toast: (kind: ToastItem['kind'], message: string) => void;
   dismissToast: (id: string) => void;
 }
 
-export const useStore = create<State>()((set, get) => ({
+export const useStore = create<State>()((set, get) => {
+  let generation = 0;
+  const makeToast = (): State['toast'] => {
+    const captured = generation;
+    return (kind, message) => {
+      if (captured !== generation) return;
+      const id = uid('t_');
+      set((s) => ({ toasts: [...s.toasts, { id, kind, message }] }));
+      setTimeout(() => get().dismissToast(id), 3200);
+    };
+  };
+  return {
   toasts: [],
-  toast: (kind, message) => {
-    const id = uid('t_');
-    set((s) => ({ toasts: [...s.toasts, { id, kind, message }] }));
-    setTimeout(() => get().dismissToast(id), 3200);
+  toast: makeToast(),
+  resetForAuth: () => {
+    generation++;
+    set({ toasts: [], toast: makeToast() });
   },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
-}));
+  };
+});

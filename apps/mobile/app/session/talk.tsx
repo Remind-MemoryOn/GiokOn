@@ -30,6 +30,7 @@ import { playPcmTurn } from '../../src/lib/live/player';
 import { playableChunks } from '../../src/lib/live/playback';
 import { ensureMicPermission } from '../../src/lib/live/mic';
 import { useApp } from '../../src/store/appStore';
+import { queryScope } from '../../src/lib/supabase';
 import {
   useSessionPersistence,
   type SessionSaveResult,
@@ -43,6 +44,9 @@ const UTTERANCE_MAX = 200;
 
 export default function Talk() {
   const active = useApp((s) => s.active);
+  const lease = queryScope.capture();
+  const stillCurrent = () => lease.current() &&
+    useApp.getState().active?.session.id === active?.session.id;
   const capture = useApp((s) => s.captureUtterance);
   const confirm = useApp((s) => s.confirmUtterance);
   const discard = useApp((s) => s.discardUtterance);
@@ -100,16 +104,17 @@ export default function Talk() {
     void (async () => {
       const engine = await acquireLiveEngine(key, active.elder, active.chronicles, active.design, {
         onDraftFinal: (t) => {
+          if (cancelled || !stillCurrent()) return;
           setLiveListening(false);
           useApp.getState().setPendingStt(t);
         },
         onError: () => {},
       }, active.remoteId);
-      if (!engine || cancelled) return;
+      if (!engine || cancelled || !stillCurrent()) return;
       // 오프너 교체 — 로컬 규칙 질문을 Live 모델의 인사로 바꾼다(세션당 1회).
       if (active.turns.length === 1 && useApp.getState().active?.phase === 'ai_speaking') {
         const res = await engine.requestOpener();
-        if (cancelled || !res?.text) return;
+        if (cancelled || !stillCurrent() || !res?.text) return;
         if (res.audioChunksB64.length > 0) liveAudioChunks.current.set(res.text, res.audioChunksB64);
         else liveAudioChunks.current.delete(res.text);
         useApp.getState().overrideQuestion(res.text);
@@ -168,6 +173,7 @@ export default function Talk() {
   }
 
   function presentResult(res: SessionSaveResult) {
+    if (!lease.current()) return;
     if (res.status !== 'failed') {
       router.replace(`/session/saved${res.logId ? `?logId=${res.logId}` : ''}`);
       return;
@@ -181,6 +187,7 @@ export default function Talk() {
           text: '기록 없이 나가기',
           style: 'destructive',
           onPress: () => {
+            if (!lease.current()) return;
             discardUnsaved();
             router.replace('/main');
           },
@@ -191,6 +198,7 @@ export default function Talk() {
   }
 
   const endAndSave = async () => {
+    if (!stillCurrent()) return;
     finishing.current = true;
     ExpoSpeechProvider.cancelSpeak();
     await closeLiveEngine();
@@ -209,6 +217,7 @@ export default function Talk() {
       }
       ExpoSpeechProvider.cancelSpeak();
       const granted = await ensureMicPermission();
+      if (!stillCurrent()) return;
       if (!granted) {
         Alert.alert(
           '마이크 권한',
@@ -235,6 +244,7 @@ export default function Talk() {
    *  대기 화면(/session/loading)으로 **먼저** 넘어가 모델 응답 시간을 덮는다 —
    *  loading 이 질문 교체를 감지해 자동 복귀한다(§리포트 ② 개선). */
   async function handleConfirm() {
+    if (!stillCurrent()) return;
     const finalText = (draft.trim() || (pending ?? '')).trim();
     // 빈 발화는 기록하지 않는다 — 폴백 입력은 이제 빈 칸으로 열리므로(모의 발화 제거),
     // 그대로 저장하면 어르신 턴이 빈 줄로 DB 에 남아 분석·감사 기록이 왜곡된다.
@@ -252,6 +262,7 @@ export default function Talk() {
         const isCrisis = assessUtterance(finalText).situation === 'crisis';
         if (!isCrisis) {
           const res = await engine.submitUserTurn(finalText);
+          if (!stillCurrent()) return;
           if (res?.status === 'ok' && res.text) {
             livePayload = { question: res.text };
             if (res.chunksB64.length > 0) liveAudioChunks.current.set(res.text, res.chunksB64);
@@ -266,6 +277,7 @@ export default function Talk() {
         setConfirming(false);
       }
     }
+    if (!stillCurrent()) return;
     confirm(finalText, livePayload);
     setEdited(null);
     setLiveListening(false);

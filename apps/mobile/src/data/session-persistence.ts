@@ -28,9 +28,10 @@ import {
   toSessionLogInsert,
   type Json,
   type SessionLogOwner,
+  type QueryLease,
 } from '@giokon/data';
 import type { ConversationTurn } from '@giokon/core';
-import { queryClient } from '../lib/supabase';
+import { queryScope } from '../lib/supabase';
 import { useApp, type FinishedSessionBundle, type SessionSafetyEvent } from '../store/appStore';
 import { useAuth } from '../auth/AuthProvider';
 
@@ -45,12 +46,16 @@ export type SessionSaveResult =
  * 네트워크 일시 오류에 견디는 소규모 재시도(지수 백오프).
  * 아래 쓰기는 모두 단일 문장(다중행 insert 포함)이거나 upsert 라 재시도가 안전하다.
  */
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+async function withRetry<T>(lease: QueryLease, fn: () => Promise<T>, attempts = 3): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
-      return await fn();
+      lease.assertCurrent();
+      const result = await fn();
+      lease.assertCurrent();
+      return result;
     } catch (e) {
+      lease.assertCurrent();
       lastErr = e;
       if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i));
     }
@@ -63,10 +68,11 @@ async function writeTurns(
   turns: ConversationTurn[],
   from: number,
   ids: SessionLogOwner,
+  lease: QueryLease,
 ): Promise<number> {
   if (from >= turns.length) return turns.length;
   const rows = turns.slice(from).map((_, i) => toSessionLogInsert(turns, from + i, ids));
-  await withRetry(async () => {
+  await withRetry(lease, async () => {
     const { error } = await getGiokonClient()
       .from('session_logs')
       .upsert(rows, { onConflict: 'session_id,turn_index' });
@@ -82,13 +88,14 @@ async function writeTurns(
 async function writeSafetyEvents(
   events: SessionSafetyEvent[],
   ids: SessionLogOwner,
+  lease: QueryLease,
 ): Promise<SessionSafetyEvent[]> {
   const client = getGiokonClient();
   const out: SessionSafetyEvent[] = [];
   for (const ev of events) {
     let next = ev;
     if (next.remoteId === null) {
-      const row = await withRetry(async () => {
+      const row = await withRetry(lease, async () => {
         const { data, error } = await client
           .from('safety_events')
           .insert({
@@ -111,7 +118,7 @@ async function writeSafetyEvents(
       });
       next = { ...next, remoteId: row.id, ackSynced: next.acknowledgedAt !== null };
     } else if (next.acknowledgedAt !== null && !next.ackSynced) {
-      await withRetry(async () => {
+      await withRetry(lease, async () => {
         const { error } = await client
           .from('safety_events')
           .update({ acknowledged_at: next.acknowledgedAt, acknowledged_by: ids.userId })
@@ -126,18 +133,19 @@ async function writeSafetyEvents(
 }
 
 /** 뒤 단계가 실패했을 때 만들어 둔 세션 행을 되돌린다(실패해도 흐름은 막지 않는다). */
-async function rollbackSession(sessionId: string): Promise<void> {
+async function rollbackSession(sessionId: string, lease: QueryLease): Promise<void> {
   try {
+    lease.assertCurrent();
     await getGiokonClient().from('sessions').delete().eq('id', sessionId);
   } catch (e) {
     console.warn('[giokon] 실패한 세션 행을 정리하지 못했습니다.', e);
   }
 }
 
-function invalidateFor(profileId: string): void {
-  void queryClient.invalidateQueries({ queryKey: queryKeys.sessions(profileId) });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.sessionAnalyses(profileId) });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.recentSessions });
+function invalidateFor(profileId: string, lease: QueryLease): void {
+  void lease.client.invalidateQueries({ queryKey: queryKeys.sessions(profileId) });
+  void lease.client.invalidateQueries({ queryKey: queryKeys.sessionAnalyses(profileId) });
+  void lease.client.invalidateQueries({ queryKey: queryKeys.recentSessions });
 }
 
 function failure(message: string): SessionSaveResult {
@@ -149,9 +157,9 @@ function failure(message: string): SessionSaveResult {
  * 뒤 단계가 실패하면 세션 행을 지운다(logs·analyses 는 FK cascade 로 함께 사라지고,
  * safety_events 는 마지막 단계라 이 시점에 아직 없다).
  */
-async function persistWholeSession(b: FinishedSessionBundle, userId: string): Promise<string> {
+async function persistWholeSession(b: FinishedSessionBundle, userId: string, lease: QueryLease): Promise<string> {
   const client = getGiokonClient();
-  const session = await withRetry(async () => {
+  const session = await withRetry(lease, async () => {
     const { data, error } = await client
       .from('sessions')
       .insert({
@@ -172,11 +180,11 @@ async function persistWholeSession(b: FinishedSessionBundle, userId: string): Pr
 
   const ids = { sessionId: session.id, profileId: b.elder.id, userId };
   try {
-    await writeTurns(b.turns, 0, ids);
-    await writeAnalysis(b, ids);
-    await writeSafetyEvents(b.events, ids);
+    await writeTurns(b.turns, 0, ids, lease);
+    await writeAnalysis(b, ids, lease);
+    await writeSafetyEvents(b.events, ids, lease);
   } catch (e) {
-    await rollbackSession(session.id);
+    await rollbackSession(session.id, lease);
     throw e;
   }
   return session.id;
@@ -185,8 +193,9 @@ async function persistWholeSession(b: FinishedSessionBundle, userId: string): Pr
 async function writeAnalysis(
   b: FinishedSessionBundle,
   ids: SessionLogOwner,
+  lease: QueryLease,
 ): Promise<void> {
-  await withRetry(async () => {
+  await withRetry(lease, async () => {
     const { error } = await getGiokonClient().from('session_analyses').upsert(
       {
         session_id: ids.sessionId,
@@ -202,13 +211,13 @@ async function writeAnalysis(
 }
 
 /** 진행 중에 만들어 둔 세션을 마무리한다(나머지 턴·이벤트 + 종료 상태 + 분석). */
-async function finalizeSession(b: FinishedSessionBundle, userId: string): Promise<string> {
+async function finalizeSession(b: FinishedSessionBundle, userId: string, lease: QueryLease): Promise<string> {
   const sessionId = b.remoteId as string;
   const ids = { sessionId, profileId: b.elder.id, userId };
-  await writeTurns(b.turns, b.syncedTurns, ids);
-  await writeSafetyEvents(b.events, ids);
-  await writeAnalysis(b, ids);
-  await withRetry(async () => {
+  await writeTurns(b.turns, b.syncedTurns, ids, lease);
+  await writeSafetyEvents(b.events, ids, lease);
+  await writeAnalysis(b, ids, lease);
+  await withRetry(lease, async () => {
     const { error } = await getGiokonClient()
       .from('sessions')
       .update({
@@ -225,7 +234,7 @@ async function finalizeSession(b: FinishedSessionBundle, userId: string): Promis
 }
 
 /** 진행 중 동기화가 겹치지 않도록 하는 간단한 잠금(턴이 빨리 이어져도 중복 쓰기 방지). */
-let syncing = false;
+const syncing = new Set<string>();
 
 /**
  * 세션 실행 ↔ DB 브리지.
@@ -249,13 +258,14 @@ export function useSessionPersistence(): {
   discardUnsaved: () => void;
 } {
   const { user } = useAuth();
+  const lease = queryScope.capture();
 
   const openRemoteSession = useCallback(async (): Promise<void> => {
-    if (!user) return;
+    if (!user || !lease.current()) return;
     const a = useApp.getState().active;
     if (!a || a.remoteId) return;
     try {
-      const row = await withRetry(async () => {
+      const row = await withRetry(lease, async () => {
         const { data, error } = await getGiokonClient()
           .from('sessions')
           .insert({
@@ -271,13 +281,14 @@ export function useSessionPersistence(): {
         if (error) throw new Error(error.message);
         return data;
       });
+      if (useApp.getState().active?.session.id !== a.session.id) return;
       useApp.getState().attachRemoteSession(row.id);
-      invalidateFor(a.elder.id);
+      invalidateFor(a.elder.id, lease);
     } catch (e) {
       // 시작 시 저장에 실패해도 대화는 진행한다 — 종료 시 일괄 저장으로 폴백한다.
       console.warn('[giokon] 진행 중 세션 생성 실패 — 종료 시 일괄 저장합니다.', e);
     }
-  }, [user]);
+  }, [user, lease]);
 
   /**
    * planned 세션 채택 — status 를 active 로 바꾸고 그 행 id 를 런타임에 붙인다.
@@ -286,9 +297,11 @@ export function useSessionPersistence(): {
    */
   const adoptPlannedSession = useCallback(
     async (sessionId: string, startedAt: string): Promise<void> => {
-      if (!user) return;
+      if (!user || !lease.current()) return;
+      const original = useApp.getState().active;
+      if (!original) return;
       try {
-        await withRetry(async () => {
+        await withRetry(lease, async () => {
           const { error } = await getGiokonClient()
             .from('sessions')
             .update({ status: 'active', started_at: startedAt })
@@ -299,24 +312,28 @@ export function useSessionPersistence(): {
       } catch (e) {
         console.warn('[giokon] 설계 세션 active 전환 실패 — 종료 시 함께 정리됩니다.', e);
       }
+      if (!lease.current() || useApp.getState().active?.session.id !== original.session.id) return;
       useApp.getState().attachRemoteSession(sessionId);
       const a = useApp.getState().active;
-      if (a) invalidateFor(a.elder.id);
+      if (a) invalidateFor(a.elder.id, lease);
     },
-    [user],
+    [user, lease],
   );
 
   const syncProgress = useCallback(async (): Promise<void> => {
-    if (!user || syncing) return;
+    if (!user || !lease.current()) return;
     const a = useApp.getState().active;
     if (!a?.remoteId) return;
-    syncing = true;
+    const syncKey = `${lease.generation}:${a.session.id}`;
+    if (syncing.has(syncKey)) return;
+    syncing.add(syncKey);
     try {
       const ids = { sessionId: a.remoteId, profileId: a.elder.id, userId: user.id };
-      const turns = await writeTurns(a.turns, a.syncedTurns, ids);
-      const events = await writeSafetyEvents(a.events, ids);
+      const turns = await writeTurns(a.turns, a.syncedTurns, ids, lease);
+      const events = await writeSafetyEvents(a.events, ids, lease);
+      if (!lease.current() || useApp.getState().active?.session.id !== a.session.id) return;
       useApp.getState().markSynced({ turns, events });
-      await withRetry(async () => {
+      await withRetry(lease, async () => {
         const { error } = await getGiokonClient()
           .from('sessions')
           .update({ turn_count: a.turns.length, current_topic: a.currentTopic })
@@ -327,40 +344,45 @@ export function useSessionPersistence(): {
       // 진행 중 실패는 대화를 막지 않는다 — 다음 턴이나 종료 때 다시 시도한다.
       console.warn('[giokon] 진행 중 동기화 실패 — 다음 턴에 다시 시도합니다.', e);
     } finally {
-      syncing = false;
+      syncing.delete(syncKey);
     }
-  }, [user]);
+  }, [user, lease]);
 
   const save = useCallback(async (): Promise<SessionSaveResult> => {
+    if (!lease.current()) return failure('인증 상태가 변경되어 저장을 중단했어요.');
     const bundle = useApp.getState().lastFinished;
     if (!bundle) return failure('저장할 대화를 찾지 못했어요.');
     if (!user) return failure('로그인이 풀렸어요. 다시 로그인한 뒤 저장해 주세요.');
     try {
       const sessionId = bundle.remoteId
-        ? await finalizeSession(bundle, user.id)
-        : await persistWholeSession(bundle, user.id);
+        ? await finalizeSession(bundle, user.id, lease)
+        : await persistWholeSession(bundle, user.id, lease);
+      lease.assertCurrent();
+      if (useApp.getState().lastFinished !== bundle) return failure('저장 대상 세션이 변경되었어요.');
       useApp.getState().clearLastFinished();
-      invalidateFor(bundle.elder.id);
+      invalidateFor(bundle.elder.id, lease);
       return { status: 'saved', logId: sessionId };
     } catch (e) {
       console.warn('[giokon] 세션 저장 실패', e);
       return failure(e instanceof Error ? e.message : '알 수 없는 오류가 발생했어요.');
     }
-  }, [user]);
+  }, [user, lease]);
 
   const finishAndPersist = useCallback(async (): Promise<SessionSaveResult> => {
+    if (!lease.current()) return failure('인증 상태가 변경되어 작업을 중단했어요.');
     useApp.getState().finishSession();
     return save();
-  }, [save]);
+  }, [save, lease]);
 
   const discardUnsaved = useCallback((): void => {
+    if (!lease.current()) return;
     const bundle = useApp.getState().lastFinished;
     useApp.getState().clearLastFinished();
     // 진행 중에 만들어 둔 세션이 있으면 'active' 로 남겨 두지 않는다 — 그대로 두면
     // 웹에서 영원히 "진행 중"으로 보인다. 여기까지 기록된 대화는 그대로 남긴다
     // (사용자가 포기한 것은 재시도이지, 이미 저장된 기록이 아니다).
     if (!bundle?.remoteId) return;
-    void withRetry(async () => {
+    void withRetry(lease, async () => {
       const { error } = await getGiokonClient()
         .from('sessions')
         .update({
@@ -373,7 +395,7 @@ export function useSessionPersistence(): {
         .eq('id', bundle.remoteId as string);
       if (error) throw new Error(error.message);
     }).catch((e) => console.warn('[giokon] 세션 종료 표시 실패', e));
-  }, []);
+  }, [lease]);
 
   return { openRemoteSession, adoptPlannedSession, syncProgress, finishAndPersist, retrySave: save, discardUnsaved };
 }

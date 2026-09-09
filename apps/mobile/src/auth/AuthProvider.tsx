@@ -13,9 +13,12 @@ import {
   useContext,
   useEffect,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import { AppState } from 'react-native';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryScope } from '../lib/supabase';
 import {
   getGiokonClient,
   getSession,
@@ -63,6 +66,7 @@ const AuthContext = createContext<MobileAuthState>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const query = useSyncExternalStore(queryScope.subscribe, queryScope.getSnapshot);
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   // users row는 uid별로 캐시·파생한다(로그아웃 시 null 파생 — effect 내 동기 setState 회피).
@@ -168,7 +172,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUserRow,
       }}
     >
-      {children}
+      <QueryClientProvider key={query.generation} client={query.client}>
+        {children}
+      </QueryClientProvider>
     </AuthContext.Provider>
   );
 }

@@ -11,19 +11,25 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react';
 import {
   getCurrentUserRow,
   getSession,
   onAuthStateChange,
+  signOut as authSignOut,
   type Session,
   type User,
   type UserRow,
 } from '@giokon/data';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { isSupabaseConfigured, queryScope } from '../lib/supabase';
+import { useStore } from '../store/store';
 
 interface AuthState {
+  signOut: () => Promise<void>;
   session: Session | null;
   user: User | null;
   /** public.users row — 역할·기관·온보딩 상태. 세션 없거나 조회 전이면 null. */
@@ -36,6 +42,7 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState>({
+  signOut: async () => {},
   session: null,
   user: null,
   userRow: null,
@@ -45,18 +52,62 @@ const AuthContext = createContext<AuthState>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const query = useSyncExternalStore(queryScope.subscribe, queryScope.getSnapshot);
+  const identity = useRef<string | null>(null);
+  const generation = useRef(0);
+  const request = useRef(0);
+  const lastRow = useRef<UserRow | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(isSupabaseConfigured);
   // users row 는 uid 별로 캐시하고 파생한다(로그아웃 시 자동으로 null 파생 —
   // effect 안 동기 setState 회피).
   const [fetched, setFetched] = useState<{ uid: string; row: UserRow | null } | null>(null);
 
+  const acceptSession = useCallback((next: Session | null) => {
+    generation.current++;
+    const nextUid = next?.user.id ?? null;
+    if (identity.current !== nextUid) {
+      identity.current = nextUid;
+      request.current++;
+      lastRow.current = null;
+      queryScope.reset();
+      useStore.getState().resetForAuth();
+      setFetched(null);
+    }
+    setSession(next);
+    setSessionLoading(false);
+  }, []);
+
+  const refreshUserRow = useCallback(async (): Promise<UserRow | null> => {
+    const uid = identity.current;
+    if (!isSupabaseConfigured || !uid) return null;
+    const ticket = ++request.current;
+    let row: UserRow | null;
+    try { row = await getCurrentUserRow(); } catch { row = null; }
+    if (ticket !== request.current || uid !== identity.current) return null;
+    if (row?.id !== uid) row = null;
+    const old = lastRow.current;
+    if (old && (old.role !== row?.role || old.org_id !== row?.org_id)) {
+      queryScope.reset();
+      useStore.getState().resetForAuth();
+    }
+    lastRow.current = row;
+    setFetched({ uid, row });
+    return row;
+  }, []);
+
+  const signOut = useCallback(async () => {
+    acceptSession(null);
+    await authSignOut();
+  }, [acceptSession]);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let active = true;
+    const initialGeneration = generation.current;
     getSession()
       .then((s) => {
-        if (active) setSession(s);
+        if (active && generation.current === initialGeneration) acceptSession(s);
       })
       .catch(() => {
         /* 세션 조회 실패 → 미인증으로 처리 */
@@ -64,41 +115,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         if (active) setSessionLoading(false);
       });
-    const subscription = onAuthStateChange((_event, s) => setSession(s));
+    const subscription = onAuthStateChange((_event, s) => {
+      if (!active) return;
+      acceptSession(s);
+      setTimeout(() => { if (active) void refreshUserRow(); }, 0);
+    });
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [acceptSession, refreshUserRow]);
 
   const uid = session?.user?.id ?? null;
 
   useEffect(() => {
     if (!isSupabaseConfigured || !uid) return;
-    if (fetched?.uid === uid) return; // 이미 이 사용자로 조회 완료
-    let active = true;
-    getCurrentUserRow()
-      .then((row) => {
-        if (active) setFetched({ uid, row });
-      })
-      .catch(() => {
-        if (active) setFetched({ uid, row: null });
-      });
-    return () => {
-      active = false;
-    };
-  }, [uid, fetched]);
-
-  const refreshUserRow = useCallback(async (): Promise<UserRow | null> => {
-    if (!isSupabaseConfigured) return null;
-    try {
-      const row = await getCurrentUserRow();
-      if (row) setFetched({ uid: row.id, row });
-      return row;
-    } catch {
-      return null;
-    }
-  }, []);
+    void refreshUserRow();
+  }, [uid, refreshUserRow]);
 
   const userRow = uid && fetched?.uid === uid ? fetched.row : null;
   const loading = sessionLoading || (Boolean(uid) && fetched?.uid !== uid);
@@ -106,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
+        signOut,
         session,
         user: session?.user ?? null,
         userRow,
@@ -114,7 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUserRow,
       }}
     >
-      {children}
+      <QueryClientProvider key={query.generation} client={query.client}>
+        {children}
+      </QueryClientProvider>
     </AuthContext.Provider>
   );
 }

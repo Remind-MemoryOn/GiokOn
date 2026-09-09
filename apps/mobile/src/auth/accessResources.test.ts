@@ -21,7 +21,7 @@ function api() {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, { exports, require: (name: string) => {
     if (name === '@giokon/data') return { getCurrentUserRow: getRow, getGiokonClient: () => ({ from }) };
-    if (name === '../lib/supabase') return { queryClient: { cancelQueries, clear } };
+    if (name === '../lib/supabase') return { queryScope: { reset: () => { void cancelQueries(); clear(); } } };
     if (name === '../store/appStore') return { useApp: { getState: () => ({ active }), setState } };
     if (name === '../lib/live/engine') return { closeLiveEngine: close };
     if (name === '../lib/speech') return { ExpoSpeechProvider: { cancelSpeak } };
