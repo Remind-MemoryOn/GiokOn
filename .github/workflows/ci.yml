@@ -37,7 +37,7 @@ jobs:
       - run: pnpm -r test
       - run: pnpm -r build
       - name: Install Chromium for authentication isolation regression
-        run: pnpm -F @giokon/web exec playwright install --with-deps chromium
+        run: pnpm -F @giokon/web exec playwright install chromium
       - name: Account transition isolation (React and Query)
         run: pnpm -F @giokon/web test:auth
 
@@ -63,20 +63,20 @@ jobs:
       PGDATABASE: postgres
     steps:
       - uses: actions/checkout@v4
-      - name: Install psql client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Verify PostgreSQL service client
+        run: docker exec "${{ job.services.postgres.id }}" psql --version
       - name: Supabase 심 적용
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/_supabase_shims.sql
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/_supabase_shims.sql
       - name: 마이그레이션 순차 적용
         run: |
           for f in supabase/migrations/*.sql; do
             echo "── applying $f"
-            psql -v ON_ERROR_STOP=1 -f "$f"
+            docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < "$f"
           done
       - name: 테스트 롤 권한 부여
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/_grants.sql
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/_grants.sql
       - name: RLS·RBAC·격리 회귀 테스트
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_regression.sql
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/rls_regression.sql
 
   security-audit:
     runs-on: ubuntu-latest
