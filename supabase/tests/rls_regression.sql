@@ -1465,4 +1465,83 @@ begin
 end $$;
 rollback;
 
+-- R005: role/assignment/consent/status gates and all-or-nothing budget consumption.
+begin;
+do $$
+declare
+  uid uuid := '33333333-3333-3333-3333-333333333333';
+  oid uuid;
+  pid uuid;
+  sid uuid;
+  rejected boolean;
+  test_case text;
+begin
+  select org_id into oid from public.users where id = uid;
+  select id into pid from public.profiles where user_id = uid limit 1;
+  perform set_config('test.uid', uid::text, true);
+  delete from public.consents where profile_id = pid;
+  insert into public.sessions (profile_id, org_id, user_id, status)
+    values (pid, oid, uid, 'active') returning id into sid;
+  insert into public.profile_caregivers (profile_id, org_id, caregiver_user_id, status)
+    values (pid, oid, uid, 'active')
+    on conflict (profile_id, caregiver_user_id) do update set status = 'active', removed_at = null;
+  insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version)
+    select pid, oid, uid, t::public.consent_type, true, 'v1.0'
+    from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+  assert not has_function_privilege('anon', 'public.reserve_live_token(uuid)', 'EXECUTE');
+  assert not has_table_privilege('authenticated', 'app.live_token_usage', 'UPDATE');
+  assert not has_table_privilege('authenticated', 'app.live_token_limits', 'UPDATE');
+
+  foreach test_case in array array['guardian','unassigned','foreign_org','ended','planned','revoked','version','missing_consent'] loop
+    -- Use a subtransaction so each rejected scenario restores the same valid baseline.
+    begin
+      case test_case
+        when 'guardian' then update public.users set role = 'guardian' where id = uid;
+        when 'unassigned' then update public.profile_caregivers set status = 'removed', removed_at = now() where profile_id = pid and caregiver_user_id = uid;
+        when 'foreign_org' then update public.users set org_id = (select org_id from public.users where id = '22222222-2222-2222-2222-222222222222') where id = uid;
+        when 'ended' then update public.sessions set status = 'ended', ended_at = now() where id = sid;
+        when 'planned' then update public.sessions set status = 'planned' where id = sid;
+        when 'revoked' then update public.consents set revoked_at = now() where profile_id = pid;
+        when 'version' then update public.consents set version = 'v0.0' where profile_id = pid;
+        when 'missing_consent' then delete from public.consents where profile_id = pid and consent_type = 'ai_processing';
+      end case;
+      rejected := false;
+      set local role authenticated;
+      begin
+        perform public.reserve_live_token(sid);
+      exception when insufficient_privilege then
+        if sqlerrm not in ('LIVE_TOKEN_FORBIDDEN','LIVE_TOKEN_CONSENT_REQUIRED') then raise; end if;
+        rejected := true;
+      end;
+      reset role;
+      assert rejected, 'Live token scenario must be rejected: ' || test_case;
+      raise exception 'restore_case' using errcode = 'ZX001';
+    exception when sqlstate 'ZX001' then null;
+    end;
+  end loop;
+  assert (select count(*) from app.live_token_usage) = 0, 'Denied requests must not consume quota';
+
+  -- Exercise every cap independently; a later cap rejection must roll back earlier counters.
+  foreach test_case in array array['user_minute','user_day','org_day','project_day'] loop
+    delete from app.live_token_usage;
+    update app.live_token_limits set user_minute=100, user_day=100, org_day=100, project_day=100;
+    execute format('update app.live_token_limits set %I = 2', test_case);
+    set local role authenticated;
+    assert public.reserve_live_token(sid);
+    assert public.reserve_live_token(sid);
+    rejected := false;
+    begin
+      perform public.reserve_live_token(sid);
+    exception when sqlstate 'P0001' then
+      if sqlerrm <> 'LIVE_TOKEN_LIMIT' then raise; end if;
+      rejected := true;
+    end;
+    reset role;
+    assert rejected, 'Cap must reject third call: ' || test_case;
+    assert (select count(*) = 4 and bool_and(issued = 2) from app.live_token_usage),
+      'Failed reservation must roll back every bucket';
+  end loop;
+end $$;
+rollback;
+
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;

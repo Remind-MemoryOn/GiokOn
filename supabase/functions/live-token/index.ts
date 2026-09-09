@@ -66,6 +66,47 @@ serve(async (req: Request) => {
     return json({ error: '유효하지 않은 세션입니다.' }, 401)
   }
 
+  // 세션 ID만 받는다. 역할·기관·배정·동의·상태 및 원자적 한도는 DB가 검사한다.
+  // body 크기는 실제 스트림에서도 제한한다(Content-Length만 믿지 않는다).
+  const reader = req.body?.getReader()
+  let body = ''
+  if (reader) {
+    const decoder = new TextDecoder()
+    let bytes = 0
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      bytes += value.byteLength
+      if (bytes > 1024) {
+        await reader.cancel()
+        return json({ error: '요청이 너무 큽니다.' }, 413)
+      }
+      body += decoder.decode(value, { stream: true })
+    }
+    body += decoder.decode()
+  }
+  let sessionId: unknown
+  try {
+    const input = JSON.parse(body)
+    if (!input || typeof input !== 'object' || Array.isArray(input) ||
+        Object.keys(input).some((key) => key !== 'session_id')) throw new Error('invalid input')
+    sessionId = input.session_id
+  } catch {
+    return json({ error: 'session_id가 필요합니다.' }, 400)
+  }
+  if (typeof sessionId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+    return json({ error: '유효한 session_id가 필요합니다.' }, 400)
+  }
+  const { data: allowed, error: gateError } = await supabase.rpc('reserve_live_token', { p_session_id: sessionId })
+  if (gateError) {
+    if (gateError.code === '42501') return json({ error: '세션 사용 권한 또는 필수 동의를 확인해 주세요.' }, 403)
+    if (gateError.code === 'P0001' && gateError.message === 'LIVE_TOKEN_LIMIT') {
+      return json({ error: 'Live 사용 한도에 도달했습니다. 잠시 후 또는 다음 날 다시 시도해 주세요.' }, 429)
+    }
+    return json({ error: '세션 사용 자격을 확인할 수 없습니다.' }, 503)
+  }
+  if (allowed !== true) return json({ error: '세션 사용 자격을 확인할 수 없습니다.' }, 503)
+
   // ② ephemeral token 발급 — 설정 잠금(liveConnectConstraints)으로 이 토큰이
   //    다른 모델·모달리티에 못 쓰게 좁힌다.
   const model = Deno.env.get('GEMINI_LIVE_MODEL') || DEFAULT_MODEL

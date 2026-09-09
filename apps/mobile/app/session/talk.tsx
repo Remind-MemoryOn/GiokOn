@@ -94,7 +94,7 @@ export default function Talk() {
   const timeoutNoticed = useRef(false);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active?.remoteId) return;
     const key = `${active.elder.id}:${active.startedAt}`;
     let cancelled = false;
     void (async () => {
@@ -104,7 +104,7 @@ export default function Talk() {
           useApp.getState().setPendingStt(t);
         },
         onError: () => {},
-      });
+      }, active.remoteId);
       if (!engine || cancelled) return;
       // 오프너 교체 — 로컬 규칙 질문을 Live 모델의 인사로 바꾼다(세션당 1회).
       if (active.turns.length === 1 && useApp.getState().active?.phase === 'ai_speaking') {
@@ -129,8 +129,8 @@ export default function Talk() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 세션 시작 시점 1회 초기화
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 서버 세션 생성 완료 시 연결
+  }, [active?.remoteId]);
 
   // 세션이 끝나 화면을 떠날 때 연결·오디오 캐시 정리(종료 경로는 endAndSave 에서 먼저 닫는다).
   useEffect(() => {

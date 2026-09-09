@@ -828,6 +828,11 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      /** Live 토큰 발급 자격 검증 및 사용자·기관·프로젝트 발급 한도 예약. */
+      reserve_live_token: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       /** 보호자가 공개 항목을 열어 봤음을 기록한다(확인 시각·횟수·확인자). */
       mark_share_viewed: {
         Args: { p_share_id: string }

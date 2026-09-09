@@ -26,7 +26,7 @@ export interface LiveEngineCallbacks {
 }
 
 /** ephemeral token 을 Edge Function(live-token)에서 받는다. */
-async function fetchLiveToken(): Promise<{ token: string; model: string }> {
+async function fetchLiveToken(sessionId: string): Promise<{ token: string; model: string }> {
   const url = process.env.EXPO_PUBLIC_LIVE_TOKEN_URL?.trim() ||
     `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/live-token`;
   const session = await getSession();
@@ -38,7 +38,7 @@ async function fetchLiveToken(): Promise<{ token: string; model: string }> {
       apikey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
       'Content-Type': 'application/json',
     },
-    body: '{}',
+    body: JSON.stringify({ session_id: sessionId }),
   });
   if (!res.ok) throw new Error(`live-token ${res.status}`);
   const json = (await res.json()) as { token?: string; model?: string };
@@ -65,6 +65,7 @@ export class LiveConversationEngine {
     private readonly chronicles: ChronicleEntry[],
     private readonly design: SessionDesign | undefined,
     private callbacks: LiveEngineCallbacks,
+    private readonly sessionId: string,
   ) {}
 
   /** 화면 재마운트(로딩 인터스티셜 왕복)에 대비해 콜백을 갈아끼운다. */
@@ -79,7 +80,7 @@ export class LiveConversationEngine {
   async start(): Promise<boolean> {
     if (!micStreamingSupported()) return false;
     try {
-      const { token, model } = await fetchLiveToken();
+      const { token, model } = await fetchLiveToken(this.sessionId);
       if (this.closing) return false;
       this.lastToken = token;
       this.model = model;
@@ -253,7 +254,10 @@ export async function acquireLiveEngine(
   chronicles: ChronicleEntry[],
   design: SessionDesign | undefined,
   callbacks: LiveEngineCallbacks,
+  sessionId: string | null,
 ): Promise<LiveConversationEngine | null> {
+  // DB 저장에 실패한 로컬 세션에는 유료 AI 토큰을 발급하지 않는다.
+  if (!sessionId) return null;
   if (activeEngine && activeEngine.key !== key) {
     await closeLiveEngine();
   }
@@ -261,7 +265,7 @@ export async function acquireLiveEngine(
     activeEngine.engine.setCallbacks(callbacks);
     return activeEngine.engine.available ? activeEngine.engine : null;
   }
-  const engine = new LiveConversationEngine(elder, chronicles, design, callbacks);
+  const engine = new LiveConversationEngine(elder, chronicles, design, callbacks, sessionId);
   const ok = await engine.start();
   if (!ok) {
     // 폴백 모드에서도 다음 세션 때 다시 시도할 수 있게 흔적을 남기지 않는다.
