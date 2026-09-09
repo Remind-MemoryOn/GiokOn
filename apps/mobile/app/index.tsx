@@ -20,7 +20,7 @@ export default function Splash() {
   const { height } = useWindowDimensions();
   // 이미 로그인된(영속) 세션이면 자격을 판정해 메인으로, 아니면 로그인으로.
   // 보호자·미온보딩 계정은 여기서 사유를 안내하고 로그아웃한다(useEnforceAppAccess).
-  const { ready, target } = useEnforceAppAccess();
+  const { ready, target } = useEnforceAppAccess(false);
 
   useEffect(() => {
     if (!ready) return;

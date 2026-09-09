@@ -1567,4 +1567,13 @@ begin
 end $$;
 rollback;
 
+do $$ begin
+  assert exists (
+    select 1 from pg_publication_tables
+    where pubname='supabase_realtime' and schemaname='public' and tablename='users'
+  ), 'Role/organization changes must reach mobile access subscribers';
+  assert (select relrowsecurity from pg_class where oid='public.users'::regclass),
+    'Realtime publication must retain users RLS';
+end $$;
+
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;

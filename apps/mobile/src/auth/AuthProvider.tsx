@@ -15,8 +15,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import {
-  getCurrentUserRow,
+  getGiokonClient,
   getSession,
   onAuthStateChange,
   signInWithEmail,
@@ -25,8 +26,11 @@ import {
   type User,
   type UserRow,
 } from '@giokon/data';
+import { AccessMonitor } from './accessMonitor';
+import { loadAccessSnapshot, resetAccessResources } from './accessResources';
 
 interface MobileAuthState {
+  accessRevision: number;
   session: Session | null;
   user: User | null;
   /** public.users row — 역할·기관·이름(조회 전이면 null). */
@@ -46,6 +50,7 @@ interface MobileAuthState {
 }
 
 const AuthContext = createContext<MobileAuthState>({
+  accessRevision: 0,
   session: null,
   user: null,
   userRow: null,
@@ -62,12 +67,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionLoading, setSessionLoading] = useState(true);
   // users row는 uid별로 캐시·파생한다(로그아웃 시 null 파생 — effect 내 동기 setState 회피).
   const [fetched, setFetched] = useState<{ uid: string; row: UserRow | null } | null>(null);
+  const [accessRevision, setAccessRevision] = useState(0);
+  const [monitor] = useState(() => new AccessMonitor({
+    load: loadAccessSnapshot,
+    publish: (uid, row) => setFetched({ uid, row }),
+    reset: () => {
+      resetAccessResources();
+      setAccessRevision(value => value + 1);
+    },
+  }));
+  const refreshUserRow = useCallback(() => monitor.refresh(), [monitor]);
 
   useEffect(() => {
     let active = true;
+    let authEventReceived = false;
+    const accept = (s: Session | null) => {
+      monitor.identify(s?.user.id ?? null);
+      setSession(s);
+      setSessionLoading(false);
+    };
     getSession()
       .then((s) => {
-        if (active) setSession(s);
+        if (active && !authEventReceived) accept(s);
       })
       .catch(() => {
         /* 세션 조회 실패 → 미인증으로 처리 */
@@ -75,40 +96,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         if (active) setSessionLoading(false);
       });
-    const subscription = onAuthStateChange((_event, s) => setSession(s));
+    const subscription = onAuthStateChange((_event, s) => {
+      if (!active) return;
+      authEventReceived = true;
+      accept(s);
+      // Never await Supabase operations inside its auth-state callback.
+      setTimeout(() => { if (active) void refreshUserRow(); }, 0);
+    });
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [monitor, refreshUserRow]);
 
   const uid = session?.user?.id ?? null;
 
   useEffect(() => {
     if (!uid) return;
-    if (fetched?.uid === uid) return; // 이미 이 사용자로 조회 완료
-    let active = true;
-    getCurrentUserRow()
-      .then((row) => {
-        if (active) setFetched({ uid, row });
-      })
-      .catch(() => {
-        if (active) setFetched({ uid, row: null });
-      });
+    void refreshUserRow();
+    const client = getGiokonClient();
+    const channel = client.channel(`mobile-access:${uid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `id=eq.${uid}` },
+        () => { void refreshUserRow(); })
+      .subscribe();
+    const foreground = AppState.addEventListener('change', state => {
+      if (state === 'active') void refreshUserRow();
+    });
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') void refreshUserRow();
+    }, 30_000);
     return () => {
-      active = false;
+      clearInterval(timer);
+      foreground.remove();
+      void client.removeChannel(channel);
     };
-  }, [uid, fetched]);
-
-  const refreshUserRow = useCallback(async (): Promise<UserRow | null> => {
-    try {
-      const row = await getCurrentUserRow();
-      if (row) setFetched({ uid: row.id, row });
-      return row;
-    } catch {
-      return null;
-    }
-  }, []);
+  }, [uid, refreshUserRow]);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<UserRow | null> => {
@@ -119,9 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async (): Promise<void> => {
-    await authSignOut();
+    monitor.identify(null);
+    setSession(null);
     setFetched(null);
-  }, []);
+    await authSignOut();
+  }, [monitor]);
 
   const userRow = uid && fetched?.uid === uid ? fetched.row : null;
 
@@ -132,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
+        accessRevision,
         session,
         user: session?.user ?? null,
         userRow,

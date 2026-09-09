@@ -7,24 +7,53 @@ import { describe, expect, it, vi } from 'vitest'
 function engineApi() {
   const fetchMock = vi.fn(async () => Response.json({ token: 'synthetic-token', model: 'synthetic-model' }))
   const connect = vi.fn(async () => {})
+  const close = vi.fn()
+  const stopPlayback = vi.fn(async () => {})
   const exports: Record<string, (...args: unknown[]) => Promise<unknown>> = {}
   const source = readFileSync(new URL('./engine.ts', import.meta.url), 'utf8')
-  runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
+  runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
     exports, console: { info: vi.fn(), warn: vi.fn() }, fetch: fetchMock,
     process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://synthetic.invalid', EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'synthetic' } },
     require: (name: string) => {
       if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt' }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }) }
-      if (name === './client') return { GeminiLiveClient: class { isConnected = true; connect = connect; close() {} } }
+      if (name === './client') return { GeminiLiveClient: class { isConnected = true; connect = connect; close = close } }
       if (name === './mic') return { micStreamingSupported: () => true }
-      if (name === './player') return { stopPlayback: async () => {} }
+      if (name === './player') return { stopPlayback }
       throw new Error(name)
     },
   })
-  return { exports, fetchMock, connect }
+  return { exports, fetchMock, connect, close, stopPlayback }
 }
 
 describe('Live engine token session binding', () => {
+  it('revocation while a token is pending prevents a later connection', async () => {
+    const api = engineApi()
+    let resolve!: (response: Response) => void
+    api.fetchMock.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    const pending = api.exports.acquireLiveEngine('key', {}, [], undefined, {}, 'session')
+    await vi.waitFor(() => expect(api.fetchMock).toHaveBeenCalled())
+    await api.exports.closeLiveEngine()
+    resolve(Response.json({ token: 'synthetic' }))
+    expect(await pending).toBeNull()
+    expect(api.connect).not.toHaveBeenCalled()
+  })
+
+  it('revocation closes a connecting socket before audio cleanup completes', async () => {
+    const api = engineApi()
+    let connectDone!: () => void
+    api.connect.mockImplementationOnce(() => new Promise(done => { connectDone = done }))
+    const pending = api.exports.acquireLiveEngine('key', {}, [], undefined, {}, 'session')
+    await vi.waitFor(() => expect(api.connect).toHaveBeenCalled())
+    let playbackDone!: () => void
+    api.stopPlayback.mockImplementationOnce(() => new Promise(done => { playbackDone = done }))
+    const closing = api.exports.closeLiveEngine()
+    expect(api.close).toHaveBeenCalledOnce()
+    connectDone()
+    expect(await pending).toBeNull()
+    playbackDone()
+    await closing
+  })
   it('서버 세션이 없으면 토큰이나 WebSocket을 요청하지 않는다', async () => {
     const api = engineApi()
     expect(await api.exports.acquireLiveEngine('key', {}, [], undefined, {}, null)).toBeNull()

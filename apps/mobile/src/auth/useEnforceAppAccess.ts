@@ -8,19 +8,20 @@ import { Alert } from 'react-native';
 import { useAuth } from './AuthProvider';
 import { evaluateAppAccess } from './appAccess';
 
-export function useEnforceAppAccess(): { ready: boolean; target: '/main' | '/login' } {
+export function useEnforceAppAccess(enforce = true): { ready: boolean; target: '/main' | '/login' } {
   const { authed, loading, userRow, signOut } = useAuth();
   const access = evaluateAppAccess({ authed, loading, userRow });
   // 같은 사유로 알림이 반복되지 않게 한 번만 띄운다(스플래쉬↔로그인 왕복).
   const noticed = useRef<string | null>(null);
 
   useEffect(() => {
-    if (access.status !== 'blocked') return;
+    if (access.status !== 'blocked') noticed.current = null;
+    if (!enforce || access.status !== 'blocked') return;
     if (noticed.current === access.title) return;
     noticed.current = access.title;
     Alert.alert(access.title, access.message);
-    void signOut();
-  }, [access, signOut]);
+    void signOut().catch(() => {});
+  }, [access, signOut, enforce]);
 
   return {
     ready: access.status !== 'loading',

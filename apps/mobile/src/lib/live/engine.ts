@@ -87,7 +87,7 @@ export class LiveConversationEngine {
       this.systemInstruction = buildSystemPrompt(this.elder, this.chronicles, this.design, 'speech');
       this.client = this.makeClient();
       await this.client.connect(token, this.systemInstruction);
-      return true;
+      return !this.closing;
     } catch (e) {
       console.info('[giokon] live 미가용 — 기존 파이프라인으로 진행', e);
       this.client?.close();
@@ -218,9 +218,9 @@ export class LiveConversationEngine {
     this.clearSilenceTimer();
     this.micStop?.stop();
     this.micStop = null;
-    await stopPlayback();
     this.client?.close();
     this.client = null;
+    await stopPlayback();
   }
 
   /** 발화 끝 감지 — 전사가 잠깐 멈추면 청취를 자동으로 마친다(어르신 호흡 길이 배려). */
@@ -246,6 +246,8 @@ export class LiveConversationEngine {
 // 유지해야 한다. 세션 키(elderId+시작 시각)가 바뀌면 기존 연결을 닫고 새로 만든다.
 
 let activeEngine: { key: string; engine: LiveConversationEngine } | null = null;
+const connectingEngines = new Set<LiveConversationEngine>();
+let engineGeneration = 0;
 
 /** 라이브 엔진을 확보한다(재사용 or 신규 접속). 미가용이면 null — 폴백 경로로 간다. */
 export async function acquireLiveEngine(
@@ -259,15 +261,20 @@ export async function acquireLiveEngine(
   // DB 저장에 실패한 로컬 세션에는 유료 AI 토큰을 발급하지 않는다.
   if (!sessionId) return null;
   if (activeEngine && activeEngine.key !== key) {
+    const closingGeneration = engineGeneration + 1;
     await closeLiveEngine();
+    if (engineGeneration !== closingGeneration) return null;
   }
   if (activeEngine) {
     activeEngine.engine.setCallbacks(callbacks);
     return activeEngine.engine.available ? activeEngine.engine : null;
   }
   const engine = new LiveConversationEngine(elder, chronicles, design, callbacks, sessionId);
-  const ok = await engine.start();
-  if (!ok) {
+  const generation = engineGeneration;
+  connectingEngines.add(engine);
+  let ok: boolean;
+  try { ok = await engine.start(); } finally { connectingEngines.delete(engine); }
+  if (!ok || generation !== engineGeneration) {
     // 폴백 모드에서도 다음 세션 때 다시 시도할 수 있게 흔적을 남기지 않는다.
     await engine.close();
     return null;
@@ -278,9 +285,12 @@ export async function acquireLiveEngine(
 
 /** 대화 종료·이탈 시 연결을 닫는다(호출 안 해도 GC 전 close 콜백이 정리한다). */
 export async function closeLiveEngine(): Promise<void> {
+  engineGeneration++;
   const e = activeEngine?.engine;
   activeEngine = null;
-  await e?.close();
+  const pending = [...connectingEngines];
+  connectingEngines.clear();
+  await Promise.all([e?.close(), ...pending.map(engine => engine.close())]);
 }
 
 /** 현재 살아 있는 엔진(없으면 null). 화면 마운트 시 재부착 판단에 쓴다. */

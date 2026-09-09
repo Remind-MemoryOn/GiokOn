@@ -36,7 +36,7 @@ export default function Login() {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
-  const { signIn, signOut, refreshUserRow } = useAuth();
+  const { signIn, refreshUserRow } = useAuth();
   const { width, height } = useWindowDimensions();
 
   // 가로는 Figma 좌표를 화면 폭 비율로 환산(393 기준 디자인 → 좁은 기기에서도 비율 유지).
@@ -49,8 +49,7 @@ export default function Login() {
   const enterIfAllowed = async (row: Awaited<ReturnType<typeof refreshUserRow>>) => {
     const access = evaluateAppAccess({ authed: true, loading: false, userRow: row });
     if (access.status === 'blocked') {
-      Alert.alert(access.title, access.message);
-      await signOut();
+      // Root navigator owns the notice/sign-out, including deep-link entry.
       return;
     }
     router.replace('/main');

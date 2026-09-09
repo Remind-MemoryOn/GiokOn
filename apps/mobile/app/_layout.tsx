@@ -3,7 +3,6 @@ import { useCallback } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { View } from 'react-native';
@@ -12,6 +11,7 @@ import { initSupabase, isSupabaseConfigured, supabaseConfigProblem, queryClient 
 import { installFetchGuard } from '../src/lib/fetchGuard';
 import { useAppStateRefetch } from '../src/lib/queryFocus';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
+import { ProtectedNavigator } from '../src/auth/ProtectedNavigator';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { ConfigError } from '../src/components/ConfigError';
 import { FONT_MAP } from '../src/lib/fonts';
@@ -66,13 +66,7 @@ export default function RootLayout() {
             <RealtimeBridge />
             <StatusBar style="dark" />
             <ErrorBoundary>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: '#ffffff' },
-                  animation: 'fade',
-                }}
-              />
+              <ProtectedNavigator />
             </ErrorBoundary>
           </AuthProvider>
         </QueryClientProvider>
