@@ -13,7 +13,14 @@
       "ios": { "simulator": true }
     },
     "production": {
-      "autoIncrement": true
+      "distribution": "store",
+      "ios" : {
+        "autoIncrement": true
+      },
+      "android" : {
+        "autoIncrement": true,
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {

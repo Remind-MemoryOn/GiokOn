@@ -1,6 +1,6 @@
 {
   "name": "@giokon/mobile",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "main": "expo-router/entry",
   "description": "어르신 대화 Expo 앱 (요양보호사 세션 실행 도구)",
