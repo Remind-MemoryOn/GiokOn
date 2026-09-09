@@ -1153,6 +1153,174 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 5.14) 권한 상승 차단 — 본인 role 셀프 승격 불가 (2026-09-08 발견 취약점) ──
+--
+-- 그전에는 users_update_scope 의 WITH CHECK 가 role 을 전혀 제약하지 않아
+--   update public.users set role = 'org_admin' where id = auth.uid();
+-- 가 통과했다. 요양보호사·보호자 누구나 publishable 키만으로 기관 관리자가 되어
+-- 기관 전체 어르신 기록을 볼 수 있었다.
+--
+-- ⚠️ 이 테스트가 도는 시점에는 _grants.sql 이 테이블 단위 UPDATE 를 이미 다시
+--    부여한 상태다(러너가 마이그레이션 뒤에 실행). 즉 **1차 컬럼 권한이 없는 조건**
+--    에서 2차 트리거·3차 정책만으로 막히는지를 본다. 1차는 (g) 에서 따로 확인한다.
+
+-- (a) 요양보호사 C 의 셀프 승격 — 막혀야 한다.
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set role = 'org_admin' where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '요양보호사가 본인 역할을 org_admin 으로 올릴 수 있으면 안 됨';
+  assert (select role from public.users where id = '33333333-3333-3333-3333-333333333333')
+         = 'caregiver', '차단 후에도 역할이 caregiver 로 남아야 함';
+end $$;
+
+-- (b) 본인 소속 기관 변경 — 막혀야 한다(타 기관 데이터로 갈아타기 차단).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users
+      set org_id = (select org_id from public.users where id = '22222222-2222-2222-2222-222222222222')
+      where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '본인 소속 기관을 직접 바꿀 수 있으면 안 됨';
+end $$;
+
+-- (c) 사이트 운영자 플래그 셀프 부여 — 막혀야 한다(inquiries 트리거).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set is_site_admin = true where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '사이트 운영자 플래그를 스스로 켤 수 있으면 안 됨';
+end $$;
+
+-- (d) 과차단 아님 — 본인 표시 이름은 계속 바꿀 수 있어야 한다(useUpdateMyName).
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.users set name = '요양보호사C수정' where id = auth.uid();
+do $$ begin
+  assert (select name from public.users where id = auth.uid()) = '요양보호사C수정',
+    '본인 이름 수정은 계속 허용되어야 함';
+end $$;
+reset role;
+
+-- (e) 정상 기능 유지 — 기관 관리자는 **다른** 구성원의 역할을 바꿀 수 있다.
+set role authenticated;
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- org_admin A
+update public.users set role = 'org_admin'
+  where id = '33333333-3333-3333-3333-333333333333';
+do $$ begin
+  assert (select role from public.users where id = '33333333-3333-3333-3333-333333333333')
+         = 'org_admin', '기관 관리자는 소속 구성원 역할을 바꿀 수 있어야 함';
+end $$;
+reset role;
+-- 뒤 섹션(§6)이 C 를 비관리자로 전제하므로 되돌린다(superuser 문맥 = 트리거 우회).
+update public.users set role = 'caregiver'
+  where id = '33333333-3333-3333-3333-333333333333';
+
+-- (f) 관리자도 **본인** 역할은 직접 못 바꾼다(마지막 관리자 자멸·자기 승격 방지).
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', true);
+  begin
+    update public.users set role = 'caregiver' where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '기관 관리자도 본인 역할은 직접 바꿀 수 없어야 함';
+end $$;
+
+-- (g) 1차 방어(컬럼 권한) 단독 확인 — 마이그레이션이 준 권한 상태를 복원하고 검사.
+revoke update on public.users from authenticated;
+grant update (name) on public.users to authenticated;
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  begin
+    update public.users set role = 'org_admin' where id = auth.uid();
+  exception when insufficient_privilege then
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, '컬럼 권한만으로도 role 갱신이 막혀야 함(RLS·트리거 이전 단계)';
+end $$;
+-- 뒤 섹션을 위해 러너 기본 권한으로 되돌린다.
+grant update on public.users to authenticated;
+
+-- (h) 트리거 단독: RLS 없이도 정확히 해당 가드가 차단해야 한다.
+-- SECURITY DEFINER로 되돌리면 이 테스트는 실패한다. 변경은 항상 롤백한다.
+begin;
+alter table public.users disable row level security;
+do $$
+declare blocked boolean := false;
+begin
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  assert auth.uid() = '33333333-3333-3333-3333-333333333333'::uuid;
+  begin
+    update public.users set role = 'org_admin' where id = auth.uid();
+  exception when insufficient_privilege then
+    assert sqlerrm = '본인의 역할은 변경할 수 없습니다',
+      '다른 권한 오류를 트리거 성공으로 오인하면 안 됨';
+    blocked := true;
+  end;
+  reset role;
+  assert blocked, 'RLS 없이 트리거만으로 셀프 승격을 차단해야 함';
+end $$;
+rollback;
+
+-- (i) 정책 단독: 트리거 없이 일반 사용자/관리자 모두 자기 역할 변경 불가.
+begin;
+alter table public.users disable trigger users_protect_privileges;
+do $$
+declare actor uuid; blocked boolean;
+begin
+  foreach actor in array array[
+    '33333333-3333-3333-3333-333333333333'::uuid,
+    '11111111-1111-1111-1111-111111111111'::uuid
+  ] loop
+    blocked := false;
+    set role authenticated;
+    perform set_config('test.uid', actor::text, true);
+    begin
+      update public.users set role = case when role = 'org_admin'
+        then 'caregiver'::public.org_role else 'org_admin'::public.org_role end
+        where id = auth.uid();
+    exception when insufficient_privilege then
+      assert sqlerrm like '%row-level security%',
+        '정책 검증은 실제 RLS 오류여야 함';
+      blocked := true;
+    end;
+    reset role;
+    assert blocked, '트리거 없이 정책만으로 자기 역할 변경을 차단해야 함';
+  end loop;
+end $$;
+rollback;
+
 -- ── 6) 감사로그 적재(처리기록) + 기관관리자 열람 범위 ──────────────────────
 do $$ begin
   assert (select count(*) from public.audit_log where table_name = 'profiles' and action = 'insert') = 3,
@@ -1166,5 +1334,135 @@ do $$ begin
     '비관리자는 감사로그를 볼 수 없어야 함(기대 0)';
 end $$;
 reset role;
+
+-- ── 7) R002: 실제 부모 세션의 소속과 제출한 소속은 반드시 같아야 한다. ──
+-- 합성 자료만 쓰며 뒤의 정상 공유/분석 회귀와 격리한다.
+begin;
+do $$
+declare
+  own_profile uuid := (select id from public.profiles where name = 'C어르신');
+  other_profile uuid;
+  own_org uuid := (select org_id from public.profiles where id = own_profile);
+  other_org uuid;
+  own_session uuid;
+  other_session uuid;
+  target_table text;
+  violated text;
+  blocked boolean;
+begin
+  insert into public.sessions(user_id, profile_id, org_id, status, ended_at)
+    values ('33333333-3333-3333-3333-333333333333', own_profile, own_org, 'ended', now())
+    returning id into own_session;
+  -- 정상 로그/분석/안전 이벤트 저장은 계속 허용되어야 한다.
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+  insert into public.session_logs(user_id, profile_id, session_id, turn_index, role, content)
+    values (auth.uid(), own_profile, own_session, 1, 'user', '합성 검증 발화');
+  insert into public.session_analyses(user_id, profile_id, session_id, analysis, version)
+    values (auth.uid(), own_profile, own_session, '{"summary":"합성 검증"}', 'test');
+  insert into public.safety_events(user_id, profile_id, session_id, level, caregiver_alert)
+    values (auth.uid(), own_profile, own_session, 'watch', '합성 검증 알림');
+  reset role;
+
+  for other_profile, other_org in
+    select id, org_id from public.profiles where name in ('A어르신', 'B어르신')
+  loop
+    insert into public.sessions(profile_id, org_id, status, ended_at)
+      values (other_profile, other_org, 'ended', now()) returning id into other_session;
+    foreach target_table in array array['session_logs', 'session_analyses', 'safety_events'] loop
+      blocked := false;
+      set role authenticated;
+      perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+      begin
+        if target_table = 'session_logs' then
+          insert into public.session_logs(user_id, profile_id, session_id, turn_index, role, content)
+            values (auth.uid(), own_profile, other_session, 1, 'user', '잘못된 연결');
+        elsif target_table = 'session_analyses' then
+          insert into public.session_analyses(user_id, profile_id, session_id, analysis, version)
+            values (auth.uid(), own_profile, other_session, '{"summary":"잘못된 연결"}', 'test');
+        else
+          insert into public.safety_events(user_id, profile_id, session_id, level, caregiver_alert)
+            values (auth.uid(), own_profile, other_session, 'watch', '잘못된 연결');
+        end if;
+      exception when foreign_key_violation then
+        get stacked diagnostics violated = constraint_name;
+        assert violated = target_table || '_session_profile_org_fk', '예상한 소속 FK로 차단해야 함';
+        blocked := true;
+      end;
+      reset role;
+      assert blocked, '동일/다른 기관 세션을 자기 어르신 기록에 연결할 수 없어야 함';
+      blocked := false;
+      set role authenticated;
+      perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
+      begin
+        execute format('update public.%I set session_id = $1 where session_id = $2', target_table)
+          using other_session, own_session;
+      exception when foreign_key_violation then
+        get stacked diagnostics violated = constraint_name;
+        assert violated = target_table || '_session_profile_org_fk';
+        blocked := true;
+      end;
+      reset role;
+      assert blocked, '기존 하위 행의 session_id를 타 세션으로 바꿀 수 없어야 함';
+    end loop;
+
+    -- org_id만 다른 세션도 FK가 차단해야 한다(RLS를 우회하는 서버 쓰기 포함).
+    if other_org <> own_org then
+      blocked := false;
+      begin
+        insert into public.sessions(profile_id, org_id) values (other_profile, own_org);
+      exception when foreign_key_violation then blocked := true;
+      end;
+      assert blocked, '세션과 어르신의 기관이 달라서는 안 됨';
+    end if;
+  end loop;
+
+  -- 세션 삭제 시 안전 이벤트의 대상은 유지하고 세션 연결만 비운다.
+  delete from public.sessions where id = own_session;
+  assert exists (select 1 from public.safety_events
+    where profile_id = own_profile and session_id is null and caregiver_alert = '합성 검증 알림'),
+    '세션 삭제가 안전 이벤트 대상/기관까지 지워서는 안 됨';
+end $$;
+rollback;
+
+-- 8) FK가 없던 시절의 불일치 분석이 있어도 공유 헬퍼 자체가 부모 소속을 확인한다.
+begin;
+alter table public.session_analyses drop constraint session_analyses_session_profile_org_fk;
+do $$
+declare
+  own_profile uuid := (select id from public.profiles where name = 'C어르신');
+  own_org uuid := (select org_id from public.profiles where id = own_profile);
+  target record;
+  sid uuid;
+  aid uuid;
+begin
+  update public.profile_guardians set status = 'approved', revoked_at = null
+    where profile_id = own_profile and guardian_user_id = '55555555-5555-5555-5555-555555555555';
+  assert found, '정상 공유 대조군의 보호자 연결이 있어야 함';
+  for target in select id, org_id from public.profiles where name in ('C어르신', 'A어르신', 'B어르신') loop
+    insert into public.sessions(profile_id, org_id, status, ended_at)
+      values (target.id, target.org_id, 'ended', now()) returning id into sid;
+    insert into public.session_analyses(profile_id, org_id, session_id, analysis, version)
+      values (own_profile, own_org, sid, '{"summary":"합성 검증"}', 'test') returning id into aid;
+    insert into public.guardian_shares(profile_id, org_id, item_type, item_id)
+      values (own_profile, own_org, 'analysis', aid);
+    set role authenticated;
+    perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
+    assert app.is_session_shared_to_me(sid) = (target.id = own_profile),
+      '실제 부모 세션이 공유 대상과 다르면 읽기 권한이 열려서는 안 됨';
+    assert (select count(*) from public.sessions where id = sid) =
+      case when target.id = own_profile then 1 else 0 end,
+      '실제 SELECT 정책도 타 세션을 숨겨야 함';
+    reset role;
+    if target.id = own_profile then
+      update public.sessions set status = 'active', ended_at = null where id = sid;
+      set role authenticated;
+      perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
+      assert not app.is_session_shared_to_me(sid), '진행 중 세션은 분석이 있어도 공개하지 않음';
+      reset role;
+    end if;
+  end loop;
+end $$;
+rollback;
 
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;

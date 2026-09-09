@@ -26,6 +26,12 @@ export type RealtimeTable =
   | 'notifications'
   | 'messages'
   | 'journal_photos'
+  | 'care_journals'
+  | 'consents'
+  | 'elder_codes'
+  | 'inquiries'
+  | 'profile_caregivers'
+  | 'profile_guardians'
 
 export interface RealtimeEvent {
   table: RealtimeTable
@@ -36,6 +42,8 @@ export interface RealtimeEvent {
 
 export interface UseGiokonRealtimeOptions {
   enabled?: boolean
+  /** 인증 주체 변경 시 채널을 다시 연결한다. */
+  scopeKey?: string
   tables?: RealtimeTable[]
   /** 배지·토스트 등 화면 반응용 콜백(캐시 무효화는 훅이 자동 수행). */
   onEvent?: (event: RealtimeEvent) => void
@@ -53,7 +61,7 @@ export interface UseGiokonRealtimeOptions {
  * ⚠️ journal_photos 는 **DB publication 에는 2026-08-28부터 있었지만 여기에 없어서
  * 아무도 구독하지 않았다**(2026-09-04 발견). DB 가 변경을 방송해도 받는 쪽이 없어
  * 요양일지 사진은 실시간 갱신되지 않았다 — "publication 에 있다"와 "연결돼 있다"는
- * 다른 이야기다. care_journals 는 아직 publication 자체에 없다(마이그레이션 필요).
+ * 다른 이야기다. 20260906050000에서 추가한 6개 테이블도 아래 목록에 함께 등록한다.
  */
 const DEFAULT_TABLES: RealtimeTable[] = [
   'profiles',
@@ -66,6 +74,12 @@ const DEFAULT_TABLES: RealtimeTable[] = [
   'notifications',
   'messages',
   'journal_photos',
+  'care_journals',
+  'consents',
+  'elder_codes',
+  'inquiries',
+  'profile_caregivers',
+  'profile_guardians',
 ]
 
 function invalidateFor(
@@ -75,6 +89,25 @@ function invalidateFor(
   const profileId =
     typeof event.row?.profile_id === 'string' ? (event.row.profile_id as string) : undefined
   switch (event.table) {
+    case 'care_journals':
+      void qc.invalidateQueries({ queryKey: ['care_journals'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.myShares })
+      break
+    case 'consents':
+      // DELETE는 PK만 올 수 있어 대상별 키와 계정 동의를 모두 재검증한다.
+      void qc.invalidateQueries({ queryKey: ['consents'] })
+      break
+    case 'elder_codes':
+      void qc.invalidateQueries({ queryKey: ['elder_codes'] })
+      break
+    case 'inquiries':
+      void qc.invalidateQueries({ queryKey: ['inquiries'] })
+      break
+    case 'profile_caregivers':
+    case 'profile_guardians':
+      // 배정/연결 변경은 자료를 볼 수 있는 범위 자체를 바꾼다.
+      void qc.invalidateQueries()
+      break
     case 'profiles': {
       // profiles 는 자기 자신이 id — profile_id 컬럼이 없다.
       const id = typeof event.row?.id === 'string' ? (event.row.id as string) : undefined
@@ -144,6 +177,7 @@ export function useGiokonRealtime(options?: UseGiokonRealtimeOptions): { connect
   const [connected, setConnected] = useState(false)
   const tablesKey = (options?.tables ?? DEFAULT_TABLES).join(',')
   const onEvent = options?.onEvent
+  const scopeKey = options?.scopeKey
 
   useEffect(() => {
     if (!enabled) return
@@ -159,7 +193,7 @@ export function useGiokonRealtime(options?: UseGiokonRealtimeOptions): { connect
           const event: RealtimeEvent = {
             table,
             eventType: payload.eventType as RealtimeEvent['eventType'],
-            row: (payload.new ?? payload.old ?? null) as Record<string, unknown> | null,
+            row: (payload.eventType === 'DELETE' ? payload.old : payload.new) as Record<string, unknown> | null,
           }
           invalidateFor(qc, event)
           onEvent?.(event)
@@ -168,12 +202,14 @@ export function useGiokonRealtime(options?: UseGiokonRealtimeOptions): { connect
     }
     channel.subscribe((status) => {
       setConnected(status === 'SUBSCRIBED')
+      // 최초 연결/재연결 전 놓친 이벤트도 따라잡는다.
+      if (status === 'SUBSCRIBED') void qc.invalidateQueries()
     })
 
     return () => {
       void client.removeChannel(channel)
     }
-  }, [enabled, tablesKey, qc, onEvent])
+  }, [enabled, tablesKey, qc, onEvent, scopeKey])
 
   return { connected }
 }

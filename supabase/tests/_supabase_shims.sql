@@ -18,6 +18,22 @@ create or replace function auth.uid() returns uuid
   select nullif(current_setting('test.uid', true), '')::uuid;
 $$;
 
+-- 실 Supabase 의 auth.role() = JWT 의 role 클레임('authenticated'·'anon'·'service_role').
+-- ⚠️ 없으면 이걸 쓰는 트리거(app.protect_site_admin_flag)가 undefined_function 으로
+-- 죽는데, 그 예외를 잡는 테스트가 '차단됨'으로 오인해 통과한다(2026-09-08 발견).
+-- ⚠️ auth.role() 은 **JWT 클레임**이라 current_user 와 무관하다 —
+-- SECURITY DEFINER 함수 안에서도 'authenticated' 그대로다. 이걸 current_user 에
+-- 연결하면 definer 트리거 안에서 'service_role' 로 보여 보호가 통째로 뚫린다.
+-- 그래서 주입된 test.uid(= 로그인 요청) 유무로만 판별한다.
+create or replace function auth.role() returns text
+  language sql stable as $$
+  select coalesce(
+    nullif(current_setting('test.role', true), ''),
+    case when nullif(current_setting('test.uid', true), '') is not null
+         then 'authenticated' else 'service_role' end
+  );
+$$;
+
 do $$
 begin
   create role authenticated nologin;
@@ -31,3 +47,12 @@ begin
   create role anon nologin;
 exception when duplicate_object then null;
 end $$;
+
+-- 실 Supabase 는 프로젝트 생성 시 public 스키마 테이블 권한을 authenticated 에 준다
+-- (RLS 가 실제 게이트이고, 권한은 열려 있는 전제). 하네스가 이를 흉내내지 않으면
+-- **"권한을 회수했다" 와 "애초에 없었다" 를 구분할 수 없다** — 그러면 마이그레이션의
+-- 컬럼 권한 회수(users 1차 방어)가 통째로 사라져도 테스트가 그대로 통과한다
+-- (2026-09-09 변이 테스트로 발견). 이후 마이그레이션이 만드는 테이블에 자동 부여되도록
+-- 기본 권한을 걸어 둔다.
+alter default privileges in schema public grant all on tables to authenticated;
+alter default privileges in schema public grant all on sequences to authenticated;

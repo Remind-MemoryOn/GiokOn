@@ -31,7 +31,7 @@ const CORS = {
 function json(obj: unknown, status = 200): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   })
 }
 
@@ -85,8 +85,8 @@ serve(async (req: Request) => {
         liveConnectConstraints: {
           model: `models/${model}`,
           config: {
-            session_resumption: {},
-            response_modalities: ['AUDIO'],
+            sessionResumption: {},
+            responseModalities: ['AUDIO'],
           },
         },
       }),
