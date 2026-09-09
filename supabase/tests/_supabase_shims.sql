@@ -47,3 +47,12 @@ begin
   create role anon nologin;
 exception when duplicate_object then null;
 end $$;
+
+-- 실 Supabase 는 프로젝트 생성 시 public 스키마 테이블 권한을 authenticated 에 준다
+-- (RLS 가 실제 게이트이고, 권한은 열려 있는 전제). 하네스가 이를 흉내내지 않으면
+-- **"권한을 회수했다" 와 "애초에 없었다" 를 구분할 수 없다** — 그러면 마이그레이션의
+-- 컬럼 권한 회수(users 1차 방어)가 통째로 사라져도 테스트가 그대로 통과한다
+-- (2026-09-09 변이 테스트로 발견). 이후 마이그레이션이 만드는 테이블에 자동 부여되도록
+-- 기본 권한을 걸어 둔다.
+alter default privileges in schema public grant all on tables to authenticated;
+alter default privileges in schema public grant all on sequences to authenticated;
