@@ -320,7 +320,7 @@ export type Database = {
       consents: {
         Row: {
           id: string
-          org_id: string
+          org_id: string | null
           user_id: string | null
           profile_id: string | null
           consent_type: Database['public']['Enums']['consent_type']
@@ -339,7 +339,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          org_id?: string
+          org_id?: string | null
           user_id: string
           profile_id?: string | null
           consent_type: Database['public']['Enums']['consent_type']
@@ -358,7 +358,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          org_id?: string
+          org_id?: string | null
           user_id?: string | null
           profile_id?: string | null
           consent_type?: Database['public']['Enums']['consent_type']
@@ -865,6 +865,8 @@ export type Database = {
           p_elder_code?: string | null
           /** 온보딩 화면의 계정 필수 동의(consent_type 목록) — consents 적재(C2). */
           p_consents?: string[] | null
+          p_consent_version?: string | null
+          p_social_acknowledged?: boolean | null
         }
         Returns: Database['public']['Tables']['users']['Row']
       }

@@ -61,11 +61,11 @@ end $$;
 -- 온보딩(요양보호사) — 기관 생성 + org_admin.
 set role authenticated;
 set test.uid = '11111111-1111-1111-1111-111111111111';
-select public.complete_onboarding('기관A관리자', '010-1111-2222', 'caregiver', 'A요양원');
+select public.complete_onboarding('기관A관리자', '010-1111-2222', 'caregiver', 'A요양원', null, array['privacy_required'], 'v1.0', true);
 set test.uid = '22222222-2222-2222-2222-222222222222';
-select public.complete_onboarding('기관B관리자', '010-2222-3333', 'caregiver', 'B요양원');
+select public.complete_onboarding('기관B관리자', '010-2222-3333', 'caregiver', 'B요양원', null, array['privacy_required'], 'v1.0', true);
 set test.uid = '33333333-3333-3333-3333-333333333333';
-select public.complete_onboarding('기관A요양보호사', '010-3333-4444', 'caregiver', '임시기관C');
+select public.complete_onboarding('기관A요양보호사', '010-3333-4444', 'caregiver', '임시기관C', null, array['privacy_required'], 'v1.0', true);
 reset role;
 
 -- 요양보호사 C 를 기관 A 소속(role=caregiver)으로 이동(기관 합류 초대는 후속 — 모사).
@@ -287,7 +287,7 @@ select set_config('test.elder_code',
 set role authenticated;
 set test.uid = '55555555-5555-5555-5555-555555555555';
 select public.complete_onboarding(
-  '보호자H', '010-5555-6666', 'guardian', null, current_setting('test.elder_code'));
+  '보호자H', '010-5555-6666', 'guardian', null, current_setting('test.elder_code'), array['privacy_required'], 'v1.0', true);
 reset role;
 
 do $$
@@ -380,7 +380,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('66666666-6666-6666-6666-666666666666', 'd@x.kr', '{"name":"요양보호사D"}');
 set role authenticated;
 set test.uid = '66666666-6666-6666-6666-666666666666';
-select public.complete_onboarding('요양보호사D', '010-6666-7777', 'caregiver', 'D요양원');
+select public.complete_onboarding('요양보호사D', '010-6666-7777', 'caregiver', 'D요양원', null, array['privacy_required'], 'v1.0', true);
 do $$ begin
   assert (select role from public.users where id = '66666666-6666-6666-6666-666666666666') = 'org_admin',
     '기관명으로 온보딩한 요양보호사는 org_admin 이어야 함';
@@ -1646,3 +1646,82 @@ end $$;
 rollback;
 
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;
+
+-- R011: evidence edits are denied even if a deployment accidentally grants table UPDATE.
+begin;
+do $$
+declare cid uuid; changed record; rejected boolean;
+begin
+  set role authenticated;
+  perform set_config('test.uid','11111111-1111-1111-1111-111111111111',true);
+  insert into public.consents(user_id,profile_id,consent_type,granted,version,capacity,granted_at,created_at)
+    values(auth.uid(),(select id from public.profiles where name='A어르신'),'ai_processing',true,'v1.0','capable','2000-01-01','2000-01-01') returning id into cid;
+  assert (select granted_at=statement_timestamp() and created_at=statement_timestamp() from public.consents where id=cid),
+    'Consent collection timestamps must come from the server';
+  rejected:=false;
+  begin
+    insert into public.consents(user_id,profile_id,consent_type,granted,version,capacity)
+      values(auth.uid(),(select id from public.profiles where name='A어르신'),'ai_processing',true,'v0.0','capable');
+  exception when data_exception then rejected:=sqlerrm='CURRENT_CONSENT_REQUIRED'; end;
+  assert rejected,'A client must not record obsolete consent as a new collection';
+  for changed in select * from (values
+    ('version','v0.0'),('basis','rewritten'),('guardian_name','rewritten'),('voice_record_url','rewritten'),
+    ('granted_at','2000-01-01'),('created_at','2000-01-01'),('capacity','unknown'),
+    ('user_id','33333333-3333-3333-3333-333333333333'),('profile_id','ffffffff-ffff-ffff-ffff-ffffffffffff')
+  ) p(field,value) loop
+    rejected:=false;
+    begin
+      execute format('update public.consents set %I=%L where id=%L',changed.field,changed.value,cid);
+    exception when insufficient_privilege then
+      rejected := sqlerrm = 'CONSENT_EVIDENCE_IMMUTABLE';
+    end;
+    assert rejected, 'Consent evidence edit must fail in the guard: '||changed.field;
+  end loop;
+  update public.consents set granted=false,revoked_at='2000-01-01' where id=cid;
+  assert (select not granted and revoked_at=statement_timestamp() from public.consents where id=cid), 'Withdrawal must use server time';
+  rejected:=false;
+  begin update public.consents set granted=true,revoked_at=null where id=cid;
+  exception when insufficient_privilege then rejected:=sqlerrm='CONSENT_WITHDRAWAL_IMMUTABLE'; end;
+  assert rejected,'Revoked evidence must not be resurrected';
+  rejected:=false;
+  begin update public.consents set revoked_at='2001-01-01' where id=cid;
+  exception when insufficient_privilege then rejected:=sqlerrm='CONSENT_WITHDRAWAL_IMMUTABLE'; end;
+  assert rejected,'Withdrawal time must not be rewritten';
+  reset role;
+end $$;
+rollback;
+
+-- Missing/old/incorrect account evidence must not create an organization or finish onboarding.
+begin;
+insert into auth.users(id,email,raw_user_meta_data) values('b0110011-1111-4111-8111-111111111111','r011@synthetic.invalid','{}');
+do $$
+declare candidate record; rejected boolean; before_orgs integer;
+begin
+  select count(*) into before_orgs from public.organizations;
+  set role authenticated;
+  perform set_config('test.uid','b0110011-1111-4111-8111-111111111111',true);
+  for candidate in select * from (values
+    (null::text[],'v1.0',true), (array[]::text[],'v1.0',true), (array['marketing_optional'],'v1.0',true),
+    (array['privacy_required'],'v0.0',true), (array['privacy_required'],null,true),
+    (array['privacy_required'],'v1.0',false), (array['privacy_required'],'v1.0',null),
+    (array['privacy_required','ai_processing'],'v1.0',true), (array['privacy_required',null],'v1.0',true)
+  ) p(consents,version,acknowledged) loop
+    rejected:=false;
+    begin
+      perform public.complete_onboarding('Synthetic','010-0000-0000','caregiver','Synthetic',null,
+        candidate.consents,candidate.version,candidate.acknowledged);
+    exception when data_exception then rejected:=true; end;
+    assert rejected,'Invalid onboarding evidence accepted';
+  end loop;
+  assert (select onboarded_at is null from public.users where id=auth.uid()), 'Rejected onboarding must be atomic';
+  perform public.complete_onboarding('Synthetic','010-0000-0000','guardian',null,null,
+    array['privacy_required','privacy_required'],'v1.0',true);
+  assert (select org_id is null and onboarded_at is not null from public.users where id=auth.uid()),'Unlinked guardian onboarding failed';
+  assert (select count(*)=1 from public.consents where user_id=auth.uid() and profile_id is null
+    and org_id is null and consent_type='privacy_required' and version='v1.0' and granted), 'Org-less guardian evidence missing or duplicated';
+  update public.consents set granted=false where user_id=auth.uid();
+  assert (select bool_and(not granted and revoked_at is not null) from public.consents where user_id=auth.uid()),'Org-less account withdrawal failed';
+  reset role;
+  assert (select count(*) from public.organizations)=before_orgs,'Rejected onboarding created organizations';
+end $$;
+rollback;

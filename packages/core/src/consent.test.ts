@@ -8,11 +8,35 @@ import {
   capacityForSubject,
   consentBasis,
   hasSensitiveConsent,
+  isCurrentConsent,
   missingRequiredConsents,
   requiredAccountConsents,
   requiredElderConsents,
   type ConsentType,
+  type ConsentEvidence,
 } from './consent'
+
+describe('현재 동의 증빙', () => {
+  const now = Date.parse('2026-09-10T00:00:00Z')
+  const valid: ConsentEvidence = { consent_type: 'ai_processing', granted: true, revoked_at: null,
+    version: CONSENT_VERSION, granted_at: '2026-09-09T00:00:00Z', subject_type: 'self', capacity: 'capable',
+    guardian_name: null, guardian_relation: null, basis: null }
+  it('현재 본인 동의는 인정한다', () => expect(isCurrentConsent(valid, now)).toBe(true))
+  it.each<Partial<ConsentEvidence>>([
+    { version: 'v0.0' }, { granted: false }, { revoked_at: '2026-09-09T01:00:00Z' },
+    { granted_at: '2026-09-11T00:00:00Z' }, { granted_at: 'invalid' }, { capacity: 'unknown' },
+    { subject_type: 'legal_representative', capacity: 'incapable', guardian_name: '합성 이름' },
+    { subject_type: 'guardian', capacity: 'unknown', guardian_name: '합성 이름', guardian_relation: '합성 관계', basis: ' ' },
+  ])('무효 증빙은 재동의 대상으로 남긴다: %s', patch => {
+    expect(isCurrentConsent({ ...valid, ...patch }, now)).toBe(false)
+  })
+  it('대리 주체별 증빙을 구분한다', () => {
+    const proxy = { ...valid, guardian_name: '합성 이름', guardian_relation: '합성 관계' }
+    expect(isCurrentConsent({ ...proxy, subject_type: 'legal_representative', capacity: 'incapable' }, now)).toBe(true)
+    expect(isCurrentConsent({ ...proxy, subject_type: 'guardian', capacity: 'unknown', basis: '위험 고지 확인' }, now)).toBe(true)
+    expect(isCurrentConsent({ ...proxy, subject_type: 'guardian', capacity: 'limited', basis: '위험 고지 확인' }, now)).toBe(false)
+  })
+})
 
 describe('동의 카탈로그', () => {
   it('민감정보(건강·음성)는 별도 동의·필수로 표시', () => {

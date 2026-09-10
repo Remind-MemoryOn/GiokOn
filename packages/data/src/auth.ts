@@ -193,9 +193,11 @@ export interface OnboardingParams {
   elderCode?: string
   /**
    * 온보딩 화면의 계정 필수 동의(consent_type 목록) — RPC 가 consents 에 적재한다(C2).
-   * 미전달 시 기록 없이 통과하던 이전 동작과 동일.
+   * 현재 개인정보 동의가 없으면 서버가 온보딩을 거절한다.
    */
-  consents?: ConsentType[]
+  consents: ConsentType[]
+  consentVersion: string
+  socialAcknowledged: boolean
 }
 
 /**
@@ -211,6 +213,8 @@ export async function completeOnboarding(params: OnboardingParams): Promise<User
     p_org_name: params.orgName ?? null,
     p_elder_code: params.elderCode ?? null,
     p_consents: params.consents?.length ? params.consents : null,
+    p_consent_version: params.consentVersion,
+    p_social_acknowledged: params.socialAcknowledged,
   })
   if (error) throw error
   return data as UserRow

@@ -13,6 +13,13 @@ begin
     'Internal consent predicate must remain private';
   assert not has_table_privilege('authenticated', 'public.users', 'UPDATE'),
     '마이그레이션은 users 테이블 UPDATE 권한을 회수해야 함';
+  assert not has_table_privilege('authenticated','public.consents','UPDATE'), 'Consent table UPDATE must be revoked';
+  assert has_column_privilege('authenticated','public.consents','revoked_at','UPDATE'), 'Withdrawal must remain possible';
+  assert not (select prosecdef from pg_proc where oid='app.guard_consent_evidence_update()'::regprocedure),
+    'Consent evidence guard must use SECURITY INVOKER';
+  assert not exists(select 1 from pg_attribute where attrelid='public.consents'::regclass
+    and attnum>0 and not attisdropped and attname not in ('granted','revoked_at')
+    and has_column_privilege('authenticated','public.consents',attname,'UPDATE')), 'Evidence columns must not be writable';
   assert has_column_privilege('authenticated', 'public.users', 'name', 'UPDATE'),
     '표시 이름 수정 권한은 유지되어야 함';
   assert not exists (

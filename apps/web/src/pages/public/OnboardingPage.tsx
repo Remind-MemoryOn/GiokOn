@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { completeOnboarding } from '@giokon/data';
+import { CONSENT_VERSION } from '@giokon/core';
 import { PublicHeader } from '../../components/shell/PublicHeader';
 import { useAuth } from '../../auth/AuthProvider';
 import { routeForUser } from '../../auth/routes';
@@ -141,9 +142,9 @@ export function OnboardingPage() {
         orgName: role === 'caregiver' ? orgName.trim() : undefined,
         elderCode: role === 'guardian' ? elderCode.trim() || undefined : undefined,
         // 계정 필수 동의를 consents 에 기록한다(C2 — 이전에는 UI 게이트만으로 미기록).
-        // 'privacy_required' = 개인정보 수집·이용. 소셜 제공 확인은 가입 시점 확인
-        // 성격이라 별도 enum 이 없어 privacy_required 와 함께 basis 에 근거가 남는다.
         consents: ['privacy_required'],
+        consentVersion: CONSENT_VERSION,
+        socialAcknowledged: socialAgreed,
       });
       const row = await refreshUserRow();
       toast('success', '가입이 완료되었습니다. 환영합니다!');

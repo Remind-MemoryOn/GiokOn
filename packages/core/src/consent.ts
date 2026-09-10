@@ -40,6 +40,30 @@ export interface ConsentDefinition {
 /** 현재 동의서 버전. 문구 변경 시 상향하고 재동의를 유도한다. */
 export const CONSENT_VERSION = 'v1.0'
 
+/** Evidence needed for UI validity. Server authorization remains authoritative. */
+export interface ConsentEvidence {
+  consent_type: ConsentType
+  granted: boolean
+  revoked_at: string | null
+  version: string
+  granted_at: string
+  subject_type: ConsentSubjectType
+  capacity: ConsentCapacity
+  guardian_name: string | null
+  guardian_relation: string | null
+  basis: string | null
+}
+
+export function isCurrentConsent(row: ConsentEvidence, now = Date.now()): boolean {
+  if (!row.granted || row.revoked_at !== null || row.version !== CONSENT_CATALOG[row.consent_type]?.version) return false
+  const grantedAt = Date.parse(row.granted_at)
+  if (!Number.isFinite(grantedAt) || grantedAt > now) return false
+  if (row.subject_type === 'self') return row.capacity === 'capable'
+  if (!row.guardian_name?.trim() || !row.guardian_relation?.trim()) return false
+  if (row.subject_type === 'legal_representative') return row.capacity === 'incapable' || row.capacity === 'limited'
+  return row.subject_type === 'guardian' && row.capacity === 'unknown' && Boolean(row.basis?.trim())
+}
+
 export const CONSENT_CATALOG: Record<ConsentType, ConsentDefinition> = {
   privacy_required: {
     type: 'privacy_required',

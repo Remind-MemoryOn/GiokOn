@@ -29,6 +29,7 @@ import {
 } from '@giokon/data';
 import {
   CONSENT_VERSION,
+  isCurrentConsent,
   type ChronicleEntry,
   type ChronicleSource,
   type ConsentCapacity,
@@ -173,12 +174,12 @@ export function useGrantConsents(): (
 
       const { data: existing, error } = await getGiokonClient()
         .from('consents')
-        .select('consent_type, granted, revoked_at, version')
+        .select('consent_type, granted, revoked_at, version, granted_at, subject_type, capacity, guardian_name, guardian_relation, basis')
         .eq('profile_id', elderId);
       if (error) throw new Error(error.message);
       const active = new Set(
         (existing ?? [])
-          .filter((c) => c.granted && !c.revoked_at && c.version === CONSENT_VERSION)
+          .filter((c) => isCurrentConsent(c))
           .map((c) => c.consent_type),
       );
 

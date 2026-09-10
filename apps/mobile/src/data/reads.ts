@@ -36,6 +36,7 @@ import type {
   SessionAnalysis,
 } from '@giokon/core';
 import { useMemo } from 'react';
+import { isCurrentConsent } from '@giokon/core';
 
 /** 분석 + 기록 시각 — core 의 기간 집계 함수가 요구하는 형태. */
 export type DatedAnalysis = SessionAnalysis & { at: string };
@@ -142,11 +143,11 @@ export function useAnalysis(logId: string | undefined): SessionAnalysis | undefi
   return useMemo(() => (row ? (parseSessionAnalysis(row) ?? undefined) : undefined), [row]);
 }
 
-/** 어르신 유효 동의 타입(세션 게이팅용) — granted && 미철회. */
+/** 현재 버전·주체 증빙이 유효한 동의 타입. 실제 시작 승인은 서버가 재검사한다. */
 export function useElderConsents(elderId: string | undefined): ConsentType[] {
   const rows = useConsentsData(elderId).data;
   return useMemo(() => {
-    const active = (rows ?? []).filter((c) => c.granted && !c.revoked_at);
+    const active = (rows ?? []).filter((c) => isCurrentConsent(c));
     return [...new Set(active.map((c) => c.consent_type as ConsentType))];
   }, [rows]);
 }
