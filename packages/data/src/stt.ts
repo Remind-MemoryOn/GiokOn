@@ -8,6 +8,8 @@
 import { getGiokonClient } from './client'
 
 export interface TranscribeOptions {
+  /** 대상 어르신. 서버에서 담당 권한과 현재 동의를 확인한다. */
+  profileId: string
   /** 인식 언어(기본 Kor). CLOVA CSR: Kor/Eng/Jpn/Chn 등. */
   lang?: string
 }
@@ -18,15 +20,16 @@ export interface TranscribeOptions {
  */
 export async function transcribeAudio(
   file: File | Blob,
-  opts?: TranscribeOptions,
+  opts: TranscribeOptions,
 ): Promise<string> {
   const form = new FormData()
   const name = file instanceof File ? file.name : 'audio'
   form.append('audio', file, name)
-  form.append('lang', opts?.lang ?? 'Kor')
+  form.append('lang', opts.lang ?? 'Kor')
 
   const { data, error } = await getGiokonClient().functions.invoke('stt-transcribe', {
     body: form,
+    headers: { 'x-profile-id': opts.profileId },
   })
   if (error) throw error
   const text = (data as { text?: string } | null)?.text

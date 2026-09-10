@@ -13,12 +13,13 @@
 
 // @ts-nocheck  (Deno 런타임 — 저장소 TS 빌드 대상 아님)
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const CSR_ENDPOINT = 'https://naveropenapi.apigw.ntruss.com/recog/v1/stt'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-profile-id',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
@@ -27,6 +28,30 @@ serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return json({ error: 'POST 만 허용됩니다.' }, 405)
   }
+
+  const authorization = req.headers.get('Authorization')
+  if (!authorization) return json({ error: '로그인이 필요합니다.' }, 401)
+  const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const { data: user, error: authError } = await supabase.auth.getUser()
+  if (authError || !user?.user) return json({ error: '유효하지 않은 세션입니다.' }, 401)
+  const profileId = req.headers.get('x-profile-id')
+  if (!profileId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) {
+    return json({ error: '대상 어르신 정보가 필요합니다.' }, 400)
+  }
+  const checkPermission = async (): Promise<Response | null> => {
+    try {
+      const { data, error } = await supabase.rpc('can_process_profile', { p_profile_id: profileId })
+        .abortSignal(AbortSignal.timeout(5000))
+      if (error) return json({ error: '동의와 이용 권한을 확인할 수 없습니다.' }, 503)
+      if (data !== true) return json({ error: '대상 어르신의 필수 동의와 담당 권한을 확인해 주세요.' }, 403)
+      return null
+    } catch { return json({ error: '동의와 이용 권한을 확인할 수 없습니다.' }, 503) }
+  }
+  const denied = await checkPermission()
+  if (denied) return denied
 
   const clientId = Deno.env.get('NCP_CLOVA_CLIENT_ID')
   const clientSecret = Deno.env.get('NCP_CLOVA_CLIENT_SECRET')
@@ -45,15 +70,18 @@ serve(async (req: Request) => {
       return json({ error: '오디오 파일(audio)이 필요합니다.' }, 400)
     }
     audio = await file.arrayBuffer()
-  } catch (_e) {
-    // multipart 가 아니면 raw 바디로 간주.
-    audio = await req.arrayBuffer()
-  }
+  } catch { return json({ error: '오디오 파일을 포함한 multipart 요청이 필요합니다.' }, 400) }
   if (!audio || audio.byteLength === 0) {
     return json({ error: '빈 오디오입니다.' }, 400)
   }
 
-  const res = await fetch(`${CSR_ENDPOINT}?lang=${encodeURIComponent(lang)}`, {
+  // Uploading can take time. Recheck immediately before external disclosure.
+  const withdrawn = await checkPermission()
+  if (withdrawn) return withdrawn
+  let res: Response
+  let body: string
+  try {
+    res = await fetch(`${CSR_ENDPOINT}?lang=${encodeURIComponent(lang)}`, {
     method: 'POST',
     headers: {
       'X-NCP-APIGW-API-KEY-ID': clientId,
@@ -61,25 +89,28 @@ serve(async (req: Request) => {
       'Content-Type': 'application/octet-stream',
     },
     body: audio,
+    signal: AbortSignal.timeout(20000),
   })
-
-  const body = await res.text()
+    body = await res.text()
+  } catch { return json({ error: '음성 인식 서버에 연결하지 못했습니다.' }, 502) }
+  // A revoked caller must not receive a late transcript.
+  const revoked = await checkPermission()
+  if (revoked) return revoked
   if (!res.ok) {
-    return json({ error: `CLOVA STT 오류(${res.status}): ${body}` }, 502)
+    return json({ error: '음성 인식에 실패했습니다.' }, 502)
   }
   // CSR 응답: { "text": "..." }
   let text = ''
   try {
     text = (JSON.parse(body) as { text?: string }).text ?? ''
-  } catch (_e) {
-    text = body
-  }
+  } catch { return json({ error: '음성 인식 결과가 올바르지 않습니다.' }, 502) }
+  if (typeof text !== 'string') return json({ error: '음성 인식 결과가 올바르지 않습니다.' }, 502)
   return json({ text })
 })
 
 function json(obj: unknown, status = 200): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   })
 }

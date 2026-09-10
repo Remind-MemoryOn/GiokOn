@@ -20,7 +20,7 @@ export class SttUnavailableError extends Error {
  * 오디오 파일을 전사한다. 성공하면 인식 텍스트, 실패하면 이유를 담아 throw.
  * 결과는 **원문 칸에 넣어 사람이 고친 뒤** 저장한다(자동 저장 금지).
  */
-export async function transcribeAudio(file: File, lang = 'Kor'): Promise<string> {
+export async function transcribeAudio(file: File, profileId: string, lang = 'Kor'): Promise<string> {
   const form = new FormData();
   form.append('audio', file);
   form.append('lang', lang);
@@ -28,7 +28,7 @@ export async function transcribeAudio(file: File, lang = 'Kor'): Promise<string>
   const { data, error } = await getGiokonClient().functions.invoke<{
     text?: string;
     error?: string;
-  }>('stt-transcribe', { body: form });
+  }>('stt-transcribe', { body: form, headers: { 'x-profile-id': profileId } });
 
   if (error) {
     // 배포 안 됨(404)·시크릿 없음(500)·권한(401) 을 구분해 무엇을 해야 하는지 말한다.
@@ -38,8 +38,11 @@ export async function transcribeAudio(file: File, lang = 'Kor'): Promise<string>
         '음성 인식 기능이 아직 서버에 배포되지 않았어요. 원문을 직접 적어 주세요.',
       );
     }
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       throw new SttUnavailableError('로그인이 만료됐어요. 다시 로그인한 뒤 시도해 주세요.');
+    }
+    if (status === 403) {
+      throw new SttUnavailableError('대상 어르신의 필수 동의와 담당 권한을 확인해 주세요.');
     }
     throw new SttUnavailableError(
       error.message || '음성 인식에 실패했어요. 원문을 직접 적어 주세요.',

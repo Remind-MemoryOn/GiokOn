@@ -131,10 +131,11 @@ export function JournalWritePage() {
 
   /** 음성 파일 → 텍스트. 실패는 이유를 그대로 보여 준다(조용한 실패 금지). */
   async function runTranscribe(file: File) {
+    if (!elderId) return;
     setVoiceFile(file);
     setTranscribing(true);
     try {
-      const text = await transcribeAudio(file);
+      const text = await transcribeAudio(file, elderId);
       // 이미 쓴 원문이 있으면 지우지 않고 이어 붙인다.
       setContent((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text).slice(0, 2000));
       toast('success', '음성을 텍스트로 옮겼어요. 저장 전 꼭 확인해 주세요.');
