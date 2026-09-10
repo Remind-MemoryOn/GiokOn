@@ -828,6 +828,14 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      can_process_profile: {
+        Args: { p_profile_id: string }
+        Returns: boolean
+      }
+      can_process_session: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       /** 서버 전용: 서명·브라우저 쿠키 검증을 마친 네이버 콜백 보관. */
       store_naver_mobile_handoff: {
         Args: { p_id: string; p_challenge: string; p_code: string; p_state: string; p_expires_at: string }

@@ -18,6 +18,7 @@ import { Alert, View, Text, Pressable, Image, TextInput, useWindowDimensions } f
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { assessUtterance } from '@giokon/core';
+import { canProcessSession } from '@giokon/data';
 import { MicButton, RobotInline, Waveform, type MicState } from '../../src/components/brand';
 import { AiDisclosureBanner, CrisisBanner } from '../../src/components/banners';
 import { ExpoSpeechProvider } from '../../src/lib/speech';
@@ -31,6 +32,7 @@ import { playableChunks } from '../../src/lib/live/playback';
 import { ensureMicPermission } from '../../src/lib/live/mic';
 import { useApp } from '../../src/store/appStore';
 import { queryScope } from '../../src/lib/supabase';
+import { resetAccessResources } from '../../src/auth/accessResources';
 import {
   useSessionPersistence,
   type SessionSaveResult,
@@ -47,6 +49,16 @@ export default function Talk() {
   const lease = queryScope.capture();
   const stillCurrent = () => lease.current() &&
     useApp.getState().active?.session.id === active?.session.id;
+  const ensureProcessing = async () => {
+    let allowed = false;
+    try { allowed = Boolean(active?.remoteId) && await canProcessSession(active!.remoteId!); } catch { /* fail closed */ }
+    if (!stillCurrent()) return false;
+    if (!allowed) {
+      resetAccessResources();
+      Alert.alert('대화를 중단했어요', '필수 동의와 이용 권한을 확인한 뒤 다시 시작해 주세요.');
+    }
+    return allowed;
+  };
   const capture = useApp((s) => s.captureUtterance);
   const confirm = useApp((s) => s.confirmUtterance);
   const discard = useApp((s) => s.discardUtterance);
@@ -109,6 +121,11 @@ export default function Talk() {
           useApp.getState().setPendingStt(t);
         },
         onError: () => {},
+        onProcessingDenied: () => {
+          if (!stillCurrent()) return;
+          resetAccessResources();
+          Alert.alert('대화를 중단했어요', '필수 동의와 이용 권한을 확인한 뒤 다시 시작해 주세요.');
+        },
       }, active.remoteId);
       if (!engine || cancelled || !stillCurrent()) return;
       // 오프너 교체 — 로컬 규칙 질문을 Live 모델의 인사로 바꾼다(세션당 1회).
@@ -227,7 +244,7 @@ export default function Talk() {
       }
       if (!peekLiveEngine()?.available) return; // 대기 중 세션이 끊긴 경우
       try {
-        engine.startListening();
+        await engine.startListening();
         setLiveListening(engine.isListening);
       } catch {
         setLiveListening(false);
@@ -236,6 +253,7 @@ export default function Talk() {
       return;
     }
     // 폴백 파이프라인(기존 동작)
+    if (!await ensureProcessing()) return;
     ExpoSpeechProvider.cancelSpeak();
     capture(); // 인식 시작 → pendingStt 채워지면 하단 인라인 패널 표시
   };
@@ -244,7 +262,7 @@ export default function Talk() {
    *  대기 화면(/session/loading)으로 **먼저** 넘어가 모델 응답 시간을 덮는다 —
    *  loading 이 질문 교체를 감지해 자동 복귀한다(§리포트 ② 개선). */
   async function handleConfirm() {
-    if (!stillCurrent()) return;
+    if (!stillCurrent() || !await ensureProcessing()) return;
     const finalText = (draft.trim() || (pending ?? '')).trim();
     // 빈 발화는 기록하지 않는다 — 폴백 입력은 이제 빈 칸으로 열리므로(모의 발화 제거),
     // 그대로 저장하면 어르신 턴이 빈 줄로 DB 에 남아 분석·감사 기록이 왜곡된다.

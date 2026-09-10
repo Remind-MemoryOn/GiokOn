@@ -465,6 +465,12 @@ do $$ begin
 end $$;
 
 -- ── 5.8) 세션 분석: 기관 공유·guardian 배제·타 기관 차단(T16.1) ────────────
+-- These normal processing fixtures have explicit current, self/capable consent.
+insert into public.consents(user_id, profile_id, org_id, consent_type, granted, version, capacity)
+  select p.user_id, p.id, p.org_id, t::public.consent_type, true, 'v1.0', 'capable'
+  from public.profiles p cross join
+    unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t
+  where p.name in ('A어르신','B어르신','C어르신');
 -- 요양보호사 C 가 세션 + 분석 기록 → 같은 기관 A 조회 가능 / 보호자 H 는
 -- 연결 승인된 어르신이라도 직접 조회 불가(공개 커밋 경유만) / 기관 B 0건.
 set role authenticated;
@@ -1480,14 +1486,14 @@ begin
   select id into pid from public.profiles where user_id = uid limit 1;
   perform set_config('test.uid', uid::text, true);
   delete from public.consents where profile_id = pid;
-  insert into public.sessions (profile_id, org_id, user_id, status)
-    values (pid, oid, uid, 'active') returning id into sid;
   insert into public.profile_caregivers (profile_id, org_id, caregiver_user_id, status)
     values (pid, oid, uid, 'active')
     on conflict (profile_id, caregiver_user_id) do update set status = 'active', removed_at = null;
-  insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version)
-    select pid, oid, uid, t::public.consent_type, true, 'v1.0'
+  insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+    select pid, oid, uid, t::public.consent_type, true, 'v1.0', 'capable'
     from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+  insert into public.sessions (profile_id, org_id, user_id, status)
+    values (pid, oid, uid, 'active') returning id into sid;
   assert not has_function_privilege('anon', 'public.reserve_live_token(uuid)', 'EXECUTE');
   assert not has_table_privilege('authenticated', 'app.live_token_usage', 'UPDATE');
   assert not has_table_privilege('authenticated', 'app.live_token_limits', 'UPDATE');
@@ -1575,5 +1581,68 @@ do $$ begin
   assert (select relrowsecurity from pg_class where oid='public.users'::regclass),
     'Realtime publication must retain users RLS';
 end $$;
+
+-- R010: a valid fixture succeeds; invalid consent cannot start or continue processing.
+begin;
+do $$
+declare
+  actor uuid := '33333333-3333-3333-3333-333333333333';
+  pid uuid := (select id from public.profiles where name='C어르신');
+  oid uuid := (select org_id from public.profiles where name='C어르신');
+  sid uuid; planned uuid; scenario text; operation text; blocked boolean;
+begin
+  assert not has_function_privilege('anon','public.can_process_profile(uuid)','EXECUTE');
+  assert not has_function_privilege('authenticated','app.has_processing_consent(uuid)','EXECUTE');
+  perform set_config('test.uid', actor::text, true);
+  foreach scenario in array array['none','partial','revoked','old_version','future','other_profile','other_org','unknown_self','incomplete_proxy'] loop
+    delete from public.consents where profile_id=pid;
+    insert into public.consents(user_id,profile_id,org_id,consent_type,granted,version,capacity)
+      select actor,pid,oid,t::public.consent_type,true,'v1.0','capable'
+      from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+    set role authenticated;
+    assert public.can_process_profile(pid), 'Valid current self consent must allow processing';
+    insert into public.sessions(profile_id,user_id,status) values(pid,actor,'active') returning id into sid;
+    assert public.can_process_session(sid);
+    insert into public.session_logs(profile_id,session_id,user_id,turn_index,role,content)
+      values(pid,sid,actor,1,'user','synthetic consent test');
+    reset role;
+    case scenario
+      when 'none' then delete from public.consents where profile_id=pid;
+      when 'partial' then delete from public.consents where profile_id=pid and consent_type='ai_processing';
+      when 'revoked' then update public.consents set granted=false,revoked_at=now() where profile_id=pid;
+      when 'old_version' then update public.consents set version='v0.0' where profile_id=pid;
+      when 'future' then update public.consents set granted_at=now()+interval '1 day' where profile_id=pid;
+      when 'other_profile' then update public.consents set profile_id=(select id from public.profiles where name='A어르신') where profile_id=pid;
+      when 'other_org' then update public.consents set org_id=(select org_id from public.profiles where name='B어르신') where profile_id=pid;
+      when 'unknown_self' then update public.consents set capacity='unknown' where profile_id=pid;
+      when 'incomplete_proxy' then update public.consents set subject_type='legal_representative',capacity='incapable',guardian_name='synthetic',guardian_relation=null where profile_id=pid;
+    end case;
+    assert (select status='ended' from public.sessions where id=sid), 'Invalidated consent must end active sessions';
+    set role authenticated;
+    assert not public.can_process_profile(pid), scenario;
+    assert not public.can_process_session(sid), scenario;
+    insert into public.sessions(profile_id,user_id,status) values(pid,actor,'planned') returning id into planned;
+    foreach operation in array array['active','ended','activate','log','edit_log','analysis','token'] loop
+      blocked := false;
+      begin
+        case operation
+          when 'active' then insert into public.sessions(profile_id,user_id,status) values(pid,actor,'active');
+          when 'ended' then insert into public.sessions(profile_id,user_id,status,ended_at) values(pid,actor,'ended',now());
+          when 'activate' then update public.sessions set status='active' where id=planned;
+          when 'log' then insert into public.session_logs(profile_id,session_id,user_id,turn_index,role,content) values(pid,sid,actor,2,'user','blocked');
+          when 'edit_log' then update public.session_logs set content='blocked' where session_id=sid;
+          when 'analysis' then insert into public.session_analyses(profile_id,session_id,user_id,analysis,version) values(pid,sid,actor,'{}','test');
+          when 'token' then perform public.reserve_live_token(sid);
+        end case;
+      exception when insufficient_privilege then blocked := true;
+      end;
+      assert blocked, scenario || '/' || operation || ' must be rejected';
+    end loop;
+    -- End bookkeeping is safe and must remain possible after withdrawal.
+    update public.sessions set ended_at=now() where id=sid;
+    reset role;
+  end loop;
+end $$;
+rollback;
 
 select '✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과' as result;

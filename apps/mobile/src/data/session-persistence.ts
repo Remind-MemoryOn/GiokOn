@@ -17,9 +17,8 @@
 // 견고성:
 //   - 턴 기록은 (session_id, turn_index) 유니크 위에서 upsert 라 재시도해도 멱등하다.
 //   - 진행 중 동기화가 실패해도 대화는 막지 않는다(다음 턴·종료 때 다시 시도한다).
-//   - 시작 시 세션 생성이 실패하면 remoteId 가 null 로 남고, 종료 시 예전처럼 일괄
-//     저장으로 폴백한다. 그 경로에서도 뒤 단계가 실패하면 만들어 둔 세션을 지워
-//     반쪽 저장을 남기지 않는다.
+//   - 시작 시 DB 승인이 실패하면 remoteId 가 null 로 남고 시작 화면에서 중단한다.
+//     과거 미저장 묶음의 일괄 저장 경로도 현재 DB 동의 검사를 통과해야 한다.
 
 import { useCallback } from 'react';
 import {
@@ -285,15 +284,15 @@ export function useSessionPersistence(): {
       useApp.getState().attachRemoteSession(row.id);
       invalidateFor(a.elder.id, lease);
     } catch (e) {
-      // 시작 시 저장에 실패해도 대화는 진행한다 — 종료 시 일괄 저장으로 폴백한다.
-      console.warn('[giokon] 진행 중 세션 생성 실패 — 종료 시 일괄 저장합니다.', e);
+      // 시작 화면은 remoteId가 없으면 음성/AI 처리에 진입하지 않는다.
+      console.warn('[giokon] 진행 중 세션 생성 실패 — 시작을 중단합니다.', e);
     }
   }, [user, lease]);
 
   /**
    * planned 세션 채택 — status 를 active 로 바꾸고 그 행 id 를 런타임에 붙인다.
-   * 이후 syncProgress/finalize 가 같은 행에 이어 쓴다. 전환 실패 시에도 attach 만은
-   * 시도한다: finalize 가 ended 로 마무리하므로 좀비는 남지 않는다(실패 로그만).
+   * 이후 syncProgress/finalize 가 같은 행에 이어 쓴다. 전환 승인이 없으면
+   * 런타임에 붙이지 않고 시작 화면에서 중단한다.
    */
   const adoptPlannedSession = useCallback(
     async (sessionId: string, startedAt: string): Promise<void> => {
@@ -302,15 +301,18 @@ export function useSessionPersistence(): {
       if (!original) return;
       try {
         await withRetry(lease, async () => {
-          const { error } = await getGiokonClient()
+          const { data, error } = await getGiokonClient()
             .from('sessions')
             .update({ status: 'active', started_at: startedAt })
             .eq('id', sessionId)
-            .eq('status', 'planned');
+            .eq('status', 'planned')
+            .select('id').maybeSingle();
           if (error) throw new Error(error.message);
+          if (!data) throw new Error('설계 세션의 시작 승인을 받지 못했어요.');
         });
       } catch (e) {
-        console.warn('[giokon] 설계 세션 active 전환 실패 — 종료 시 함께 정리됩니다.', e);
+        console.warn('[giokon] 설계 세션 active 전환 실패', e);
+        return;
       }
       if (!lease.current() || useApp.getState().active?.session.id !== original.session.id) return;
       useApp.getState().attachRemoteSession(sessionId);

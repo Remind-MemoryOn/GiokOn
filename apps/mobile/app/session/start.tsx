@@ -12,9 +12,10 @@ import { useRef, useState } from 'react';
 import { Alert, View, Text, Pressable, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { canStartElderSession, recommendNextTopics } from '@giokon/core';
-import type { ConsentType, SessionDesign } from '@giokon/core';
-import { useConsents } from '@giokon/data';
+import { recommendNextTopics } from '@giokon/core';
+import type { SessionDesign } from '@giokon/core';
+import { canProcessProfile } from '@giokon/data';
+import { queryScope } from '../../src/lib/supabase';
 import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
@@ -31,7 +32,7 @@ export default function SessionStart() {
   const begin = useApp((s) => s.beginSession);
   const { openRemoteSession, adoptPlannedSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
-  const consentQuery = useConsents(id);
+  const lease = queryScope.capture();
   const starting = useRef(false);
   const [checkingConsent, setCheckingConsent] = useState(false);
 
@@ -45,25 +46,22 @@ export default function SessionStart() {
     setCheckingConsent(true);
     try {
       // 시작 화면을 열어 둔 동안 철회되거나 Realtime을 놓친 경우도 재검증한다.
-      const result = await consentQuery.refetch();
-      if (result.isError || !result.data) {
-        Alert.alert('동의 확인 실패', '동의 상태를 확인하지 못했어요. 다시 시도해 주세요.');
-        return;
-      }
-      const granted = result.data.filter((c) => c.granted && !c.revoked_at)
-        .map((c) => c.consent_type as ConsentType);
-      if (!canStartElderSession(granted)) {
+      const allowed = await canProcessProfile(id);
+      if (!lease.current()) return;
+      if (!allowed) {
         router.replace(`/consent/${id}`);
         return;
       }
-      startSession();
+      await startSession();
+    } catch {
+      if (lease.current()) Alert.alert('동의 확인 실패', '동의와 이용 권한을 확인하지 못했어요. 다시 시도해 주세요.');
     } finally {
       starting.current = false;
       setCheckingConsent(false);
     }
   };
 
-  const startSession = () => {
+  const startSession = async () => {
     // 웹 설계(planned) 채택 — 설계 값(goal/content/avoid_topics/keywords)이 그대로
     // 이번 대화의 진행 입력이 된다(B1-a·B1-b). 근거가 없는 필드는 넣지 않는다.
     let design: SessionDesign | undefined;
@@ -82,13 +80,21 @@ export default function SessionStart() {
       title = `${topic} 이야기`;
     }
     begin(elder, chronicles, { title, therapyType: 'reminiscence' }, design);
+    const localSessionId = useApp.getState().active?.session.id;
     if (duePlanned) {
       // 같은 행을 active 로 전환해 이어 쓴다(B1-c — 새 행을 만들지 않아 좀비 없음).
-      void adoptPlannedSession(duePlanned.id, new Date().toISOString());
+      await adoptPlannedSession(duePlanned.id, new Date().toISOString());
     } else {
       // 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
-      // 웹에서 진행 상황을 볼 수 있다. 실패해도 대화는 시작하고 종료 시 일괄 저장한다.
-      void openRemoteSession();
+      // DB가 동의·권한을 승인해야 대화 화면과 음성을 시작한다.
+      await openRemoteSession();
+    }
+    if (!lease.current()) return;
+    if (useApp.getState().active?.session.id !== localSessionId) return;
+    if (!useApp.getState().active?.remoteId) {
+      useApp.getState().cancelSession();
+      Alert.alert('대화를 시작하지 못했어요', '동의·이용 권한 또는 서버 연결을 확인한 뒤 다시 시도해 주세요.');
+      return;
     }
     router.replace('/session/talk');
   };

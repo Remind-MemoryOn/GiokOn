@@ -7,6 +7,10 @@
 -- 테스트 안에서 REVOKE를 다시 실행한 뒤 확인하면 마이그레이션 누락도 통과한다.
 do $$
 begin
+  assert not has_function_privilege('anon','public.can_process_profile(uuid)','EXECUTE'),
+    'Anonymous callers must not inspect processing eligibility';
+  assert not has_function_privilege('authenticated','app.has_processing_consent(uuid)','EXECUTE'),
+    'Internal consent predicate must remain private';
   assert not has_table_privilege('authenticated', 'public.users', 'UPDATE'),
     '마이그레이션은 users 테이블 UPDATE 권한을 회수해야 함';
   assert has_column_privilege('authenticated', 'public.users', 'name', 'UPDATE'),
@@ -32,4 +36,3 @@ grant usage on schema auth to authenticated;
 grant execute on all functions in schema auth to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
-grant execute on all functions in schema app to authenticated;

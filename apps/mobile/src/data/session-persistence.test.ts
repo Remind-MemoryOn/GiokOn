@@ -15,12 +15,13 @@ function fixture() {
   const state = { active: active('a'), lastFinished: null, attachRemoteSession: attach,
     finishSession: finish, clearLastFinished: clear };
   const single = vi.fn(async () => ({ data: { id: 'remote' }, error: null }));
-  const builder = { insert: vi.fn(() => builder), select: () => builder, single };
+  const maybeSingle = vi.fn(async (): Promise<{ data: { id: string } | null; error: { message: string } | null }> => ({ data: { id: 'planned' }, error: null }));
+  const builder = { insert: vi.fn(() => builder), update: () => builder, eq: () => builder, select: () => builder, single, maybeSingle };
   const from = vi.fn(() => builder);
-  const exports: { useSessionPersistence?: () => { openRemoteSession: () => Promise<void>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
+  const exports: { useSessionPersistence?: () => { adoptPlannedSession: (id: string, at: string) => Promise<void>; openRemoteSession: () => Promise<void>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
   runInNewContext(ts.transpileModule(readFileSync(new URL('./session-persistence.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, console: { warn: vi.fn() }, setTimeout,
+  }).outputText, { exports, console: { warn: vi.fn() }, setTimeout: (fn: () => void) => setTimeout(fn, 0),
     require: (name: string) => {
       if (name === 'react') return { useCallback: (fn: unknown) => fn, useMemo: (fn: () => unknown) => fn() };
       if (name === '@giokon/data') return { getGiokonClient: () => ({ from }), queryKeys: { sessions: () => [], sessionAnalyses: () => [], recentSessions: [] } };
@@ -35,11 +36,17 @@ function fixture() {
       throw new Error(name);
     },
   });
-  return { api: () => exports.useSessionPersistence!(), single, from, attach, finish, clear,
+  return { api: () => exports.useSessionPersistence!(), single, maybeSingle, from, attach, finish, clear,
     switchUser: () => { generation++; user = { id: 'b' }; state.active = active('b'); } };
 }
 
 describe('session writes across account changes', () => {
+  it.each([null, { message: 'PROCESSING_CONSENT_REQUIRED' }])('does not attach a planned session without a successful activation: %s', async error => {
+    const f = fixture();
+    f.maybeSingle.mockResolvedValue({ data: null, error });
+    await f.api().adoptPlannedSession('planned', 'synthetic-date');
+    expect(f.attach).not.toHaveBeenCalled();
+  });
   it('does not attach an old delayed remote session to the new account', async () => {
     const f = fixture();
     let done!: (result: { data: { id: string }; error: null }) => void;

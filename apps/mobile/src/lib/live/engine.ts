@@ -9,7 +9,7 @@
 //     (expo-speech TTS + 타자/모의 입력)으로 조용히 폴백한다.
 
 import { buildSystemPrompt, type ChronicleEntry, type ElderProfile, type SessionDesign } from '@giokon/core';
-import { getSession } from '@giokon/data';
+import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult } from './client';
 import { micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback } from './player';
@@ -23,6 +23,7 @@ export interface LiveEngineCallbacks {
    */
   onDraftFinal: (text: string) => void;
   onError?: (message: string) => void;
+  onProcessingDenied?: () => void;
 }
 
 /** ephemeral token 을 Edge Function(live-token)에서 받는다. */
@@ -59,6 +60,28 @@ export class LiveConversationEngine {
   private resumedOnce = false;
   private closing = false;
   private resumeTimer: ReturnType<typeof setTimeout> | null = null;
+  private accessTimer: ReturnType<typeof setInterval> | null = null;
+  private lastAccessCheck = 0;
+
+  private denyProcessing(): void {
+    if (this.closing) return;
+    void this.close().catch(() => {});
+    this.callbacks.onProcessingDenied?.();
+  }
+
+  private async verifyProcessing(): Promise<boolean> {
+    if (this.closing) return false;
+    const checkedAt = Date.now();
+    try {
+      if (await canProcessSession(this.sessionId) && Date.now() - checkedAt < 5000) {
+        if (this.closing) return false;
+        this.lastAccessCheck = checkedAt;
+        return true;
+      }
+    } catch { /* An unverifiable permission is not permission to keep streaming. */ }
+    this.denyProcessing();
+    return false;
+  }
 
   constructor(
     private readonly elder: ElderProfile,
@@ -80,13 +103,15 @@ export class LiveConversationEngine {
   async start(): Promise<boolean> {
     if (!micStreamingSupported()) return false;
     try {
+      if (!await this.verifyProcessing()) return false;
       const { token, model } = await fetchLiveToken(this.sessionId);
-      if (this.closing) return false;
+      if (!await this.verifyProcessing()) return false;
       this.lastToken = token;
       this.model = model;
       this.systemInstruction = buildSystemPrompt(this.elder, this.chronicles, this.design, 'speech');
       this.client = this.makeClient();
       await this.client.connect(token, this.systemInstruction);
+      if (!this.closing) this.accessTimer = setInterval(() => { void this.verifyProcessing(); }, 2000);
       return !this.closing;
     } catch (e) {
       console.info('[giokon] live 미가용 — 기존 파이프라인으로 진행', e);
@@ -127,7 +152,7 @@ export class LiveConversationEngine {
   /** 재개 핸들로 재접속. 실패하면 폴백 파이프라인으로 자연 강하한다. */
   private async tryResume(): Promise<void> {
     this.resumeTimer = null;
-    if (this.closing) return;
+    if (!await this.verifyProcessing()) return;
     try {
       const client = this.makeClient();
       await client.connect(this.lastToken, this.systemInstruction, this.resumeHandle);
@@ -149,7 +174,7 @@ export class LiveConversationEngine {
    * 실패 시 null — 호출부가 로컬 생성 오프너를 유지한다.
    */
   async requestOpener(): Promise<LiveTurnResult | null> {
-    if (!this.available) return null;
+    if (!await this.verifyProcessing() || !this.available) return null;
     try {
       const r = await this.client!.sendUserTurn(
         '(내부 지시) 오늘의 첫 인사와 함께 회상 대화의 첫 질문을 건네주세요.',
@@ -164,11 +189,15 @@ export class LiveConversationEngine {
   }
 
   /** 청취 시작 — 마이크 스트리밍 + 실시간 전사(onDraft). */
-  startListening(): void {
-    if (!this.available || this.micStop) return;
+  async startListening(): Promise<void> {
+    if (!await this.verifyProcessing() || !this.available || this.micStop) return;
     this.draft = '';
     this.micStop = startMicStream({
-      onData: (chunkB64) => this.client?.streamAudioChunk(chunkB64),
+      onData: (chunkB64) => {
+        if (this.closing) return;
+        if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
+        this.client?.streamAudioChunk(chunkB64);
+      },
       onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
     });
   }
@@ -179,7 +208,7 @@ export class LiveConversationEngine {
     this.micStop?.stop();
     this.micStop = null;
     const text = this.draft.trim();
-    this.callbacks.onDraftFinal(text);
+    if (!this.closing) this.callbacks.onDraftFinal(text);
     return text;
   }
 
@@ -195,7 +224,7 @@ export class LiveConversationEngine {
   async submitUserTurn(
     finalText: string,
   ): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null> {
-    if (!this.available) return null;
+    if (!await this.verifyProcessing() || !this.available) return null;
     const turn = await this.client!.sendUserTurn(finalText);
     if (turn === 'timeout') return { status: 'timeout' };
     return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64 };
@@ -203,7 +232,7 @@ export class LiveConversationEngine {
 
   /** 턴 음성(base64 PCM 청크)을 재생하고 완료를 기다린다. */
   async playTurn(chunksB64: string[]): Promise<void> {
-    if (chunksB64.length === 0) return;
+    if (chunksB64.length === 0 || !await this.verifyProcessing()) return;
     try {
       await playPcmTurn(chunksB64);
     } catch (e) {
@@ -213,6 +242,8 @@ export class LiveConversationEngine {
 
   async close(): Promise<void> {
     this.closing = true; // 의도 종료 — onClose 에서 재접속 시도하지 않는다
+    if (this.accessTimer) clearInterval(this.accessTimer);
+    this.accessTimer = null;
     if (this.resumeTimer) clearTimeout(this.resumeTimer);
     this.resumeTimer = null;
     this.clearSilenceTimer();

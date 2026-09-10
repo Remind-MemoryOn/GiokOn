@@ -11,6 +11,7 @@ import { installFetchGuard } from '../src/lib/fetchGuard';
 import { useAppStateRefetch } from '../src/lib/queryFocus';
 import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
 import { ProtectedNavigator } from '../src/auth/ProtectedNavigator';
+import { useProcessingGuard } from '../src/auth/useProcessingGuard';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { ConfigError } from '../src/components/ConfigError';
 import { FONT_MAP } from '../src/lib/fonts';
@@ -27,7 +28,8 @@ initSupabase();
 function RealtimeBridge() {
   const { authed, user, refreshUserRow } = useAuth();
   const onEvent = useCallback((event: RealtimeEvent) => {
-    if (event.table === 'profile_caregivers' || event.table === 'profile_guardians') {
+    if (event.table === 'profile_caregivers' || event.table === 'profile_guardians' ||
+        event.table === 'consents' || (event.table === 'sessions' && event.row?.status === 'ended')) {
       // users row는 Query 캐시 밖에 있으므로 별도로 갱신한다.
       void refreshUserRow();
     }
@@ -35,6 +37,7 @@ function RealtimeBridge() {
   useGiokonRealtime({ enabled: authed, onEvent, scopeKey: user?.id });
   // 연결이 끊긴 동안 놓친 변경은 복귀 시 재검증한다.
   useAppStateRefetch();
+  useProcessingGuard();
   return null;
 }
 

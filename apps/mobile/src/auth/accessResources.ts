@@ -1,4 +1,4 @@
-import { getCurrentUserRow, getGiokonClient } from '@giokon/data';
+import { getCurrentUserRow, getGiokonClient, canProcessSession } from '@giokon/data';
 import { queryScope } from '../lib/supabase';
 import { useApp } from '../store/appStore';
 import { closeLiveEngine } from '../lib/live/engine';
@@ -38,6 +38,10 @@ export async function loadAccessSnapshot(uid: string): Promise<AccessSnapshot> {
       .eq('id', active.elder.id).maybeSingle();
     if (error) throw error;
     activeProfileDenied = !data && useApp.getState().active === active;
+    if (data && active.remoteId) {
+      const allowed = await canProcessSession(active.remoteId);
+      activeProfileDenied = !allowed && useApp.getState().active === active;
+    }
   }
   return { row, assignments, activeProfileDenied };
 }
