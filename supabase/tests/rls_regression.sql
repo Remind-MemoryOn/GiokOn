@@ -1403,7 +1403,10 @@ begin
       begin
         execute format('update public.%I set session_id = $1 where session_id = $2', target_table)
           using other_session, own_session;
-      exception when foreign_key_violation then
+      exception when insufficient_privilege then
+        assert sqlerrm = 'RECORD_IDENTITY_IMMUTABLE';
+        blocked := true;
+      when foreign_key_violation then
         get stacked diagnostics violated = constraint_name;
         assert violated = target_table || '_session_profile_org_fk';
         blocked := true;
@@ -1424,7 +1427,10 @@ begin
   end loop;
 
   -- 세션 삭제 시 안전 이벤트의 대상은 유지하고 세션 연결만 비운다.
+  set role authenticated;
+  perform set_config('test.uid', '33333333-3333-3333-3333-333333333333', true);
   delete from public.sessions where id = own_session;
+  reset role;
   assert exists (select 1 from public.safety_events
     where profile_id = own_profile and session_id is null and caregiver_alert = '합성 검증 알림'),
     '세션 삭제가 안전 이벤트 대상/기관까지 지워서는 안 됨';
@@ -1723,5 +1729,60 @@ begin
   assert (select bool_and(not granted and revoked_at is not null) from public.consents where user_id=auth.uid()),'Org-less account withdrawal failed';
   reset role;
   assert (select count(*) from public.organizations)=before_orgs,'Rejected onboarding created organizations';
+end $$;
+rollback;
+
+-- R012: exercise every identity field with an UPDATE-capable caller.
+-- Extra test policies deliberately make the guard, rather than an unrelated RLS
+-- rejection, responsible for failure. They disappear on rollback.
+begin;
+set local test.role='service_role';
+update public.users set is_site_admin=true where id='11111111-1111-1111-1111-111111111111';
+set local test.role='authenticated';
+set local test.uid='11111111-1111-1111-1111-111111111111';
+insert into public.inquiry_replies(inquiry_id,author_id,content)
+  select id,'11111111-1111-1111-1111-111111111111','R012 synthetic reply' from public.inquiries limit 1;
+do $$
+declare t text; field record; original jsonb; target uuid; own_org uuid;
+  rejected boolean; replacement text; affected integer; checked integer:=0;
+begin
+  select org_id into own_org from public.users where id='11111111-1111-1111-1111-111111111111';
+  foreach t in array array['profiles','chronicle_entries','sessions','session_logs','session_analyses',
+    'safety_events','care_journals','journal_photos','guardian_shares','profile_caregivers',
+    'profile_guardians','elder_codes','notifications','inquiries','inquiry_replies'] loop
+    execute format('create policy r012_test_update on public.%I for update to authenticated using(true) with check(true)',t);
+    execute format('create policy r012_test_select on public.%I for select to authenticated using(true)',t);
+    if exists(select 1 from pg_attribute where attrelid=to_regclass('public.'||t) and attname='org_id') then
+      execute format('select to_jsonb(r) from public.%I r where org_id=$1 limit 1',t) into original using own_org;
+    else
+      execute format('select to_jsonb(r) from public.%I r limit 1',t) into original;
+    end if;
+    assert original is not null,'R012 needs an actual fixture for '||t;
+    target:=(original->>'id')::uuid;
+    set role authenticated;
+    perform set_config('test.uid','11111111-1111-1111-1111-111111111111',true);
+    execute format('update public.%I set id=id where id=$1',t) using target;
+    get diagnostics affected=row_count;
+    assert affected=1,'Caller must be able to update original row: '||t;
+    for field in select a.attname,pt.typname from pg_attribute a join pg_type pt on pt.oid=a.atttypid
+      where a.attrelid=to_regclass('public.'||t) and a.attnum>0 and not a.attisdropped
+      and a.attname=any(array['id','org_id','profile_id','session_id','user_id','author_id','journal_id',
+        'item_id','item_type','shared_by','caregiver_user_id','guardian_user_id','inquiry_id','kind','source_id'])
+      or (a.attrelid=to_regclass('public.'||t) and t='journal_photos' and a.attname='path') loop
+      replacement := case field.typname
+        when 'uuid' then 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+        when 'share_item_type' then case when original->>field.attname='journal' then 'analysis' else 'journal' end
+        when 'notification_kind' then case when original->>field.attname='safety' then 'message' else 'safety' end
+        else 'synthetic-reassigned-path' end;
+      rejected:=false;
+      begin
+        execute format('update public.%I set %I=%L where id=$1',t,field.attname,replacement) using target;
+      exception when insufficient_privilege then rejected:=sqlerrm='RECORD_IDENTITY_IMMUTABLE'; end;
+      assert rejected,'Identity guard did not reject '||t||'.'||field.attname;
+      checked:=checked+1;
+    end loop;
+    reset role;
+  end loop;
+  assert checked=62,'Unexpected identity column coverage';
 end $$;
 rollback;

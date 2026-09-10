@@ -14,6 +14,8 @@ begin
   assert not has_table_privilege('authenticated', 'public.users', 'UPDATE'),
     '마이그레이션은 users 테이블 UPDATE 권한을 회수해야 함';
   assert not has_table_privilege('authenticated','public.consents','UPDATE'), 'Consent table UPDATE must be revoked';
+  assert not (select prosecdef from pg_proc where oid='app.guard_record_identity()'::regprocedure),
+    'Record identity guard must remain SECURITY INVOKER';
   assert has_column_privilege('authenticated','public.consents','revoked_at','UPDATE'), 'Withdrawal must remain possible';
   assert not (select prosecdef from pg_proc where oid='app.guard_consent_evidence_update()'::regprocedure),
     'Consent evidence guard must use SECURITY INVOKER';
