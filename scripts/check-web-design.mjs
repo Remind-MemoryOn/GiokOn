@@ -719,7 +719,7 @@ const SCREENS = [
   // W-4: 음성 인식·AI 초안이 실제로 붙었다. 결과를 **만들어 내지 않는 것**은 그대로다 —
   // 실패하면 이유를 말하고(조용한 실패 금지), 시각은 적은 만큼만 저장한다.
   [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: STT·AI 초안 배선 · 조용한 실패 금지 · 저장→업로드→첨부 순서', [
-    /transcribeAudio\(file\)/, /SttUnavailableError/,
+    /transcribeAudio\(file, elderId\)/, /SttUnavailableError/,
     /buildJournalDraft\(\{/,
     /disabled=\{!content\.trim\(\) \|\| saving\}/,
     /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
