@@ -41,9 +41,7 @@
 
 ## 기술 결정
 - 서버상태 = **TanStack Query**, UI상태 = **Zustand**.
-- AI 스택: **LLM은 현행 프런티어 벤치마크 후 선정(모델명 고정 금지)**,
-  STT = gpt-4o-transcribe(Clova Speech 보완), TTS = Clova Voice, **Structured Outputs**.
-  실연동은 Supabase Edge Functions(서버사이드 키 보호).
+- AI 계획(2026-09-11): `docs/plans/voice-ai-personalization.md`가 최신 기준. 초기 Gemini 오디오 직접 입력 + 프롬프트·개인 의미 사전·대화 지원 정책 → 검증 텍스트의 Clova TTS. 일반 오디오 API와 Live를 구분하며 Live 3.1은 Structured Outputs 미지원. 장기 Whisper 특화 + 외부에서 학습한 공개 가중치 LLM의 Ollama 추론은 평가 후 독립 전환. 인지능력 자동 진단 금지, 서비스/학습 동의 분리, Gemini 출력 학습은 계약 확인 전 제외. 문서 계획이며 신규 기능 구현 완료가 아니다. 서버 키 보호·모델 버전 검증 유지.
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
   **로그인 = 소셜 3종(구글·카카오·네이버) + 이메일(아이디)·비밀번호 병행(2026-07-23 재도입 — 이전 "이메일 제거" 결정 사용자 요청으로 철회), 아이디/비밀번호 찾기·회원가입 포함, 회원가입 = 이메일 또는 OAuth 후 온보딩(기본정보 입력). 소셜은 provider 본인인증(이름·전화) 정보를 온보딩에 프리필**
   (구글·카카오=네이티브, 네이버=커스텀 Edge Function `naver-auth`). 계획: PLAN §2′ M17.4~17.7·Phase W1.

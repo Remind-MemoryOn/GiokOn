@@ -1,5 +1,7 @@
 # PLAN.md — 기억온 개발 계획 (v2: 모노레포 · Supabase 중심 · 웹+모바일 하이브리드)
 
+> **AI 계획 개정(2026-09-11)**: [음성 이해·개인화 AI 전환 계획](docs/plans/voice-ai-personalization.md)을 신규 기준으로 적용한다. 초기 Gemini 오디오 직접 입력·프롬프트·개인별 지원 정책 → 검증된 Whisper/공개 가중치 LLM 특화 및 Ollama 추론. 본 문서의 과거 mock 출시·무변경 전환·Realtime 기본 전환 가정은 대체되며, 구현·배포 완료 표시는 아니다.
+
 ## 0. 요약
 - 제품 방향은 **"AI 기반 인지활동 보조 앱"**. 의료·치료 효과 단정 금지, 회상 대화·기록 보조가 핵심 가치.
 - 구조를 **모노레포(웹+모바일 하이브리드)**로 전환한다: `apps/web`(요양보호사 관리 웹), `apps/mobile`(어르신 대화 Expo 앱), 공유 로직은 `packages/*`.
@@ -74,7 +76,7 @@ giokon/
 - T3.1 신규 마이그레이션: `users.id`↔`auth.users(id)`, `firebase_uid` 제거, 가입 시 `users` row 생성 트리거.
 - T3.2 RLS 정책 전부 `app.current_user_id()`→`auth.uid()` 재작성; `app.user_id` 함수 제거. (의존: T3.1)
 - T3.3 세션 오디오용 Storage 버킷 + RLS; `audio_expires_at` 정리(pg_cron 또는 스케줄 Edge Function).
-- T3.4 Edge Function `session-respond`: STT→LLM(**Structured Outputs/JSON schema**)→TTS 오케스트레이션, AI 턴 `session_logs` 기록, 다음 질문+`audio_url` 반환(키 보호). (의존: T3.2)
+- T3.4 Edge Function `session-respond`(구현 예정): 오디오 이해→확인된 발화→대화 생성→서버 스키마·안전 검증→TTS, AI 턴 기록과 재생 결과 반환. Live 전사와 Structured Outputs를 구분한다. (의존: T3.2; 상세: M7)
 - T3.5 보조 Edge Functions(session-start/end, chronicle-extract) — 필요 범위만(respond에 통합 가능). (의존: T3.4)
 - T3.6 **Realtime 스파이크**: OpenAI Realtime(gpt-realtime) ephemeral token 발급 Edge Function + 모바일 PoC로 지연·자연스러움·비용을 파이프라인과 실측 비교. (의존: T3.2)
 
@@ -107,14 +109,16 @@ giokon/
 - T6.6 세션 파이프라인 연결(start/respond/correct/end) + STT 수정 UI + **자동 종료**(설계 턴 수 도달/침묵 타임아웃; 요양보호사 부재 시 1차 종료 수단) + 오류 상태(마이크 거부·네트워크·STT/TTS 실패·세션 복구). (의존: T3.4, T6.5)
 - T6.7 접근성 패스(텍스트≥18pt, 터치≥60px, TTS 자동재생, 고대비). (의존: T6.6)
 
-### M7. AI/STT/TTS 실연동 (목업→실연동)
-설계: MockAIProvider→실 provider 교체. 전부 Edge Functions 서버사이드. **모델은 고정하지 않고 현행 프런티어를 벤치마크**. **Structured Outputs** 사용(파싱 실패 자체를 제거).
-- T7.1 LLM(**현행 프런티어 벤치마크**: GPT-5.x/Gemini 3/Claude 등 한국어 품질·지연·비용 비교) in Edge Function: 연대기+이력→**Structured Outputs(JSON schema: {question, topic, switch_topic})**. (의존: T3.4)
-- T7.2 STT: **gpt-4o-transcribe**(Whisper-v3 대비 WER↓) in Edge Function; 사투리·노인 발화는 Clova Speech 보완. (의존: T3.4)
-- T7.3 TTS(Clova Voice 기본, OpenAI/ElevenLabs 대체) → 오디오 Storage 업로드 → `audio_url`. (의존: T3.3, T3.4)
-- T7.4 프롬프트 안전 규칙(동일 주제 3회+ 금지, 고통 키워드 부드러운 전환, 짧은 답변 시 쉬운 질문). (의존: T7.1)
-- T7.5 core `AIProvider`를 env로 mock↔real 전환; dev/테스트는 mock 유지. (의존: T7.1)
+### M7. 음성 AI·개인화 단계적 전환
+설계: 초기 Gemini 오디오 이해·확인·정책 검증→Clova TTS. API별 계약을 분리하고 지원 모델에서만 Structured Outputs를 사용한다. 기존 Live에서의 전환은 앱/서버 변경이 필요하며 장기 GPU 작업은 별도 서비스다.
+- T7.1 초기 대화: Gemini 오디오 직접 입력 + 확인된 전사·개인 의미·대화 지원 설정 → 다음 발화 생성. 일반 오디오 API와 Live를 비교하고 지원 모델에서만 Structured Outputs 적용; 서버 의미·안전 검증 필수. 인지능력 진단 대신 가역적인 지원 방식 조절. (의존: T3.4, 신규 계획 A0~A1)
+- T7.2 음성 이해: Gemini 턴 API를 초기 우선 후보로 한국어 고령자·사투리·무음·소음 평가. 불명확 구간은 추정하지 않고 확인. 장기에는 적법한 원음–사람 전사로 Whisper 파인튜닝을 비교 검증 후 도입. (의존: T3.4, A0~A3)
+- T7.3 TTS: 서버에서 채택·검증한 텍스트만 Clova Voice로 음성화. 재생 전 검증, private 임시 오디오·만료/삭제, 기기 TTS 대체 경로 검증. Live 원본 음성과 검증 텍스트의 동일성을 가정하지 않는다. (의존: T3.3, T3.4)
+- T7.4 안전 정책: 부정 감정·모호 위험·현재 긴급을 구분하고 확인/관찰/긴급 행동 분리. 기존 가드 완화는 안전 평가 후 적용, 중단·개인 선택 존중. (의존: T7.1, M12)
+- T7.5 API 어댑터·턴 식별자·교정/취소·재연결·한도 검증. 테스트 더블과 운영을 분리하고 실환경에서 목업 어르신 발화를 생성하지 않는다. (의존: T7.1)
 - T7.6 **Realtime 평가**(T3.6 스파이크 결과): 지연·자연스러움·비용·통제 비교 후 v1 대화 백엔드 채택 여부 결정(미채택 시 v2). (의존: T3.6)
+- T7.7 개인별 승인 의미 사전·의사소통 프로필·문맥 위험 확인을 구현한다. 학습 동의/보관/철회와 운영 동의를 분리하며 신규 데이터 계약·마이그레이션은 후속 구현.
+- T7.8 장기 대화 AI: 공개 가중치 한국어 LLM을 외부 도구로 SFT/LoRA 학습 → Ollama 추론 검증. 개인 사실은 조회로 주입. Whisper와 독립적으로 평가·전환하며 미달 시 기존 승인 경로 유지. Gemini 출력의 학습 사용은 계약 허용 확인 전 제외한다.
 
 ### M8. 퍼블리싱 · 인프라
 설계: 시크릿 관리, CI, EAS 빌드/제출, 스토어 메타데이터, 단계적 롤아웃.

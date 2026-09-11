@@ -1,5 +1,7 @@
 # structure.md
 
+> **AI 구조 개정(2026-09-11)**: 앱 음성 경로는 [전환 계획](plans/voice-ai-personalization.md) §3을 따른다. 아래 고정 gpt-4o-transcribe 파이프라인 도식은 과거 설계다. 초기 Gemini 오디오 이해→확인·안전 검증→Clova TTS, 장기 별도 GPU에서 Whisper/공개 LLM 추론을 평가한다. 기존 Live와 웹 일지 STT는 구분한다.
+
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 멀티테넌시 — `organizations` + `users.org_id` + 역할(RBAC: org_admin/caregiver/(guardian)), 전 테이블 조직 단위 격리. 상세: PLAN §2′ M14 · `docs/security.md`.
 
 ## 1. 전체 서비스 구조 개요

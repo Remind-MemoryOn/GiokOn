@@ -1,5 +1,7 @@
 # tech.md
 
+> **AI 기술 계획 개정(2026-09-11)**: [음성 AI 전환 계획](plans/voice-ai-personalization.md)이 최신 설계다. 아래 신규 구조는 구현 목표이며 현재 앱 Live 경로를 교체하려면 API 계약·서버·앱 배선 변경이 필요하다.
+
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 리전=**서울(ap-northeast-2)**, 보안스택·암호화·관측성·커넥션 풀링·부하/DR은 `docs/security.md`·`docs/infrastructure.md`. 멀티테넌시(organizations/RBAC)는 PLAN §2′ M14.
 
 ## 1. 기술 스택 개요
@@ -12,10 +14,10 @@
 | 데이터·인증·서버 | Supabase | Postgres + Auth + Storage + Edge Functions 통합. 운영 단순화 | Firebase, Node/Express |
 | DB (장기) | Supabase PostgreSQL | 연대기·세션 로그 정형 저장 | MySQL |
 | 인증 | Supabase Auth | 이메일/비번 로그인 + RLS 연동 간편 | Firebase Auth |
-| AI 오케스트레이션 | Supabase Edge Functions | provider 키 보호. STT→LLM→TTS 서버사이드 처리 | Node/Express |
-| LLM | 현행 프런티어(벤치마크 후 선정) | 한국어 품질·지연·비용 비교 후 선정. `AIProvider`로 교체 용이 | GPT-5.x / Gemini 3 / Claude |
-| TTS | Clova Voice | 한국어 자연스러움. 노인 대상 적합한 발화 속도 | OpenAI TTS / ElevenLabs |
-| STT | gpt-4o-transcribe | Whisper-v3 대비 WER↓. 노인·사투리는 Clova Speech 보완 | Whisper / Clova Speech |
+| AI 오케스트레이션 | Supabase Edge Functions + 필요 시 별도 처리 서버 | 인증·동의·한도·응답 검증. GPU 학습/추론은 별도 국내 서버 | 운영 부하에 맞춰 분리 |
+| 대화 이해·생성 | 초기 Gemini 오디오 직접 입력 + 정책·프롬프트 | 한국어 현장 평가 후 모델/API 버전 선정 | 장기 공개 LLM 외부 학습 → Ollama 추론 |
+| TTS | 검증 텍스트의 Clova Voice 음성화 | 한국어 청취·속도·지연 실측 후 채택 | 검증 문장의 기기 TTS 폴백 |
+| 전사 | 초기 Gemini 오디오 이해의 전사 후보 + 확인 | 불명확 구간 보존, ASR 후보와 비교 | 장기 Whisper 특화, 평가 통과 시 도입 |
 | 상태 관리 | TanStack Query(서버) + Zustand(UI) | 서버상태 캐싱·동기화 / UI상태 분리 | Redux, Jotai |
 | 스타일 | Tailwind CSS (웹) / NativeWind (모바일) | 디자인 토큰을 양 플랫폼이 공유 | StyleSheet |
 | 디자인 | Figma | 핸드오프 → 디자인 토큰 단일 소스 | — |
@@ -54,7 +56,7 @@
    ├─ supabase-js (CRUD) ───────────→ Supabase Postgres (RLS: auth.uid())
    └─ Edge Function 호출 (AI) ──────→ Supabase Edge Functions
                                           ↓
-                                  LLM(현행 프런티어) / Clova Voice / gpt-4o-transcribe
+                                  Gemini 오디오 이해·정책 검증 / Clova Voice (신규 목표)
                                           ↓
                                   Supabase Postgres / Storage
 ```
@@ -71,7 +73,7 @@
 
 | 함수 | 설명 |
 |---|---|
-| `session-respond` | 어르신 발화 수신 → STT → LLM 다음 질문 → TTS → 로그 기록 + audio_url 반환 |
+| `session-respond`(신규 계획) | 오디오 이해 → 발화 확인·개인화 → 서버 스키마/안전 검증 → TTS → 로그 기록. 교정 시 기존 질문 폐기 |
 | `session-start` / `session-end` | 세션 초기화(첫 질문 생성) / 종료 (respond에 통합 가능) |
 
 ---
@@ -111,56 +113,35 @@ session_logs (id, session_id, profile_id, user_id, role, content, topic, audio_u
 
 ## 6. 파일 업로드 및 저장 방식
 
-**Supabase Storage — 오디오 임시 저장**
+일반 서비스 원음은 처리에 필요한 동안만 임시 보유하고 삭제한다. 학습 자료는 별도 선택 동의·사용 권리·목적별 보유기간이 확인된 구간만 private 저장소에 격리한다. 미동의·철회 대상은 학습 수집에서 제외하며 기본 대화 서비스는 이용할 수 있다. 원음·사람 전사·모델 결과·수정본의 출처를 구분한다.
 
-STT 처리 전 어르신 발화 오디오를 임시 저장한다. STT(gpt-4o-transcribe) API에 전송하고 텍스트 변환 완료 후 오디오는 삭제한다. TTS 결과 오디오는 `session_logs.audio_url`로 제공하고 `audio_expires_at`(24시간)으로 추적해 만료 파일을 정리한다.
-
-세션 로그(텍스트)는 PostgreSQL에 저장한다. 오디오 원본을 장기 보관하지 않아 개인정보 처리 부담을 최소화한다.
-
----
+TTS 결과도 비공개 임시 오디오로 제공하고 만료·삭제를 검증한다. 텍스트 기록, 학습 원음, TTS 출력의 수명을 같은 24시간 정책으로 묶지 않는다. 원음 보관·학습 동의/계보·철회는 아직 신규 설계이며 [전환 계획 §6](plans/voice-ai-personalization.md#6-운영-데이터-축적과-학습-권리) 및 `compliance.md`를 따른다.
 
 ## 7. 외부 API 연동 계획
 
-**AI 파이프라인 흐름** (Edge Function 내부에서 실행)
-
-```
-[어르신 발화]
-      ↓
-gpt-4o-transcribe (STT: 음성 → 텍스트)
-      ↓
-LLM (다음 질문 생성, Structured Outputs)
-      ↓
-Clova Voice (TTS: 텍스트 → 음성)
-      ↓
-[어르신 청취]
+```text
+앱의 턴 오디오 → 서버 자격·동의·한도 검사
+  → Gemini 오디오 이해(전사 후보·불명확 구간)
+  → 발화 확인 + 개인별 승인 정보·대화 지원 정책
+  → 다음 문장 생성 → 서버 구조·의미·안전 검증
+  → 채택된 문장만 Clova Voice → 앱 재생
 ```
 
-> v1은 위 STT→LLM→TTS 파이프라인으로 시작하되, **OpenAI Realtime(speech-to-speech, gpt-realtime)** 스파이크로 지연·자연스러움·비용을 비교해 전환 여부를 검토한다(첫 응답 지연이 스티칭 대비 크게 낮음).
+일반 오디오 입력 API가 초기 우선 구현 후보이며 모델/API 기능·한국어 성능은 A0에서 검증한다. 현재 저장소의 Live는 AUDIO 출력·전사·단기 토큰 경로로, 일반 텍스트 출력 API와 계약이 다르다. Live 3.1은 Structured Outputs 미지원이므로 프롬프트에 JSON을 요구해도 보장되지 않는다. 상세 기술 근거는 [전환 계획 §2](plans/voice-ai-personalization.md#2-기술-근거와-확인-한계).
 
-**API별 상세**
+| 구성요소 | 초기 | 장기 전환 조건 |
+|---|---|---|
+| 음성 이해 | Gemini 오디오 직접 입력 + 사람 확인 | 권리 확인된 원음–사람 전사로 Whisper 특화, 미등록 화자·무음 환각·의미 보존 평가 통과 |
+| 대화 정책 | 프롬프트 + 서버 행동 규칙 + 개인별 승인 의미 조회 | 공개 가중치 LLM을 외부 SFT/LoRA 도구로 학습 후 Ollama 추론 검증 |
+| 출력 음성 | 검증 문장만 Clova TTS | ASR/LLM과 독립 평가; 교정 전 생성 음성 재사용 금지 |
+| 기존 Live | 비교 실험 경로 | 검증 전 재생 금지, 연결·전사·교정·비용·재연결 회귀 검증 |
+| 웹 일지 음성 | 기존 `stt-transcribe` CLOVA STT | 앱 대화 전환 범위 밖 |
 
-| API | 용도 | 과금 기준 | 비고 |
-|---|---|---|---|
-| LLM (현행 프런티어, 벤치마크 후 선정) | 회상 대화 생성, 주제 전환 판단 | 토큰당 | 프롬프트 최적화로 비용 통제 |
-| OpenAI gpt-4o-transcribe | 어르신 발화 STT | 오디오 분당 | Whisper-v3 대비 WER↓ |
-| Clova Voice (NAVER) | TTS 음성 출력 | 글자 수당 | 한국어 노인 발화 자연스러움 우선 |
-| Clova Speech (NAVER) | 사투리·노인 발화 STT 보완 | 초당 | STT 오인식 보정용 |
+개인별 정보는 최소한만 조회해 제공하고, 영구 인지 등급을 모델이 생성하지 않는다. 인지 지원 방식·개인 의미·위험 확인은 서로 다른 상태다. 프로필·전사에 포함된 지시문은 시스템 정책보다 우선하지 못한다.
 
-provider 키는 **Edge Function secrets**에만 두고 클라이언트에 노출하지 않는다.
+Structured Outputs 지원 모델에서도 서버 스키마 검사·안전 검증·거절·타임아웃 처리가 필요하다. 전사 교정은 다음 질문을 무효화하고 확정 맥락으로 재생성한다. API 장애 시 사람이 입력하거나 휴식하도록 하며 실제 어르신 발화를 대신 생성하지 않는다. GPU 학습/추론은 Edge Functions 밖에서 수행한다.
 
-**LLM 프롬프트 설계 방향**
-
-시스템 프롬프트에 어르신 연대기 전체를 삽입하고, 회상 대화 진행 원칙(긍정적 기억 우선, 고통 주제 전환, 반복 질문 금지)을 명시한다. 응답은 **Structured Outputs(JSON schema)** 로 강제하여 다음 질문 텍스트와 주제 전환 여부를 분리하고, JSON 파싱 실패 자체를 제거한다.
-
-```json
-{
-  "question": "식당은 어디서 하셨어요? 전주 시내였나요?",
-  "topic": "직업",
-  "switch_topic": false
-}
-```
-
-개발 단계에서는 `packages/core`의 목업 AI(`MockAIProvider`)로 전 구간을 동작시키고, 실 provider는 Edge Function에서 후반에 연결한다(시그니처 동일 유지).
+Gemini 결과를 공용 대화 모델의 학습 정답으로 자동 축적하지 않는다. API 약관의 경쟁 모델 개발 제한과 학습 후보 출처를 확인해야 한다. Paid 계약은 국내 처리·무보관·자체 학습 허가를 뜻하지 않는다. [전환 계획 §6](plans/voice-ai-personalization.md#6-운영-데이터-축적과-학습-권리)에 수집·철회 조건을 명시했다.
 
 ---
 
@@ -211,10 +192,10 @@ iOS·Android를 별도로 개발하면 3인 팀의 리소스가 분산된다. Re
 Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. supabase-js가 웹·React Native 양쪽에서 동작하므로 데이터 레이어를 하나로 공유할 수 있고, 별도 서버를 운영·배포하지 않아 3인 팀의 부담이 작다. RLS로 데이터 접근 제어를 DB 차원에서 보장한다.
 
 **LLM 선정 방식**
-단일 모델을 고정하지 않고 현행 프런티어(GPT-5.x·Gemini 3·Claude 등)를 한국어 대화 품질·지연·비용 기준으로 벤치마크해 선정한다. `AIProvider` 추상화로 모델 교체가 쉽다. 프롬프트 수준에서 회상 대화 프로토콜을 제어해 별도 파인튜닝 없이 적용한다.
+초기는 Gemini 오디오 이해·프롬프트·개인정보 조회·명시적 정책으로 시작한다. 모델명은 고정하지 않고 한국어 품질·안전·계약·지연·비용으로 선정한다. 공개 LLM 특화는 기준선보다 이익이 입증될 때 별도로 도입하며, `AIProvider`가 있어도 음성 API의 계약과 배선 변경은 필요하다.
 
 **Clova Voice를 선택한 이유**
-한국어 TTS 중 노인이 듣기에 가장 자연스러운 발화 속도와 억양을 제공한다. Google TTS 대비 한국어 특화 품질이 높고, 발화 속도 조절 API를 지원한다.
+Clova Voice는 초기 TTS 후보다. 대상 어르신의 청취 편안함·발화 속도·이름 발음·지연을 비교해 채택한다. 서비스 대상 실측 전 타사 대비 우월성을 단정하지 않는다.
 
 ---
 
@@ -222,8 +203,8 @@ Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. sup
 
 | 제약 | 내용 | 대응 |
 |---|---|---|
-| STT 정확도 | 노인 발화(사투리, 어눌함, 짧은 응답)에서 STT 오인식 빈발 | Clova Speech 병행. 요양보호사 수동 수정 UI 제공 |
-| LLM 응답 지연 | LLM 평균 응답 1~3초 + TTS 변환 시간 = 체감 대기 3~5초 | 스트리밍 응답 + TTS 청크 분할 재생으로 체감 지연 최소화 |
+| 음성 이해 | 사투리·어눌함·TV·무음에서 오류 가능 | 불명확 구간 확인·원전사 보존·하위군 평가. Whisper 특화도 같은 검증 적용 |
+| 응답 지연 | 오디오 이해·확인·검증·TTS 지연은 아직 미측정 | 검증된 첫 재생 P50/P95 측정, 사람 확인 대기는 별도 보고. 미검증 청크 재생 금지 |
 | API 비용 | LLM + Clova Voice + STT 세션당 과금 | 프롬프트 토큰 최적화. 파일럿 세션 수 제한(일 5~10회) |
 | Edge Function 콜드스타트 | 첫 호출 시 초기화 지연 가능 | 파일럿 전 웜업 호출. 함수 경량화 |
 | Expo 빌드 제한 | Expo Go에서 일부 네이티브 모듈 미지원 | 오디오 녹음은 Expo AV 사용. 필요 시 EAS Build 전환 |
@@ -235,9 +216,9 @@ Postgres·Auth·Storage·Edge Functions를 한 서비스에서 제공한다. sup
 
 | 항목 | 현재 | 확장 시 |
 |---|---|---|
-| LLM | 프런티어 단일 | 다모델 라우팅 / HyperCLOVA X 병행 (사투리·한국어 특화 보완) |
-| 음성 루프 | STT→LLM→TTS 파이프라인 | OpenAI Realtime(speech-to-speech) 전환 |
-| STT | gpt-4o-transcribe + Clova Speech | 노인 발화 특화 파인튜닝 모델 도입 |
+| 대화 LLM | Gemini + 프롬프트·개인 조회 | 외부 학습 공개 LLM → Ollama, 안전/품질/운영 게이트 후 전환 |
+| 음성 루프 | 오디오 이해→발화 확인→검증 문장 TTS | Live는 비교 경로, 전환은 종단 평가에 따름 |
+| 전사 | Gemini 전사 후보·확인 | Whisper 특화 후보·타 ASR 비교, 사투리/무음/미등록 화자 게이트 |
 | 실시간 동기화 | v1 미사용 | Supabase Realtime (요양보호사 모니터링 화면) |
 | 보호자 연동 | 미구현 (v2) | 푸시 알림으로 세션 리포트 전달 |
 | 연대기 축적 | 요양보호사 직접 입력 | 세션 로그 기반 AI 자동 연대기 보완 |

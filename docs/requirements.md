@@ -1,5 +1,7 @@
 # requirements.md
 
+> **AI 요구사항 추가(2026-09-11)**: [전환 계획](plans/voice-ai-personalization.md) §3~§8을 적용한다. 불명확 음성 확인·인지 진단 없는 지원 방식 조절·맥락 위험 확인·개인별 승인 의미 조회·검증 텍스트만 TTS 재생이 초기 요구사항이다. 학습 참여는 별도 선택 동의이며 거부해도 기본 서비스는 가능하다. Whisper/공개 LLM→Ollama 전환은 평가 통과 시 후속 진행한다.
+
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 신규 비기능 요건 — 데이터 국내보관·암호화·감사로그·조직 RBAC·민감정보 별도동의·대리동의·AI 안전·KWCAG 접근성. 상세·근거: PLAN §2′(M9–M15) · `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.
 
 ## 1. 문서 목적

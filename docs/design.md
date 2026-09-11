@@ -1,5 +1,7 @@
 # design.md
 
+> **AI 상세 설계 대체(2026-09-11)**: [음성 AI 전환 계획](plans/voice-ai-personalization.md)이 아래의 과거 STT→LLM 고정 공급자·스트리밍·응답 계약보다 우선한다. 특히 검증 전에 TTS를 재생하지 않는다. 화면 레이아웃 변경 승인을 뜻하지 않으며 신규 상태·계약 구현은 별도 작업이다.
+
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 신규 화면/요소 — 동의(민감정보·대리/설명동의)·AI 이용 사전 고지·위기 안내(사람 에스컬레이션)·정보주체 권리(열람/삭제)·KWCAG 접근성·기관관리(RBAC). 프론트는 **Claude Design 트랙**으로 직접 구현(외부 업체본과 비교). 상세: PLAN §2′(M9·M12·M13·M14·M15) · `docs/{compliance,ai-safety,accessibility}.md`.
 
 ## 1. 설계 개요
@@ -11,13 +13,13 @@
 | 클라이언트 | React 관리자 웹(요양보호사) + React Native 모바일 앱(어르신) — 모노레포 |
 | 서버 | Supabase (supabase-js 직접연동 + AI는 Edge Functions) |
 | DB | Supabase PostgreSQL (RLS: `auth.uid()`) |
-| AI 파이프라인 | gpt-4o-transcribe(STT) → LLM(현행 프런티어, Structured Outputs) → Clova Voice(TTS) — Edge Function |
+| AI 파이프라인(신규 계획) | Gemini 오디오 이해 → 발화 확인·개인화 정책 → 서버 안전 검증 → Clova Voice TTS |
 
 **설계 원칙**
 - 어르신 화면은 조작 최소화. 버튼 1개, 텍스트 18pt 이상
 - AI 파이프라인은 스트리밍 우선. 체감 대기 3초 이하 목표
 - 프로필·세션·로그의 source of truth는 Supabase. 클라이언트는 표시·입력 담당
-- 오디오 원본은 STT 완료 즉시 삭제. 텍스트만 저장
+- 일반 운영 오디오는 처리 후 삭제. 별도 선택 학습 동의·권리·보유기간이 확인된 자료만 격리 저장(신규 설계).
 
 ---
 

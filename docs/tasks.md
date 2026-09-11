@@ -1,5 +1,7 @@
 # tasks.md
 
+> **AI 태스크 개정(2026-09-11)**: [음성 AI 전환 계획](plans/voice-ai-personalization.md) A0~A5가 앱 실음성·개인화·데이터 축적의 실행 기준이다. 과거 mock 출시·키만으로 무변경 전환 및 고정 STT 공급자 가정은 현재 출시 조건이 아니다. 새 태스크는 미구현이며 웹 일지 STT는 별도 유지한다.
+
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: M0~M8(핵심 루프·파일럿) 위에 상용 출시 기준을 얹는 신규 트랙 **M9~M15**(§3-2)와 **Phase G~N**(§2-2)를 추가. 근거·상세는 `PLAN.md` §2′/§3, `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.
 
 > 작업 분해는 `PLAN.md`(v2: 모노레포 · Supabase 중심 · 웹+모바일 하이브리드)를 단일 기준으로 한다. 이 문서는 PLAN.md의 모듈(M0~M8·M9~M15)·Phase(A~F·G~N)를 실행 작업으로 펼친 뷰다. (기존 8주 날짜 일정은 경과하여 의존성 순서 중심으로 대체)
@@ -87,7 +89,7 @@
 | T3.1 | 마이그레이션: `users`↔`auth.users`, `firebase_uid` 제거, 가입 트리거 | — | 팀장 |
 | T3.2 | RLS 전부 `auth.uid()`로 재작성, `app.user_id` 제거 | T3.1 | 팀장 |
 | T3.3 | 오디오 Storage 버킷+RLS, `audio_expires_at` 정리(pg_cron) | — | 팀장 |
-| T3.4 | Edge Function `session-respond` (STT→LLM[Structured Outputs]→TTS, 로그 기록) | T3.2 | 팀장 |
+| T3.4 | `session-respond` 신규 계약: 오디오 이해→확인→생성→서버 안전 검증→TTS·로그 | T3.2 | 팀장 |
 | T3.5 | 보조 Edge Functions(session-start/end, chronicle-extract) | T3.4 | 팀장 |
 | T3.6 | Realtime 스파이크: gpt-realtime ephemeral token 발급 함수 + 모바일 PoC 실측 비교 | T3.2 | 팀장 |
 
@@ -130,12 +132,14 @@
 
 | ID | 작업 | 의존 | 담당 |
 |---|---|---|---|
-| T7.1 | LLM(현행 프런티어 벤치마크) Edge Function: Structured Outputs(JSON schema) | T3.4 | 팀장 |
-| T7.2 | STT(gpt-4o-transcribe, Clova Speech 보완) Edge Function | T3.4 | 팀장 |
-| T7.3 | TTS(Clova Voice 기본/OpenAI·ElevenLabs 대체) → Storage → `audio_url` | T3.3, T3.4 | 팀장 |
-| T7.4 | 프롬프트 안전 규칙(주제 3회+ 금지, 고통 키워드 전환, 짧은 답변 힌트) | T7.1 | 팀장 |
-| T7.5 | core `AIProvider` env로 mock↔real 전환 | T7.1 | 팀장 |
+| T7.1 | Gemini 오디오 이해·확정 발화·개인화 정책, 지원 모델 스키마 + 서버 검증 | T3.4, A0~A1 | 팀장 |
+| T7.2 | Gemini 오디오 직접 입력·불명확 구간 확인·한국어 기준선 평가 → 장기 Whisper 특화 검증 | T3.4, A0~A3 | 팀장 |
+| T7.3 | 검증된 텍스트만 Clova TTS → private 임시 오디오·만료/삭제 | T3.3, T3.4 | 팀장 |
+| T7.4 | 문맥 위험 확인·행동 분리·중단 존중·안전 평가 후 기존 정책 전환 | T7.1, M12 | 팀장 |
+| T7.5 | API 어댑터·교정/취소·재연결·한도 검증, 운영에서 목업 발화 금지 | T7.1 | 팀장 |
 | T7.6 | Realtime 평가(T3.6 결과) → v1 채택 여부 결정 | T3.6 | 팀장 |
+| T7.7 | 지원 모드·개인 의미 사전·문맥 위험 확인·선택 학습 동의/계보 | A1~A2 | 팀장 |
+| T7.8 | 외부 학습 공개 LLM → Ollama 추론, ASR/LLM 독립 평가·전환 | A3~A5 | 팀장 |
 
 ### M8 — 퍼블리싱·인프라 (Phase F)
 
