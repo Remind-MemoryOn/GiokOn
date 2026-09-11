@@ -10,7 +10,7 @@
 // ⚠️ Figma 의 38회·11분 18초·+17% 와 AI 의견 문장은 **데모 값**이다.
 // ⚠️ 카피는 **시안 그대로**다(사용자 확정 2026-09-01) — 축 카드 "향상/하락",
 //    변화 칸 "향상률·증가율", 종합 평가 "매우 긍정적". 모바일이 같은 문구로 나가 있어
-//    맞춘 결정이다(apps/web/CLAUDE.md §4 예외).
+//    맞춘 결정이다(apps/web/AGENTS.md §4 예외).
 //    다만 **값 자체는 만들지 않는다** — 근거가 없으면 라벨도 띄우지 않고 `—`/빈 상태다.
 // ⚠️ 종합 평가의 표정 마크는 시안에 **긍정 상태 1종만** 그려져 있다 → 전체 평균 이상일
 //    때만 그린다(나머지 상태 에셋은 디자인 추가 필요).
@@ -505,7 +505,7 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
         )}
       </div>
 
-      {/* 비의료 고지 — 분석 화면 상시 노출(apps/web/CLAUDE.md §4) */}
+      {/* 비의료 고지 — 분석 화면 상시 노출(apps/web/AGENTS.md §4) */}
       <p
         className="absolute left-[322px] w-[1054px] text-w-label leading-[28px] text-ink-500"
         style={{ top: Y(3551), wordBreak: 'keep-all' }}

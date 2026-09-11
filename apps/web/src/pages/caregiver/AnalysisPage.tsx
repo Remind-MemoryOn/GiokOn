@@ -596,7 +596,7 @@ export function AnalysisPage() {
         </p>
       </div>
 
-      {/* 비의료 고지 — 분석 화면 상시 노출(apps/web/CLAUDE.md §4) */}
+      {/* 비의료 고지 — 분석 화면 상시 노출(apps/web/AGENTS.md §4) */}
       <p
         className="absolute left-[322px] w-[1054px] text-w-label leading-[28px] text-ink-500"
         style={{ top: Y(4090), wordBreak: 'keep-all' }}
