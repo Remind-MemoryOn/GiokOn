@@ -6,7 +6,6 @@ import wordmark from './wordmark.png';
 import iconSearch from './icon-search.png';
 import iconSearchField from './icon-search-field.png';
 import iconPencilLg from './icon-pencil-lg.png';
-import iconTrashLg from './icon-trash-lg.png';
 import iconCalendarSm from './icon-calendar-sm.png';
 import iconChevronDownSm from './icon-chevron-down-sm.png';
 import iconChevronDownMd from './icon-chevron-down-md.png';
@@ -105,7 +104,6 @@ export const asset = {
   iconSearch,
   iconSearchField,
   iconPencilLg,
-  iconTrashLg,
   iconCalendarSm,
   iconChevronDownSm,
   iconChevronDownMd,

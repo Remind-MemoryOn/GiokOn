@@ -475,7 +475,11 @@ const SCREENS = [
     /h-\[35px\][^']*rounded-pill text-\[20px\] font-semibold/,
     /ai \? 'bg-accent-tint text-accent' : 'bg-manual-soft text-manual'/,
     /width: ai \? 95 : 124/,
-    /iconPencilLg[\s\S]{0,120}?width=\{28\}/, /iconTrashLg[\s\S]{0,120}?width=\{26\.97\}/,
+    /iconPencilLg[\s\S]{0,120}?width=\{28\}/,
+    // 휴지통은 사용자 재추출본 하나(`icon-trash.png`)만 쓴다 — 예전 `icon-trash-lg` 는
+    // 글리프가 상자에 잘려 들어가 있었다(아래 테두리에 잉크 82/108, 2026-09-11 사용자 신고).
+    /iconTrash[\s\S]{0,160}?width: 26\.97/,
+    { absent: /iconTrashLg/ },
   ]],
   [`${WEB}/src/pages/caregiver/ElderChroniclesPage.tsx`, '연대기 목록: 날짜 선택 170×37 r5 · 연대기 추가 879×77 테두리 accent', [
     /h-\[37\.03px\] w-\[170px\] rounded-\[5px\] border border-line/,

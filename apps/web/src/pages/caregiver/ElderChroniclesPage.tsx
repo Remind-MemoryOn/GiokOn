@@ -111,12 +111,11 @@ export function ElderChroniclesPage() {
           alt=""
           width={22}
           height={22}
-          className="pointer-events-none absolute left-[13px] top-[8.01px] block"
+          className="pointer-events-none absolute left-[13px] top-1/2 block -translate-y-1/2"
         />
         <span
           data-fx="207:1413"
-          className="pointer-events-none absolute left-[47px] whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
-          style={{ top: 4.01 }}
+          className="pointer-events-none absolute left-[47px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
         >
           {day ? day.replace(/-/g, '.') : '날짜 선택하기'}
         </span>
@@ -214,7 +213,12 @@ export function ElderChroniclesPage() {
                 className="absolute left-[1200px] block"
                 style={{ top: Y(rowTop + 74.06) }}
               >
-                <img src={asset.iconTrashLg} alt="" width={26.97} height={27.02} className="block" />
+                <img
+                  src={asset.iconTrash}
+                  alt=""
+                  className="block object-contain"
+                  style={{ width: 26.97, height: 27.02 }}
+                />
               </button>
             </div>
           );
