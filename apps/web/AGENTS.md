@@ -156,14 +156,15 @@ pnpm web:smoke           # 빌드 + 라우트 스모크(preview 를 스스로 �
 pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (소스 정규식, 이관 완료 화면만)
 pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px + 이미지 비율)
 pnpm -F @giokon/web img:audit   # ★ 이미지 비율만 따로 (위 검사에 이미 포함)
+pnpm -F @giokon/web nav:audit   # ★ 사이드바가 실제로 눌리는가 (위 검사에 이미 포함)
 pnpm check:copy          # 비의료 카피 린트
 pnpm check:a11y          # ★ axe(WCAG 2.1 A/AA) 57화면 + 모달 키보드 동작
 pnpm check:audit         # ★ 의존성 취약점 — **배포본(apps/web)에 닿는 것만 차단**(CI 게이트)
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
 ```
 
-**현재 통과 수치(2026-09-07)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
-잉크 810 + 이미지 581** · `route-smoke` **65/65** · `check:a11y` **57화면**(차단 0) · 테스트 249.
+**현재 통과 수치(2026-09-11)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
+잉크 810 + 이미지 581 + 사이드바 137** · `route-smoke` **65/65** · `check:a11y` **57화면**(차단 0) · 테스트 **390**(core 207 + data 99 + mobile 84).
 숫자가 줄면 무언가를 지운 것이다 — 늘리는 방향으로만 움직인다.
 
 - **이미지 비율 검사(`scripts/img-aspect-audit.mjs`)** — 좌표 프로브가 **못 보는 종류의 결함**을
@@ -176,6 +177,19 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
     비율 자체가 다르면 `object-contain`(박스는 실측 그대로, 그림만 비율 유지).
   · `object-fit` 이 `fill`(기본) 이 아닌 이미지는 **판정 대상에서 제외**한다 — contain·cover 는
     상자 비율과 무관하게 원본 비율이 지켜지므로 상자만 재는 이 검사로는 판정할 수 없다.
+- **사이드바 클릭 검사(`scripts/nav-click-audit.mjs`)** — 렌더가 아니라 **히트테스트**를 본다.
+  화면 24종이 Figma 절대좌표를 쓰려고 본문을 `-ml-[323px] w-[1440px]` 로 왼쪽으로 당긴다.
+  그 띠(x 0~322)는 비어 있지만 **사이드바 위를 덮고**, DOM 순서상 나중이라 클릭을 가로챈다 —
+  **어느 페이지에서도 사이드바를 누를 수 없었다**(2026-09-11 사용자 신고). 화면은 멀쩡해
+  보이므로 스크린샷·좌표 대조로는 절대 안 잡힌다.
+  → 막는 장치는 `Sidebar` 의 **`relative z-30`**. 절대좌표 오버레이를 새로 만들 때
+    이 검사가 다시 지켜 준다(17화면 · 137개 항목).
+- ⚠️ **모달 화면의 `height` 는 패널 높이지 화면 높이가 아니다.** 좌표 대조는
+  `viewportHeight` 로 실제 데스크톱 높이(1200)를 준다 — 안 그러면 창이 패널만큼 낮아져
+  `Dialog` 의 **축소(`fit`)** 가 켜지고 좌표가 배율만큼 통째로 어긋난다.
+- **`Dialog` 의 `fit={{width,height}}`** — 시안 치수를 절대좌표로 그리는 패널이 좁은 화면에서
+  잘리지 않게 **통째로 축소**한다(공개 기록 설정·공개 이력 상세). 배율은 `min(1, …)` 이라
+  **여유가 있으면 1** 이다 → 넓은 화면·좌표 대조에서는 시안 그대로 그려진다.
 
 - **`check:design` 은 `{ absent: /…/ }` 패턴을 지원한다** — "있어야 할 것" 뿐 아니라
   **"되살아나면 안 되는 것"** 도 검사한다(모바일 `check:figma` 와 같은 규약).

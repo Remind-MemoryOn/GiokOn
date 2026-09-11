@@ -258,7 +258,7 @@ function Form({
             alt=""
             width={19.29}
             height={13.02}
-            className="pointer-events-none absolute left-[97.13px] top-[22.02px] block"
+            className="pointer-events-none absolute left-[97.13px] top-1/2 block -translate-y-1/2"
           />
           <select
             id="p-minutes"

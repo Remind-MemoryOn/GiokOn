@@ -213,7 +213,7 @@ function Form({
             alt=""
             width={19.29}
             height={13.02}
-            className="absolute left-[127.13px] top-[22.83px] block opacity-40"
+            className="absolute left-[127.13px] opacity-40 top-1/2 block -translate-y-1/2"
           />
         </div>
 
@@ -231,7 +231,7 @@ function Form({
             alt=""
             width={19.29}
             height={13.02}
-            className="pointer-events-none absolute left-[127.13px] top-[22.83px] block"
+            className="pointer-events-none absolute left-[127.13px] top-1/2 block -translate-y-1/2"
           />
           <select
             id="c-topic"

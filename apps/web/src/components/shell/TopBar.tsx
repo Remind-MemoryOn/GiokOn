@@ -56,6 +56,9 @@ export function TopBar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
 
+  // 로고의 목적지 — 로그인 전에만 랜딩이다.
+  const home = !user ? '/' : userRow?.role === 'guardian' ? '/guardian' : '/caregiver';
+
   const name = (userRow?.name ?? (user?.user_metadata?.name as string | undefined))?.trim();
   const roleLabel = userRow?.role === 'guardian' ? '보호자님' : '요양보호사님';
   const displayName = name ? `${name} ${roleLabel}` : (user?.email ?? roleLabel);
@@ -69,7 +72,9 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-40 h-[122px] shrink-0 bg-white shadow-topbar">
       <div className="relative mx-auto h-full w-full max-w-[1440px]">
-        <Link to="/" className="absolute left-[63px] top-[70px]" aria-label="기억온 홈">
+        {/* 로그인 상태에서는 랜딩이 아니라 **역할별 메인**으로 간다 — 업무 중에 로고를
+            눌렀는데 서비스 소개로 튕겨 나가면 로그인이 풀린 줄 안다(2026-09-11 사용자 신고). */}
+        <Link to={home} className="absolute left-[63px] top-[70px]" aria-label="기억온 홈">
           <img
             src={asset.wordmark}
             alt="기억온"

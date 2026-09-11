@@ -224,7 +224,7 @@ export function FeedPage() {
         <span data-fx="157:131" className="pointer-events-none absolute left-[47px] top-[4px] whitespace-nowrap text-[16px] leading-[30px] text-ink-500">
           날짜 선택하기
         </span>
-        <img src={asset.iconChevronDownSm} alt="" width={12} height={7.81} className="pointer-events-none absolute left-[156px] top-[23.63px] block" />
+        <img src={asset.iconChevronDownSm} alt="" width={12} height={7.81} className="pointer-events-none absolute left-[156px] top-1/2 block -translate-y-1/2" />
       </div>
 
       <div

@@ -123,10 +123,18 @@ function SettingsForm({
   const canPublish = toGuardian && Boolean(guardianName) && (picked.summary || picked.second);
 
   return (
-    <Dialog open={open} onClose={onClose} size="lg" label="공개 기록 설정">
+    // `fit` = 좁은 화면에서 통째로 축소한다 — 노트북에서 잘려 스크롤해야 했다
+    //          (2026-09-11 사용자 신고). 여유가 있으면 배율 1 이라 시안 그대로다.
+    <Dialog
+      open={open}
+      onClose={onClose}
+      size="xl"
+      label="공개 기록 설정"
+      fit={{ width: 1103, height: panelHeight }}
+    >
       <div
         data-fx="146:422"
-        className="relative mx-auto rounded-[10px] bg-white"
+        className="relative rounded-[10px] bg-white"
         style={{ width: 1103, height: panelHeight }}
       >
         <h2

@@ -13,9 +13,10 @@
     "smoke": "node scripts/route-smoke.mjs",
     "figma:build": "vite build --mode figma --outDir dist-audit",
     "a11y": "pnpm figma:build && node scripts/a11y-audit.mjs",
-    "figma:audit": "pnpm figma:build && pnpm figma:shots && node scripts/figma-audit.mjs && node scripts/run-figma-ink.mjs && node scripts/img-aspect-audit.mjs",
+    "figma:audit": "pnpm figma:build && pnpm figma:shots && node scripts/figma-audit.mjs && node scripts/run-figma-ink.mjs && node scripts/img-aspect-audit.mjs && node scripts/nav-click-audit.mjs",
     "figma:shots": "node scripts/figma-shots.mjs",
-    "img:audit": "pnpm figma:build && pnpm figma:shots && node scripts/img-aspect-audit.mjs"
+    "img:audit": "pnpm figma:build && pnpm figma:shots && node scripts/img-aspect-audit.mjs",
+    "nav:audit": "pnpm figma:build && node scripts/nav-click-audit.mjs"
   },
   "dependencies": {
     "@giokon/core": "workspace:*",

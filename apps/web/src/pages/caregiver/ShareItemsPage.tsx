@@ -98,6 +98,9 @@ export function ShareItemsPage() {
   const [setting, setSetting] = useState<ShareTarget | null>(null);
   /** 비공개 전환 확인 대상 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
   const [revoking, setRevoking] = useState<Item | null>(null);
+  /** 목록 정렬 — 시안은 '최신순' 하나만 그렸지만 표시 전용이라 아무 일도 하지 않았다
+   *  (2026-09-11 사용자 신고). 기록은 날짜가 전부라 최신/오래된 두 가지면 충분하다. */
+  const [order, setOrder] = useState<'desc' | 'asc'>('desc');
   const guardians = useGuardianLinks(elderId);
   const guardianName = useMemo(() => {
     const approved = (guardians.data ?? []).find((g) => g.status === 'approved');
@@ -165,8 +168,11 @@ export function ShareItemsPage() {
         });
       }
     }
-    return out.sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime());
-  }, [tab, journals.data, analyses.data]);
+    return out.sort((x, y) => {
+      const d = new Date(x.at).getTime() - new Date(y.at).getTime();
+      return order === 'desc' ? -d : d;
+    });
+  }, [tab, journals.data, analyses.data, order]);
 
   const settingsParam = search.get('settings');
   const open = setting ?? (settingsParam ? (items.find((i) => i.id === settingsParam) ?? null) : null);
@@ -311,14 +317,31 @@ export function ShareItemsPage() {
         style={{ left: TABS.find((t) => t.key === tab)!.left, top: Y(340), width: TABS.find((t) => t.key === tab)!.w }}
       />
 
-      {/* 정렬 — 시안은 '최신순' 하나뿐이라 정렬 기준도 최신순 고정임을 보여 준다 */}
+      {/* 정렬 — 시안 치수 그대로 두고 투명 select 를 덮는다(다른 화면의 기간 선택과 같은 방식) */}
       <div
         data-fx="140:611"
-        className="absolute flex h-[30px] w-[108px] items-center rounded-[5px] border border-ink-500/30 bg-ink-500/[0.03]"
+        className="absolute flex h-[30px] w-[108px] items-center rounded-[5px] border border-ink-500/30 bg-ink-500/[0.03] focus-within:border-accent"
         style={{ left: 1268, top: Y(292) }}
       >
-        <span className="absolute left-[25px] whitespace-nowrap text-w-body leading-[30px] text-ink-900">최신순</span>
-        <img src={asset.iconChevronDownSm} alt="" width={12} height={7.81} className="absolute left-[90px] block" />
+        <span className="pointer-events-none absolute left-[25px] whitespace-nowrap text-w-body leading-[30px] text-ink-900">
+          {order === 'desc' ? '최신순' : '오래된순'}
+        </span>
+        <img
+          src={asset.iconChevronDownSm}
+          alt=""
+          width={12}
+          height={7.81}
+          className="pointer-events-none absolute left-[90px] top-1/2 block -translate-y-1/2"
+        />
+        <select
+          aria-label="목록 정렬"
+          value={order}
+          onChange={(e) => setOrder(e.target.value as 'desc' | 'asc')}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        >
+          <option value="desc">최신순</option>
+          <option value="asc">오래된순</option>
+        </select>
       </div>
 
       <div

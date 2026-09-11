@@ -113,8 +113,12 @@ const notes = [];
 let checked = 0;
 for (const screen of SCREENS) {
   if (ONLY.length && !ONLY.includes(screen.node)) continue;
+  // ⚠️ 모달 화면의 `height` 는 **패널 높이**지 화면 높이가 아니다. 그대로 뷰포트로 쓰면
+  //    창이 패널과 똑같이 낮아서, 좁은 화면에서 패널을 줄이는 축소 로직(Dialog `fit`,
+  //    2026-09-11)이 켜져 모든 좌표가 배율만큼 어긋난다. 모달은 `viewportHeight` 로
+  //    실제 데스크톱 높이를 준다 — 배율 1 에서 시안 치수를 재는 것이 이 검사의 목적이다.
   const page = await browser.newPage({
-    viewport: { width: 1440, height: screen.height ?? 1024 },
+    viewport: { width: 1440, height: screen.viewportHeight ?? screen.height ?? 1024 },
     deviceScaleFactor: 1,
   });
   await page.goto(BASE + screen.route, { waitUntil: 'networkidle', timeout: 20000 });

@@ -125,7 +125,7 @@ export function ElderChroniclesPage() {
           alt=""
           width={12}
           height={7.81}
-          className="pointer-events-none absolute left-[144px] top-[15.81px] block"
+          className="pointer-events-none absolute left-[144px] top-1/2 block -translate-y-1/2"
         />
         <input
           type="date"

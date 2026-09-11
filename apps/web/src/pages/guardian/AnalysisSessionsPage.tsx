@@ -105,7 +105,7 @@ export function AnalysisSessionsPage() {
           alt=""
           width={12}
           height={7.81}
-          className="pointer-events-none absolute left-[97px] top-[19.81px] block"
+          className="pointer-events-none absolute left-[97px] top-1/2 block -translate-y-1/2"
         />
         <select
           aria-label="분석 기간"

@@ -67,8 +67,10 @@ export function SessionListPage() {
       >
         AI가 어르신과 나눈 회상 대화 세션 목록입니다.
       </p>
+      {/* 돌아가기는 **이 화면의 부모 섹션**으로 간다. 예전엔 어르신 상세로 보내
+          세션 기록에서 들어온 사람이 엉뚱한 곳으로 튕겼다(2026-09-11 사용자 신고). */}
       <Link
-        to={`/caregiver/elders/${elderId ?? ''}`}
+        to="/caregiver/sessions"
         data-fx="178:1171"
         className="absolute flex items-center gap-[9px] text-[20px] font-semibold leading-[24px] text-ink-700"
         style={{ left: 1285, top: Y(186.18) }}
@@ -107,7 +109,7 @@ export function SessionListPage() {
           alt=""
           width={12}
           height={7.81}
-          className="pointer-events-none absolute left-[144px] top-[15.81px] block"
+          className="pointer-events-none absolute left-[144px] top-1/2 block -translate-y-1/2"
         />
         <input
           type="date"

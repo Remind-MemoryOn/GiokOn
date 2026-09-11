@@ -25,7 +25,11 @@ export function Sidebar({ items }: { items: NavItem[] }) {
   }
 
   return (
-    <aside className="flex w-[296px] shrink-0 flex-col pt-[50px]">
+    // ⚠️ `z-30` 은 장식이 아니라 **클릭을 살리는 장치**다. 화면 24종이 Figma 절대좌표를
+    //    쓰려고 `-ml-[323px] w-[1440px]` 로 본문을 왼쪽으로 당겨 사이드바 위를 덮는다.
+    //    그 띠(x 0~322)는 비어 있지만 DOM 순서상 나중이라 **클릭을 가로챘다** — 어느
+    //    페이지에서도 사이드바를 누를 수 없었다(2026-09-11 사용자 신고).
+    <aside className="relative z-30 flex w-[296px] shrink-0 flex-col pt-[50px]">
       <nav className="flex shrink-0 flex-col gap-[22px]">
         {items.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className="block">

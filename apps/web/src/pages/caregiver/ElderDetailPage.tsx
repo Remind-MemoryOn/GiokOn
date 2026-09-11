@@ -455,10 +455,14 @@ export function ElderDetailPage() {
             className={cn('absolute left-[897px] block', !c.done && 'opacity-30 grayscale')}
             style={{ top: Y(845 + i * 92) }}
           />
+          {/* ⚠️ 폭을 주지 않으면 "민감정보(건강·음성) 처리 동의(필수, 별도)" 가 오른쪽
+              상태 pill(left 1212) 을 뚫고 **글자가 겹쳐 보인다**(2026-09-11 사용자 신고).
+              라벨 문구는 core 동의 카탈로그가 SoT 라 길이를 코드가 정할 수 없다 →
+              칸(953 ~ pill 1212, 여백 14) 안에서 두 줄로 접고 행 높이 62 안에 세로 중앙. */}
           <span
             data-fx={i === 0 ? '161:757' : undefined}
-            className="absolute left-[953px] text-w-body font-medium leading-[18px] tracking-[-0.2px] text-ink-900"
-            style={{ top: Y(853.5 + i * 92) }}
+            className="absolute left-[953px] flex items-center text-w-body font-medium leading-[24px] tracking-[-0.2px] text-ink-900"
+            style={{ top: Y(831 + i * 92), height: 62, width: 245, wordBreak: 'keep-all' }}
           >
             {c.label}
           </span>

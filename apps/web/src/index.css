@@ -27,4 +27,19 @@
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* 날짜 입력의 **브라우저 기본 달력 아이콘을 감춘다**.
+     시안 아이콘을 따로 그리는 칸에서는 아이콘이 두 개로 보였다(2026-09-11 사용자 신고).
+     감추기만 하면 열 방법이 없어지므로, 투명하게 만든 뒤 **칸 전체로 늘려**
+     어디를 눌러도 달력이 열리게 한다(시안 아이콘 위도 포함). */
+  .date-native-hidden::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
 }

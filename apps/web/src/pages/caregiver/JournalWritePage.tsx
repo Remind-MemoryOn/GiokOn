@@ -41,6 +41,7 @@ import {
   useJournalPhotoUrls,
 } from '../../lib/journalPhotos';
 import { SttUnavailableError, transcribeAudio } from '../../lib/stt';
+import { TimeField } from '../../components/ui/TimeField';
 import { cn } from '../../lib/utils';
 
 const Y = (v: number) => v - 122;
@@ -57,6 +58,9 @@ const MODES: { key: Mode; label: string; icon: string; w: number; iw: number; ih
 
 /** 사진 슬롯 — 187×193, 가로 피치 231(시안 4칸). */
 const SLOT = { w: 187, h: 193, top: 363, xs: [87, 318, 549, 780] };
+// 사진 모드의 'AI 초안 만들기' 세로 위치 — 사진 설명칸(top 578, h 57.04) 아래 20px.
+// 저장 버튼이 813 이라 버튼(57.04) 이 692.1 에서 끝나 겹치지 않는다.
+const PHOTO_DRAFT_TOP = 578 + 57.04 + 20;
 
 const FIELD = 'absolute rounded-[10px] border border-line bg-white text-[18px] leading-[21px] text-ink-500 focus:border-accent focus:outline-none';
 const LABEL = 'absolute whitespace-nowrap text-w-body font-semibold leading-[24px] text-ink-900';
@@ -278,19 +282,21 @@ export function JournalWritePage() {
           기록일
         </label>
         <div data-fx="221:694" className={cn(FIELD, 'h-[57.04px] w-[219px]')} style={{ left: COL, top: 141.33 }}>
+          {/* `date-native-hidden` = 브라우저 기본 달력 아이콘을 투명하게 만들어 칸 전체로
+              늘린다 — 시안 아이콘과 두 개로 보이던 것을 하나로(2026-09-11 사용자 신고). */}
           <input
             id="jw-date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="h-full w-full rounded-[10px] bg-transparent pl-[29px] pr-[40px] text-[18px] leading-[21px] text-ink-500 focus:outline-none"
+            className="date-native-hidden h-full w-full rounded-[10px] bg-transparent pl-[29px] pr-[40px] text-[18px] leading-[21px] text-ink-500 focus:outline-none"
           />
           <img
             src={asset.iconCalendarSm}
             alt=""
             width={22}
             height={22}
-            className="pointer-events-none absolute left-[169px] top-[18.01px] block"
+            className="pointer-events-none absolute left-[169px] top-1/2 block -translate-y-1/2"
           />
         </div>
 
@@ -298,41 +304,25 @@ export function JournalWritePage() {
         <span data-fx="221:699" className={LABEL} style={{ left: 345, top: 106.31 }}>
           활동 시간
         </span>
-        <div data-fx="221:700" className={cn(FIELD, 'h-[57.04px] w-[145px]')} style={{ left: 345, top: 142.33 }}>
-          <input
-            type="time"
-            aria-label="활동 시작 시각"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="h-full w-full rounded-[10px] bg-transparent pl-[29px] pr-[40px] text-[18px] leading-[21px] text-ink-500 focus:outline-none"
-          />
-          <img
-            src={asset.iconClockField}
-            alt=""
-            width={22}
-            height={22}
-            className="pointer-events-none absolute left-[101px] top-[18.01px] block"
-          />
-        </div>
+        <TimeField
+          data-fx="221:700"
+          label="활동 시작 시각"
+          value={from}
+          onChange={setFrom}
+          className={cn(FIELD, 'h-[57.04px] w-[145px]')}
+          style={{ left: 345, top: 142.33 }}
+        />
         <span className="absolute text-w-body leading-[24px] text-ink-900" style={{ left: 512, top: 157.35 }}>
           ~
         </span>
-        <div data-fx="221:710" className={cn(FIELD, 'h-[57.04px] w-[145px]')} style={{ left: 548, top: 142.33 }}>
-          <input
-            type="time"
-            aria-label="활동 종료 시각"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="h-full w-full rounded-[10px] bg-transparent pl-[29px] pr-[40px] text-[18px] leading-[21px] text-ink-500 focus:outline-none"
-          />
-          <img
-            src={asset.iconClockField}
-            alt=""
-            width={22}
-            height={22}
-            className="pointer-events-none absolute left-[101px] top-[18.01px] block"
-          />
-        </div>
+        <TimeField
+          data-fx="221:710"
+          label="활동 종료 시각"
+          value={to}
+          onChange={setTo}
+          className={cn(FIELD, 'h-[57.04px] w-[145px]')}
+          style={{ left: 548, top: 142.33 }}
+        />
 
         {/* 담당 요양보호사 — 로그인한 본인이다(고를 수 없다) */}
         <span data-fx="221:679" className={LABEL} style={{ left: 733, top: 106.31 }}>
@@ -349,8 +339,8 @@ export function JournalWritePage() {
           <img
             src={asset.iconChevronDownLg}
             alt=""
-            className="pointer-events-none absolute block"
-            style={{ left: 188.13, top: 22.67, width: 19.29, height: 13.02 }}
+            className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
+            style={{ left: 188.13, width: 19.29, height: 13.02 }}
           />
         </div>
 
@@ -547,7 +537,10 @@ export function JournalWritePage() {
                 e.target.value = '';
               }}
             />
-            {/* 사진만으로는 일지 내용이 없다 — 설명을 적게 한다(빈 값 저장 금지) */}
+            {/* 사진만으로는 일지 내용이 없다 — 설명을 적게 한다(빈 값 저장 금지).
+                ⚠️ 아래 'AI 초안 만들기' 버튼과 **세로로 겹쳐 있었다**(설명 578~635.0 ↔
+                버튼 587.7~644.7, 2026-09-11 사용자 신고) → 버튼을 설명 아래로 내렸다
+                (PHOTO_DRAFT_TOP). 사진 슬롯은 363+193=556 에서 끝난다. */}
             <input
               value={content}
               onChange={(e) => setContent(e.target.value.slice(0, 2000))}
@@ -568,7 +561,7 @@ export function JournalWritePage() {
           data-fx={mode === 'typed' ? '221:1031' : undefined}
           title={content.trim() ? '원문을 관찰 항목으로 정리합니다' : '먼저 원문을 적어 주세요'}
           className="absolute flex h-[57.04px] items-center rounded-[10px] border border-line bg-white disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ left: mode === 'typed' ? 253 : COL, top: mode === 'photo' ? 587.67 : 714.77, width: 195 }}
+          style={{ left: mode === 'typed' ? 253 : COL, top: mode === 'photo' ? PHOTO_DRAFT_TOP : 714.77, width: 195 }}
         >
           <img src={asset.iconSparkle} alt="" className="absolute left-[27px] block" style={{ width: 26.33, height: 26.34 }} />
           <span className="absolute left-[65px] whitespace-nowrap text-[18px] leading-[21px] text-ink-500">
@@ -577,7 +570,7 @@ export function JournalWritePage() {
         </button>
         <span
           className="absolute whitespace-nowrap text-[18px] leading-[21px] text-ink-500"
-          style={{ left: mode === 'typed' ? 471 : 305, top: mode === 'photo' ? 604.68 : 731.79 }}
+          style={{ left: mode === 'typed' ? 471 : 305, top: mode === 'photo' ? PHOTO_DRAFT_TOP + 17.01 : 731.79 }}
         >
           작성한 일지를 AI가 인식하여 초안을 생성합니다.
         </span>

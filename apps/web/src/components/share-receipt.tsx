@@ -65,10 +65,16 @@ export function ShareReceiptDialog({
   const viewed = share.viewed_at != null;
 
   return (
-    <Dialog open={open} onClose={onClose} size="lg" label="공개 이력 상세">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      size="xl"
+      label="공개 이력 상세"
+      fit={{ width: 1082, height: 758 }}
+    >
       <div
         data-fx="153:1623"
-        className="relative mx-auto rounded-[10px] bg-white"
+        className="relative rounded-[10px] bg-white"
         style={{ width: 1082, height: 758 }}
       >
         <h2

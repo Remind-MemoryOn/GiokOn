@@ -130,7 +130,7 @@ export function ConversationAnalysisListPage() {
           alt=""
           width={12}
           height={7.81}
-          className="pointer-events-none absolute left-[156px] top-[23.54px] block"
+          className="pointer-events-none absolute left-[156px] top-1/2 block -translate-y-1/2"
         />
         <input
           type="date"
