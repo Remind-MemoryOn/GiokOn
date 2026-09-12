@@ -1,6 +1,6 @@
 # design.md
 
-> **AI 상세 설계 대체(2026-09-11)**: [음성 AI 전환 계획](plans/voice-ai-personalization.md)이 아래의 과거 STT→LLM 고정 공급자·스트리밍·응답 계약보다 우선한다. 특히 검증 전에 TTS를 재생하지 않는다. 화면 레이아웃 변경 승인을 뜻하지 않으며 신규 상태·계약 구현은 별도 작업이다.
+> **2026-09-12 현재 계획**: [음성 상세](plans/voice-ai-personalization.md)와 [개발 실행안](plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 신규 화면/요소 — 동의(민감정보·대리/설명동의)·AI 이용 사전 고지·위기 안내(사람 에스컬레이션)·정보주체 권리(열람/삭제)·KWCAG 접근성·기관관리(RBAC). 프론트는 **Claude Design 트랙**으로 직접 구현(외부 업체본과 비교). 상세: PLAN §2′(M9·M12·M13·M14·M15) · `docs/{compliance,ai-safety,accessibility}.md`.
 
@@ -13,7 +13,7 @@
 | 클라이언트 | React 관리자 웹(요양보호사) + React Native 모바일 앱(어르신) — 모노레포 |
 | 서버 | Supabase (supabase-js 직접연동 + AI는 Edge Functions) |
 | DB | Supabase PostgreSQL (RLS: `auth.uid()`) |
-| AI 파이프라인(신규 계획) | Gemini 오디오 이해 → 발화 확인·개인화 정책 → 서버 안전 검증 → Clova Voice TTS |
+| AI 파이프라인(신규 계획) | Gemini Live 직접 음성·대화 → 예외 재확인·개인화 정책 → 서버 안전 검증 → Clova Voice TTS |
 
 **설계 원칙**
 - 어르신 화면은 조작 최소화. 버튼 1개, 텍스트 18pt 이상
@@ -286,7 +286,7 @@ AI 음성 자동 재생
         ↓
   [STT]
   audio → Supabase Storage 임시 업로드
-         → STT(gpt-4o-transcribe) 호출 → transcript 텍스트 반환
+         → [과거 순차 STT 설계, 현재는 Live 직접 음성 경로]
          → Supabase Storage 오디오 즉시 삭제
         ↓
   [LLM]
@@ -296,7 +296,7 @@ AI 음성 자동 재생
   → JSON: { question, topic, switch_topic }
         ↓
   [TTS]
-  question → Clova Voice API → 오디오 스트림 → Supabase Storage
+  검증된 question → Clova Voice API → 앱 재생 (보관·재사용은 계약 허용 시에만 설계)
         ↓
 클라이언트
   응답: { question, audioUrl, topic, switch_topic, transcript }
@@ -350,7 +350,7 @@ LLM 스트리밍 응답 수신
     ↓
 문장 단위 감지 (마침표, 물음표, 느낌표)
     ↓
-문장 완성 시 즉시 Clova Voice TTS 요청
+문장 완성 후 서버 의미·안전 검증을 통과한 텍스트만 Clova Voice TTS 요청
     ↓
 오디오 청크 클라이언트 전송 (순차 재생)
     ↓

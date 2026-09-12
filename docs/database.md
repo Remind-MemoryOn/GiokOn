@@ -1,5 +1,7 @@
 # Database Setup
 
+> **2026-09-12 현재 개발 기준**: [개발 실행안](plans/business-plan-development-delta.md)의 현재 구현/변경 목표/인수 조건을 적용한다. 앱은 Live 직접 입력·대화와 검증 Clova 출력, 담당자 시작·회수형 진행으로 변경할 계획이다. 웹 일지는 자유서술형이며 현재 초안은 규칙 기반이다. 사람의 최종 확인·선별 공개는 유지한다. 신규 LLM·과금·계측·학습 기능과 과거 구현/배포 이력을 구분한다.
+
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 스키마 상향 — `organizations`/`consents`/`audit_log` + **조직 RBAC**(전 테이블 RLS를 조직+역할 기준으로 확장), 리전=**서울(ap-northeast-2)**, 보관/파기 정책. 상세: PLAN §2′(M9·M10·M14) · `docs/security.md` · `docs/compliance.md`.
 
 ## Direction
@@ -86,7 +88,7 @@ AI 파이프라인(STT/LLM/TTS)처럼 provider 키 보호가 필요한 작업만
 
 1. 클라이언트가 어르신 발화 오디오와 함께 `session-respond` Edge Function 호출(JWT 포함).
 2. 함수가 JWT 검증 → 세션 소유자 확인.
-3. STT(gpt-4o-transcribe) → LLM(현행 프런티어, Structured Outputs) → TTS(Clova) 순차 처리.
+3. 변경 목표: Gemini Live 직접 음성·대화 → 출력 전사 수신 → 서버 검증 → Clova TTS. 현재 토큰 직접 연결과 새 중계/출력 계약을 구분하며 Live Structured Outputs를 전제하지 않는다.
 4. `session_logs`에 AI 턴 기록, `audio_url` 반환.
 
 ## Apply to Supabase
@@ -117,7 +119,7 @@ Edge Functions 전용 비밀값은 Supabase secrets로 관리하고 클라이언
 ```env
 # Edge Functions secrets (클라이언트 미노출)
 SUPABASE_SECRET_KEY="<secret-key>"             # 레거시 service_role key 대체
-OPENAI_API_KEY="sk-..."                        # LLM·STT(gpt-4o-transcribe) — Bearer 단일 키
+OPENAI_API_KEY="sk-..."                        # 과거 공급자 예시; 초기 Live 필수 키가 아님
 NCP_CLOVA_CLIENT_ID="<X-NCP-APIGW-API-KEY-ID>"     # CLOVA Voice(TTS)/Speech(STT) — Client ID
 NCP_CLOVA_CLIENT_SECRET="<X-NCP-APIGW-API-KEY>"    # CLOVA — Client Secret (쌍으로 인증)
 NAVER_CLIENT_ID="<...>"                         # 소셜 로그인(네이버, 커스텀 naver-auth)
@@ -133,3 +135,7 @@ NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 - TTS 결과 오디오는 `session_logs.audio_url`과 `audio_expires_at`으로 추적한다. 24시간 만료 파일 삭제는 `pg_cron` 또는 스케줄 Edge Function으로 구현한다.
 - API 응답의 `timestamp` 필드는 DB의 `session_logs.spoken_at`에서 매핑한다.
 - 기존 마이그레이션이 `firebase_uid` / `app.user_id` 기반으로 작성돼 있다면, `auth.users` 연결 + `auth.uid()` 기반 RLS로 재작성한다.
+
+## 2026-09-12 사업 기획 반영 사항
+
+현재 테이블을 변경한 것은 아니다. 신규 데이터 계약 후보: 회상/직접 관찰 출처, 입력 원문·생성 초안·최종본 연결, 공급자 모델·프롬프트 버전·청구 토큰·TTS 문자 수·기관/세션 귀속·멱등 키, 작성/수정/승인과 개입 이벤트, 학습 동의·독립 원음/전사·검수·철회 계보. 기존 컬럼으로 가능한 범위를 먼저 대조하고 필요한 마이그레이션만 설계한다. 공개 전환은 초안 승인과 별개이며 RLS·감사·철회 검증이 필요하다.

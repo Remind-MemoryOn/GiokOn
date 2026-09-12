@@ -1,5 +1,7 @@
 # 기억온 (GiokOn) — 프로젝트 메모리
 
+> **2026-09-12 현재 개발 기준**: 팀은 임성훈(기획·개발), 박진우(개발·영업), 고서연(UI/UX·프론트엔드 디자인) 3인이다. 최신 사업 기획의 개발 반영은 [실행안](docs/plans/business-plan-development-delta.md)에 정리했다. 시설 3곳 접점·현장 테스트 미실시·발표 1주 후 예정이며 신규 개발 완료를 의미하지 않는다. 아래 날짜별 완료 이력은 당시 사실로 보존한다.
+
 > 📌 **이 파일이 프로젝트 메모리의 단일 소스(SoT)다(2026-09-11 사용자 확정).**
 > 어떤 AI 에이전트로 작업하든(Claude Code·Codex·Cursor 등) **여기를 읽고, 여기에 기록한다.**
 > 루트 `CLAUDE.md` 는 이 파일을 가리키는 **포인터 스텁**이다 — 거기에 내용을 쓰지 말 것.
@@ -20,7 +22,7 @@
   Figma 19화면 + 설정·동의 확인 = 전 화면 구현. 요양보호사가 조작하는 세션 실행 도구.
   백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규.
   **현재 구현된 대화 AI = Gemini Live**(음성 입출력+LLM 통합, 2026-08-23) · 미가용 시
-  expo-speech+타자 폴백. ⚠️ **출시 목표 구조는 2026-09-11 에 바뀌었다** — `기술 결정` 참조.
+  expo-speech+타자 폴백. ⚠️ **출시 목표 구조는 2026-09-12 에 갱신됐다** — `기술 결정` 참조.
 - `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
@@ -70,13 +72,15 @@
     음성 입력·출력·LLM 한 세션). 키는 앱에 두지 않고 Edge Function **`live-token`** 이
     Supabase JWT 를 검증해 ephemeral token 을 발급한다(모델 잠금 + 자격·동의·사용량 검사,
     R005/R010). 구현 위치는 `apps/mobile/src/lib/live/`.
-  - **출시 목표 구조(2026-09-11 사용자 확정, 아직 미구현)** = `docs/plans/voice-ai-personalization.md`
-    가 최신 기준이다. 턴 단위 오디오 → Gemini **일반 오디오 이해 API** → 서버 검증 →
-    **검증된 텍스트만 Clova Voice TTS 로 재생**. 일반 오디오 API 와 Live 를 구분하며
-    **Live 3.1 은 Structured Outputs 미지원**이다. 장기적으로 Whisper 특화 + 외부에서 학습한
-    공개 가중치 LLM 의 Ollama 추론을 평가 후 독립 전환. 인지능력 자동 진단 금지,
-    서비스/학습 동의 분리, **Gemini 출력의 재학습은 계약 확인 전 제외**.
-    ⚠️ **문서 계획이며 신규 기능 구현 완료가 아니다.** Live 경로는 비교 실험용으로 보존한다.
+  - **출시 목표 구조(2026-09-12 사용자 확정, 변경분 미구현)** = `docs/plans/voice-ai-personalization.md`.
+    **Gemini Live 직접 음성 입력·프롬프트 대화 → 서버 검증 텍스트 → Clova TTS**.
+    일반 오디오 API 우선·Live 비교용이라는 9월 11일 설계를 대체한다. Live의 Structured Outputs는 전제하지 않는다.
+    담당자는 세션 설계·시작·회수·사후 확인을 지원하며 매 턴 승인 없는 자동 진행을 목표로 한다.
+    현재 전사 확인 패널·Live 원본 재생과 다르므로 상태 전이·중단·예외 대응·출력 배선이 필요하다.
+    장기에는 독립 수집·사람 전사·검수 자료로 Whisper와 **Qwen3.5-9B** 특화를 각각 평가한다.
+    Clova 유지, Ollama는 추론 후보. Gemini 참여 세션의 출력·파생 자료는 계약 확인 전 학습 제외.
+    세부 개발 차이·인수 조건은 `docs/plans/business-plan-development-delta.md` D1~D11을 따른다.
+
   - 분석·프롬프트는 계속 core. 서버 키 보호·모델 버전 검증은 어느 구조에서도 유지한다.
   - 웹 요양일지 STT 는 별개 기능이다 — Edge Function `stt-transcribe`(NCP CLOVA), 배포됨.
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
@@ -102,7 +106,15 @@
   대시보드 SQL Editor 등 대안 사용.
 - 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
 
-## 현재 위치 (2026-09-11)
+## 현재 위치 (2026-09-12 — 사업 기획의 개발 문서 반영)
+
+- 사용자 요청으로 프로젝트 관리·요구사항·출시 문서를 동기화했다. 코드·DB·배포 변경은 없다.
+- 실행 목록은 `docs/plans/business-plan-development-delta.md` D1~D11. 자동 대화·Clova 출력·개인화·일지 품질·실측부터 수행한다.
+- 현재 웹 초안은 규칙 기반이며 실제 LLM 초안은 미구현이다. 앱 매 턴 승인 없는 목표와 웹 최종 승인 유지를 구분한다.
+- 초기 구매·가격 구조는 검증 가설이다. 기관 구독+회상 사용량 제안, 가격·포함량 미확정. 자체 모델·연동·GS·의료 연구는 후속이다.
+- 기존 보안 R010 부분 해결 판정·릴리스 차단 항목은 그대로 유효하다. 이번 문서 반영을 새 기능 완료로 표시하지 않는다.
+
+## 이전 위치 (2026-09-11)
 
 > 📋 배포까지 남은 일 = `docs/plans/app-release-remaining.md`(실행 목록) ·
 > 감사 대조 근거 = `docs/plans/app-release-plan.md`(앱)·`docs/plans/web-launch.md`(웹) ·
@@ -143,7 +155,7 @@ WebSocket 동일)이 그 자리를 막고 있다. **기존 토큰을 취소했�
 ### 남은 것 (요약 — 상세는 `app-release-remaining.md`)
 - **P0(코드 밖)**: Gemini Paid tier + DPA · 도메인/DNS · 법률 문구(법인·보호책임자·국외이전) ·
   Apple 로그인 · 앱 내 계정 삭제 · 스토어 콘솔 · 실기기 QA
-- **P0(코드)**: 새 음성 AI A0(기준선·계약 확인) → A1(턴 API + 검증 TTS)
+- **P0(코드)**: 새 음성 AI A0(기준선·계약 확인) → A1(Live 자동 진행 + 검증 Clova TTS) 및 개발 실행안 D1~D5
 - **P1**: ① **오류가 빈 상태로 보인다** — `apps/mobile/src/data/reads.ts` 에 `error` 참조 **0건**
   (RLS 거부가 "기록이 없어요"로 보인다. 어르신 기록 시스템에서 이건 사실 왜곡) ·
   ② `cancelSession`(`appStore.ts`)이 로컬 상태만 지워 **DB 에 `active` 좀비 세션이 남는다** ·

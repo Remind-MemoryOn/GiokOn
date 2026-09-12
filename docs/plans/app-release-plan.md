@@ -1,6 +1,6 @@
 # 기억온 앱(apps/mobile) 배포 계획
 
-> **AI 계획 변경(2026-09-11)**: 이 문서의 감사 결과는 당시 구현 기록이다. 앞으로의 음성 출시 설계는 [음성 AI 전환 계획](voice-ai-personalization.md)을 따른다. 기존 Live는 비교 경로이며 일반 오디오 이해→검증 텍스트→Clova TTS 및 문맥 위험 처리를 새로 구현·검증해야 한다. Live 연결 성공만으로 AI 출시 조건을 충족하지 않는다.
+> **2026-09-12 현재 계획**: [음성 상세](voice-ai-personalization.md)와 [개발 실행안](business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 - 작성일: 2026-09-04 (2026-09-04 재검토 반영)
 - ▶ **실행 목록은 `app-release-remaining.md` 를 본다.** 이 문서는 감사 대조·검증 근거 기록이다.
@@ -174,3 +174,11 @@ talk.tsx  confirm(finalText, livePayload)      → 스토어가 screenAiUtteranc
 4. **Gemini 실연동 + Paid tier + DPA** — 무료 tier 는 약관상 어르신 음성에 쓸 수 없다.
 
 이 넷은 사용자 결정이 있어야 움직인다.
+
+## 2026-09-12 추가 실행 게이트
+
+- [ ] [개발 실행안](business-plan-development-delta.md) D1~D5: 자동 대화·검증 Clova 출력·지원 정책·일지 승인·실측 이벤트.
+- [ ] 실제 구현과 발표 목표의 차이를 기능별로 확인. 시설 3곳 접점을 실증 완료로 기록하지 않음.
+- [ ] 유료 도입 전 D6~D8: 초안 품질·사용량/요금·도입 지원. 장기 D9~D11은 초기 출시 완료 조건과 구분.
+
+이전 날짜의 SDK·배포·테스트 체크는 당시 기록이며, 현재 운영 적용 상태는 루트 AGENTS와 보안 런북으로 확인한다.

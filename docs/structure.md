@@ -1,6 +1,6 @@
 # structure.md
 
-> **AI 구조 개정(2026-09-11)**: 앱 음성 경로는 [전환 계획](plans/voice-ai-personalization.md) §3을 따른다. 아래 고정 gpt-4o-transcribe 파이프라인 도식은 과거 설계다. 초기 Gemini 오디오 이해→확인·안전 검증→Clova TTS, 장기 별도 GPU에서 Whisper/공개 LLM 추론을 평가한다. 기존 Live와 웹 일지 STT는 구분한다.
+> **2026-09-12 현재 계획**: [음성 상세](plans/voice-ai-personalization.md)와 [개발 실행안](plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 멀티테넌시 — `organizations` + `users.org_id` + 역할(RBAC: org_admin/caregiver/(guardian)), 전 테이블 조직 단위 격리. 상세: PLAN §2′ M14 · `docs/security.md`.
 
@@ -24,7 +24,7 @@
              │  Edge Functions (AI 파이프라인, 키 보호)
              ▼
 ┌───────────────┬───────────────┬──────────────────────┐
-│ gpt-4o-transcribe(STT) │ LLM(현행 프런티어) │ Clova Voice(TTS) │
+│ Gemini Live(직접 음성·대화) → 서버 검증 → Clova TTS(변경 목표) │
 └───────────────┴───────────────┴──────────────────────┘
 ```
 
@@ -230,9 +230,9 @@ giokon/
 
 ```
 session-respond  (supabase/functions)
-  ├── [STT]   어르신 발화 오디오 → 텍스트 (gpt-4o-transcribe / Clova Speech)
+  ├── [STT]   초기 Live 직접 음성 입력·대화 / 장기 Whisper 특화 평가
   ├── [LLM]   텍스트 + 연대기 → 다음 질문 JSON (현행 프런티어 · Structured Outputs)
-  └── [TTS]   다음 질문 텍스트 → 오디오 URL (Clova Voice → Supabase Storage)
+  └── [TTS]   검증된 다음 질문 → Clova Voice → 앱 재생 (영구 저장·재사용 미확정)
         ↓
   session_logs 기록 + 클라이언트로 { question, audioUrl, switchTopic } 반환
 ```
@@ -275,5 +275,5 @@ CRUD는 supabase-js로 직접, 세션 AI 단계는 Edge Function으로 처리한
 | 인지자극 모듈 | 미구현 (v2) | `session_type` ENUM 컬럼 추가 (`reminiscence` / `cognitive`), 프롬프트 분기 |
 | 연대기 자동 축적 | 요양보호사 직접 입력 | 세션 로그 분석 → `profiles` 자동 업데이트 배치 |
 | 기관 어드민 | 미구현 | `organizations` 테이블 추가, `users.org_id` FK 연결 |
-| 다중 STT | gpt-4o-transcribe 단일 | Edge Function 내 gpt-4o-transcribe / Clova Speech 교체 가능 구조 |
+| 음성 전환 | 초기 Gemini Live 직접 입력·대화 | 장기 Whisper·Qwen3.5-9B를 독립 평가 후 전환 |
 | 모니터링 | 없음 | Sentry(에러) + Edge Function 로깅 추가 |

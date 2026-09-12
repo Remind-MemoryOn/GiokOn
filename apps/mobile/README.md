@@ -1,5 +1,7 @@
 # @giokon/mobile — 어르신 대화 Expo 앱
 
+> **2026-09-12 현재 개발 기준**: [개발 실행안](../../docs/plans/business-plan-development-delta.md)의 현재 구현/변경 목표/인수 조건을 적용한다. 앱은 Live 직접 입력·대화와 검증 Clova 출력, 담당자 시작·회수형 진행으로 변경할 계획이다. 웹 일지는 자유서술형이며 현재 초안은 규칙 기반이다. 사람의 최종 확인·선별 공개는 유지한다. 신규 LLM·과금·계측·학습 기능과 과거 구현/배포 이력을 구분한다.
+
 요양보호사가 조작하는 **세션 실행 도구**. 요양보호사가 로그인 → 어르신 선택 →
 (동의 확인) → 세션 시작 → 기기 전달 → **어르신 음성 회상 대화** → 종료 시
 **AI 자동 요약·분석** → 저장. 어르신은 대화만 한다.
@@ -15,7 +17,7 @@ Figma 디자인(`nLfWkg2H7dFfDH1pehcH5I`, 19화면)에서 토큰·구조를 추�
   - 동의 게이팅: `@giokon/core` consent 카탈로그(`canStartElderSession`).
   - 데이터: `@giokon/data`(Supabase·TanStack Query) — 미설정 시 목업 스토어로 동작(웹과 동일).
 - 음성: TTS = `expo-speech`(느린 속도). STT는 실연동(Edge Function) 전까지 모의(`src/lib/mockStt.ts`).
-  `SpeechProvider` 계약(`src/lib/speech.ts`)은 Clova/gpt-4o-transcribe 교체 시 유지.
+  위 내용은 초기 구현 설명이다. 현재 Live 경로와 신규 자동 진행·Clova 출력 계약은 개발 실행안을 따른다. 공급자 교체가 무변경이라고 전제하지 않는다.
 
 ## 화면 (app/)
 - 인증: `index`(스플래시) · `login`
