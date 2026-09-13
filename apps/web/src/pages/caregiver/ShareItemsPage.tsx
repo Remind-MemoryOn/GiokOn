@@ -323,7 +323,9 @@ export function ShareItemsPage() {
         className="absolute flex h-[30px] w-[108px] items-center rounded-[5px] border border-ink-500/30 bg-ink-500/[0.03] focus-within:border-accent"
         style={{ left: 1268, top: Y(292) }}
       >
-        <span className="pointer-events-none absolute left-[25px] whitespace-nowrap text-w-body leading-[30px] text-ink-900">
+        {/* 타이포는 다른 화면의 기간 드롭다운과 같게 맞춘다 — 시안 값(20px 검정)을 쓰면
+            혼자 크고 진해 보이고, "오래된순" 이 화살표(90)를 덮는다(2026-09-11 사용자 신고). */}
+        <span className="pointer-events-none absolute left-[25px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[23px] text-ink-500">
           {order === 'desc' ? '최신순' : '오래된순'}
         </span>
         <img

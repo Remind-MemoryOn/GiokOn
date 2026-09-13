@@ -796,7 +796,12 @@ export function ElderDetailPage() {
         className="absolute flex items-center gap-[10px] text-w-nav font-semibold leading-[30px] text-ink-500"
         style={{ left: 1147, top: Y(3295) }}
       >
-        <img src={asset.iconTrash} alt="" width={30} height={30} className="block" />
+        <img
+          src={asset.iconTrash}
+          alt=""
+          className="block object-contain"
+          style={{ width: 30, height: 30 }}
+        />
         <span data-fx="196:140">어르신 정보 삭제하기</span>
       </Link>
     </div>

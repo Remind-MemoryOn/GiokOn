@@ -220,7 +220,7 @@ export function FeedPage() {
         className="absolute left-[1203px] h-[37.02px] w-[170px] rounded-[5px] border border-line bg-white"
         style={{ top: Y(294.17) }}
       >
-        <img src={asset.iconCalendarSm} alt="" width={22} height={22} className="pointer-events-none absolute left-[13px] top-[8.01px] block" />
+        <img src={asset.iconCalendarSm} alt="" width={22} height={22} className="pointer-events-none absolute left-[13px] top-1/2 block -translate-y-1/2" />
         <span data-fx="157:131" className="pointer-events-none absolute left-[47px] top-[4px] whitespace-nowrap text-[16px] leading-[30px] text-ink-500">
           날짜 선택하기
         </span>

@@ -121,12 +121,11 @@ export function JournalListPage() {
           alt=""
           width={22}
           height={22}
-          className="pointer-events-none absolute left-[13px] top-[8.01px] block"
+          className="pointer-events-none absolute left-[13px] top-1/2 block -translate-y-1/2"
         />
         <span
           data-fx="210:1422"
-          className="pointer-events-none absolute left-[47px] whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
-          style={{ top: 4.0 }}
+          className="pointer-events-none absolute left-[47px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
         >
           {day ? day.replace(/-/g, '.') : '날짜 선택하기'}
         </span>
@@ -135,7 +134,7 @@ export function JournalListPage() {
           alt=""
           width={12}
           height={7.81}
-          className="pointer-events-none absolute left-[156px] top-1/2 block -translate-y-1/2"
+          className="pointer-events-none absolute left-[144px] top-1/2 block -translate-y-1/2"
         />
         <input
           type="date"
@@ -237,7 +236,7 @@ export function JournalListPage() {
                 className="absolute block"
                 style={{ left: 1179, top: Y(top + 104.07), width: 26.97, height: 27.02 }}
               >
-                <img src={asset.iconTrashLg} alt="" className="block h-full w-full" />
+                <img src={asset.iconTrash} alt="" className="block h-full w-full object-contain" />
               </button>
             </div>
           );

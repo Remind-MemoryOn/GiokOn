@@ -95,12 +95,11 @@ export function SessionListPage() {
           alt=""
           width={22}
           height={22}
-          className="pointer-events-none absolute left-[13px] top-[8.01px] block"
+          className="pointer-events-none absolute left-[13px] top-1/2 block -translate-y-1/2"
         />
         <span
           data-fx="178:1032"
-          className="pointer-events-none absolute left-[47px] whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
-          style={{ top: 4.01 }}
+          className="pointer-events-none absolute left-[47px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
         >
           {day ? day.replace(/-/g, '.') : '날짜 선택하기'}
         </span>
