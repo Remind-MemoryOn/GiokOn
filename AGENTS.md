@@ -99,15 +99,30 @@
 - 마이그레이션 **52종**(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것.
   16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·org RBAC·감사 로그 +
   2026-09 보안 하드닝 R002·R005·R007·R010~R012).
-- ⛔ **`supabase db push` 를 쓰지 말 것 — 이력이 스키마와 어긋나 있다(2026-09-13 실측).**
-  라이브 `schema_migrations` 에 다음 3건의 **기록이 없다**(스키마에는 적용돼 있다 —
-  SQL Editor 직접 적용의 흔적): `20260908000000_users_privilege_hardening` ·
-  `20260908010000_users_privilege_guard_fix` · `20260909000000_session_ownership_integrity`.
-  반대로 라이브에만 있는 이력도 있다(`20260902000100_inquiries_revoke_anon` — 저장소에 파일 없음).
-  이 상태로 push 하면 **이미 적용된 DDL 을 다시 실행**하려 든다(`add constraint` 는 멱등하지 않다).
-  이력을 맞추기 전까지는 CLI `db query --linked --file` 로 **한 건씩** 적용하고 같은 트랜잭션에
-  이력을 기록한다(R005~R012 가 쓴 방식). 정리 계획: `docs/plans/app-release-remaining.md` §5.1.2.
-  ⚠️ MCP `apply_migration` 은 **적용 시각**으로 기록하므로, 쓴 뒤 저장소 파일명 버전으로 맞춰 준다.
+- ✅ **마이그레이션 이력 정합 완료(2026-09-13, 사용자 승인 후 적용)**. 그전까지는 이력이
+  스키마와 어긋나 `supabase db push` 가 **이미 적용된 DDL 을 재실행**하려 드는 상태였다
+  (`add constraint` 는 멱등하지 않다). 두 종류였다:
+  ① **이력 누락 3건** — 스키마에는 있는데 기록이 없었다(SQL Editor 직접 적용의 흔적):
+     `20260908000000_users_privilege_hardening` · `20260908010000_users_privilege_guard_fix` ·
+     `20260909000000_session_ownership_integrity`. → **DDL 을 실행하지 않고 이력 행만** 넣었다.
+     넣기 전에 세 마이그레이션의 객체(트리거·함수·정책·제약 7종·restrictive 정책 4종·
+     `users` 의 authenticated UPDATE 가 `name` 한 컬럼인 것)가 실제로 있는지 **원자적 블록에서
+     검사**하고, 하나라도 어긋나면 아무것도 쓰지 않게 했다.
+  ② **버전 드리프트 3건** — MCP `apply_migration` 이 적용 시각으로 기록해 저장소 파일명과
+     달랐다: `20260822000519`→`20260822000000`(chronicle_title) ·
+     `20260903001714`→`20260902000000`(inquiries) ·
+     `20260907153319`→`20260907000000`(drop_guardian_invites). → 파일명 버전으로 정정.
+  검증: 저장소 52파일 ↔ 라이브 53행, **"저장소에만 있는 버전" 0건**(= push 가 재실행할 것이 없다).
+  ⚠️ MCP `apply_migration` 은 여전히 **적용 시각**으로 기록한다 — 쓴 뒤 저장소 파일명 버전으로
+  맞춰 주지 않으면 같은 드리프트가 다시 생긴다.
+- ℹ️ 라이브에만 있는 이력 1건은 **일부러 남겼다**: `20260903002002`
+  (`20260902000100_inquiries_revoke_anon`). 저장소에 같은 이름의 파일은 없지만 그 내용
+  (`revoke all on public.inquiries/inquiry_replies from anon`)은 `20260902000000_inquiries.sql`
+  에 흡수돼 있다. 지우면 **실제로 적용했던 기록**이 사라지므로 지우지 않는다. 저장소에만 없는
+  것은 push 를 막지 않는다.
+- 운영 DB 에 DDL 을 적용할 때는 CLI `db query --linked --file` 로 **한 건씩** 적용하고 같은
+  트랜잭션에 이력을 기록한다(R005~R012 가 쓴 방식). `db push` 는 이제 쓸 수 있지만, 여러 건이
+  한꺼번에 나가므로 **운영에서는 여전히 한 건씩을 기본으로** 한다.
 - 개별 마이그레이션의 라이브 반영 근거는 `docs/runbooks/p1-remediation-progress.md` ·
   `p0-fixes-2026-09-09.md` 의 "운영" 문단에 있다. 적용 여부를 추측해 단정하지 않는다 —
   **확인할 수단이 있다**(바로 아래).
