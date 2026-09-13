@@ -16,6 +16,12 @@ export type LiveTurnResult = {
   audioChunksB64: string[];
 };
 
+export interface VoiceRelayConnection {
+  url: string;
+  sessionId: string;
+  accessToken: string;
+}
+
 type Handlers = {
   onOpen?: () => void;
   onDraft?: (text: string) => void;
@@ -67,20 +73,27 @@ export class GeminiLiveClient {
   constructor(
     private readonly model: string,
     private readonly handlers: Handlers,
+    private readonly relay?: VoiceRelayConnection,
   ) {}
 
   /** ephemeral token 으로 접속해 setup 을 보낸다. setupComplete 수신 시 resolve.
    *  resumeHandle 을 주면 **같은 대화 맥락으로 재접속**한다(세션 재개). */
   connect(token: string, systemInstruction: string, resumeHandle?: string): Promise<void> {
     if (this.ws) return Promise.reject(new Error('Live 연결이 이미 진행 중이에요.'));
-    const url = `${LIVE_WS_URL}?access_token=${encodeURIComponent(token)}`;
+    if (this.relay) {
+      try {
+        const endpoint = new URL(this.relay.url);
+        if (endpoint.protocol !== 'wss:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || endpoint.pathname !== '/voice') throw new Error();
+      } catch { return Promise.reject(new Error('음성 중계의 올바른 WSS 주소가 필요해요.')); }
+    }
+    const url = this.relay?.url ?? `${LIVE_WS_URL}?access_token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     this.ws = ws;
 
     return new Promise<void>((resolve, reject) => {
       let settled = false;
       let incoming = Promise.resolve();
-      const setupTimer = setTimeout(() => fail(new Error('Live 연결 준비 시간이 초과됐어요.')), 10000);
+      const setupTimer = setTimeout(() => fail(new Error('Live 연결 준비 시간이 초과됐어요.')), this.relay ? 30000 : 10000);
       const fail = (e: unknown) => {
         if (!settled) {
           settled = true;
@@ -94,6 +107,10 @@ export class GeminiLiveClient {
 
       ws.onopen = () => {
         if (this.ws !== ws) return;
+        if (this.relay) {
+          try { ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken } })); }
+          catch (e) { fail(e); return; }
+        }
         // ⚠️ 3.1 미지원 필드(proactivity 등)는 절대 포함하지 않는다.
         try { ws.send(
           JSON.stringify({

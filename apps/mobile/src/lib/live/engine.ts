@@ -10,7 +10,7 @@
 
 import { buildSystemPrompt, type ChronicleEntry, type ElderProfile, type SessionDesign } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
-import { GeminiLiveClient, type LiveTurnResult } from './client';
+import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
 import { micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback } from './player';
 
@@ -62,6 +62,7 @@ export class LiveConversationEngine {
   private resumeTimer: ReturnType<typeof setTimeout> | null = null;
   private accessTimer: ReturnType<typeof setInterval> | null = null;
   private lastAccessCheck = 0;
+  private relay: VoiceRelayConnection | undefined;
 
   private denyProcessing(): void {
     if (this.closing) return;
@@ -101,10 +102,21 @@ export class LiveConversationEngine {
    * false — 호출부는 기존 파이프라인으로 폴백한다.
    */
   async start(): Promise<boolean> {
-    if (!micStreamingSupported()) return false;
+    if (!micStreamingSupported()) {
+      if (process.env.EXPO_PUBLIC_VOICE_RELAY_URL) this.callbacks.onError?.('마이크 네이티브 모듈이 필요해요. 개발 빌드에서 실행해 주세요.');
+      return false;
+    }
     try {
       if (!await this.verifyProcessing()) return false;
-      const { token, model } = await fetchLiveToken(this.sessionId);
+      const relayUrl = process.env.EXPO_PUBLIC_VOICE_RELAY_URL?.trim();
+      let token = '', model = DEFAULT_MODEL;
+      if (relayUrl) {
+        const session = await getSession();
+        if (!session?.access_token) throw new Error('AUTH_REQUIRED');
+        this.relay = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token };
+      } else {
+        ({ token, model } = await fetchLiveToken(this.sessionId));
+      }
       if (!await this.verifyProcessing()) return false;
       this.lastToken = token;
       this.model = model;
@@ -114,6 +126,7 @@ export class LiveConversationEngine {
       if (!this.closing) this.accessTimer = setInterval(() => { void this.verifyProcessing(); }, 2000);
       return !this.closing;
     } catch (e) {
+      if (process.env.EXPO_PUBLIC_VOICE_RELAY_URL) this.callbacks.onError?.('음성 중계 연결을 확인해 주세요.');
       console.info('[giokon] live 미가용 — 기존 파이프라인으로 진행', e);
       this.client?.close();
       this.client = null;
@@ -141,12 +154,17 @@ export class LiveConversationEngine {
         }
         // 의도하지 않은 끊김 → **1회 한정** 같은 대화로 재접속을 시도한다.
         this.client = null;
+        if (this.relay) {
+          this.callbacks.onError?.('음성 중계가 종료됐어요. 기록을 저장한 뒤 다시 시작해 주세요.');
+          void this.close();
+          return;
+        }
         if (this.resumeHandle && !this.resumedOnce && this.lastToken) {
           this.resumedOnce = true;
           this.resumeTimer = setTimeout(() => void this.tryResume(), 1200);
         }
       },
-    });
+    }, this.relay);
   }
 
   /** 재개 핸들로 재접속. 실패하면 폴백 파이프라인으로 자연 강하한다. */
@@ -237,6 +255,10 @@ export class LiveConversationEngine {
       await playPcmTurn(chunksB64);
     } catch (e) {
       console.warn('[giokon] live 오디오 재생 실패 — 텍스트만 표시', e);
+      if (this.relay) {
+        this.callbacks.onError?.('CLOVA 음성을 재생하지 못했어요.');
+        await this.close();
+      }
     }
   }
 

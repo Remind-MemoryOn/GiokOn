@@ -12,11 +12,13 @@ import { Audio, type AVPlaybackStatus } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { base64ToBytes, bytesToBase64, wrapWav } from './pcm';
 
-let current: { sound: Audio.Sound; fileUri: string } | null = null;
+let current: { sound: Audio.Sound; fileUri: string; settle: () => void } | null = null;
+let generation = 0;
 
 async function teardown(): Promise<void> {
   if (!current) return;
   const { sound, fileUri } = current;
+  current.settle();
   current = null;
   try {
     await sound.unloadAsync();
@@ -35,7 +37,9 @@ async function teardown(): Promise<void> {
  * 새 재생이 시작되면 이전 재생은 즉시 중단된다(턴 전환 대응).
  */
 export async function playPcmTurn(chunksB64: string[]): Promise<void> {
-  await stopPlayback();
+  const ownGeneration = ++generation;
+  await teardown();
+  if (ownGeneration !== generation) return;
   if (chunksB64.length === 0) return;
 
   const total = chunksB64.reduce((n, c) => n + base64ToBytes(c).length, 0);
@@ -49,29 +53,40 @@ export async function playPcmTurn(chunksB64: string[]): Promise<void> {
   if (total <= 44) return; // 사실상 빈 턴
 
   const wav = wrapWav(pcm);
-  const fileUri = `${FileSystem.cacheDirectory}live-turn.wav`;
-  await FileSystem.writeAsStringAsync(fileUri, bytesToBase64(wav), {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-
-  await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-  const { sound } = await Audio.Sound.createAsync(
-    { uri: fileUri },
-    { shouldPlay: true },
-    undefined,
-    false,
-  );
-  current = { sound, fileUri };
-  await new Promise<void>((resolve) => {
-    sound.setOnPlaybackStatusUpdate((st: AVPlaybackStatus) => {
-      if (!st.isLoaded && st.error) resolve();
-      if (st.isLoaded && st.didJustFinish) resolve();
+  const fileUri = `${FileSystem.cacheDirectory}live-turn-${Date.now()}-${ownGeneration}.wav`;
+  let sound: Audio.Sound | undefined;
+  let owned = false;
+  try {
+    await FileSystem.writeAsStringAsync(fileUri, bytesToBase64(wav), { encoding: FileSystem.EncodingType.Base64 });
+    if (ownGeneration !== generation) return;
+    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+    if (ownGeneration !== generation) return;
+    ({ sound } = await Audio.Sound.createAsync({ uri: fileUri }, { shouldPlay: false }, undefined, false));
+    if (ownGeneration !== generation) return;
+    const loaded = sound;
+    let complete!: () => void;
+    let playbackError: Error | undefined;
+    const done = new Promise<void>(resolve => { complete = resolve; });
+    current = { sound: loaded, fileUri, settle: complete };
+    owned = true;
+    loaded.setOnPlaybackStatusUpdate((st: AVPlaybackStatus) => {
+      if (!st.isLoaded && st.error) { playbackError = new Error('음성을 재생하지 못했어요.'); complete(); }
+      if (st.isLoaded && st.didJustFinish) complete();
     });
-  });
-  await teardown();
+    const timer = setTimeout(() => { playbackError = new Error('음성 재생 시간이 초과됐어요.'); complete(); }, 90000);
+    try { await loaded.playAsync(); await done; } finally { clearTimeout(timer); }
+    if (playbackError) throw playbackError;
+  } finally {
+    if (current?.sound === sound) await teardown();
+    else if (!owned) {
+      try { await sound?.unloadAsync(); } catch { /* already unloaded */ }
+      try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch { /* best effort */ }
+    }
+  }
 }
 
 /** 진행 중 재생이 있으면 즉시 끊는다(세션 종료·다음 턴 시작). */
 export async function stopPlayback(): Promise<void> {
+  generation++;
   await teardown();
 }

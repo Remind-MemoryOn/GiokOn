@@ -1,5 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = process.cwd();
 
@@ -87,7 +88,7 @@ if (offenders.length > 0) {
 // 한 번 걸리는 정상 코드가 있고, 실제 깨짐은 한 줄에 촘촘히 나타나기 때문이다
 // (package.json 사례는 한 줄에 5개였다). 이 파일 자신은 패턴 예시를 담고 있어 제외한다.
 const MOJIBAKE = /\?[가-힣]/g;
-const SELF = path.relative(ROOT, new URL(import.meta.url).pathname).replace(/\\/g, '/');
+const SELF = path.relative(ROOT, fileURLToPath(import.meta.url)).replace(/\\/g, '/');
 const mangled = [];
 for (const file of files) {
   const rel = path.relative(ROOT, file).replace(/\\/g, '/');

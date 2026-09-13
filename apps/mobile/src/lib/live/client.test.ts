@@ -28,6 +28,23 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     return { client, socket, onError };
   }
 
+  it('relay mode sends Supabase auth in the first frame, never the URL or a Gemini token', async () => {
+    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic-jwt' });
+    const pending = client.connect('', 'ignored-client-context');
+    const socket = Socket.all[0];
+    expect(socket.url).toBe('wss://voice.example.test/voice');
+    socket.onopen!();
+    expect(socket.sent[0]).toEqual({ relayAuth: { sessionId: 'session', accessToken: 'synthetic-jwt' } });
+    socket.receive({ setupComplete: {} }); await pending;
+    client.close();
+  });
+
+  it('refuses insecure relay URLs', async () => {
+    const client = new GeminiLiveClient('relay', {}, { url: 'ws://remote.example.test/voice', sessionId: 'session', accessToken: 'synthetic' });
+    await expect(client.connect('', '')).rejects.toThrow();
+    expect(Socket.all).toHaveLength(0);
+  });
+
   it('단기 토큰 endpoint·setup 구조가 맞고 setupComplete 전에는 입력하지 않는다', async () => {
     const client = new GeminiLiveClient('models/test-model', {});
     const connecting = client.connect('auth_tokens/synthetic', 'system', 'resume-handle');

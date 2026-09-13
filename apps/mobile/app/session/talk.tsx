@@ -43,6 +43,7 @@ import iconSpeaker from '../../assets/brand/icon-speaker.png';
 const FRAME_H = 852;
 /** 어르신 발화 입력 길이 상한(Figma 대화 수정 화면의 200자 카운터와 동일). */
 const UTTERANCE_MAX = 200;
+const RELAY_MODE = Boolean(process.env.EXPO_PUBLIC_VOICE_RELAY_URL?.trim());
 
 export default function Talk() {
   const active = useApp((s) => s.active);
@@ -66,6 +67,7 @@ export default function Talk() {
   const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
   const { height } = useWindowDimensions();
   const finishing = useRef(false);
+  const relayFailed = useRef(false);
 
   const question = active?.currentQuestion;
   const pending = active?.pendingStt ?? null;
@@ -108,6 +110,14 @@ export default function Talk() {
   /** 모델 응답 대기 중(저장 버튼 이중 탭 방지 + 처리 중 표시). */
   const [confirming, setConfirming] = useState(false);
   const timeoutNoticed = useRef(false);
+  const haltRelay = (message: string) => {
+    if (!stillCurrent() || relayFailed.current) return;
+    relayFailed.current = true;
+    liveAudioChunks.current.clear();
+    ExpoSpeechProvider.cancelSpeak();
+    void closeLiveEngine();
+    Alert.alert('대화를 멈췄어요', message);
+  };
 
   useEffect(() => {
     if (!active?.remoteId) return;
@@ -120,7 +130,10 @@ export default function Talk() {
           setLiveListening(false);
           useApp.getState().setPendingStt(t);
         },
-        onError: () => {},
+        onError: () => {
+          if (!RELAY_MODE || cancelled) return;
+          haltRelay('중계 서버 또는 CLOVA 음성 연결을 확인해 주세요. 이번 기록을 저장하고 다시 시작해 주세요.');
+        },
         onProcessingDenied: () => {
           if (!stillCurrent()) return;
           resetAccessResources();
@@ -137,6 +150,7 @@ export default function Talk() {
         useApp.getState().overrideQuestion(res.text);
         // 채택된 텍스트로만 재생한다 — 아래 adoptedAudio 주석 참고.
         const chunks = adoptedAudio(res.text);
+        if (RELAY_MODE && chunks.length === 0) haltRelay('검증된 음성을 받을 수 없어요. 기록을 저장한 뒤 다시 시작해 주세요.');
         if (chunks.length > 0) {
           void (async () => {
             try {
@@ -166,6 +180,7 @@ export default function Talk() {
   // expo-speech 를 건드리지 않는다(이펙트는 speaking 파생만 유지).
   useEffect(() => {
     if (!question) return;
+    if (RELAY_MODE) return; // Missing/failed Clova output must not become device TTS.
     if (liveAudioChunks.current.has(question)) return;
     let alive = true;
     void ExpoSpeechProvider.speak(question).finally(() => {
@@ -223,6 +238,10 @@ export default function Talk() {
   };
 
   const onMic = async () => {
+    if (RELAY_MODE && (relayFailed.current || !peekLiveEngine()?.available)) {
+      Alert.alert('음성 연결 확인', '중계 연결을 확인한 뒤 다시 시작해 주세요.');
+      return;
+    }
     const engine = peekLiveEngine();
     if (engine?.available) {
       // Live 모드: 마이크 토글 — 누르면 청취 시작(실시간 전사), 다시 누르거나
@@ -262,6 +281,7 @@ export default function Talk() {
    *  대기 화면(/session/loading)으로 **먼저** 넘어가 모델 응답 시간을 덮는다 —
    *  loading 이 질문 교체를 감지해 자동 복귀한다(§리포트 ② 개선). */
   async function handleConfirm() {
+    if (RELAY_MODE && relayFailed.current) return;
     if (!stillCurrent() || !await ensureProcessing()) return;
     const finalText = (draft.trim() || (pending ?? '')).trim();
     // 빈 발화는 기록하지 않는다 — 폴백 입력은 이제 빈 칸으로 열리므로(모의 발화 제거),
@@ -273,18 +293,18 @@ export default function Talk() {
     router.push('/session/loading');
     const engine = peekLiveEngine();
     let livePayload: { question: string } | undefined;
+    const isCrisis = assessUtterance(finalText).situation === 'crisis';
     if (engine?.available && finalText) {
       setConfirming(true);
       try {
         // ⚠️ 위기 발화는 모델에 **보내지 않는다** — 로컬 안전 응답·에스컬레이션이 우선.
-        const isCrisis = assessUtterance(finalText).situation === 'crisis';
         if (!isCrisis) {
           const res = await engine.submitUserTurn(finalText);
           if (!stillCurrent()) return;
           if (res?.status === 'ok' && res.text) {
             livePayload = { question: res.text };
             if (res.chunksB64.length > 0) liveAudioChunks.current.set(res.text, res.chunksB64);
-          } else if (res?.status === 'timeout' && !timeoutNoticed.current) {
+          } else if (!RELAY_MODE && res?.status === 'timeout' && !timeoutNoticed.current) {
             // 조용히 mock 질문으로 바뀌면 "AI가 갑자기 이상해졌다"는 위화감만 남는다 →
             // 세션당 1회 안내(요양보호사 대상).
             timeoutNoticed.current = true;
@@ -296,11 +316,18 @@ export default function Talk() {
       }
     }
     if (!stillCurrent()) return;
+    if (RELAY_MODE && !livePayload && !isCrisis) {
+      haltRelay('응답 음성을 받지 못했어요. 입력한 말씀을 확인하고 기록을 저장해 주세요.');
+      router.replace('/session/talk');
+      return;
+    }
     confirm(finalText, livePayload);
+    if (RELAY_MODE && isCrisis) haltRelay('담당자의 확인이 필요해요. 어르신의 상태를 직접 확인하고 기록을 저장해 주세요.');
     setEdited(null);
     setLiveListening(false);
     if (livePayload) {
       const chunks = adoptedAudio(livePayload.question);
+      if (RELAY_MODE && chunks.length === 0) haltRelay('응답이 안전 확인 과정에서 변경됐어요. 담당자가 내용을 확인해 주세요.');
       if (chunks.length > 0) {
         void (async () => {
           try {
@@ -445,6 +472,7 @@ export default function Talk() {
                 // Live 오디오가 있으면 원음 그대로(엔진 생존과 무관 — 플레이어 직접 호출),
                 // 없으면 기기 TTS로 읽는다.
                 const chunks = liveAudioChunks.current.get(question);
+                if (RELAY_MODE && (!chunks?.length || !peekLiveEngine()?.available || !await ensureProcessing())) return;
                 if (chunks && chunks.length > 0) {
                   await playPcmTurn(chunks);
                 } else {

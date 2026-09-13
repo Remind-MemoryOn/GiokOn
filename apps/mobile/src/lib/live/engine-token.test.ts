@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it, vi } from 'vitest'
 
-function engineApi() {
+function engineApi(relayUrl?: string) {
   const fetchMock = vi.fn(async () => Response.json({ token: 'synthetic-token', model: 'synthetic-model' }))
   const connect = vi.fn(async () => {})
   const close = vi.fn()
@@ -18,7 +18,7 @@ function engineApi() {
   runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
     exports, console: { info: vi.fn(), warn: vi.fn() }, fetch: fetchMock,
     setInterval: vi.fn((callback: () => void) => { tick = callback; return 1 }), clearInterval,
-    process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://synthetic.invalid', EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'synthetic' } },
+    process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://synthetic.invalid', EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'synthetic', EXPO_PUBLIC_VOICE_RELAY_URL: relayUrl } },
     require: (name: string) => {
       if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt' }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
@@ -32,6 +32,13 @@ function engineApi() {
 }
 
 describe('Live engine token session binding', () => {
+  it('relay mode does not issue a Gemini token from the app', async () => {
+    const api = engineApi('wss://voice.example.test/voice')
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, {}, 'session')
+    expect(engine).not.toBeNull()
+    expect(api.fetchMock).not.toHaveBeenCalled()
+    expect(api.connect).toHaveBeenCalledWith('', 'synthetic prompt')
+  })
   it('rechecks permission before sending the system prompt after token issuance', async () => {
     const api = engineApi()
     api.canProcess.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
