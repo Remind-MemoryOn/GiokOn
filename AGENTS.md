@@ -98,15 +98,25 @@
   쓰는 실 DB다. 데이터 국내 보관 요건 충족. (구 도쿄 `GiokOn`/`xilmtqnotomuyjifenmo` 는 이전 완료로 사용하지 않는다.)
 - 마이그레이션 **52종**(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것.
   16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·org RBAC·감사 로그 +
-  2026-09 보안 하드닝 R002·R005·R007·R010~R012). 이력은 `supabase_migrations.schema_migrations` 에
-  저장소 파일명 기준으로 정리돼 있어 `db push` 가 가능하다.
-  ⚠️ 라이브 적용 상태는 마이그레이션마다 다르다 — 개별 반영 근거는
-  `docs/runbooks/p1-remediation-progress.md`·`p0-fixes-2026-09-09.md` 의 "운영" 문단에 있다.
-  **컨테이너에서는 라이브 DB 를 볼 수 없으니(egress 차단) 적용 여부를 추측해 단정하지 않는다.**
+  2026-09 보안 하드닝 R002·R005·R007·R010~R012).
+- ⛔ **`supabase db push` 를 쓰지 말 것 — 이력이 스키마와 어긋나 있다(2026-09-13 실측).**
+  라이브 `schema_migrations` 에 다음 3건의 **기록이 없다**(스키마에는 적용돼 있다 —
+  SQL Editor 직접 적용의 흔적): `20260908000000_users_privilege_hardening` ·
+  `20260908010000_users_privilege_guard_fix` · `20260909000000_session_ownership_integrity`.
+  반대로 라이브에만 있는 이력도 있다(`20260902000100_inquiries_revoke_anon` — 저장소에 파일 없음).
+  이 상태로 push 하면 **이미 적용된 DDL 을 다시 실행**하려 든다(`add constraint` 는 멱등하지 않다).
+  이력을 맞추기 전까지는 CLI `db query --linked --file` 로 **한 건씩** 적용하고 같은 트랜잭션에
+  이력을 기록한다(R005~R012 가 쓴 방식). 정리 계획: `docs/plans/app-release-remaining.md` §5.1.2.
   ⚠️ MCP `apply_migration` 은 **적용 시각**으로 기록하므로, 쓴 뒤 저장소 파일명 버전으로 맞춰 준다.
-- MCP 연결이 세션 내 **간헐적**(대략 턴당 1콜 성공 후 끊김) — 실패 시 재시도보다
-  대시보드 SQL Editor 등 대안 사용.
-- 컨테이너 아웃바운드는 egress 정책상 `*.supabase.co` 차단(브라우저/로컬은 정상).
+- 개별 마이그레이션의 라이브 반영 근거는 `docs/runbooks/p1-remediation-progress.md` ·
+  `p0-fixes-2026-09-09.md` 의 "운영" 문단에 있다. 적용 여부를 추측해 단정하지 않는다 —
+  **확인할 수단이 있다**(바로 아래).
+- ✅ **라이브 DB 는 Supabase MCP 로 직접 조회할 수 있다**(2026-09-13 확인). 컨테이너 egress 가
+  `*.supabase.co` 를 막는 것은 **HTTP 직결**이고, MCP 는 그 경로를 타지 않는다.
+  `list_projects`·`list_migrations`·`execute_sql` 로 카탈로그를 읽어 **추측 대신 실측**한다.
+  연결이 간헐적일 수 있으니 **한 번의 쿼리에 검사를 모아 담는다**(union all 로 객체 존재 여부를
+  한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
+  ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
 ## 현재 위치 (2026-09-13 — 개발 방향 및 DB 제외 실행 목록)
 

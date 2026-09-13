@@ -197,16 +197,44 @@ Playwright 로 웹 preview 를 1440px 뷰포트에서 열어 웹 라우트(`/pri
 2. **`supportsTablet: false`** — 태블릿을 지원하지 않기로 했다. 요양기관에서 태블릿 사용
    가능성이 있다면 출시 전에 다시 정해야 한다(출시 후 추가는 가능하나 UI 작업이 따른다).
 
-### 5.1.2 ⚠️ 라이브 DB 적용 대기 — `20260908000000_users_privilege_hardening.sql`
+### 5.1.2 ✅ 해소됨 — 권한 상승 수정은 라이브에 적용돼 있다 (2026-09-13 실측 확인)
 
-**권한 상승 취약점 수정본이 아직 운영 DB(`MemoryOn`)에 적용되지 않았습니다.**
-저장소에만 있고, 라이브는 여전히 취약합니다. 운영 DB 변경은 되돌리기 어려워
-제 판단으로 적용하지 않았습니다 — **적용을 지시해 주시면 바로 진행하겠습니다**
-(또는 대시보드 SQL Editor 로 직접 붙여넣어도 됩니다).
+> 이 항목은 2026-09-04 에 *"아직 운영 DB 에 적용되지 않았다"* 고 경고하고 있었다.
+> **그 경고는 낡은 것이었다.** 2026-09-13 에 서울 `MemoryOn`(`ufkbzpdjomtmxjipmwub`)을
+> MCP 로 직접 조회해 확인했다. 추정이 아니라 카탈로그 조회 결과다.
 
-적용 전까지의 위험: 요양보호사·**보호자** 계정 누구나 publishable 키와 본인 JWT 만으로
-`update users set role='org_admin' where id=auth.uid()` 를 실행해 기관 관리자가 될 수 있고,
-그러면 **기관 전체 어르신의 기록·구성원·organizations** 를 읽고 쓸 수 있습니다.
+| 확인한 객체 | 라이브 |
+|---|---|
+| 트리거 `users_protect_privileges` (public.users) | ✅ 존재 |
+| 함수 `app.protect_user_privileges` | ✅ 존재 |
+| 정책 `users_update_scope` | ✅ 존재 |
+| `public.users` 의 authenticated UPDATE 컬럼 권한 | **`name` 하나뿐** — `role` 갱신 불가 |
+| `profiles_id_org_unique` · `sessions_profile_org_fk` · `session_logs_session_profile_org_fk` · `safety_events_profile_org_fk` | ✅ 존재 |
+| `app.is_session_shared_to_me` · restrictive UPDATE 정책 4종 | ✅ 존재 |
+
+즉 `update users set role='org_admin' where id=auth.uid()` 경로는 **컬럼 권한 단계에서
+이미 막혀 있다**(트리거·정책은 그 위의 이중·삼중 방어).
+
+#### ⚠️ 다만 남아 있는 것 — 마이그레이션 **이력**은 비어 있다
+
+스키마는 적용됐지만 `supabase_migrations.schema_migrations` 에 다음 3건의 **기록이 없다**:
+
+- `20260908000000_users_privilege_hardening`
+- `20260908010000_users_privilege_guard_fix`
+- `20260909000000_session_ownership_integrity`
+
+SQL Editor 로 직접 적용해 이력이 남지 않은 흔적이다(`docs/runbooks/p0-fixes-2026-09-09.md`
+가 *"20260908 이후 migration history 는 여전히 기록이 없다"* 고 같은 사실을 적어 뒀다).
+반대로 라이브에만 있는 이력도 있다(`20260902000100_inquiries_revoke_anon` — 저장소에 같은
+이름의 파일이 없다).
+
+**위험**: 이 상태에서 `supabase db push` 를 돌리면 **이미 적용된 DDL 을 다시 실행**하려 든다.
+멱등하지 않은 문장(`alter table … add constraint`)이 섞여 있어 실패하거나, 최악의 경우
+부분 적용된다. 이력을 맞추기 전에는 `db push` 를 쓰지 않는다.
+
+**해야 할 일**(운영 DB 쓰기라 사용자 승인 필요): 세 건을 **실행 없이 이력에만 기록**하고
+(`insert into supabase_migrations.schema_migrations`), 라이브에만 있는 이력 1건을 저장소
+파일과 맞춘다. 그 뒤에야 `db push` 가 안전해진다.
 
 ### 5.2 사용자만 할 수 있는 외부 작업
 

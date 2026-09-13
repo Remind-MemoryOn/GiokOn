@@ -32,7 +32,7 @@ jobs:
       - run: pnpm -r lint
       - name: 비의료 포지셔닝 카피 린트 (M9.6)
         run: pnpm check:copy
-      - name: 웹 디자인 스펙 대조 — 완성 디자인 고정 (docs/require/기억온_웹_디자인.md)
+      - name: 웹 디자인 스펙 대조 — Figma 실측 고정 (apps/web/AGENTS.md §1)
         run: pnpm check:design
       - run: pnpm -r test
       - run: pnpm -r build
