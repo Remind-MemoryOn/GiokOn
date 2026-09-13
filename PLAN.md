@@ -1,5 +1,7 @@
 # PLAN.md — 기억온 개발 계획 (v2: 모노레포 · Supabase 중심 · 웹+모바일 하이브리드)
 
+> **2026-09-13 실행 기준**: 서버 중계·자동 턴·기록 출처·초기 계측을 포함한 개발 방향을 승인했다. [음성 계약](docs/plans/voice-ai-personalization.md)과 [DB 제외 개발 목록 N01~N35](docs/plans/non-db-development-backlog.md)를 따른다. 계약 정리→공통 보안→자동 대화 종단 구현→현장 검증→유료 도입→독립 학습 순이며, 구현·배포 완료가 아니다.
+
 > **2026-09-12 현재 계획**: [음성 상세](docs/plans/voice-ai-personalization.md)와 [개발 실행안](docs/plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 ## 0. 요약

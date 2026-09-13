@@ -1,5 +1,7 @@
 # tasks.md
 
+> **2026-09-13 실행 목록**: [DB 제외 개발 목록 N01~N35](plans/non-db-development-backlog.md)에 현재 코드 기반의 신규·보강·검증 작업과 인수 조건·의존성을 정리했다. 음성 중계·자동 턴·기록 출처 계약부터 정하고 기존 R013 이후 보안 과제는 유지한다. 아래 과거 모듈 작업과 중복 구현하지 않으며, 문서 반영을 기능 완료로 표시하지 않는다.
+
 > **2026-09-12 현재 계획**: [음성 상세](plans/voice-ai-personalization.md)와 [개발 실행안](plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: M0~M8(핵심 루프·파일럿) 위에 상용 출시 기준을 얹는 신규 트랙 **M9~M15**(§3-2)와 **Phase G~N**(§2-2)를 추가. 근거·상세는 `PLAN.md` §2′/§3, `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.

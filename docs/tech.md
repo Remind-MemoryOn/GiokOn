@@ -1,5 +1,7 @@
 # tech.md
 
+> **2026-09-13 개발 기준 추가**: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현)의 서버 중계·자동 턴·기록 출처 계약을 따른다. 장시간 음성 중계 실행 환경은 미정이며 Edge Functions로 전부 처리한다고 가정하지 않는다. [DB 제외 개발 목록](plans/non-db-development-backlog.md)에 서버·앱·웹·계측·검증 작업을 분리했다.
+
 > **2026-09-12 현재 계획**: [음성 상세](plans/voice-ai-personalization.md)와 [개발 실행안](plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 리전=**서울(ap-northeast-2)**, 보안스택·암호화·관측성·커넥션 풀링·부하/DR은 `docs/security.md`·`docs/infrastructure.md`. 멀티테넌시(organizations/RBAC)는 PLAN §2′ M14.
@@ -49,16 +51,16 @@
 
 ## 3. 백엔드 기술
 
-별도 애플리케이션 서버를 두지 않는다. **클라이언트가 supabase-js로 Supabase에 직접 연동**하고, **API 키 보호가 필요한 AI 파이프라인만 Edge Functions**가 담당한다.
+현재 일반 데이터 접근은 클라이언트의 supabase-js와 RLS, 토큰 발급·웹 STT 등은 Edge Functions가 담당한다. 2026-09-13 승인 목표에서는 장시간 음성 중계 서버를 추가한다. 실행 환경은 미정이며, 아래 음성 경로는 아직 미구현이다.
 
 ```
 클라이언트(웹·모바일)
    ├─ supabase-js (CRUD) ───────────→ Supabase Postgres (RLS: auth.uid())
-   └─ Edge Function 호출 (AI) ──────→ Supabase Edge Functions
-                                          ↓
-                                  Gemini Live 입력·대화·정책 검증 / Clova Voice (신규 목표)
-                                          ↓
-                                  Supabase Postgres / Storage
+   ├─ 토큰 발급·웹 STT ────────────→ Supabase Edge Functions (현재)
+   └─ 앱 음성 연결 ────────────────→ 인증·동의·한도를 집행하는 중계 서버 (목표)
+                                      → Gemini Live → 출력 전사 검증
+                                      → Clova TTS → 앱 재생
+                                    기록은 출처·채택·실제 재생을 구분
 ```
 
 **데이터 액세스 (supabase-js 직접)**
@@ -217,10 +219,10 @@ Clova Voice는 사용자 지정 초기 TTS 목표다. 대상 어르신의 청취
 | 항목 | 현재 | 확장 시 |
 |---|---|---|
 | 대화 LLM | Gemini + 프롬프트·개인 조회 | 외부 학습 공개 LLM → Ollama, 안전/품질/운영 게이트 후 전환 |
-| 음성 루프 | Live 직접 입력·대화→예외 재확인→검증 문장 Clova TTS | Live가 초기 주 경로이며 자동 진행·Clova 출력은 종단 평가 필요 |
+| 음성 루프 | 앱 직접 Live 입력·수동 전사 확인·Live PCM/기기 TTS | 중계 서버·자동 진행·검증 문장 Clova 출력은 신규 목표, 종단 평가 필요 |
 | 전사 | Gemini 전사 후보·확인 | Whisper 특화 후보·타 ASR 비교, 사투리/무음/미등록 화자 게이트 |
-| 실시간 동기화 | v1 미사용 | Supabase Realtime (요양보호사 모니터링 화면) |
-| 보호자 연동 | 미구현 (v2) | 푸시 알림으로 세션 리포트 전달 |
+| 실시간 동기화 | Supabase Realtime 구독·캐시 무효화 구현 | 철회·연결 소실·재접속 시 화면 및 권한 종단 검증 |
+| 보호자 연동 | 연결 승인·항목별 공개·보호자 화면 구현 | 철회 접근 검증 및 필요 시 푸시 알림 |
 | 연대기 축적 | 요양보호사 직접 입력 | 세션 로그 기반 AI 자동 연대기 보완 |
 | 인지자극 모듈 | 미구현 (v2) | 별도 프롬프트 + 세션 타입 분기로 추가 |
 | 모니터링 | 없음 | Sentry (에러 추적) + Edge Function 로깅 |

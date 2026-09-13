@@ -82,14 +82,14 @@ create policy profiles_select_own on profiles
   for select using (user_id = auth.uid());
 ```
 
-AI 파이프라인(STT/LLM/TTS)처럼 provider 키 보호가 필요한 작업만 **Edge Function**이 처리한다. Edge Function은 호출자의 JWT를 검증한 뒤 service role로 결과를 기록한다.
+공급자 키는 서버에만 둔다. 현재 토큰 발급·웹 STT 등은 Edge Function이 처리한다. 새 장시간 음성 중계는 별도 실행 환경에서 호출자 권한을 집행하며, 서버 권한으로 기록하더라도 호출자·기관·대상·동의 검증을 생략하지 않는다.
 
-권장 흐름(세션 응답):
+목표 흐름(2026-09-13 승인, 미구현):
 
-1. 클라이언트가 어르신 발화 오디오와 함께 `session-respond` Edge Function 호출(JWT 포함).
-2. 함수가 JWT 검증 → 세션 소유자 확인.
-3. 변경 목표: Gemini Live 직접 음성·대화 → 출력 전사 수신 → 서버 검증 → Clova TTS. 현재 토큰 직접 연결과 새 중계/출력 계약을 구분하며 Live Structured Outputs를 전제하지 않는다.
-4. `session_logs`에 AI 턴 기록, `audio_url` 반환.
+1. 앱이 음성 중계에 인증된 연결을 요청한다. 중계가 세션·기관·배정·동의·상태·한도를 검사한다.
+2. 중계가 Gemini Live 입력과 연결 수명을 통제한다. 기존 앱 직접 연결 경로의 전환 정책도 필요하다.
+3. Live 출력 전사 → 서버 검증·채택 → Clova 합성 → 앱 재생으로 연결한다. Live Structured Outputs를 전제하지 않는다.
+4. 생성·채택·실제 재생과 전사/교정 출처를 구분하는 기록 계약을 설계한다. 기존 컬럼과 신규 필요 항목은 DB 작업에서 대조하며 고정 `audio_url` 반환을 전제하지 않는다. 상세: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현).
 
 ## Apply to Supabase
 
@@ -132,7 +132,7 @@ NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 
 - 실시간 동기화: 웹 1차 MVP(Phase W)부터 **Supabase Realtime 구독**을 사용한다 — `sessions`·`session_analyses`·`guardian_shares` 변경을 웹 대시보드/분석/보호자 화면에 실시간 반영(T-E3). 별도 실시간 DB는 두지 않는다.
 - 어르신 출생연도는 입력 검증 기준에 맞춰 `1900..2006`으로 제한한다.
-- TTS 결과 오디오는 `session_logs.audio_url`과 `audio_expires_at`으로 추적한다. 24시간 만료 파일 삭제는 `pg_cron` 또는 스케줄 Edge Function으로 구현한다.
+- TTS 출력 저장·재사용은 공급자 계약 확인 전 기능으로 전제하지 않는다. 기존 오디오 관련 컬럼이 있어도 저장 구현 완료를 뜻하지 않으며, 텍스트 기록·입력 원음·TTS 출력에 동일한 24시간 정책을 적용하지 않는다.
 - API 응답의 `timestamp` 필드는 DB의 `session_logs.spoken_at`에서 매핑한다.
 - 기존 마이그레이션이 `firebase_uid` / `app.user_id` 기반으로 작성돼 있다면, `auth.users` 연결 + `auth.uid()` 기반 RLS로 재작성한다.
 
