@@ -14,11 +14,11 @@
 // (구글·카카오=Supabase PKCE OAuth, 네이버=naver-auth 함수 — src/auth/social.ts).
 import { useState } from 'react';
 import { View, Text, Pressable, TextInput, Image, Alert, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { useAuth } from '../src/auth/AuthProvider';
 import { webUrl, WEB_ROUTES } from '../src/lib/webUrl';
-import { evaluateAppAccess } from '../src/auth/appAccess';
+import { useEnforceAppAccess } from '../src/auth/useEnforceAppAccess';
 import { signInWithSupabaseProvider, signInWithNaver } from '../src/auth/social';
 import { C } from '../src/theme';
 import wordmark from '../assets/brand/wordmark.png';
@@ -37,30 +37,17 @@ export default function Login() {
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const { signIn, refreshUserRow } = useAuth();
+  const { ready, target } = useEnforceAppAccess(false);
   const { width, height } = useWindowDimensions();
 
   // 가로는 Figma 좌표를 화면 폭 비율로 환산(393 기준 디자인 → 좁은 기기에서도 비율 유지).
   const x = (v: number) => (v / FRAME_W) * width;
 
-  /**
-   * 로그인 후 진입 자격을 확인한다 — 보호자 계정·미온보딩 계정은 통과시키지 않는다.
-   * 통과하지 못하면 사유를 알리고 로그아웃한다(세션이 남으면 곧바로 다시 들어온다).
-   */
-  const enterIfAllowed = async (row: Awaited<ReturnType<typeof refreshUserRow>>) => {
-    const access = evaluateAppAccess({ authed: true, loading: false, userRow: row });
-    if (access.status === 'blocked') {
-      // Root navigator owns the notice/sign-out, including deep-link entry.
-      return;
-    }
-    router.replace('/main');
-  };
-
   const onLogin = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const row = await signIn(id, pw);
-      await enterIfAllowed(row);
+      await signIn(id, pw);
     } catch (e) {
       Alert.alert('로그인 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
     } finally {
@@ -100,13 +87,18 @@ export default function Login() {
           : await signInWithSupabaseProvider(key as 'google' | 'kakao');
       if (!r.ok) return; // 사용자가 창을 닫음 — 아무 것도 하지 않는다
       // 미온보딩·보호자 계정은 앱에 들어올 수 없다(온보딩은 웹 담당 — 설계 확정).
-      await enterIfAllowed(await refreshUserRow());
+      await refreshUserRow();
     } catch (e) {
       Alert.alert('소셜 로그인', e instanceof Error ? e.message : '다시 시도해 주세요.');
     } finally {
       setSocialBusy(null);
     }
   };
+
+  // AccessMonitor may discard this handler's refresh when a newer check starts.
+  // Navigate from committed auth state, after the root enables protected routes.
+  // Root owns rejection notices/sign-out; never interpret a stale result as denial.
+  if (ready && target === '/main') return <Redirect href="/main" />;
 
   return (
     <View className="flex-1 bg-white">
