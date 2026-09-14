@@ -17,6 +17,7 @@
 export * from './client'
 export * from './auth'
 export * from './stt'
+export * from './session-report'
 export * from './query'
 export * from './processing'
 export * from './database.types'

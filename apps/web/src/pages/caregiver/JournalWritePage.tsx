@@ -42,6 +42,7 @@ import {
 } from '../../lib/journalPhotos';
 import { SttUnavailableError, transcribeAudio } from '../../lib/stt';
 import { TimeField } from '../../components/ui/TimeField';
+import { SessionJournalDialog } from '../../components/SessionJournalDialog';
 import { cn } from '../../lib/utils';
 
 const Y = (v: number) => v - 122;
@@ -108,6 +109,8 @@ export function JournalWritePage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [content, setContent] = useState('');
+  const [sessionDraftOpen, setSessionDraftOpen] = useState(false);
+  const [generatedSource, setGeneratedSource] = useState(false);
   /** 아직 올리지 않은 사진(저장 시 일지 행을 만든 뒤 올린다). */
   const [photos, setPhotos] = useState<File[]>([]);
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
@@ -131,6 +134,7 @@ export function JournalWritePage() {
     setFrom(existing.activity_from?.slice(0, 5) ?? '');
     setTo(existing.activity_to?.slice(0, 5) ?? '');
     setContent(existing.content);
+    setGeneratedSource(existing.source === 'ai_draft');
   }, [existing]);
 
   /** 음성 파일 → 텍스트. 실패는 이유를 그대로 보여 준다(조용한 실패 금지). */
@@ -141,7 +145,7 @@ export function JournalWritePage() {
     try {
       const text = await transcribeAudio(file, elderId);
       // 이미 쓴 원문이 있으면 지우지 않고 이어 붙인다.
-      setContent((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text).slice(0, 2000));
+      setContent((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text).slice(0, 5000));
       toast('success', '음성을 텍스트로 옮겼어요. 저장 전 꼭 확인해 주세요.');
     } catch (e) {
       toast(
@@ -187,14 +191,14 @@ export function JournalWritePage() {
       const fields: {
         journal_date: string;
         content: string;
-        source: 'photo' | 'voice' | 'typed';
+        source: 'photo' | 'voice' | 'typed' | 'ai_draft';
         status: 'draft' | 'final';
         activity_from: string | null;
         activity_to: string | null;
       } = {
         journal_date: date,
         content: content.trim(),
-        source: mode === 'photo' ? 'photo' : mode === 'voice' ? 'voice' : 'typed',
+        source: generatedSource ? 'ai_draft' : mode === 'photo' ? 'photo' : mode === 'voice' ? 'voice' : 'typed',
         status,
         // 적지 않았으면 null 이다 — 09:00 같은 기본값을 채우지 않는다.
         activity_from: from || null,
@@ -392,7 +396,7 @@ export function JournalWritePage() {
             >
               <textarea
                 value={content}
-                onChange={(e) => setContent(e.target.value.slice(0, 2000))}
+                onChange={(e) => setContent(e.target.value.slice(0, 5000))}
                 aria-label="오늘 어르신의 활동"
                 placeholder="오늘 어르신의 활동을 입력해주세요."
                 className="h-full w-full resize-none rounded-[10px] bg-transparent px-[30px] py-[21px] text-[18px] leading-[30px] text-ink-900 placeholder:text-ink-500 focus:outline-none"
@@ -401,7 +405,7 @@ export function JournalWritePage() {
                 data-fx="221:779"
                 className="pointer-events-none absolute right-[35px] bottom-[19.5px] text-[18px] leading-[21px] text-ink-500"
               >
-                {content.length}/2000
+                {content.length}/5000
               </span>
             </div>
             {/* 불러오기 — 지난 일지를 가져와 다시 쓰는 자리. 목록에서 고르게 보낸다. */}
@@ -472,7 +476,7 @@ export function JournalWritePage() {
             >
               <input
                 value={content}
-                onChange={(e) => setContent(e.target.value.slice(0, 2000))}
+                onChange={(e) => setContent(e.target.value.slice(0, 5000))}
                 aria-label="음성 인식 원문"
                 placeholder="예: 점심 식사를 남김없이 드셨어요. 오후에 20분 산책하셨고 따님과 통화 후 기분이 밝으셨습니다."
                 className="h-full w-full rounded-[10px] bg-transparent px-[30px] text-[18px] leading-[21px] text-ink-900 placeholder:text-ink-500 focus:outline-none"
@@ -543,7 +547,7 @@ export function JournalWritePage() {
                 (PHOTO_DRAFT_TOP). 사진 슬롯은 363+193=556 에서 끝난다. */}
             <input
               value={content}
-              onChange={(e) => setContent(e.target.value.slice(0, 2000))}
+              onChange={(e) => setContent(e.target.value.slice(0, 5000))}
               aria-label="사진 설명"
               placeholder="사진에 대한 설명을 적어 주세요."
               className="absolute rounded-[10px] border border-line bg-white px-[30px] text-[18px] leading-[21px] text-ink-900 placeholder:text-ink-500 focus:border-accent focus:outline-none"
@@ -595,7 +599,11 @@ export function JournalWritePage() {
         >
           저장
         </button>
+        <button type="button" disabled={saving || !isConfigured} onClick={() => setSessionDraftOpen(true)} className="absolute h-[57px] rounded-[10px] border border-accent bg-white px-5 text-w-sub font-semibold text-accent disabled:opacity-50" style={{ left: COL, top: 813 }}>
+          회상 대화에서 일지 초안
+        </button>
       </div>
+      {sessionDraftOpen && elderId ? <SessionJournalDialog key={elderId} elderId={elderId} hasContent={Boolean(content.trim())} onClose={() => setSessionDraftOpen(false)} onApply={text => { setContent(text); setGeneratedSource(true); setMode('typed'); setSessionDraftOpen(false); }} /> : null}
     </div>
   );
 }

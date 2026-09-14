@@ -9,6 +9,7 @@
 
 import { assessEngagement, normalizeUtterance } from './safety'
 import type { ChronicleEntry, ConversationTurn, ElderProfile, EmotionTone } from './types'
+import type { SessionReportRecord } from './generated-session'
 
 export const ANALYSIS_VERSION = 'v1.0'
 
@@ -43,6 +44,8 @@ export interface ObservationMetrics {
 }
 
 export interface SessionAnalysis {
+  /** Optional server-generated narrative; deterministic metrics remain separate. */
+  generatedReport?: SessionReportRecord
   version: string
   /** 한두 문장 요약(관찰 기반, 판정 아님). */
   summary: string

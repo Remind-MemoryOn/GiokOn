@@ -133,7 +133,16 @@
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
-## 현재 위치 (2026-09-13 — 개발 방향 및 DB 제외 실행 목록)
+## 현재 위치 (2026-09-14 — 실 LLM API 시연 개발 진행)
+
+- 사용자 후속 지시: 실 API·기기·보호자 종단 검증은 사용자가 직접 진행하며 현재 개발 변경을 커밋한다. 자동 테스트 452건·전체 타입 검사 통과. 허용 계정 UUID 등록 방법은 `supabase/functions/session-report/README.md`에 기록했다. 실환경 성공 판정은 사용자 검증 전까지 보류한다.
+
+- 사용자 지시로 시연 경로를 우선 구현 중이다. 상태와 인수 조건은 `docs/plans/demo-llm-implementation.md`, 촬영 순서 점검은 `docs/plans/demo-recording-readiness.md`.
+- `session-report` 서버 함수는 종료된 담당 세션·현재 동의·시연 허용 계정을 검사하고 Gemini로 근거 발화가 붙은 요약/주제/일지 초안을 생성한다. 기존 `session_analyses.analysis` JSON에 생성 메타데이터를 더하고 수치 지표는 보존한다. DB 마이그레이션은 추가하지 않았다.
+- 모바일 분석 진입 시 생성·오류/재시도·주제별 근거 표시, 웹 일지의 세션 선택→미리보기→명시적 적용을 연결했다. 최종 저장·공개는 담당자 동작을 유지한다.
+- 운영 `session-report` v1 ACTIVE/JWT 검증 유지·비로그인 401·배포 소스 일치 확인. 보고서 모델 설정 등록 완료. 시연 허용 계정 등록·실제 공급자 호출·설치 앱/보호자 종단 리허설은 미완료다. API 연동 완료나 촬영 준비 완료로 판정하지 않는다.
+
+## 이전 위치 (2026-09-13 — 개발 방향 및 DB 제외 실행 목록)
 
 - **후속 개발 진행(같은 날)**: `docs/plans/voice-development-tasks.md`로 계약을 세분화하고 T01/N02 상태 규칙과 묶음 2의 로컬 음성 중계 1차 구현을 완료했다. `packages/core/src/voice-flow.ts`에 신규 21개 테스트를 더했고, `apps/voice-relay`는 Supabase JWT·세션 권한 확인→Gemini Live→검증된 전사→Clova Voice PCM 흐름, 권한 재검사, 취소·단절·버퍼·시간 제한을 구현했다. 모바일은 `EXPO_PUBLIC_VOICE_RELAY_URL` 설정 시 직접 Live 대신 중계로 연결하며 중계 실패를 기기 TTS로 숨기지 않는다. 모노레포 test/typecheck/lint와 Android/iOS JS 번들, BOM·copy·font·figma·design 게이트가 통과했다. 실제 공급자 자격 증명·운영 호스팅·실기기 검증·직접 경로 폐쇄는 남아 있으므로 N02 전체/N05~N07 출시 완료나 R010 해결로 판정하지 않는다.
 

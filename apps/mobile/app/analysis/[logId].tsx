@@ -25,6 +25,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { assessEngagement, EMOTION_META } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { SessionReportPanel } from '../../src/components/SessionReportPanel';
 import { SectionHeading, Divider, StatTile, DETAIL } from '../../src/components/detail';
 import { useAnalysis, useElderSessions, useLog } from '../../src/data/reads';
 import { longKoreanDate, metric, NO_VALUE } from '../../src/lib/format';
@@ -181,6 +182,7 @@ export default function SingleAnalysis() {
             className="flex-1"
             contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 33, paddingBottom: 50 }}
           >
+            <SessionReportPanel key={logId} sessionId={logId} report={analysis.generatedReport} />
             {/* 참여 타일 3종 — 좌우 끝을 29/365 에 고정(간격 13.5) */}
             <View className="flex-row justify-between" style={{ width: DETAIL.width }}>
               <StatTile
