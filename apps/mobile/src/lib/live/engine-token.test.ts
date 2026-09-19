@@ -13,25 +13,64 @@ function engineApi(relayUrl?: string) {
   const reportPlayback = vi.fn()
   const canProcess = vi.fn(async () => true)
   const send = vi.fn(async () => ({ text: 'synthetic', audioChunksB64: [] }))
+  const streamAudio = vi.fn()
+  const micStop = vi.fn()
+  const startMic = vi.fn((_options: { onData: (chunk: string) => void }) => ({ stop: micStop }))
   let tick: () => Promise<unknown> | void = () => {};
   const clearInterval = vi.fn()
   const exports: Record<string, (...args: unknown[]) => Promise<unknown>> = {}
   const source = readFileSync(new URL('./engine.ts', import.meta.url), 'utf8')
   runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports, console: { info: vi.fn(), warn: vi.fn() }, fetch: fetchMock,
+    exports, console: { info: vi.fn(), warn: vi.fn() }, fetch: fetchMock, setTimeout, clearTimeout,
     setInterval: vi.fn((callback: () => void) => { tick = callback; return 1 }), clearInterval,
     process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://synthetic.invalid', EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'synthetic', EXPO_PUBLIC_VOICE_RELAY_URL: relayUrl } },
     require: (name: string) => {
       if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt' }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
-      if (name === './client') return { GeminiLiveClient: class { isConnected = true; playbackTurnId = 1; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send } }
-      if (name === './mic') return { micStreamingSupported: () => true }
+      if (name === './client') return { GeminiLiveClient: class { isConnected = true; playbackTurnId = relayUrl ? 1 : null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
+      if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic }
       if (name === './player') return { stopPlayback, playPcmTurn }
       throw new Error(name)
     },
   })
-  return { exports, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, tick: () => tick(), clearInterval }
+  return { exports, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, startMic, micStop, streamAudio, tick: () => tick(), clearInterval }
 }
+
+interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
+
+describe('listening cancellation generations', () => {
+  it('does not open the microphone after stop during the permission check', async () => {
+    const api = engineApi()
+    const final = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final }, 'session') as ListeningEngine
+    let resolve!: (allowed: boolean) => void
+    api.canProcess.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    const starting = engine.startListening()
+    engine.stopListening()
+    resolve(true); await starting
+    expect(api.startMic).not.toHaveBeenCalled()
+    expect(final).not.toHaveBeenCalled()
+  })
+  it('drops audio from an earlier listening generation after restart', async () => {
+    const api = engineApi()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: vi.fn() }, 'session') as ListeningEngine
+    await engine.startListening()
+    const stale = api.startMic.mock.calls[0][0]
+    engine.stopListening(); await engine.startListening()
+    stale.onData('old-audio')
+    api.startMic.mock.calls[1][0].onData('new-audio')
+    expect(api.streamAudio.mock.calls).toEqual([['new-audio']])
+    await api.exports.closeLiveEngine()
+  })
+  it('emits the final transcript at most once for one capture', async () => {
+    const api = engineApi(); const final = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final }, 'session') as ListeningEngine
+    await engine.startListening()
+    engine.stopListening(); engine.stopListening()
+    expect(final).toHaveBeenCalledOnce()
+    await api.exports.closeLiveEngine()
+  })
+})
 
 describe('Live engine token session binding', () => {
   it.each(['completed', 'interrupted', 'empty'])('reports only completed Clova playback and closes on %s', async outcome => {

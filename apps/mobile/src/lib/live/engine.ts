@@ -50,6 +50,7 @@ async function fetchLiveToken(sessionId: string): Promise<{ token: string; model
 export class LiveConversationEngine {
   private client: GeminiLiveClient | null = null;
   private micStop: { stop: () => void } | null = null;
+  private listeningGeneration = 0;
   private draft = '';
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
   // 재접속(resumption)용 캐시 — start() 때 채워진다.
@@ -208,25 +209,32 @@ export class LiveConversationEngine {
 
   /** 청취 시작 — 마이크 스트리밍 + 실시간 전사(onDraft). */
   async startListening(): Promise<void> {
-    if (!await this.verifyProcessing() || !this.available || this.micStop || this.client?.playbackTurnId != null) return;
+    if (this.micStop) return;
+    const generation = ++this.listeningGeneration;
+    if (!await this.verifyProcessing() || generation !== this.listeningGeneration || !this.available || this.micStop || this.client?.playbackTurnId != null) return;
     this.draft = '';
     this.micStop = startMicStream({
       onData: (chunkB64) => {
-        if (this.closing) return;
+        if (this.closing || generation !== this.listeningGeneration) return;
         if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
         this.client?.streamAudioChunk(chunkB64);
       },
-      onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
+      onError: (e) => {
+        if (this.closing || generation !== this.listeningGeneration) return;
+        this.callbacks.onError?.(e instanceof Error ? e.message : String(e));
+      },
     });
   }
 
   /** 청취 종료 — 확정 전사를 콜백으로 넘기고 반환한다(빈 문자열 = 미인식). */
   stopListening(): string {
+    this.listeningGeneration++;
     this.clearSilenceTimer();
-    this.micStop?.stop();
+    const microphone = this.micStop;
     this.micStop = null;
+    microphone?.stop();
     const text = this.draft.trim();
-    if (!this.closing) this.callbacks.onDraftFinal(text);
+    if (microphone && !this.closing) this.callbacks.onDraftFinal(text);
     return text;
   }
 
@@ -278,6 +286,7 @@ export class LiveConversationEngine {
 
   async close(): Promise<void> {
     this.closing = true; // 의도 종료 — onClose 에서 재접속 시도하지 않는다
+    this.listeningGeneration++;
     if (this.accessTimer) clearInterval(this.accessTimer);
     this.accessTimer = null;
     if (this.resumeTimer) clearTimeout(this.resumeTimer);

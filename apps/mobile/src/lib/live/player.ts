@@ -76,7 +76,10 @@ export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> 
       if (st.isLoaded && st.didJustFinish) { finished = true; complete(); }
     });
     const timer = setTimeout(() => { playbackError = new Error('음성 재생 시간이 초과됐어요.'); complete(); }, 90000);
-    try { await loaded.playAsync(); await done; } finally { clearTimeout(timer); }
+    // Native start can remain pending during interruption. Completion/stop/timeout
+    // must still settle the caller; the race also consumes a late start rejection.
+    try { await Promise.race([loaded.playAsync().then(() => done), done]); }
+    finally { clearTimeout(timer); }
     if (playbackError) throw playbackError;
     return ownGeneration === generation && finished ? 'completed' : 'interrupted';
   } finally {
