@@ -217,6 +217,15 @@ export interface ChronicleEntry {
 
 export type Speaker = 'AI' | 'Elderly' | 'Caregiver';
 
+/** Runtime adoption source; not evidence of accuracy or consent.
+ * Legacy DB rows cannot recover this information. Automatic adoption must not
+ * be persisted through the legacy session_logs mapper.
+ */
+export type TranscriptProvenance =
+  | { kind: 'unknown' }
+  | { kind: 'automatic'; presentedText: string }
+  | { kind: 'caregiver_confirmed'; presentedText: string | null };
+
 export interface ConversationTurn {
   id: string;
   speaker: Speaker;
@@ -228,6 +237,9 @@ export interface ConversationTurn {
    * (DB 제약상 어르신 턴에만 존재할 수 있다.)
    */
   originalText?: string;
+  /** Absent means unknown. presentedText is the input shown before confirmation,
+   * not a claim that the text is a verbatim transcript of the audio. */
+  provenance?: TranscriptProvenance;
   topic?: string;
   extractedKeywords?: string[];
 }

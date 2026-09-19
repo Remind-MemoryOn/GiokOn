@@ -85,6 +85,7 @@ export function toConversationTurn(row: SessionLogRow): ConversationTurn {
     text: row.content,
     timestamp: row.spoken_at,
     originalText: row.original_content ?? undefined,
+    provenance: { kind: 'unknown' },
     topic: row.topic ?? undefined,
   }
 }
@@ -167,6 +168,11 @@ export function toSessionLogInsert(
   owner: SessionLogOwner,
 ): TablesInsert<'session_logs'> {
   const turn = turns[index]
+  // The legacy schema has no adoption source column. Never silently turn an
+  // automatically adopted transcript into an indistinguishable saved record.
+  if (turn.provenance?.kind === 'automatic') {
+    throw new Error('TRANSCRIPT_PROVENANCE_STORAGE_REQUIRED')
+  }
   const prevTopic = turns[index - 1]?.topic ?? null
   return {
     session_id: owner.sessionId,

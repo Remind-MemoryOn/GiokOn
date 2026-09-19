@@ -160,6 +160,18 @@ describe('toConversationTurn', () => {
     expect(turn.speaker).toBe('Elderly')
     expect(turn.topic).toBeUndefined()
   })
+
+  it('does not infer human confirmation from legacy correction text', () => {
+    expect(toConversationTurn({ ...aiLog, role: 'user', original_content: '원문' }).provenance)
+      .toEqual({ kind: 'unknown' })
+  })
+
+  it('rejects automatic adoption before the legacy schema loses its provenance', () => {
+    const turn: ConversationTurn = { id: 't', speaker: 'Elderly', text: '자동 전사', timestamp: '',
+      provenance: { kind: 'automatic', presentedText: '자동 전사' } }
+    expect(() => toSessionLogInsert([turn], 0, { sessionId: 's', profileId: 'p', userId: 'u' }))
+      .toThrow('TRANSCRIPT_PROVENANCE_STORAGE_REQUIRED')
+  })
 })
 
 describe('toConversationLog', () => {

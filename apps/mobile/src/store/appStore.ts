@@ -253,13 +253,16 @@ export const useApp = create<AppState>((set, get) => ({
 
   confirmUtterance: (finalText, live) => {
     const a = get().active;
-    if (!a) return;
+    if (!a || !finalText.trim()) return;
     // 요양보호사가 STT 결과를 고쳤으면 원문을 함께 남긴다(session_logs.original_content).
     const original = a.pendingStt && a.pendingStt !== finalText ? a.pendingStt : undefined;
     // 어르신 턴에도 **직전 AI 질문의 주제**를 붙인다 — 분석은 앞선 AI 턴에서 주제를
     // 이어받으므로 계산 결과는 같지만, DB 의 session_logs.topic 이 비어 있으면 나중에
     // 기록만 보고는 어떤 주제에 대한 대답인지 알 수 없다(감사 지적).
     const elderTurn = makeTurn('Elderly', finalText, a.currentTopic, original);
+    // Only the explicit caregiver confirmation action may assign this source.
+    // Automatic adoption must use a separate path and persistence contract.
+    elderTurn.provenance = { kind: 'caregiver_confirmed', presentedText: a.pendingStt || null };
     const history = [...a.turns, elderTurn];
     // 안전 평가·이벤트는 항상 core 파이프라인이 산출한다 — Live 모드에서도 동일.
     const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
