@@ -9,6 +9,8 @@ function engineApi(relayUrl?: string) {
   const connect = vi.fn(async () => {})
   const close = vi.fn()
   const stopPlayback = vi.fn(async () => {})
+  const playPcmTurn = vi.fn(async (): Promise<string> => 'completed')
+  const reportPlayback = vi.fn()
   const canProcess = vi.fn(async () => true)
   const send = vi.fn(async () => ({ text: 'synthetic', audioChunksB64: [] }))
   let tick: () => Promise<unknown> | void = () => {};
@@ -22,16 +24,24 @@ function engineApi(relayUrl?: string) {
     require: (name: string) => {
       if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt' }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
-      if (name === './client') return { GeminiLiveClient: class { isConnected = true; connect = connect; close = close; sendUserTurn = send } }
+      if (name === './client') return { GeminiLiveClient: class { isConnected = true; playbackTurnId = 1; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send } }
       if (name === './mic') return { micStreamingSupported: () => true }
-      if (name === './player') return { stopPlayback }
+      if (name === './player') return { stopPlayback, playPcmTurn }
       throw new Error(name)
     },
   })
-  return { exports, fetchMock, connect, close, stopPlayback, canProcess, send, tick: () => tick(), clearInterval }
+  return { exports, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, tick: () => tick(), clearInterval }
 }
 
 describe('Live engine token session binding', () => {
+  it.each(['completed', 'interrupted', 'empty'])('reports only completed Clova playback and closes on %s', async outcome => {
+    const api = engineApi('wss://voice.example.test/voice')
+    api.playPcmTurn.mockResolvedValue(outcome)
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, {}, 'session') as { playTurn: (chunks: string[]) => Promise<string> }
+    expect(await engine.playTurn(['synthetic'])).toBe(outcome)
+    if (outcome === 'completed') expect(api.reportPlayback).toHaveBeenCalledWith(1, 'completed')
+    else { expect(api.reportPlayback).not.toHaveBeenCalled(); expect(api.close).toHaveBeenCalled() }
+  })
   it('relay mode does not issue a Gemini token from the app', async () => {
     const api = engineApi('wss://voice.example.test/voice')
     const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, {}, 'session')

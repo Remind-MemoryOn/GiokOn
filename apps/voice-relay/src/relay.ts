@@ -27,6 +27,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
   let authenticated = false, setupSeen = false, ready = false, activity = false, pending = false
   let output = '', turns = 0, queuedBytes = 0, receivedBytes = 0
   let outputQueued = 0
+  let protocolVersion = 1, awaitingPlayback: number | null = null
+  let playbackTimer: ReturnType<typeof setTimeout> | undefined
   let inputChain = Promise.resolve(), outputChain = Promise.resolve()
   let checking: Promise<boolean> | undefined
   let lastAllowed = 0
@@ -39,6 +41,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
     if (abort.signal.aborted) return
     abort.abort()
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
+    clearTimeout(playbackTimer)
     session?.release()
     upstream?.terminate()
     app.close(1000, 'VOICE_SESSION_ENDED')
@@ -79,6 +82,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
       if (!authenticated) {
         const a = msg.relayAuth
         if (!a || typeof a.sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(a.sessionId) || typeof a.accessToken !== 'string' || a.accessToken.length > 8192) throw new Error('AUTH_REQUIRED')
+        if (a.protocolVersion !== undefined && a.protocolVersion !== 2) throw new Error('UNSUPPORTED_PROTOCOL')
+        protocolVersion = a.protocolVersion ?? 1
         const acquired = await deps.authorize(a.sessionId, a.accessToken)
         if (abort.signal.aborted) { acquired.release(); return }
         session = acquired
@@ -101,7 +106,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
             if (abort.signal.aborted) return
             const p = JSON.parse(rawProvider.toString())
             if (p.error || p.goAway) return close()
-            if (p.setupComplete) { ready = true; clearTimeout(setupTimer); send({ setupComplete: {} }); return }
+            if (p.setupComplete) { ready = true; clearTimeout(setupTimer); send({ setupComplete: { relayProtocolVersion: protocolVersion } }); return }
             const content = p.serverContent
             if (!content) return
             if (content.interrupted) return close()
@@ -114,7 +119,11 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
             if (!await allowed()) return close()
             const result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.clova, abort.signal)
             if (!await allowed()) return close()
-            send({ serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
+            if (protocolVersion === 2) {
+              awaitingPlayback = turns
+              playbackTimer = setTimeout(close, 95000)
+            }
+            send({ ...(protocolVersion === 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
             output = ''; pending = false
           }).catch(close)
         })
@@ -122,6 +131,15 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
       }
       // The app's setup is acknowledged structurally but its prompt/model is ignored.
       if (msg.setup && !setupSeen) { setupSeen = true; return }
+      if (msg.relayPlayback) {
+        const receipt = msg.relayPlayback
+        if (protocolVersion !== 2 || !ready || pending || awaitingPlayback === null ||
+            Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || receipt.result !== 'completed') return close()
+        if (!await allowed()) return close()
+        clearTimeout(playbackTimer); awaitingPlayback = null
+        return
+      }
+      if (awaitingPlayback !== null) throw new Error('PLAYBACK_NOT_CONFIRMED')
       if (!ready || !setupSeen || !msg.realtimeInput || pending) throw new Error('INVALID_PHASE')
       const r = msg.realtimeInput
       if (Object.keys(r).length !== 1) throw new Error('INVALID_INPUT')

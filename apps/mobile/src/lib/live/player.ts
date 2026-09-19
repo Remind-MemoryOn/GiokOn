@@ -14,6 +14,7 @@ import { base64ToBytes, bytesToBase64, wrapWav } from './pcm';
 
 let current: { sound: Audio.Sound; fileUri: string; settle: () => void } | null = null;
 let generation = 0;
+export type PlaybackResult = 'completed' | 'interrupted' | 'empty';
 
 async function teardown(): Promise<void> {
   if (!current) return;
@@ -36,11 +37,11 @@ async function teardown(): Promise<void> {
  * base64 PCM 청크들(순서대로)을 한 턴 음성으로 재생하고 완료를 기다린다.
  * 새 재생이 시작되면 이전 재생은 즉시 중단된다(턴 전환 대응).
  */
-export async function playPcmTurn(chunksB64: string[]): Promise<void> {
+export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> {
   const ownGeneration = ++generation;
   await teardown();
-  if (ownGeneration !== generation) return;
-  if (chunksB64.length === 0) return;
+  if (ownGeneration !== generation) return 'interrupted';
+  if (chunksB64.length === 0) return 'empty';
 
   const total = chunksB64.reduce((n, c) => n + base64ToBytes(c).length, 0);
   const pcm = new Uint8Array(total);
@@ -50,7 +51,7 @@ export async function playPcmTurn(chunksB64: string[]): Promise<void> {
     pcm.set(b, offset);
     offset += b.length;
   }
-  if (total <= 44) return; // 사실상 빈 턴
+  if (total <= 44) return 'empty'; // 사실상 빈 턴
 
   const wav = wrapWav(pcm);
   const fileUri = `${FileSystem.cacheDirectory}live-turn-${Date.now()}-${ownGeneration}.wav`;
@@ -58,24 +59,26 @@ export async function playPcmTurn(chunksB64: string[]): Promise<void> {
   let owned = false;
   try {
     await FileSystem.writeAsStringAsync(fileUri, bytesToBase64(wav), { encoding: FileSystem.EncodingType.Base64 });
-    if (ownGeneration !== generation) return;
+    if (ownGeneration !== generation) return 'interrupted';
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-    if (ownGeneration !== generation) return;
+    if (ownGeneration !== generation) return 'interrupted';
     ({ sound } = await Audio.Sound.createAsync({ uri: fileUri }, { shouldPlay: false }, undefined, false));
-    if (ownGeneration !== generation) return;
+    if (ownGeneration !== generation) return 'interrupted';
     const loaded = sound;
     let complete!: () => void;
     let playbackError: Error | undefined;
+    let finished = false;
     const done = new Promise<void>(resolve => { complete = resolve; });
     current = { sound: loaded, fileUri, settle: complete };
     owned = true;
     loaded.setOnPlaybackStatusUpdate((st: AVPlaybackStatus) => {
       if (!st.isLoaded && st.error) { playbackError = new Error('음성을 재생하지 못했어요.'); complete(); }
-      if (st.isLoaded && st.didJustFinish) complete();
+      if (st.isLoaded && st.didJustFinish) { finished = true; complete(); }
     });
     const timer = setTimeout(() => { playbackError = new Error('음성 재생 시간이 초과됐어요.'); complete(); }, 90000);
     try { await loaded.playAsync(); await done; } finally { clearTimeout(timer); }
     if (playbackError) throw playbackError;
+    return ownGeneration === generation && finished ? 'completed' : 'interrupted';
   } finally {
     if (current?.sound === sound) await teardown();
     else if (!owned) {

@@ -14,7 +14,8 @@ describe('native playback cancellation', () => {
     const playing = playPcmTurn([pcm]);
     await vi.waitFor(() => expect(native.create).toHaveBeenCalled());
     expect(native.create.mock.calls[0][1]).toEqual({ shouldPlay: false });
-    await stopPlayback(); ready({ sound: s }); await playing;
+    await stopPlayback(); ready({ sound: s });
+    expect(await playing).toBe('interrupted');
     expect(s.playAsync).not.toHaveBeenCalled();
     expect(s.unloadAsync).toHaveBeenCalledOnce();
   });
@@ -22,7 +23,7 @@ describe('native playback cancellation', () => {
     const s = sound(); native.create.mockResolvedValueOnce({ sound: s });
     const playing = playPcmTurn([pcm]);
     await vi.waitFor(() => expect(s.setOnPlaybackStatusUpdate).toHaveBeenCalled());
-    await stopPlayback(); await playing;
+    await stopPlayback(); expect(await playing).toBe('interrupted');
     expect(s.unloadAsync).toHaveBeenCalledOnce();
   });
   it('finishes and removes the temporary audio after native completion', async () => {
@@ -30,6 +31,11 @@ describe('native playback cancellation', () => {
     const playing = playPcmTurn([pcm]);
     await vi.waitFor(() => expect(s.setOnPlaybackStatusUpdate).toHaveBeenCalled());
     s.setOnPlaybackStatusUpdate.mock.calls[0][0]({ isLoaded: true, didJustFinish: true });
-    await playing; expect(native.remove).toHaveBeenCalled();
+    expect(await playing).toBe('completed'); expect(native.remove).toHaveBeenCalled();
+  });
+  it('does not treat missing audio as delivered speech', async () => {
+    expect(await playPcmTurn([])).toBe('empty');
+    expect(await playPcmTurn(['AAAA'])).toBe('empty');
+    expect(native.create).not.toHaveBeenCalled();
   });
 });

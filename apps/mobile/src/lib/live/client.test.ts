@@ -45,6 +45,40 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     expect(Socket.all).toHaveLength(0);
   });
 
+  it('negotiates playback receipts and blocks a new turn until completion', async () => {
+    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
+    const connecting = client.connect('', ''); const socket = Socket.all[0]; socket.onopen!();
+    expect(socket.sent[0]).toEqual({ relayAuth: { sessionId: 'session', accessToken: 'synthetic', protocolVersion: 2 } });
+    await socket.receive({ setupComplete: { relayProtocolVersion: 2 } }); await connecting;
+    const turn = client.sendUserTurn('test');
+    await socket.receive({ relayOutput: { turnId: 1 }, serverContent: { outputTranscription: { text: '질문' }, modelTurn: { parts: [{ inlineData: { data: 'PCM' } }] }, turnComplete: true } });
+    await turn;
+    expect(client.playbackTurnId).toBe(1);
+    await expect(client.sendUserTurn('too early')).rejects.toThrow();
+    client.reportPlayback(1, 'completed');
+    expect(socket.sent.at(-1)).toEqual({ relayPlayback: { turnId: 1, result: 'completed' } });
+    const next = client.sendUserTurn('next'); client.close(); await next;
+  });
+
+  it('refuses an old relay when playback receipts were requested', async () => {
+    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
+    const connecting = client.connect('', ''); const rejected = expect(connecting).rejects.toThrow();
+    Socket.all[0].onopen!(); await Socket.all[0].receive({ setupComplete: {} }); await rejected;
+    expect(client.isConnected).toBe(false);
+  });
+
+  it('closes interrupted playback without sending a completion receipt or more input', async () => {
+    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
+    const connecting = client.connect('', ''); const socket = Socket.all[0]; socket.onopen!();
+    await socket.receive({ setupComplete: { relayProtocolVersion: 2 } }); await connecting;
+    const turn = client.sendUserTurn('test');
+    await socket.receive({ relayOutput: { turnId: 1 }, serverContent: { outputTranscription: { text: '질문' }, turnComplete: true } }); await turn;
+    client.reportPlayback(1, 'interrupted');
+    expect(client.isConnected).toBe(false);
+    expect(socket.sent.some(frame => 'relayPlayback' in (frame as object))).toBe(false);
+    await expect(client.sendUserTurn('next')).rejects.toThrow();
+  });
+
   it('단기 토큰 endpoint·setup 구조가 맞고 setupComplete 전에는 입력하지 않는다', async () => {
     const client = new GeminiLiveClient('models/test-model', {});
     const connecting = client.connect('auth_tokens/synthetic', 'system', 'resume-handle');

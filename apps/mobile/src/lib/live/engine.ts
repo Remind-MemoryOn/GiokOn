@@ -12,7 +12,7 @@ import { buildSystemPrompt, type ChronicleEntry, type ElderProfile, type Session
 import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
 import { micStreamingSupported, startMicStream } from './mic';
-import { playPcmTurn, stopPlayback } from './player';
+import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 
 const DEFAULT_MODEL = 'gemini-3.1-flash-live-preview';
 
@@ -113,7 +113,7 @@ export class LiveConversationEngine {
       if (relayUrl) {
         const session = await getSession();
         if (!session?.access_token) throw new Error('AUTH_REQUIRED');
-        this.relay = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token };
+        this.relay = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token, playbackReceipts: true };
       } else {
         ({ token, model } = await fetchLiveToken(this.sessionId));
       }
@@ -196,7 +196,7 @@ export class LiveConversationEngine {
     try {
       const r = await this.client!.sendUserTurn(
         '(내부 지시) 오늘의 첫 인사와 함께 회상 대화의 첫 질문을 건네주세요.',
-        20000,
+        this.relay ? 60000 : 20000,
       );
       if (!r || r === 'timeout') return null;
       return r;
@@ -208,7 +208,7 @@ export class LiveConversationEngine {
 
   /** 청취 시작 — 마이크 스트리밍 + 실시간 전사(onDraft). */
   async startListening(): Promise<void> {
-    if (!await this.verifyProcessing() || !this.available || this.micStop) return;
+    if (!await this.verifyProcessing() || !this.available || this.micStop || this.client?.playbackTurnId != null) return;
     this.draft = '';
     this.micStop = startMicStream({
       onData: (chunkB64) => {
@@ -243,22 +243,36 @@ export class LiveConversationEngine {
     finalText: string,
   ): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null> {
     if (!await this.verifyProcessing() || !this.available) return null;
-    const turn = await this.client!.sendUserTurn(finalText);
+    const turn = await this.client!.sendUserTurn(finalText, this.relay ? 60000 : 20000);
     if (turn === 'timeout') return { status: 'timeout' };
     return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64 };
   }
 
   /** 턴 음성(base64 PCM 청크)을 재생하고 완료를 기다린다. */
-  async playTurn(chunksB64: string[]): Promise<void> {
-    if (chunksB64.length === 0 || !await this.verifyProcessing()) return;
+  async playTurn(chunksB64: string[]): Promise<PlaybackResult> {
+    if (!await this.verifyProcessing()) return 'interrupted';
+    const client = this.client;
+    const receipt = client?.playbackTurnId;
     try {
-      await playPcmTurn(chunksB64);
+      const result = await playPcmTurn(chunksB64);
+      if (this.closing || this.client !== client) return 'interrupted';
+      if (this.relay) {
+        if (result !== 'completed') {
+          this.callbacks.onError?.('음성 재생이 중단됐어요. 담당자가 대화를 회수해 주세요.');
+          await this.close();
+        } else if (receipt != null) {
+          client?.reportPlayback(receipt, result);
+          if (!client?.isConnected) return 'interrupted';
+        }
+      }
+      return result;
     } catch (e) {
       console.warn('[giokon] live 오디오 재생 실패 — 텍스트만 표시', e);
       if (this.relay) {
         this.callbacks.onError?.('CLOVA 음성을 재생하지 못했어요.');
         await this.close();
       }
+      return 'interrupted';
     }
   }
 

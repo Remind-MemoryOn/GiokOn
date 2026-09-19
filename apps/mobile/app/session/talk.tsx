@@ -144,7 +144,11 @@ export default function Talk() {
       // 오프너 교체 — 로컬 규칙 질문을 Live 모델의 인사로 바꾼다(세션당 1회).
       if (active.turns.length === 1 && useApp.getState().active?.phase === 'ai_speaking') {
         const res = await engine.requestOpener();
-        if (cancelled || !stillCurrent() || !res?.text) return;
+        if (cancelled || !stillCurrent()) return;
+        if (!res?.text) {
+          if (RELAY_MODE) haltRelay('첫 안내 음성을 받지 못했어요. 연결을 확인한 뒤 다시 시작해 주세요.');
+          return;
+        }
         if (res.audioChunksB64.length > 0) liveAudioChunks.current.set(res.text, res.audioChunksB64);
         else liveAudioChunks.current.delete(res.text);
         useApp.getState().overrideQuestion(res.text);
@@ -153,11 +157,8 @@ export default function Talk() {
         if (RELAY_MODE && chunks.length === 0) haltRelay('검증된 음성을 받을 수 없어요. 기록을 저장한 뒤 다시 시작해 주세요.');
         if (chunks.length > 0) {
           void (async () => {
-            try {
-              await engine.playTurn(chunks);
-            } finally {
-              setSpokenDone(useApp.getState().active?.currentQuestion ?? res.text);
-            }
+            const result = await engine.playTurn(chunks);
+            if (result === 'completed' && !cancelled && stillCurrent()) setSpokenDone(res.text);
           })();
         }
       }
@@ -290,7 +291,8 @@ export default function Talk() {
       Alert.alert('입력 확인', '어르신께서 하신 말씀을 입력해 주세요.');
       return;
     }
-    router.push('/session/loading');
+    // Keep the relay connection, audio cache and completion state on this screen.
+    if (!RELAY_MODE) router.push('/session/loading');
     const engine = peekLiveEngine();
     let livePayload: { question: string } | undefined;
     const isCrisis = assessUtterance(finalText).situation === 'crisis';
@@ -311,6 +313,10 @@ export default function Talk() {
             Alert.alert('알림', 'AI 응답이 지연되고 있어요.\n이번 턴은 기본 대화로 이어갑니다.');
           }
         }
+      } catch {
+        if (RELAY_MODE) haltRelay('응답을 받지 못했어요. 기록을 저장한 뒤 다시 시작해 주세요.');
+        else Alert.alert('응답 오류', '대화 연결을 확인하고 다시 시도해 주세요.');
+        return;
       } finally {
         setConfirming(false);
       }
@@ -318,7 +324,6 @@ export default function Talk() {
     if (!stillCurrent()) return;
     if (RELAY_MODE && !livePayload && !isCrisis) {
       haltRelay('응답 음성을 받지 못했어요. 입력한 말씀을 확인하고 기록을 저장해 주세요.');
-      router.replace('/session/talk');
       return;
     }
     confirm(finalText, livePayload);
@@ -330,11 +335,8 @@ export default function Talk() {
       if (RELAY_MODE && chunks.length === 0) haltRelay('응답이 안전 확인 과정에서 변경됐어요. 담당자가 내용을 확인해 주세요.');
       if (chunks.length > 0) {
         void (async () => {
-          try {
-            await engine?.playTurn(chunks);
-          } finally {
-            setSpokenDone(useApp.getState().active?.currentQuestion ?? livePayload.question);
-          }
+          const result = await engine?.playTurn(chunks);
+          if (result === 'completed' && stillCurrent()) setSpokenDone(livePayload.question);
         })();
       }
     }

@@ -20,6 +20,7 @@ export interface VoiceRelayConnection {
   url: string;
   sessionId: string;
   accessToken: string;
+  playbackReceipts?: boolean;
 }
 
 type Handlers = {
@@ -69,6 +70,8 @@ export class GeminiLiveClient {
   private cancelConnect: (() => void) | null = null;
   /** 서버가 내려준 세션 재개 핸들(재연결 시 setup 에 되돌려 준다). */
   private lastHandle = '';
+  private awaitingPlayback: number | null = null;
+  private lastOutputTurn = 0;
 
   constructor(
     private readonly model: string,
@@ -108,7 +111,7 @@ export class GeminiLiveClient {
       ws.onopen = () => {
         if (this.ws !== ws) return;
         if (this.relay) {
-          try { ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken } })); }
+          try { ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken, ...(this.relay.playbackReceipts ? { protocolVersion: 2 } : {}) } })); }
           catch (e) { fail(e); return; }
         }
         // ⚠️ 3.1 미지원 필드(proactivity 등)는 절대 포함하지 않는다.
@@ -137,6 +140,7 @@ export class GeminiLiveClient {
           if (this.ws !== ws) return;
           const msg = JSON.parse(text) as Record<string, never>;
           if ('setupComplete' in msg && !settled) {
+            if (this.relay?.playbackReceipts && (msg.setupComplete as { relayProtocolVersion?: number })?.relayProtocolVersion !== 2) throw new Error('음성 중계 서버 업데이트가 필요해요.');
             settled = true;
             clearTimeout(setupTimer);
             this.cancelConnect = null;
@@ -146,6 +150,12 @@ export class GeminiLiveClient {
             return;
           }
           if ('serverContent' in msg) {
+            if (this.relay?.playbackReceipts && (msg.serverContent as { turnComplete?: boolean })?.turnComplete) {
+              const id = (msg as { relayOutput?: { turnId?: number } }).relayOutput?.turnId;
+              if (!Number.isSafeInteger(id) || id! <= this.lastOutputTurn || !this.pendingTurn || this.awaitingPlayback !== null) throw new Error('음성 재생 순서를 확인하지 못했어요.');
+              this.awaitingPlayback = id!;
+              this.lastOutputTurn = id!;
+            }
             this.handleServerContent(msg['serverContent'] as never);
           }
           if ('error' in msg) throw new Error('Live API가 요청을 거부했어요.');
@@ -229,6 +239,18 @@ export class GeminiLiveClient {
     return this.opened;
   }
 
+  get playbackTurnId(): number | null { return this.awaitingPlayback; }
+
+  /** App playback observation, not proof a person heard the output. */
+  reportPlayback(turnId: number, result: 'completed' | 'interrupted' | 'empty'): void {
+    if (!this.ws || !this.opened || this.awaitingPlayback !== turnId) return;
+    if (result !== 'completed') { this.close(); return; }
+    try {
+      this.ws.send(JSON.stringify({ relayPlayback: { turnId, result } }));
+      this.awaitingPlayback = null;
+    } catch (error) { this.close(); this.handlers.onError?.(error); }
+  }
+
   /** 어르신 발화 확정 텍스트를 모델에 넘기고 이번 턴 응답을 기다린다.
    *  응답 지연(타임아웃)은 예외가 아니라 **'timeout'** 으로 구분해 돌려준다. */
   async sendUserTurn(
@@ -237,6 +259,7 @@ export class GeminiLiveClient {
   ): Promise<LiveTurnResult | 'timeout'> {
     if (!this.ws || !this.opened) throw new Error('Live 세션이 연결돼 있지 않아요.');
     if (this.pendingTurn) throw new Error('이전 Live 응답을 기다리고 있어요.');
+    if (this.awaitingPlayback !== null) throw new Error('이전 음성 재생 완료를 기다리고 있어요.');
     const result = await new Promise<LiveTurnResult | 'timeout'>((resolve) => {
       const finish = (value: LiveTurnResult | 'timeout') => {
         clearTimeout(timer);
@@ -267,7 +290,7 @@ export class GeminiLiveClient {
    * 마이크 PCM 청크를 스트리밍한다. activityEnd는 확인된 텍스트와 함께 보낸다.
    */
   streamAudioChunk(base64Pcm16k: string): void {
-    if (!this.ws || !this.opened || this.pendingTurn) return;
+    if (!this.ws || !this.opened || this.pendingTurn || this.awaitingPlayback !== null) return;
     try {
       this.beginAudioInput();
       this.ws.send(
@@ -302,6 +325,8 @@ export class GeminiLiveClient {
       /* 이미 닫힘 무시 */
     }
     this.opened = false;
+    this.awaitingPlayback = null;
+    this.lastOutputTurn = 0;
     this.inputActivity = false;
     this.outputText = '';
     this.audioChunks = [];

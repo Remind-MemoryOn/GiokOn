@@ -35,8 +35,8 @@ async function fixture() {
   await once(app, 'open'); cleanup.push(() => app.terminate())
   const frames: any[] = []; app.on('message', raw => frames.push(JSON.parse(raw.toString())))
   const send = (x: unknown) => app.send(JSON.stringify(x))
-  async function start() {
-    send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt' } })
+  async function start(protocolVersion?: number) {
+    send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt', protocolVersion } })
     send({ setup: { systemInstruction: { parts: [{ text: 'untrusted override' }] } } })
     await vi.waitFor(() => expect(frames.some(f => f.setupComplete)).toBe(true))
   }
@@ -50,6 +50,29 @@ async function fixture() {
 }
 
 describe('real local WebSocket relay', () => {
+  it('v2 holds the next input until the exact output is reported completed', async () => {
+    const f = await fixture(); await f.start(2); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
+    const turnId = f.frames.at(-1).relayOutput?.turnId
+    expect(turnId).toBe(1)
+    f.send({ relayPlayback: { turnId, result: 'completed' } })
+    f.turn()
+    await vi.waitFor(() => expect(f.synthesize).toHaveBeenCalledTimes(2))
+  })
+  it('v2 rejects input before playback acknowledgement', async () => {
+    const f = await fixture(); await f.start(2); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
+    const closed = once(f.app, 'close'); f.turn(); await closed
+    expect(f.synthesize).toHaveBeenCalledOnce()
+  })
+  it.each(['interrupted', 'empty', 'wrong-turn'])('v2 closes instead of continuing after %s delivery', async result => {
+    const f = await fixture(); await f.start(2); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
+    const closed = once(f.app, 'close')
+    f.send({ relayPlayback: { turnId: result === 'wrong-turn' ? 99 : 1, result: result === 'wrong-turn' ? 'completed' : result } })
+    await closed
+    expect(f.release).toHaveBeenCalledOnce()
+  })
   it('authenticates, relays microphone PCM and returns only synthesized Clova PCM', async () => {
     const f = await fixture(); await f.start(); f.turn()
     await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
