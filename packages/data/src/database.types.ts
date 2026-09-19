@@ -259,6 +259,8 @@ export type Database = {
       }
       session_logs: {
         Row: {
+          transcript_provenance?: Json | null
+          transcript_revisions?: Json
           id: string
           session_id: string
           profile_id: string
@@ -287,6 +289,7 @@ export type Database = {
           role: Database['public']['Enums']['session_log_role']
           content: string
           original_content?: string | null
+          transcript_provenance?: Json | null
           topic?: string | null
           switch_topic?: boolean | null
           audio_url?: string | null
@@ -828,6 +831,7 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      transcript_storage_version: { Args: Record<PropertyKey, never>; Returns: number }
       can_process_profile: {
         Args: { p_profile_id: string }
         Returns: boolean

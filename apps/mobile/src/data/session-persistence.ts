@@ -24,7 +24,7 @@ import { useCallback } from 'react';
 import {
   getGiokonClient,
   queryKeys,
-  toSessionLogInsert,
+  persistConversationTurns,
   type Json,
   type SessionLogOwner,
   type QueryLease,
@@ -70,12 +70,8 @@ async function writeTurns(
   lease: QueryLease,
 ): Promise<number> {
   if (from >= turns.length) return turns.length;
-  const rows = turns.slice(from).map((_, i) => toSessionLogInsert(turns, from + i, ids));
   await withRetry(lease, async () => {
-    const { error } = await getGiokonClient()
-      .from('session_logs')
-      .upsert(rows, { onConflict: 'session_id,turn_index' });
-    if (error) throw new Error(error.message);
+    await persistConversationTurns(turns, from, ids, () => lease.assertCurrent());
   });
   return turns.length;
 }

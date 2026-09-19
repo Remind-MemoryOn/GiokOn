@@ -10,17 +10,17 @@ beforeEach(() => {
 });
 
 it.each(['고향 이야기', '수정한 이야기'])('records explicit confirmation and preserves the presented text: %s', text => {
-  useApp.getState().setPendingStt('고향 이야기');
+  useApp.getState().setPendingStt('고향 이야기', 'gemini_live');
   useApp.getState().confirmUtterance(text);
   const turn = useApp.getState().active!.turns[1];
-  expect(turn.provenance).toEqual({ kind: 'caregiver_confirmed', presentedText: '고향 이야기' });
+  expect(turn.provenance).toEqual({ kind: 'caregiver_confirmed', presentedText: '고향 이야기', inputSource: 'gemini_live' });
   expect(turn.text).toBe(text);
 });
 
 it('does not invent a transcript for manual entry', () => {
   useApp.getState().captureUtterance();
   useApp.getState().confirmUtterance('직접 입력');
-  expect(useApp.getState().active!.turns[1].provenance).toEqual({ kind: 'caregiver_confirmed', presentedText: null });
+  expect(useApp.getState().active!.turns[1].provenance).toEqual({ kind: 'caregiver_confirmed', presentedText: null, inputSource: 'manual' });
 });
 
 it('does not turn blank confirmation into an elder record', () => {

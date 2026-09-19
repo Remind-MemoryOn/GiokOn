@@ -14,6 +14,7 @@ import {
   type ChronicleSource,
   type ConversationLog,
   type ConversationTurn,
+  type TranscriptProvenance,
   type ElderGender,
   type ElderProfile,
   type Guardian,
@@ -28,6 +29,7 @@ import type {
   SessionRow,
   TablesInsert,
   TablesUpdate,
+  Json,
 } from './database.types'
 
 export function toElderProfile(row: ProfileRow): ElderProfile {
@@ -85,9 +87,19 @@ export function toConversationTurn(row: SessionLogRow): ConversationTurn {
     text: row.content,
     timestamp: row.spoken_at,
     originalText: row.original_content ?? undefined,
-    provenance: { kind: 'unknown' },
+    provenance: readTranscriptProvenance(row.transcript_provenance),
     topic: row.topic ?? undefined,
   }
+}
+
+function readTranscriptProvenance(value: Json | undefined): TranscriptProvenance {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1) return { kind: 'unknown' }
+  const { kind, presentedText, inputSource, confirmedBy, confirmedAt } = value
+  if (inputSource !== 'gemini_live' && inputSource !== 'manual' && inputSource !== 'unknown') return { kind: 'unknown' }
+  if (kind === 'automatic' && typeof presentedText === 'string') return { kind, presentedText, inputSource }
+  if (kind === 'caregiver_confirmed' && (presentedText === null || typeof presentedText === 'string') &&
+    typeof confirmedBy === 'string' && typeof confirmedAt === 'string') return { kind, presentedText, inputSource, confirmedBy, confirmedAt }
+  return { kind: 'unknown' }
 }
 
 /**
@@ -166,15 +178,20 @@ export function toSessionLogInsert(
   turns: ConversationTurn[],
   index: number,
   owner: SessionLogOwner,
+  storageVersion?: 1,
 ): TablesInsert<'session_logs'> {
   const turn = turns[index]
   // The legacy schema has no adoption source column. Never silently turn an
   // automatically adopted transcript into an indistinguishable saved record.
-  if (turn.provenance?.kind === 'automatic') {
+  if (turn.provenance?.kind === 'automatic' && storageVersion !== 1) {
     throw new Error('TRANSCRIPT_PROVENANCE_STORAGE_REQUIRED')
   }
   const prevTopic = turns[index - 1]?.topic ?? null
   return {
+    ...(storageVersion === 1 ? { transcript_provenance:
+      turn.speaker === 'Elderly' && turn.provenance && turn.provenance.kind !== 'unknown'
+        ? { version: 1, kind: turn.provenance.kind, presentedText: turn.provenance.presentedText,
+          inputSource: turn.provenance.inputSource ?? 'unknown' } : null } : {}),
     session_id: owner.sessionId,
     profile_id: owner.profileId,
     user_id: owner.userId,

@@ -77,6 +77,8 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/_grants.sql
       - name: RLS·RBAC·격리 회귀 테스트
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/rls_regression.sql
+      - name: 전사 출처 저장 계약 회귀 테스트
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/transcript_provenance.sql
 
   security-audit:
     runs-on: ubuntu-latest

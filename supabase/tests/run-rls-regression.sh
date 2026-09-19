@@ -45,3 +45,4 @@ done
 # authenticated 롤 권한 부여(테이블 생성 후) → 회귀 테스트.
 "${PSQL[@]}" -q -f "$HERE/_grants.sql"
 "${PSQL[@]}" -f "$HERE/rls_regression.sql"
+"${PSQL[@]}" -f "$HERE/transcript_provenance.sql"

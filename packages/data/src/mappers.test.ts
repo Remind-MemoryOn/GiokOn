@@ -425,6 +425,23 @@ describe('toConversationTurn — STT 보정 원문', () => {
   it('보정하지 않은 턴은 undefined', () => {
     expect(toConversationTurn(userLog).originalText).toBeUndefined()
   })
+
+  it('round trips automatic provenance only with the negotiated storage contract', () => {
+    const provenance = { kind: 'automatic' as const, presentedText: '원전사', inputSource: 'gemini_live' as const }
+    const turn = { ...toConversationTurn(userLog), provenance }
+    const row = toSessionLogInsert([turn], 0, { sessionId: 's1', profileId: 'p1', userId: 'u1' }, 1)
+    expect(row.transcript_provenance).toEqual({ version: 1, ...provenance })
+    expect(toConversationTurn({ ...userLog, ...row } as SessionLogRow).provenance).toEqual(provenance)
+  })
+
+  it('reads server confirmation but never sends caller supplied confirmation identity', () => {
+    const provenance = { kind: 'caregiver_confirmed' as const, presentedText: '원전사', inputSource: 'gemini_live' as const,
+      confirmedBy: 'u1', confirmedAt: '2026-09-20T00:00:00Z' }
+    const turn = toConversationTurn({ ...userLog, transcript_provenance: { version: 1, ...provenance } })
+    expect(turn.provenance).toEqual(provenance)
+    const row = toSessionLogInsert([turn], 0, { sessionId: 's1', profileId: 'p1', userId: 'u1' }, 1)
+    expect(row.transcript_provenance).toEqual({ version: 1, kind: 'caregiver_confirmed', presentedText: '원전사', inputSource: 'gemini_live' })
+  })
 })
 
 describe('toSessionLogInsert — 진행 중 턴 기록', () => {

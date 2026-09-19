@@ -218,13 +218,13 @@ export interface ChronicleEntry {
 export type Speaker = 'AI' | 'Elderly' | 'Caregiver';
 
 /** Runtime adoption source; not evidence of accuracy or consent.
- * Legacy DB rows cannot recover this information. Automatic adoption must not
- * be persisted through the legacy session_logs mapper.
+ * Legacy DB rows cannot recover this information. Automatic adoption requires
+ * the negotiated transcript storage contract.
  */
 export type TranscriptProvenance =
   | { kind: 'unknown' }
-  | { kind: 'automatic'; presentedText: string }
-  | { kind: 'caregiver_confirmed'; presentedText: string | null };
+  | { kind: 'automatic'; presentedText: string; inputSource?: 'gemini_live' | 'manual' | 'unknown' }
+  | { kind: 'caregiver_confirmed'; presentedText: string | null; inputSource?: 'gemini_live' | 'manual' | 'unknown'; confirmedBy?: string; confirmedAt?: string };
 
 export interface ConversationTurn {
   id: string;

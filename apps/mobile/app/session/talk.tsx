@@ -128,7 +128,7 @@ export default function Talk() {
         onDraftFinal: (t) => {
           if (cancelled || !stillCurrent()) return;
           setLiveListening(false);
-          useApp.getState().setPendingStt(t);
+          useApp.getState().setPendingStt(t, 'gemini_live');
         },
         onError: () => {
           if (!RELAY_MODE || cancelled) return;

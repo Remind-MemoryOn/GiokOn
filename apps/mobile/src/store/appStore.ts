@@ -78,6 +78,7 @@ export interface ActiveSession {
   currentTopic: string;
   /** STT가 인식했지만 아직 요양보호사가 확인/수정하지 않은 원문. */
   pendingStt: string | null;
+  pendingInputSource: 'gemini_live' | 'manual' | 'unknown';
   phase: SessionPhase;
   safety: RuntimeSafety;
   events: SessionSafetyEvent[];
@@ -140,7 +141,7 @@ interface AppState {
   ) => void;
   /** 마이크(폴백) — 요양보호사가 들은 말을 입력할 빈 패널을 연다. */
   captureUtterance: () => void;
-  setPendingStt: (text: string) => void;
+  setPendingStt: (text: string, source?: 'gemini_live' | 'manual' | 'unknown') => void;
   /** 확인 취소 → 대기 중 STT 폐기하고 마이크 대기 상태로. */
   discardUtterance: () => void;
   /** 확인/수정 완료 → 어르신 턴 반영 + 다음 AI 질문 생성(core). */
@@ -217,6 +218,7 @@ export const useApp = create<AppState>((set, get) => ({
         currentQuestion: guarded.response.question,
         currentTopic: guarded.response.topic,
         pendingStt: null,
+        pendingInputSource: 'unknown',
         phase: 'ai_speaking',
         safety: { ...SAFE_INITIAL },
         events: [],
@@ -238,12 +240,12 @@ export const useApp = create<AppState>((set, get) => ({
   captureUtterance: () => {
     const a = get().active;
     if (!a) return;
-    set({ active: { ...a, pendingStt: '', phase: 'processing' } });
+    set({ active: { ...a, pendingStt: '', pendingInputSource: 'manual', phase: 'processing' } });
   },
-  setPendingStt: (text) => {
+  setPendingStt: (text, source = 'unknown') => {
     const a = get().active;
     if (!a) return;
-    set({ active: { ...a, pendingStt: text } });
+    set({ active: { ...a, pendingStt: text, pendingInputSource: source } });
   },
   discardUtterance: () => {
     const a = get().active;
@@ -262,7 +264,7 @@ export const useApp = create<AppState>((set, get) => ({
     const elderTurn = makeTurn('Elderly', finalText, a.currentTopic, original);
     // Only the explicit caregiver confirmation action may assign this source.
     // Automatic adoption must use a separate path and persistence contract.
-    elderTurn.provenance = { kind: 'caregiver_confirmed', presentedText: a.pendingStt || null };
+    elderTurn.provenance = { kind: 'caregiver_confirmed', presentedText: a.pendingStt || null, inputSource: a.pendingInputSource };
     const history = [...a.turns, elderTurn];
     // 안전 평가·이벤트는 항상 core 파이프라인이 산출한다 — Live 모드에서도 동일.
     const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
