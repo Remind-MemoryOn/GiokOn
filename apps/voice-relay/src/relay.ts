@@ -21,7 +21,7 @@ function buffer(raw: RawData): Buffer {
 }
 
 /** Bounded, single-connection integration transport; no audio or transcript logs. */
-export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
+export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void {
   const abort = new AbortController()
   let session: RelaySession | undefined, upstream: WebSocket | undefined
   let authenticated = false, setupSeen = false, ready = false, activity = false, pending = false
@@ -165,4 +165,5 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
       throw new Error('INVALID_INPUT')
     }).catch(close)
   })
+  return close
 }

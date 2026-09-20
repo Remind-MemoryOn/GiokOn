@@ -49,5 +49,8 @@ const service = createRelayServer({
 const port = Number(process.env.PORT ?? 8787)
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT')
 service.server.listen(port, process.env.VOICE_RELAY_BIND ?? '127.0.0.1', () => console.info(`Voice relay listening on port ${port}`))
-process.once('SIGTERM', service.close)
-process.once('SIGINT', service.close)
+const shutdown = () => {
+  void service.shutdown().then(() => console.info('Voice relay stopped'))
+}
+process.once('SIGTERM', shutdown)
+process.once('SIGINT', shutdown)

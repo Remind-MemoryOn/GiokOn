@@ -46,10 +46,22 @@ async function fixture() {
     send({ realtimeInput: { text: '확인한 합성 테스트 발화' } })
     send({ realtimeInput: { activityEnd: {} } })
   }
-  return { app, send, start, turn, frames, inputs, authorize, connectProvider, synthesize, allowed, release, peer: () => peer }
+  return { relay, app, send, start, turn, frames, inputs, authorize, connectProvider, synthesize, allowed, release, peer: () => peer }
 }
 
 describe('real local WebSocket relay', () => {
+  it('shutdown cancels synthesis and releases the session without forwarding late audio', async () => {
+    const f = await fixture(); await f.start(2)
+    let finish!: (result: {text:string;pcm:Buffer}) => void
+    f.synthesize.mockImplementationOnce(() => new Promise(resolve => {finish=resolve}))
+    f.turn(); await vi.waitFor(() => expect(f.synthesize).toHaveBeenCalledOnce())
+    const closed = once(f.app,'close')
+    await f.relay.shutdown(); await closed
+    expect(f.release).toHaveBeenCalledOnce()
+    finish({text:'늦은 음성',pcm:Buffer.from([1,0])})
+    await new Promise(resolve => setTimeout(resolve,10))
+    expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(false)
+  })
   it('forwards input segments intact and rejects oversize segments without truncation', async () => {
     const f = await fixture(); await f.start(2)
     f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'고향은 '}}}))
