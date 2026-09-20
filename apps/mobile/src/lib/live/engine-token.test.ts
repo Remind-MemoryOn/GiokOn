@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { URL } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { InputEndpoint, pcmLevel } from './endpoint'
 
 function engineApi(relayUrl?: string) {
   const fetchMock = vi.fn(async () => Response.json({ token: 'synthetic-token', model: 'synthetic-model' }))
@@ -14,6 +15,7 @@ function engineApi(relayUrl?: string) {
   const canProcess = vi.fn(async () => true)
   const send = vi.fn(async () => ({ text: 'synthetic', audioChunksB64: [] }))
   const streamAudio = vi.fn()
+  let draft: (text: string) => void = () => {}
   const micStop = vi.fn()
   const startMic = vi.fn((_options: { onData: (chunk: string) => void }) => ({ stop: micStop }))
   let tick: () => Promise<unknown> | void = () => {};
@@ -21,20 +23,80 @@ function engineApi(relayUrl?: string) {
   const exports: Record<string, (...args: unknown[]) => Promise<unknown>> = {}
   const source = readFileSync(new URL('./engine.ts', import.meta.url), 'utf8')
   runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports, console: { info: vi.fn(), warn: vi.fn() }, fetch: fetchMock, setTimeout, clearTimeout,
+    exports, console: { info: vi.fn(), warn: vi.fn() }, fetch: fetchMock, setTimeout, clearTimeout, performance: { now: () => Date.now() },
     setInterval: vi.fn((callback: () => void) => { tick = callback; return 1 }), clearInterval,
     process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://synthetic.invalid', EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'synthetic', EXPO_PUBLIC_VOICE_RELAY_URL: relayUrl } },
     require: (name: string) => {
       if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt' }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
-      if (name === './client') return { GeminiLiveClient: class { isConnected = true; playbackTurnId = relayUrl ? 1 : null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
+      if (name === './client') return { GeminiLiveClient: class { constructor(_model: string, callbacks: {onDraft: (text: string) => void}) { draft = callbacks.onDraft }; isConnected = true; playbackTurnId = relayUrl ? 1 : null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
+      if (name === './endpoint') return { InputEndpoint, pcmLevel }
       if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic }
       if (name === './player') return { stopPlayback, playPcmTurn }
       throw new Error(name)
     },
   })
-  return { exports, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, startMic, micStop, streamAudio, tick: () => tick(), clearInterval }
+  return { exports, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval }
 }
+
+afterEach(() => vi.useRealTimers())
+
+describe('automatic input endpoint integration', () => {
+  async function listening() {
+    vi.useFakeTimers()
+    const api = engineApi('wss://voice.example.test/voice')
+    const final = vi.fn(), error = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final, onError: error }, 'session') as ListeningEngine & {client: {playbackTurnId: number | null}}
+    engine.client.playbackTurnId = null
+    await engine.startListening()
+    return {api, engine, final, error}
+  }
+  it('accepts a one-syllable reply once after the extra pause', async () => {
+    const f = await listening()
+    f.api.draft('네')
+    await vi.advanceTimersByTimeAsync(5999)
+    expect(f.final).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(251)
+    expect(f.final).toHaveBeenCalledExactlyOnceWith('네')
+    await f.api.exports.closeLiveEngine()
+  })
+  it('ends no-input capture without manufacturing an utterance', async () => {
+    const f = await listening()
+    await vi.advanceTimersByTimeAsync(20000)
+    expect(f.final).toHaveBeenCalledExactlyOnceWith('')
+    expect(f.api.micStop).toHaveBeenCalledOnce()
+    await f.api.exports.closeLiveEngine()
+  })
+  it('keeps listening while PCM continues after the last transcript', async () => {
+    const f = await listening()
+    f.api.draft('고향 이야기')
+    await vi.advanceTimersByTimeAsync(3000)
+    f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(f.final).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(500)
+    expect(f.final).toHaveBeenCalledExactlyOnceWith('고향 이야기')
+    await f.api.exports.closeLiveEngine()
+  })
+  it('closes at the cap without submitting a forced partial utterance', async () => {
+    const f = await listening()
+    for (let i = 0; i < 60; i++) {
+      f.api.draft('아직 말하는 중')
+      await vi.advanceTimersByTimeAsync(1000)
+    }
+    expect(f.error).toHaveBeenCalledOnce()
+    expect(f.final).not.toHaveBeenCalled()
+    expect(f.api.close).toHaveBeenCalledOnce()
+    expect(f.api.micStop).toHaveBeenCalledOnce()
+  })
+  it('cancels the input deadline on retrieval and ignores subsequent drafts', async () => {
+    const f = await listening()
+    await f.api.exports.closeLiveEngine()
+    f.api.draft('늦은 입력')
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(f.final).not.toHaveBeenCalled()
+  })
+})
 
 interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
 

@@ -13,6 +13,7 @@ import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
 import { micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
+import { InputEndpoint, pcmLevel } from './endpoint';
 
 const DEFAULT_MODEL = 'gemini-3.1-flash-live-preview';
 
@@ -53,6 +54,7 @@ export class LiveConversationEngine {
   private listeningGeneration = 0;
   private draft = '';
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private endpoint: InputEndpoint | null = null;
   // 재접속(resumption)용 캐시 — start() 때 채워진다.
   private lastToken = '';
   private model = '';
@@ -139,9 +141,11 @@ export class LiveConversationEngine {
   private makeClient(): GeminiLiveClient {
     return new GeminiLiveClient(this.model, {
       onDraft: (text) => {
+        if (this.closing || !this.micStop) return;
         // 서버 전사 스냅샷을 누적만 한다 — 확정은 stopListening 시점에 한 번.
         this.draft = text;
-        this.armSilenceTimer();
+        if (this.endpoint) this.endpoint.transcript(performance.now());
+        else this.armSilenceTimer();
       },
       onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
       onResumption: (handle) => {
@@ -217,6 +221,14 @@ export class LiveConversationEngine {
       onData: (chunkB64) => {
         if (this.closing || generation !== this.listeningGeneration) return;
         if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
+        if (this.endpoint) {
+          try { this.endpoint.audio(performance.now(), pcmLevel(chunkB64)); }
+          catch {
+            this.callbacks.onError?.('마이크 입력을 확인하지 못했어요. 대화를 회수해 주세요.');
+            void this.close();
+            return;
+          }
+        }
         this.client?.streamAudioChunk(chunkB64);
       },
       onError: (e) => {
@@ -224,6 +236,10 @@ export class LiveConversationEngine {
         this.callbacks.onError?.(e instanceof Error ? e.message : String(e));
       },
     });
+    if (this.relay) {
+      this.endpoint = new InputEndpoint(performance.now());
+      this.pollEndpoint(generation);
+    }
   }
 
   /** 청취 종료 — 확정 전사를 콜백으로 넘기고 반환한다(빈 문자열 = 미인식). */
@@ -310,10 +326,25 @@ export class LiveConversationEngine {
   }
 
   private clearSilenceTimer(): void {
+    this.endpoint = null;
     if (this.silenceTimer !== null) {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
+  }
+
+  private pollEndpoint(generation: number): void {
+    this.silenceTimer = setTimeout(() => {
+      this.silenceTimer = null;
+      if (this.closing || generation !== this.listeningGeneration || !this.micStop || !this.endpoint) return;
+      const result = this.endpoint.check(performance.now(), this.draft);
+      if (result === 'limit') {
+        // A forced cutoff is not a completed utterance; do not request an answer.
+        this.callbacks.onError?.('한 번의 청취 시간이 길어져 대화를 멈췄어요. 담당자가 확인해 주세요.');
+        void this.close();
+      } else if (result) this.stopListening();
+      else this.pollEndpoint(generation);
+    }, 250);
   }
 }
 
