@@ -7,18 +7,18 @@ import { describe, expect, it, vi } from 'vitest';
 function fixture() {
   let generation = 0;
   let user = { id: 'a' };
-  const active = (id: string) => ({ session: { id }, elder: { id: `elder-${id}` }, remoteId: null,
-    turns: [], startedAt: 'synthetic-date', currentTopic: null });
+  const active = (id: string) => ({ session: { id }, elder: { id: `elder-${id}` }, remoteId: null as string | null,
+    turns: [], syncedTurns: 0, events: [], startedAt: 'synthetic-date', currentTopic: null });
   const attach = vi.fn();
   const finish = vi.fn();
   const clear = vi.fn();
   const state = { active: active('a'), lastFinished: null, attachRemoteSession: attach,
-    finishSession: finish, clearLastFinished: clear };
+    finishSession: finish, clearLastFinished: clear, markSynced: vi.fn() };
   const single = vi.fn(async () => ({ data: { id: 'remote' }, error: null }));
   const maybeSingle = vi.fn(async (): Promise<{ data: { id: string } | null; error: { message: string } | null }> => ({ data: { id: 'planned' }, error: null }));
   const builder = { insert: vi.fn(() => builder), update: () => builder, eq: () => builder, select: () => builder, single, maybeSingle };
   const from = vi.fn(() => builder);
-  const exports: { useSessionPersistence?: () => { adoptPlannedSession: (id: string, at: string) => Promise<void>; openRemoteSession: () => Promise<void>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
+  const exports: { useSessionPersistence?: () => { syncProgress: () => Promise<boolean>; adoptPlannedSession: (id: string, at: string) => Promise<void>; openRemoteSession: () => Promise<void>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
   runInNewContext(ts.transpileModule(readFileSync(new URL('./session-persistence.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, { exports, console: { warn: vi.fn() }, setTimeout: (fn: () => void) => setTimeout(fn, 0),
@@ -37,10 +37,17 @@ function fixture() {
     },
   });
   return { api: () => exports.useSessionPersistence!(), single, maybeSingle, from, attach, finish, clear,
+    ready: () => { state.active.remoteId = 'remote'; },
     switchUser: () => { generation++; user = { id: 'b' }; state.active = active('b'); } };
 }
 
 describe('session writes across account changes', () => {
+  it('reports missing remote session as unsaved for the automatic loop', async () => {
+    const f=fixture(); expect(await f.api().syncProgress()).toBe(false);
+  });
+  it('reports completion only after the progress update succeeds', async () => {
+    const f=fixture(); f.ready(); expect(await f.api().syncProgress()).toBe(true);
+  });
   it.each([null, { message: 'PROCESSING_CONSENT_REQUIRED' }])('does not attach a planned session without a successful activation: %s', async error => {
     const f = fixture();
     f.maybeSingle.mockResolvedValue({ data: null, error });

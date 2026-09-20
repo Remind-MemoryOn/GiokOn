@@ -152,6 +152,8 @@ interface AppState {
    * 않는다 — 로컬 안전 응답이 우선이다.
    */
   confirmUtterance: (finalText: string, live?: { question: string }) => void;
+  adoptAutomaticInput: (text: string) => 'continue' | 'help';
+  acceptAutomaticResponse: (text: string) => boolean;
   /**
    * 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다.
    * 출력 가드를 통과한 텍스트만 채택한다. 채택 결과는 `active.currentQuestion` 으로
@@ -313,6 +315,30 @@ export const useApp = create<AppState>((set, get) => ({
           : a.events,
       },
     });
+  },
+
+  adoptAutomaticInput: (text) => {
+    const a = get().active;
+    if (!a || !text.trim() || a.turns.at(-1)?.speaker !== 'AI') return 'help';
+    const turn = makeTurn('Elderly', text, a.currentTopic);
+    turn.provenance = { kind: 'automatic', presentedText: text, inputSource: 'gemini_live' };
+    const turns = [...a.turns, turn];
+    const guarded = respondToUserTurn(a.elder, a.session, turns, text);
+    const recommendation = resolveSessionRecommendation(guarded.session.recommendation, turns.filter(t => t.speaker === 'Elderly').length);
+    const safety: RuntimeSafety = { escalate: guarded.escalate, caregiverAlert: guarded.caregiverAlert,
+      level: guarded.event?.level ?? (guarded.caregiverAlert ? 'watch' : null), recommendation, acknowledged: false };
+    set({ active: { ...a, turns, pendingStt: null, phase: 'processing', safety,
+      events: guarded.event ? [...a.events, { ...guarded.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events } });
+    return guarded.caregiverAlert || recommendation !== 'continue' ? 'help' : 'continue';
+  },
+
+  acceptAutomaticResponse: (text) => {
+    const a = get().active;
+    if (!a || a.turns.at(-1)?.speaker !== 'Elderly' || !text.trim() || !screenAiUtterance(text).allowed) return false;
+    const topic = detectTurnTopic(text) ?? a.currentTopic;
+    set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,
+      currentTopic: topic, phase: 'ai_speaking' } });
+    return true;
   },
 
   overrideQuestion: (text) => {

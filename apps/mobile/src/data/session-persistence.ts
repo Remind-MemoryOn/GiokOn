@@ -16,7 +16,7 @@
 //
 // 견고성:
 //   - 턴 기록은 (session_id, turn_index) 유니크 위에서 upsert 라 재시도해도 멱등하다.
-//   - 진행 중 동기화가 실패해도 대화는 막지 않는다(다음 턴·종료 때 다시 시도한다).
+//   - 동기화 결과를 반환한다. 자동 대화는 실패 시 멈추고, 수동 경로는 종료 때 재시도한다.
 //   - 시작 시 DB 승인이 실패하면 remoteId 가 null 로 남고 시작 화면에서 중단한다.
 //     과거 미저장 묶음의 일괄 저장 경로도 현재 DB 동의 검사를 통과해야 한다.
 
@@ -235,7 +235,7 @@ const syncing = new Set<string>();
  * 세션 실행 ↔ DB 브리지.
  *
  *  - `openRemoteSession` : 대화 시작 시 DB 세션(active)을 만든다.
- *  - `syncProgress`      : 진행 중 턴·안전 이벤트를 이어서 기록한다(실패해도 무시).
+ *  - `syncProgress`      : 진행 중 턴·안전 이벤트를 기록하고 완료 여부를 반환한다.
  *  - `finishAndPersist`  : 대화를 끝내고 마무리 저장한다.
  *  - `retrySave`         : 실패로 남아 있는 묶음을 다시 저장한다.
  *  - `discardUnsaved`    : 사용자가 재시도를 포기했을 때 묶음을 버린다.
@@ -247,7 +247,7 @@ export function useSessionPersistence(): {
    * 새 행을 만들지 않고 같은 행을 이어 쓰므로 '설계됨' 좀비가 남지 않는다.
    */
   adoptPlannedSession: (sessionId: string, startedAt: string) => Promise<void>;
-  syncProgress: () => Promise<void>;
+  syncProgress: () => Promise<boolean>;
   finishAndPersist: () => Promise<SessionSaveResult>;
   retrySave: () => Promise<SessionSaveResult>;
   discardUnsaved: () => void;
@@ -318,18 +318,18 @@ export function useSessionPersistence(): {
     [user, lease],
   );
 
-  const syncProgress = useCallback(async (): Promise<void> => {
-    if (!user || !lease.current()) return;
+  const syncProgress = useCallback(async (): Promise<boolean> => {
+    if (!user || !lease.current()) return false;
     const a = useApp.getState().active;
-    if (!a?.remoteId) return;
+    if (!a?.remoteId) return false;
     const syncKey = `${lease.generation}:${a.session.id}`;
-    if (syncing.has(syncKey)) return;
+    if (syncing.has(syncKey)) return false;
     syncing.add(syncKey);
     try {
       const ids = { sessionId: a.remoteId, profileId: a.elder.id, userId: user.id };
       const turns = await writeTurns(a.turns, a.syncedTurns, ids, lease);
       const events = await writeSafetyEvents(a.events, ids, lease);
-      if (!lease.current() || useApp.getState().active?.session.id !== a.session.id) return;
+      if (!lease.current() || useApp.getState().active?.session.id !== a.session.id) return false;
       useApp.getState().markSynced({ turns, events });
       await withRetry(lease, async () => {
         const { error } = await getGiokonClient()
@@ -338,9 +338,11 @@ export function useSessionPersistence(): {
           .eq('id', ids.sessionId);
         if (error) throw new Error(error.message);
       });
+      return lease.current() && useApp.getState().active?.session.id === a.session.id;
     } catch (e) {
-      // 진행 중 실패는 대화를 막지 않는다 — 다음 턴이나 종료 때 다시 시도한다.
+      // 자동 루프는 false를 받으면 회수한다. 종료/명시적 재시도로 기록을 복구한다.
       console.warn('[giokon] 진행 중 동기화 실패 — 다음 턴에 다시 시도합니다.', e);
+      return false;
     } finally {
       syncing.delete(syncKey);
     }

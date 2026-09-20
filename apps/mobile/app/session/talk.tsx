@@ -30,6 +30,7 @@ import {
 import { playPcmTurn } from '../../src/lib/live/player';
 import { playableChunks } from '../../src/lib/live/playback';
 import { ensureMicPermission } from '../../src/lib/live/mic';
+import { useAutomaticConversation } from '../../src/lib/live/useAutomaticConversation';
 import { useApp } from '../../src/store/appStore';
 import { queryScope } from '../../src/lib/supabase';
 import { resetAccessResources } from '../../src/auth/accessResources';
@@ -65,6 +66,7 @@ export default function Talk() {
   const discard = useApp((s) => s.discardUtterance);
   const acknowledge = useApp((s) => s.acknowledgeSafety);
   const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
+  const automatic = useAutomaticConversation(RELAY_MODE, active, syncProgress);
   const { height } = useWindowDimensions();
   const finishing = useRef(false);
   const relayFailed = useRef(false);
@@ -120,6 +122,7 @@ export default function Talk() {
   };
 
   useEffect(() => {
+    if (RELAY_MODE) return; // The automatic controller owns the relay lifecycle.
     if (!active?.remoteId) return;
     const key = `${active.elder.id}:${active.startedAt}`;
     let cancelled = false;
@@ -233,6 +236,7 @@ export default function Talk() {
   const endAndSave = async () => {
     if (!stillCurrent()) return;
     finishing.current = true;
+    await automatic.stop();
     ExpoSpeechProvider.cancelSpeak();
     await closeLiveEngine();
     presentResult(await finishAndPersist());
@@ -417,12 +421,31 @@ export default function Talk() {
 
       {/* 파형 — 청취 중(라이브)엔 항상 움직인다 */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (419 / FRAME_H) * height }}>
-        <Waveform active={!shouldEnd && (pending === null || liveListening)} width={226} />
+        <Waveform active={RELAY_MODE ? automatic.phase === 'listening' || automatic.phase === 'speaking' : !shouldEnd && (pending === null || liveListening)} width={226} />
       </View>
 
       {/* 마이크 + 상태 라벨 */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (536 / FRAME_H) * height }}>
-        {shouldEnd ? (
+        {RELAY_MODE ? (
+          <>
+            <Pressable
+              onPress={automatic.phase === 'idle' ? () => void automatic.start() : endAndSave}
+              accessibilityRole="button"
+              className="items-center justify-center active:opacity-90"
+              style={{ width: 336, minHeight: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+            >
+              <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
+                {automatic.phase === 'idle' ? '자동 대화 시작' : '대화 회수·저장'}
+              </Text>
+            </Pressable>
+            <Text className="text-[18px] font-medium text-black text-center" accessibilityLiveRegion="polite"
+              style={{ lineHeight: 28, marginTop: 8, width: 336 }}>
+              {automatic.reason ?? ({idle:'담당자가 시작하면 대화가 자동으로 이어져요.', starting:'대화를 준비하고 있어요.',
+                listening:'말씀해 주세요.', processing:'말씀을 기록하고 응답을 준비하고 있어요.', speaking:'듣고 있어요...',
+                stopped:'대화를 멈췄어요. 기록을 저장해 주세요.'}[automatic.phase])}
+            </Text>
+          </>
+        ) : shouldEnd ? (
           <Pressable
             onPress={endAndSave}
             accessibilityRole="button"
@@ -455,7 +478,7 @@ export default function Talk() {
       </View>
 
       {/* 다시 듣기 */}
-      {!shouldEnd && pending === null ? (
+      {!RELAY_MODE && !shouldEnd && pending === null ? (
         <View className="absolute left-0 right-0 items-center" style={{ top: (743 / FRAME_H) * height }}>
           <AiDisclosureBanner />
           {/*
@@ -524,7 +547,8 @@ export default function Talk() {
       ) : null}
 
       {/* 인식 결과 인라인 확인·수정 — 페이지 이동 없이 하단에 나타난다 */}
-      {pending !== null ? (
+      {RELAY_MODE ? <View className="absolute left-0 right-0 items-center" style={{ top: (743 / FRAME_H) * height }}><AiDisclosureBanner /></View> : null}
+      {!RELAY_MODE && pending !== null ? (
         <View
           className="absolute left-0 right-0 bottom-0 bg-white"
           style={{ paddingHorizontal: 28.5, paddingTop: 16, paddingBottom: 24, boxShadow: '0px -2px 12px rgba(0,0,0,0.12)' }}

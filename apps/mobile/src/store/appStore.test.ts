@@ -28,3 +28,17 @@ it('does not turn blank confirmation into an elder record', () => {
   useApp.getState().confirmUtterance('   ');
   expect(useApp.getState().active).toBe(before);
 });
+
+it('automatically adopts input without inventing an AI response or human confirmation',()=>{
+  expect(useApp.getState().adoptAutomaticInput('고향 이야기')).toBe('continue');
+  const turns=useApp.getState().active!.turns;
+  expect(turns).toHaveLength(2);
+  expect(turns[1].provenance).toEqual({kind:'automatic',presentedText:'고향 이야기',inputSource:'gemini_live'});
+  expect(useApp.getState().acceptAutomaticResponse('고향에서 무엇을 하셨어요?')).toBe(true);
+  expect(useApp.getState().active!.turns).toHaveLength(3);
+});
+it('records a crisis but requires help without adding a made-up delivered response',()=>{
+  expect(useApp.getState().adoptAutomaticInput('죽고 싶어요')).toBe('help');
+  expect(useApp.getState().active!.turns).toHaveLength(2);
+  expect(useApp.getState().active!.safety.caregiverAlert).toBeTruthy();
+});
