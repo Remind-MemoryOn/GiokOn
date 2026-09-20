@@ -14,23 +14,41 @@ import { base64ToBytes, bytesToBase64, wrapWav } from './pcm';
 
 let current: { sound: Audio.Sound; fileUri: string; settle: () => void } | null = null;
 let generation = 0;
+let pendingCleanup: Promise<void> | null = null;
+let cleanupFailure: Error | null = null;
 export type PlaybackResult = 'completed' | 'interrupted' | 'empty';
 
+function dispose(sound: Audio.Sound | undefined, fileUri: string): void {
+  const job = (async () => {
+    try { await sound?.unloadAsync(); }
+    catch { cleanupFailure = new Error('오디오 정리를 확인하지 못했어요. 앱을 다시 실행해 주세요.'); }
+    try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); }
+    catch { /* Best effort temporary file deletion; not evidence of native playback. */ }
+  })();
+  const joined = Promise.all([pendingCleanup, job]).then(() => {});
+  pendingCleanup = joined;
+  void joined.then(() => { if (pendingCleanup === joined) pendingCleanup = null; });
+}
+
+async function waitForCleanup(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (pendingCleanup) await Promise.race([pendingCleanup, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('오디오 정리가 지연되고 있어요. 재생 상태를 확인해 주세요.')), 5000);
+    })]);
+    if (cleanupFailure) throw cleanupFailure;
+  } finally { if (timer !== undefined) clearTimeout(timer); }
+}
+
 async function teardown(): Promise<void> {
-  if (!current) return;
-  const { sound, fileUri } = current;
-  current.settle();
-  current = null;
-  try {
-    await sound.unloadAsync();
-  } catch {
-    /* 이미 내려간 경우 무시 */
+  if (current) {
+    const { sound, fileUri } = current;
+    current.settle();
+    current = null;
+    dispose(sound, fileUri);
   }
-  try {
-    await FileSystem.deleteAsync(fileUri, { idempotent: true });
-  } catch {
-    /* 정리 실패는 치명적이지 않다 */
-  }
+  // Timing out does not imply native unload completed. Keep the gate until it does.
+  await waitForCleanup();
 }
 
 /**
@@ -85,8 +103,8 @@ export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> 
   } finally {
     if (current?.sound === sound) await teardown();
     else if (!owned) {
-      try { await sound?.unloadAsync(); } catch { /* already unloaded */ }
-      try { await FileSystem.deleteAsync(fileUri, { idempotent: true }); } catch { /* best effort */ }
+      dispose(sound, fileUri);
+      await waitForCleanup();
     }
   }
 }

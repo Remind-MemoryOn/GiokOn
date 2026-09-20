@@ -9,6 +9,25 @@ const sound = () => ({ playAsync: vi.fn(async () => {}), unloadAsync: vi.fn(asyn
 beforeEach(async () => { await stopPlayback(); vi.clearAllMocks(); native.write.mockResolvedValue(undefined); native.remove.mockResolvedValue(undefined); native.mode.mockResolvedValue(undefined); });
 afterEach(() => vi.useRealTimers());
 describe('native playback cancellation', () => {
+  it('bounds a stuck unload and blocks new playback until that unload really completes', async () => {
+    vi.useFakeTimers();
+    const s = sound(); let unloaded!: () => void;
+    s.unloadAsync.mockImplementationOnce(() => new Promise(resolve => { unloaded = resolve; }));
+    native.create.mockResolvedValueOnce({sound:s});
+    const playing = playPcmTurn([pcm]);
+    await vi.advanceTimersByTimeAsync(1);
+    const stopping = stopPlayback();
+    const rejected = expect(stopping).rejects.toThrow('오디오 정리');
+    await vi.advanceTimersByTimeAsync(5000); await rejected;
+    expect(await playing).toBe('interrupted');
+    const next = playPcmTurn([pcm]);
+    const nextRejected = expect(next).rejects.toThrow('오디오 정리');
+    await vi.advanceTimersByTimeAsync(5000); await nextRejected;
+    expect(native.create).toHaveBeenCalledOnce();
+    unloaded(); await vi.advanceTimersByTimeAsync(1);
+    await stopPlayback();
+    expect(native.remove).toHaveBeenCalledOnce();
+  });
   it('settles on stop even when the native play request never settles', async () => {
     const s = sound(); s.playAsync.mockImplementation(() => new Promise(() => {}));
     native.create.mockResolvedValueOnce({ sound: s });
@@ -58,5 +77,17 @@ describe('native playback cancellation', () => {
     expect(await playPcmTurn([])).toBe('empty');
     expect(await playPcmTurn(['AAAA'])).toBe('empty');
     expect(native.create).not.toHaveBeenCalled();
+  });
+  it('does not authorize more playback after native unload explicitly fails', async () => {
+    vi.resetModules();
+    const isolated = await import('./player');
+    const s = sound(); s.unloadAsync.mockRejectedValueOnce(new Error('native failure'));
+    native.create.mockResolvedValueOnce({sound:s});
+    const playing = isolated.playPcmTurn([pcm]);
+    await vi.waitFor(() => expect(s.playAsync).toHaveBeenCalled());
+    await expect(isolated.stopPlayback()).rejects.toThrow('앱을 다시 실행');
+    expect(await playing).toBe('interrupted');
+    await expect(isolated.playPcmTurn([pcm])).rejects.toThrow('앱을 다시 실행');
+    expect(native.create).toHaveBeenCalledOnce();
   });
 });
