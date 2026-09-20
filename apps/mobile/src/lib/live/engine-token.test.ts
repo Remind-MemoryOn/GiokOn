@@ -101,6 +101,19 @@ describe('automatic input endpoint integration', () => {
 interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
 
 describe('listening cancellation generations', () => {
+  it('recovers a partial and closes instead of finalizing when normal microphone stop fails', async () => {
+    const api = engineApi()
+    const partial = vi.fn(), final = vi.fn(), error = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final, onDraftInterrupted: partial, onError: error }, 'session') as ListeningEngine
+    await engine.startListening(); api.draft('입력 중')
+    api.micStop.mockImplementationOnce(() => { throw new Error('native stop failed') })
+    expect(engine.stopListening()).toBe('')
+    await api.exports.closeLiveEngine()
+    expect(final).not.toHaveBeenCalled()
+    expect(partial).toHaveBeenCalledExactlyOnceWith('입력 중')
+    expect(api.close).toHaveBeenCalledOnce()
+    expect(error).toHaveBeenCalledOnce()
+  })
   it('shares cleanup between callers and survives recovery and playback errors', async () => {
     const api = engineApi()
     const partial = vi.fn(() => { throw new Error('consumer failed') }), error = vi.fn()

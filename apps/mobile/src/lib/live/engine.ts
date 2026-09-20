@@ -65,6 +65,7 @@ export class LiveConversationEngine {
   private resumedOnce = false;
   private closing = false;
   private closeWork: Promise<void> | null = null;
+  private failedStopDraft: string | null = null;
   private resumeTimer: ReturnType<typeof setTimeout> | null = null;
   private accessTimer: ReturnType<typeof setInterval> | null = null;
   private lastAccessCheck = 0;
@@ -257,8 +258,13 @@ export class LiveConversationEngine {
     this.clearSilenceTimer();
     const microphone = this.micStop;
     this.micStop = null;
-    microphone?.stop();
     const text = this.draft.trim();
+    try { microphone?.stop(); }
+    catch {
+      this.failedStopDraft = text;
+      void this.close();
+      return ''; // Native failure is not a completed utterance.
+    }
     if (microphone && !this.closing) this.callbacks.onDraftFinal(text);
     return text;
   }
@@ -324,12 +330,14 @@ export class LiveConversationEngine {
     this.micStop = null;
     const client = this.client;
     this.client = null;
-    let failed = false;
+    let failed = this.failedStopDraft !== null;
+    const interruptedDraft = this.failedStopDraft ?? (microphone ? this.draft.trim() : '');
+    this.failedStopDraft = null;
     // Isolate cleanup failures so a native exception cannot retain a provider connection.
     try { client?.close(); } catch { failed = true; }
     try { microphone?.stop(); } catch { failed = true; }
     try {
-      if (microphone && this.draft.trim()) this.callbacks.onDraftInterrupted?.(this.draft.trim());
+      if (interruptedDraft) this.callbacks.onDraftInterrupted?.(interruptedDraft);
     } catch { failed = true; }
     void (async () => {
       try { await stopPlayback(); } catch { failed = true; }

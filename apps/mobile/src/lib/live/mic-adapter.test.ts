@@ -62,8 +62,11 @@ describe('실제 설치 마이크 라이브러리 계약', () => {
     const m = installedModule();
     m.native.stop.mockImplementationOnce(() => { throw new Error('stop failed'); });
     const onError = vi.fn();
-    createMicAdapter(() => m.exports).start({ onData: vi.fn(), onError }).stop();
+    const adapter = createMicAdapter(() => m.exports);
+    const handle = adapter.start({ onData: vi.fn(), onError });
+    expect(() => handle.stop()).toThrow('stop failed');
     expect(onError).toHaveBeenCalledOnce();
     expect(m.listeners.size).toBe(0);
+    expect(() => adapter.start({onData:vi.fn()})).toThrow('다시 실행');
   });
 });

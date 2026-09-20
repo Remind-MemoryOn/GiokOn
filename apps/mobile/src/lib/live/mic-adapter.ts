@@ -14,6 +14,7 @@ interface StreamModule {
 export function createMicAdapter(load: () => unknown) {
   let cached: StreamModule | null | undefined;
   let active: { stop(): void } | null = null;
+  let stopFailed = false;
 
   function getModule(): StreamModule | null {
     if (cached !== undefined) return cached;
@@ -34,6 +35,7 @@ export function createMicAdapter(load: () => unknown) {
   return {
     supported: () => getModule() !== null,
     start({ onData, onError }: MicStartOptions): { stop(): void } {
+      if (stopFailed) throw new Error('마이크 중지를 확인하지 못했어요. 앱을 다시 실행해 주세요.');
       // 이벤트 리스너를 모듈이 전역 교체하므로 중복 시작은 명시적으로 거부한다.
       if (active) throw new Error('마이크가 이미 사용 중이에요.');
       const stream = getModule();
@@ -45,8 +47,15 @@ export function createMicAdapter(load: () => unknown) {
           if (stopped) return;
           stopped = true;
           active = null;
-          try { stream.stop(); } catch (e) { onError?.(e); }
-          finally { subscription?.remove(); }
+          let failure: unknown;
+          let failed = false;
+          try { stream.stop(); } catch (e) { failed = true; failure = e; }
+          try { subscription?.remove(); } catch (e) { failed = true; failure ??= e; }
+          if (failed) {
+            stopFailed = true;
+            try { onError?.(failure); } catch { /* Preserve the native failure below. */ }
+            throw failure;
+          }
         },
       };
       try {
