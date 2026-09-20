@@ -22,7 +22,11 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
         await getTranscriptStorageVersion() === 1 && await ensureMicPermission(),
       connect: (onInput,onFailure) => acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
         session.elder,session.chronicles,session.design,
-        {onDraftFinal:onInput,onError:onFailure,onProcessingDenied:onFailure},session.remoteId),
+        {onDraftFinal:onInput,onError:onFailure,onProcessingDenied:onFailure,
+          onDraftInterrupted: text => {
+            if (!disposed && lease.current() && useApp.getState().active?.session.id === id)
+              useApp.getState().setPendingStt(text, 'gemini_live');
+          }},session.remoteId),
       cancelPending: closeLiveEngine,
       input: text => useApp.getState().adoptAutomaticInput(text),
       output: (text,opener) => {

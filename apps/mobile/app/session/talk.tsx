@@ -42,9 +42,9 @@ import iconClose from '../../assets/brand/icon-close.png';
 import iconSpeaker from '../../assets/brand/icon-speaker.png';
 
 const FRAME_H = 852;
-/** 어르신 발화 입력 길이 상한(Figma 대화 수정 화면의 200자 카운터와 동일). */
-const UTTERANCE_MAX = 200;
 const RELAY_MODE = Boolean(process.env.EXPO_PUBLIC_VOICE_RELAY_URL?.trim());
+/** Manual design limit; interrupted relay inputs retain the full storage allowance. */
+const UTTERANCE_MAX = RELAY_MODE ? 4000 : 200;
 
 export default function Talk() {
   const active = useApp((s) => s.active);
@@ -239,6 +239,10 @@ export default function Talk() {
     await automatic.stop();
     ExpoSpeechProvider.cancelSpeak();
     await closeLiveEngine();
+    if (RELAY_MODE && useApp.getState().active?.pendingStt != null) {
+      finishing.current = false;
+      return; // Resolve interrupted input explicitly before ending the session.
+    }
     presentResult(await finishAndPersist());
   };
 
@@ -548,13 +552,13 @@ export default function Talk() {
 
       {/* 인식 결과 인라인 확인·수정 — 페이지 이동 없이 하단에 나타난다 */}
       {RELAY_MODE ? <View className="absolute left-0 right-0 items-center" style={{ top: (743 / FRAME_H) * height }}><AiDisclosureBanner /></View> : null}
-      {!RELAY_MODE && pending !== null ? (
+      {pending !== null ? (
         <View
           className="absolute left-0 right-0 bottom-0 bg-white"
           style={{ paddingHorizontal: 28.5, paddingTop: 16, paddingBottom: 24, boxShadow: '0px -2px 12px rgba(0,0,0,0.12)' }}
         >
           <Text className="text-[18px] font-semibold text-ink" style={{ lineHeight: 30 }}>
-            AI가 이렇게 이해했어요.
+            {RELAY_MODE ? '중단 전 인식된 말씀을 확인해 주세요.' : 'AI가 이렇게 이해했어요.'}
           </Text>
           <View
             style={{
@@ -570,12 +574,15 @@ export default function Talk() {
           >
             <TextInput
               value={draft}
-              onChangeText={(t) => setDraft(t.slice(0, UTTERANCE_MAX))}
+              onChangeText={(t) => {
+                if (RELAY_MODE) { if (t.length <= UTTERANCE_MAX) setDraft(t); }
+                else setDraft(t.slice(0, UTTERANCE_MAX));
+              }}
               multiline
               placeholder="어르신 말씀을 확인·수정해 주세요"
               placeholderTextColor="#7b7c7c"
               className="text-[17px] text-ink font-normal"
-              style={{ minHeight: 72, textAlignVertical: 'top' }}
+              style={{ minHeight: 72, maxHeight: RELAY_MODE ? 160 : undefined, textAlignVertical: 'top' }}
             />
             {/* 카운터는 텍스트 박스 **안** 우측 하단(Figma 동일) */}
             <Text
@@ -597,21 +604,25 @@ export default function Talk() {
               style={{ height: 57, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce', marginRight: 10 }}
             >
               <Text className="text-[18px] font-semibold text-muted" style={{ lineHeight: 30 }}>
-                다시 말하기
+                {RELAY_MODE ? '이 입력 제외' : '다시 말하기'}
               </Text>
             </Pressable>
             <Pressable
               onPress={() => {
                 if (confirming) return;
+                if (RELAY_MODE) {
+                  if (useApp.getState().confirmRecoveredInput(draft)) void endAndSave();
+                  return;
+                }
                 void handleConfirm();
               }}
-              disabled={confirming}
+              disabled={confirming || (RELAY_MODE && !draft.trim())}
               accessibilityRole="button"
               className="flex-1 items-center justify-center active:opacity-90"
               style={{ height: 57, borderRadius: 10, backgroundColor: '#e9822b', opacity: confirming ? 0.6 : 1 }}
             >
               <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
-                {confirming ? 'AI 응답 대기 중…' : '저장'}
+                {RELAY_MODE ? '확인 후 저장' : confirming ? 'AI 응답 대기 중…' : '저장'}
               </Text>
             </Pressable>
           </View>

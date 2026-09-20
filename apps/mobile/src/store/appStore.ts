@@ -154,6 +154,7 @@ interface AppState {
   confirmUtterance: (finalText: string, live?: { question: string }) => void;
   adoptAutomaticInput: (text: string) => 'continue' | 'help';
   acceptAutomaticResponse: (text: string) => boolean;
+  confirmRecoveredInput: (text: string) => boolean;
   /**
    * 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다.
    * 출력 가드를 통과한 텍스트만 채택한다. 채택 결과는 `active.currentQuestion` 으로
@@ -338,6 +339,22 @@ export const useApp = create<AppState>((set, get) => ({
     const topic = detectTurnTopic(text) ?? a.currentTopic;
     set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,
       currentTopic: topic, phase: 'ai_speaking' } });
+    return true;
+  },
+
+  confirmRecoveredInput: (text) => {
+    const a = get().active;
+    if (!a || a.pendingStt === null || !text.trim() || text.length > 4000 || a.turns.at(-1)?.speaker !== 'AI') return false;
+    const turn = makeTurn('Elderly', text, a.currentTopic);
+    turn.provenance = { kind: 'caregiver_confirmed', presentedText: a.pendingStt || null, inputSource: a.pendingInputSource };
+    if (a.pendingStt && a.pendingStt !== text) turn.originalText = a.pendingStt;
+    const turns = [...a.turns, turn];
+    const guarded = respondToUserTurn(a.elder, a.session, turns, text);
+    const recommendation = resolveSessionRecommendation(guarded.session.recommendation, turns.filter(t => t.speaker === 'Elderly').length);
+    set({ active: { ...a, turns, pendingStt: null, phase: 'processing',
+      safety: { escalate: guarded.escalate, caregiverAlert: guarded.caregiverAlert,
+        level: guarded.event?.level ?? (guarded.caregiverAlert ? 'watch' : null), recommendation, acknowledged: false },
+      events: guarded.event ? [...a.events, { ...guarded.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events } });
     return true;
   },
 

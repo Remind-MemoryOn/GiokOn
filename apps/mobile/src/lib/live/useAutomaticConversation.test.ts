@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
   status: [] as unknown[], change: null as null | ((state:string)=>void),
-  input: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
+  input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
   play:vi.fn(async()=> 'completed'), listen:vi.fn(async()=>{}), close:vi.fn(async()=>{}) }));
 vi.mock('react',async original=>({...await original<typeof import('react')>(),
   useEffect:(effect:()=>void|(()=>void))=>{native.effects.push(effect);},
@@ -15,8 +15,9 @@ vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version}));
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
 vi.mock('./mic',()=>({ensureMicPermission:async()=>true}));
 vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
-  acquireLiveEngine:async(_key:unknown,_elder:unknown,_chronicles:unknown,_design:unknown,callbacks:{onDraftFinal:(text:string)=>void})=>{
+  acquireLiveEngine:async(_key:unknown,_elder:unknown,_chronicles:unknown,_design:unknown,callbacks:{onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void})=>{
     native.input=callbacks.onDraftFinal;
+    native.partial=callbacks.onDraftInterrupted;
     return {requestOpener:async()=>({text:'고향은 어디세요?',audioChunksB64:['pcm']}),
       submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
       playTurn:native.play,startListening:native.listen,isListening:true,close:native.close};
@@ -53,4 +54,18 @@ it('does not install automatic controls for the direct manual path',async()=>{
   const view=useAutomaticConversation(false,useApp.getState().active,async()=>true);
   native.effects[0](); await view.start();
   expect(native.version).not.toHaveBeenCalled(); expect(native.input).toBeNull();
+});
+
+it('preserves an interrupted input for review without adopting or saving it',async()=>{
+  const save=vi.fn(async()=>true);
+  const view=useAutomaticConversation(true,useApp.getState().active,save);
+  const cleanup=native.effects[0](); await view.start();
+  native.close.mockImplementationOnce(async()=>{native.partial!('말씀 도중');});
+  await view.stop();
+  expect(useApp.getState().active!.pendingStt).toBe('말씀 도중');
+  expect(useApp.getState().active!.turns).toHaveLength(1);
+  expect(save).toHaveBeenCalledTimes(1);
+  if(cleanup) cleanup();
+  native.partial!('화면 이탈 뒤 입력');
+  expect(useApp.getState().active!.pendingStt).toBe('말씀 도중');
 });

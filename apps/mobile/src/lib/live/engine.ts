@@ -23,6 +23,8 @@ export interface LiveEngineCallbacks {
    * 스트리밍 중 중간 결과는 화면에 흘리지 않는다(반쪽 문장이 저장처럼 보이는 것 방지).
    */
   onDraftFinal: (text: string) => void;
+  /** Interrupted capture, not a completed or automatically adopted utterance. */
+  onDraftInterrupted?: (text: string) => void;
   onError?: (message: string) => void;
   onProcessingDenied?: () => void;
 }
@@ -314,10 +316,12 @@ export class LiveConversationEngine {
     if (this.resumeTimer) clearTimeout(this.resumeTimer);
     this.resumeTimer = null;
     this.clearSilenceTimer();
-    this.micStop?.stop();
+    const microphone = this.micStop;
     this.micStop = null;
+    microphone?.stop();
     this.client?.close();
     this.client = null;
+    if (microphone && this.draft.trim()) this.callbacks.onDraftInterrupted?.(this.draft.trim());
     await stopPlayback();
   }
 

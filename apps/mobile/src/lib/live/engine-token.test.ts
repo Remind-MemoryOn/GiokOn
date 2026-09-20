@@ -101,6 +101,15 @@ describe('automatic input endpoint integration', () => {
 interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
 
 describe('listening cancellation generations', () => {
+  it('returns an interrupted draft once as partial, never as a completed input', async () => {
+    const api = engineApi()
+    const final = vi.fn(), partial = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final, onDraftInterrupted: partial }, 'session') as ListeningEngine
+    await engine.startListening(); api.draft('아직 '); api.draft('말씀 중')
+    await api.exports.closeLiveEngine(); await api.exports.closeLiveEngine()
+    expect(partial).toHaveBeenCalledExactlyOnceWith('아직 말씀 중')
+    expect(final).not.toHaveBeenCalled()
+  })
   it('retains every transcription segment, whitespace and intentional repetition', async () => {
     const api = engineApi()
     const final = vi.fn()

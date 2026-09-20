@@ -42,3 +42,21 @@ it('records a crisis but requires help without adding a made-up delivered respon
   expect(useApp.getState().active!.turns).toHaveLength(2);
   expect(useApp.getState().active!.safety.caregiverAlert).toBeTruthy();
 });
+
+it('keeps a partial input out of the record until explicit recovery confirmation', () => {
+  useApp.getState().setPendingStt('고향은 전', 'gemini_live');
+  expect(useApp.getState().active!.turns).toHaveLength(1);
+  expect(useApp.getState().confirmRecoveredInput('고향은 전주예요')).toBe(true);
+  const turns = useApp.getState().active!.turns;
+  expect(turns).toHaveLength(2);
+  expect(turns[1]).toMatchObject({text:'고향은 전주예요',originalText:'고향은 전',
+    provenance:{kind:'caregiver_confirmed',presentedText:'고향은 전',inputSource:'gemini_live'}});
+  expect(useApp.getState().active!.pendingStt).toBeNull();
+  expect(useApp.getState().confirmRecoveredInput('중복')).toBe(false);
+});
+
+it('rejects empty recovery confirmation without losing the pending input', () => {
+  useApp.getState().setPendingStt('부분 입력', 'gemini_live');
+  expect(useApp.getState().confirmRecoveredInput('  ')).toBe(false);
+  expect(useApp.getState().active!.pendingStt).toBe('부분 입력');
+});
