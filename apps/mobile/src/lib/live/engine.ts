@@ -64,6 +64,7 @@ export class LiveConversationEngine {
   private resumeHandle = '';
   private resumedOnce = false;
   private closing = false;
+  private closeWork: Promise<void> | null = null;
   private resumeTimer: ReturnType<typeof setTimeout> | null = null;
   private accessTimer: ReturnType<typeof setInterval> | null = null;
   private lastAccessCheck = 0;
@@ -308,7 +309,10 @@ export class LiveConversationEngine {
     }
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    if (this.closeWork) return this.closeWork;
+    let finish!: () => void;
+    this.closeWork = new Promise(resolve => { finish = resolve; });
     this.closing = true; // 의도 종료 — onClose 에서 재접속 시도하지 않는다
     this.listeningGeneration++;
     if (this.accessTimer) clearInterval(this.accessTimer);
@@ -318,11 +322,24 @@ export class LiveConversationEngine {
     this.clearSilenceTimer();
     const microphone = this.micStop;
     this.micStop = null;
-    microphone?.stop();
-    this.client?.close();
+    const client = this.client;
     this.client = null;
-    if (microphone && this.draft.trim()) this.callbacks.onDraftInterrupted?.(this.draft.trim());
-    await stopPlayback();
+    let failed = false;
+    // Isolate cleanup failures so a native exception cannot retain a provider connection.
+    try { client?.close(); } catch { failed = true; }
+    try { microphone?.stop(); } catch { failed = true; }
+    try {
+      if (microphone && this.draft.trim()) this.callbacks.onDraftInterrupted?.(this.draft.trim());
+    } catch { failed = true; }
+    void (async () => {
+      try { await stopPlayback(); } catch { failed = true; }
+      if (failed) {
+        try { this.callbacks.onError?.('오디오 정리를 완료하지 못했어요. 앱의 마이크와 재생 상태를 확인해 주세요.'); }
+        catch { /* Consumer errors must not strand cleanup callers. */ }
+      }
+      finish();
+    })();
+    return this.closeWork;
   }
 
   /** 발화 끝 감지 — 전사가 잠깐 멈추면 청취를 자동으로 마친다(어르신 호흡 길이 배려). */
@@ -391,7 +408,12 @@ export async function acquireLiveEngine(
   connectingEngines.add(engine);
   let ok: boolean;
   try { ok = await engine.start(); } finally { connectingEngines.delete(engine); }
-  if (!ok || generation !== engineGeneration) {
+  if (generation !== engineGeneration) {
+    // Cancellation already owns cleanup. Acquisition must not wait on native teardown.
+    void engine.close();
+    return null;
+  }
+  if (!ok) {
     // 폴백 모드에서도 다음 세션 때 다시 시도할 수 있게 흔적을 남기지 않는다.
     await engine.close();
     return null;

@@ -101,6 +101,32 @@ describe('automatic input endpoint integration', () => {
 interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
 
 describe('listening cancellation generations', () => {
+  it('shares cleanup between callers and survives recovery and playback errors', async () => {
+    const api = engineApi()
+    const partial = vi.fn(() => { throw new Error('consumer failed') }), error = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: vi.fn(), onDraftInterrupted: partial, onError: error }, 'session') as ListeningEngine & {close(): Promise<void>}
+    await engine.startListening(); api.draft('부분 입력')
+    api.stopPlayback.mockRejectedValueOnce(new Error('native unload failed'))
+    await Promise.all([engine.close(), engine.close()])
+    expect(api.close).toHaveBeenCalledOnce()
+    expect(api.micStop).toHaveBeenCalledOnce()
+    expect(api.stopPlayback).toHaveBeenCalledOnce()
+    expect(partial).toHaveBeenCalledOnce()
+    expect(error).toHaveBeenCalledOnce()
+    await api.exports.closeLiveEngine()
+  })
+  it('closes the socket and recovers input even when native microphone cleanup throws', async () => {
+    const api = engineApi()
+    const partial = vi.fn(), error = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: vi.fn(), onDraftInterrupted: partial, onError: error }, 'session') as ListeningEngine
+    await engine.startListening(); api.draft('받은 말씀')
+    api.micStop.mockImplementationOnce(() => { throw new Error('native stop failed') })
+    await api.exports.closeLiveEngine()
+    expect(api.close).toHaveBeenCalledOnce()
+    expect(api.stopPlayback).toHaveBeenCalledOnce()
+    expect(partial).toHaveBeenCalledExactlyOnceWith('받은 말씀')
+    expect(error).toHaveBeenCalledOnce()
+  })
   it('returns an interrupted draft once as partial, never as a completed input', async () => {
     const api = engineApi()
     const final = vi.fn(), partial = vi.fn()

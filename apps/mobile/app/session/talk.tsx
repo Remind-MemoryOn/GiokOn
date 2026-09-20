@@ -573,6 +573,7 @@ export default function Talk() {
             }}
           >
             <TextInput
+              className="text-[17px] text-ink font-normal"
               value={draft}
               onChangeText={(t) => {
                 if (RELAY_MODE) { if (t.length <= UTTERANCE_MAX) setDraft(t); }
@@ -581,7 +582,6 @@ export default function Talk() {
               multiline
               placeholder="어르신 말씀을 확인·수정해 주세요"
               placeholderTextColor="#7b7c7c"
-              className="text-[17px] text-ink font-normal"
               style={{ minHeight: 72, maxHeight: RELAY_MODE ? 160 : undefined, textAlignVertical: 'top' }}
             />
             {/* 카운터는 텍스트 박스 **안** 우측 하단(Figma 동일) */}
