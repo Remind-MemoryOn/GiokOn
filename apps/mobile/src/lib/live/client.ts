@@ -25,6 +25,7 @@ export interface VoiceRelayConnection {
 
 type Handlers = {
   onOpen?: () => void;
+  /** Incremental input segment; the engine accumulates within one capture. */
   onDraft?: (text: string) => void;
   onError?: (e: unknown) => void;
   onClose?: () => void;

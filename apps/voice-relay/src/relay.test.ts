@@ -50,6 +50,16 @@ async function fixture() {
 }
 
 describe('real local WebSocket relay', () => {
+  it('forwards input segments intact and rejects oversize segments without truncation', async () => {
+    const f = await fixture(); await f.start(2)
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'고향은 '}}}))
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'전주예요.'}}}))
+    await vi.waitFor(() => expect(f.frames.filter(x => x.serverContent?.inputTranscription)).toHaveLength(2))
+    expect(f.frames.filter(x => x.serverContent?.inputTranscription).map(x => x.serverContent.inputTranscription.text)).toEqual(['고향은 ', '전주예요.'])
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'가'.repeat(4001)}}}))
+    await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED))
+    expect(f.frames.filter(x => x.serverContent?.inputTranscription)).toHaveLength(2)
+  })
   it('v2 holds the next input until the exact output is reported completed', async () => {
     const f = await fixture(); await f.start(2); f.turn()
     await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))

@@ -101,6 +101,31 @@ describe('automatic input endpoint integration', () => {
 interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
 
 describe('listening cancellation generations', () => {
+  it('retains every transcription segment, whitespace and intentional repetition', async () => {
+    const api = engineApi()
+    const final = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final }, 'session') as ListeningEngine
+    await engine.startListening()
+    api.draft('고향은 '); api.draft('전주'); api.draft('예요. '); api.draft('네. '); api.draft('네. ')
+    expect(engine.stopListening()).toBe('고향은 전주예요. 네. 네.')
+    expect(final).toHaveBeenCalledExactlyOnceWith('고향은 전주예요. 네. 네.')
+    api.draft('청취 밖 입력')
+    await engine.startListening()
+    api.draft('새 발화')
+    expect(engine.stopListening()).toBe('새 발화')
+    await api.exports.closeLiveEngine()
+  })
+  it('rejects oversized transcripts instead of silently truncating or submitting them', async () => {
+    const api = engineApi()
+    const final = vi.fn(), error = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', {}, [], undefined, { onDraftFinal: final, onError: error }, 'session') as ListeningEngine
+    await engine.startListening()
+    api.draft('가'.repeat(3999)); api.draft('나다')
+    expect(error).toHaveBeenCalledOnce()
+    expect(api.close).toHaveBeenCalledOnce()
+    expect(final).not.toHaveBeenCalled()
+    await api.exports.closeLiveEngine()
+  })
   it('does not open the microphone after stop during the permission check', async () => {
     const api = engineApi()
     const final = vi.fn()

@@ -111,7 +111,11 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): void {
             if (!content) return
             if (content.interrupted) return close()
             // Never forward Gemini inlineData or its original audio.
-            if (typeof content.inputTranscription?.text === 'string') send({ serverContent: { inputTranscription: { text: content.inputTranscription.text.slice(0, 4000) } } })
+            if (typeof content.inputTranscription?.text === 'string') {
+              const text = content.inputTranscription.text
+              if (text.length > 4000) return close()
+              send({ serverContent: { inputTranscription: { text } } })
+            }
             if (!pending) return
             if (typeof content.outputTranscription?.text === 'string') output += content.outputTranscription.text
             if (output.length > 200) return close()

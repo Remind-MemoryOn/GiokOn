@@ -142,8 +142,14 @@ export class LiveConversationEngine {
     return new GeminiLiveClient(this.model, {
       onDraft: (text) => {
         if (this.closing || !this.micStop) return;
-        // 서버 전사 스냅샷을 누적만 한다 — 확정은 stopListening 시점에 한 번.
-        this.draft = text;
+        // Live serverContent is incremental. Preserve segment spacing and repetition.
+        // Do not turn a size limit into an apparently complete, truncated record.
+        if (this.draft.length + text.length > 4000) {
+          this.callbacks.onError?.('인식된 말씀의 길이가 한도를 넘었어요. 담당자가 확인해 주세요.');
+          void this.close();
+          return;
+        }
+        this.draft += text;
         if (this.endpoint) this.endpoint.transcript(performance.now());
         else this.armSilenceTimer();
       },
