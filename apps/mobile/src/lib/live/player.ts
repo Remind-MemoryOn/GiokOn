@@ -135,14 +135,26 @@ export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> 
     let complete!: () => void;
     let playbackError: Error | undefined;
     let finished = false;
+    let terminal = false;
+    let observedPlaying = false;
     const done = new Promise<void>(resolve => { complete = resolve; });
-    current = { sound: loaded, fileUri, settle: complete };
+    const settle = (completed = false) => {
+      if (terminal) return;
+      terminal = true; finished = completed; complete();
+    };
+    current = { sound: loaded, fileUri, settle: () => settle() };
     owned = true;
     loaded.setOnPlaybackStatusUpdate((st: AVPlaybackStatus) => {
-      if (!st.isLoaded && st.error) { playbackError = new Error('음성을 재생하지 못했어요.'); complete(); }
-      if (st.isLoaded && st.didJustFinish) { finished = true; complete(); }
+      if (terminal) return;
+      if (!st.isLoaded && st.error) { playbackError = new Error('음성을 재생하지 못했어요.'); settle(); return; }
+      if (!st.isLoaded) return;
+      if (st.didJustFinish) { settle(true); return; }
+      if (st.isPlaying) observedPlaying = true;
+      else if (observedPlaying && st.isPlaying === false && st.isBuffering === false) settle();
     });
-    const timer = setTimeout(() => { playbackError = new Error('음성 재생 시간이 초과됐어요.'); complete(); }, 90000);
+    const timer = setTimeout(() => {
+      if (!terminal) { playbackError = new Error('음성 재생 시간이 초과됐어요.'); settle(); }
+    }, 90000);
     // Native start can remain pending during interruption. Completion/stop/timeout
     // must still settle the caller; the race also consumes a late start rejection.
     try { await Promise.race([loaded.playAsync().then(() => done), done]); }

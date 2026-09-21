@@ -129,3 +129,31 @@ describe('native preparation boundaries',()=>{
     await stopPlayback();
   });
 });
+
+describe('native playback state interruptions',()=>{
+  it('ends as interrupted when native playback unexpectedly pauses, even before a late finish',async()=>{
+    const s=sound();native.create.mockResolvedValueOnce({sound:s});
+    let result:unknown;
+    const playing=playPcmTurn([pcm]).then(value=>{result=value;return value;});
+    await vi.waitFor(()=>expect(s.setOnPlaybackStatusUpdate).toHaveBeenCalled());
+    const update=s.setOnPlaybackStatusUpdate.mock.calls[0][0];
+    update({isLoaded:true,isPlaying:true,isBuffering:false,didJustFinish:false});
+    update({isLoaded:true,isPlaying:false,isBuffering:false,didJustFinish:false});
+    update({isLoaded:true,isPlaying:false,isBuffering:false,didJustFinish:true});
+    await vi.waitFor(()=>expect(result).toBe('interrupted'));
+    await playing;expect(s.unloadAsync).toHaveBeenCalledOnce();
+  });
+  it('does not mistake startup or buffering status for an interruption',async()=>{
+    const s=sound();native.create.mockResolvedValueOnce({sound:s});
+    let result:unknown;
+    const playing=playPcmTurn([pcm]).then(value=>{result=value;return value;});
+    await vi.waitFor(()=>expect(s.setOnPlaybackStatusUpdate).toHaveBeenCalled());
+    const update=s.setOnPlaybackStatusUpdate.mock.calls[0][0];
+    update({isLoaded:true,isPlaying:false,isBuffering:false,didJustFinish:false});
+    update({isLoaded:true,isPlaying:true,isBuffering:false,didJustFinish:false});
+    update({isLoaded:true,isPlaying:false,isBuffering:true,didJustFinish:false});
+    await new Promise(resolve=>setTimeout(resolve,0));expect(result).toBeUndefined();
+    update({isLoaded:true,isPlaying:false,isBuffering:false,didJustFinish:true});
+    expect(await playing).toBe('completed');
+  });
+});
