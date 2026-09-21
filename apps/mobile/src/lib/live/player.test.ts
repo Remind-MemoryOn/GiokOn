@@ -91,3 +91,41 @@ describe('native playback cancellation', () => {
     expect(native.create).toHaveBeenCalledOnce();
   });
 });
+
+describe('native preparation boundaries',()=>{
+  it.each(['write','mode','create'] as const)('cancels a stuck %s and gates reuse until late cleanup',async stage=>{
+    vi.useFakeTimers();
+    const s=sound(); let finish!:(value:unknown)=>void;
+    native.create.mockResolvedValue({sound:s});
+    native[stage].mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+    const playing=playPcmTurn([pcm]);
+    await vi.advanceTimersByTimeAsync(1);
+    await stopPlayback();
+    let result:unknown; void playing.then(value=>{result=value;});
+    await vi.advanceTimersByTimeAsync(1);
+    expect(result).toBe('interrupted');
+    const next=playPcmTurn([pcm]);
+    const rejected=expect(next).rejects.toThrow('준비');
+    await vi.advanceTimersByTimeAsync(5000); await rejected;
+    finish(stage==='create'?{sound:s}:undefined);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(s.playAsync).not.toHaveBeenCalled();
+    if(stage==='create') expect(s.unloadAsync).toHaveBeenCalledOnce();
+    expect(native.remove).toHaveBeenCalledOnce();
+    await stopPlayback();
+  });
+  it.each(['write','mode','create'] as const)('bounds %s preparation without claiming native cancellation',async stage=>{
+    vi.useFakeTimers();
+    const s=sound(); let finish!:(value:unknown)=>void;
+    native.create.mockResolvedValue({sound:s});
+    native[stage].mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+    const playing=playPcmTurn([pcm]);
+    const rejected=expect(playing).rejects.toThrow('준비');
+    await vi.advanceTimersByTimeAsync(15001); await rejected;
+    expect(s.playAsync).not.toHaveBeenCalled();
+    finish(stage==='create'?{sound:s}:undefined);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(native.remove).toHaveBeenCalledOnce();
+    await stopPlayback();
+  });
+});

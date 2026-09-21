@@ -14,6 +14,8 @@ import { base64ToBytes, bytesToBase64, wrapWav } from './pcm';
 
 let current: { sound: Audio.Sound; fileUri: string; settle: () => void } | null = null;
 let generation = 0;
+let cancelPreparation: (() => void) | null = null;
+let pendingPreparation: Promise<void> | null = null;
 let pendingCleanup: Promise<void> | null = null;
 let cleanupFailure: Error | null = null;
 export type PlaybackResult = 'completed' | 'interrupted' | 'empty';
@@ -51,13 +53,64 @@ async function teardown(): Promise<void> {
   await waitForCleanup();
 }
 
+async function waitForPreparation(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (pendingPreparation) await Promise.race([pendingPreparation, new Promise<never>((_, reject) => {
+      timer=setTimeout(()=>reject(new Error('오디오 준비 정리가 지연되고 있어요. 잠시 후 다시 시도해 주세요.')),5000);
+    })]);
+  } finally { if (timer !== undefined) clearTimeout(timer); }
+}
+
+async function prepareSound(fileUri: string, wav: Uint8Array, ownGeneration: number): Promise<Audio.Sound | null> {
+  let cancelled=false;
+  let cancel!: () => void;
+  const interrupted=new Promise<null>(resolve=>{cancel=()=>{cancelled=true;resolve(null);};});
+  cancelPreparation=cancel;
+  const stale=()=>cancelled || ownGeneration !== generation;
+  const job=(async()=>{
+    let sound: Audio.Sound | undefined;
+    let delivered=false;
+    try {
+      await FileSystem.writeAsStringAsync(fileUri, bytesToBase64(wav), { encoding: FileSystem.EncodingType.Base64 });
+      if (stale()) return null;
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+      if (stale()) return null;
+      ({sound}=await Audio.Sound.createAsync({ uri:fileUri }, { shouldPlay:false }, undefined, false));
+      if (stale()) return null;
+      delivered=true;
+      return sound;
+    } finally {
+      if (!delivered) { dispose(sound,fileUri); await waitForCleanup(); }
+    }
+  })();
+  // Keep the real native job as a gate even if its caller has already returned.
+  const pending=job.then(()=>{},()=>{});
+  pendingPreparation=pending;
+  void pending.then(()=>{if(pendingPreparation===pending) pendingPreparation=null;});
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const sound=await Promise.race([job,interrupted,new Promise<never>((_,reject)=>{
+      timer=setTimeout(()=>{cancelled=true;reject(new Error('오디오 준비 시간이 초과됐어요.'));},15000);
+    })]);
+    if (sound && stale()) { dispose(sound,fileUri); return null; }
+    return sound;
+  } finally {
+    if(timer !== undefined) clearTimeout(timer);
+    if(cancelPreparation===cancel) cancelPreparation=null;
+  }
+}
+
 /**
  * base64 PCM 청크들(순서대로)을 한 턴 음성으로 재생하고 완료를 기다린다.
  * 새 재생이 시작되면 이전 재생은 즉시 중단된다(턴 전환 대응).
  */
 export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> {
   const ownGeneration = ++generation;
+  cancelPreparation?.();
   await teardown();
+  await waitForPreparation();
+  await waitForCleanup();
   if (ownGeneration !== generation) return 'interrupted';
   if (chunksB64.length === 0) return 'empty';
 
@@ -73,14 +126,10 @@ export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> 
 
   const wav = wrapWav(pcm);
   const fileUri = `${FileSystem.cacheDirectory}live-turn-${Date.now()}-${ownGeneration}.wav`;
-  let sound: Audio.Sound | undefined;
+  const sound = await prepareSound(fileUri,wav,ownGeneration);
+  if (!sound) return 'interrupted';
   let owned = false;
   try {
-    await FileSystem.writeAsStringAsync(fileUri, bytesToBase64(wav), { encoding: FileSystem.EncodingType.Base64 });
-    if (ownGeneration !== generation) return 'interrupted';
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
-    if (ownGeneration !== generation) return 'interrupted';
-    ({ sound } = await Audio.Sound.createAsync({ uri: fileUri }, { shouldPlay: false }, undefined, false));
     if (ownGeneration !== generation) return 'interrupted';
     const loaded = sound;
     let complete!: () => void;
@@ -112,5 +161,6 @@ export async function playPcmTurn(chunksB64: string[]): Promise<PlaybackResult> 
 /** 진행 중 재생이 있으면 즉시 끊는다(세션 종료·다음 턴 시작). */
 export async function stopPlayback(): Promise<void> {
   generation++;
+  cancelPreparation?.();
   await teardown();
 }
