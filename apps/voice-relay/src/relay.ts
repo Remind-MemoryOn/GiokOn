@@ -1,7 +1,7 @@
 import { WebSocket, type RawData } from 'ws'
 import type { ClovaCredentials } from './output'
 import { synthesizeValidated } from './output'
-import { parseVoiceResumeContext, type VoiceFailureCode } from '@giokon/core'
+import { assessUtterance, parseVoiceResumeContext, type VoiceFailureCode } from '@giokon/core'
 
 export interface RelaySession {
   token: string
@@ -26,6 +26,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   const abort = new AbortController()
   let session: RelaySession | undefined, upstream: WebSocket | undefined
   let authenticated = false, setupSeen = false, ready = false, activity = false, pending = false
+  let safetyInput = ''
   let output = '', turns = 0, queuedBytes = 0, receivedBytes = 0
   let outputQueued = 0
   let protocolVersion = 1, awaitingPlayback: number | null = null
@@ -105,10 +106,30 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
           const rawProvider = buffer(dataProvider)
           outputQueued += rawProvider.length
           if (rawProvider.length > 1024 * 1024 || outputQueued > 2 * 1024 * 1024) return close()
+          if (abort.signal.aborted) return
+          let p: Record<string, any>
+          try {
+            p = JSON.parse(rawProvider.toString())
+            if (!p || typeof p !== 'object' || Array.isArray(p)) return close()
+            const input = p.serverContent?.inputTranscription?.text
+            if (typeof input === 'string') {
+              if (input.length > 4000) return close()
+              // Transcription ordering is independent of output. Inspect immediately,
+              // before the synthesis promise can hold up the normal output queue.
+              // A bounded connection window also catches phrases split across frames.
+              const combinedInput = safetyInput + input
+              const assessment = assessUtterance(combinedInput)
+              safetyInput = combinedInput.slice(-4000)
+              if (assessment.escalate || assessment.hasDistressSignal ||
+                  assessment.situation === 'rest_request' || assessment.situation === 'refusal') {
+                send({relayError:{code:'INPUT_REVIEW_REQUIRED'}})
+                return close()
+              }
+            }
+          } catch { return close() }
           outputChain = outputChain.then(async () => {
             outputQueued -= rawProvider.length
             if (abort.signal.aborted) return
-            const p = JSON.parse(rawProvider.toString())
             if (p.error || p.goAway) return close()
             if (p.setupComplete) {
               if (ready) return close()

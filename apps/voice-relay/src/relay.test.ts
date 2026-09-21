@@ -50,6 +50,37 @@ async function fixture(respond = true) {
 }
 
 describe('real local WebSocket relay', () => {
+  it('does not stop ordinary reminiscence just because input arrives during output work',async()=>{
+    const f=await fixture();await f.start(2);
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'고향의 골목이 그리워요.'}}}));
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.inputTranscription)).toBe(true));
+    f.turn();await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
+    expect(f.frames.some(x=>x.relayError)).toBe(false);
+  })
+  it('cancels synthesis immediately for a late crisis split across transcription frames',async()=>{
+    const f=await fixture();await f.start(2);
+    let finish!:(value:{text:string;pcm:Buffer})=>void;
+    f.synthesize.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}));
+    f.turn();await vi.waitFor(()=>expect(f.synthesize).toHaveBeenCalledOnce());
+    const closed=once(f.app,'close');
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'죽고 '}}}));
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'싶어요'}}}));
+    await closed;
+    const signal=(f.synthesize.mock.calls[0] as unknown as [string,unknown,AbortSignal])[2];
+    expect(signal.aborted).toBe(true);
+    expect(f.frames.some(x=>x.relayError?.code==='INPUT_REVIEW_REQUIRED')).toBe(true);
+    finish({text:'늦은 출력',pcm:Buffer.from([1,0])});
+    await new Promise(resolve=>setTimeout(resolve,10));
+    expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(false);
+  })
+  it.each(['그만할래요','죽고 싶어요'])('ends even an idle playback wait when late input requires intervention: %s',async text=>{
+    const f=await fixture();await f.start(2);f.turn();
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
+    const closed=once(f.app,'close');
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text}}}));await closed;
+    expect(f.frames.at(-1)).toEqual({relayError:{code:'INPUT_REVIEW_REQUIRED'}});
+    expect(f.release).toHaveBeenCalledOnce();
+  })
   it('clears the response deadline once the completed turn enters playback',async()=>{
     const f=await fixture(); await f.start(2); vi.useFakeTimers(); f.turn();
     await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));

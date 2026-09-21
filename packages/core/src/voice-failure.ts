@@ -1,5 +1,6 @@
 /** Public transport codes only; never display provider response bodies or keys. */
 export const VOICE_FAILURE_MESSAGES = {
+  INPUT_REVIEW_REQUIRED: '말씀에 담당자 확인이 필요한 내용이 있어 대화를 멈췄어요. 어르신 곁에서 상태와 중단 의사를 확인해 주세요.',
   RESPONSE_TIMEOUT: '대화 응답이 늦어 연결을 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.',
   SYNTHESIS_LIMIT: '음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.',
   SYNTHESIS_UNAVAILABLE: '음성 합성 서비스에 연결하지 못했어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.',
