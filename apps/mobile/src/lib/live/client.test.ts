@@ -28,6 +28,17 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     return { client, socket, onError };
   }
 
+  it.each([['SYNTHESIS_LIMIT','요청이 많아'],['unexpected private detail','음성 연결이 중단']])('maps relay failure %s to local copy and settles the pending turn',async(code,message)=>{
+    const onError=vi.fn();
+    const client=new GeminiLiveClient('relay',{onError},{url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic'});
+    const connected=client.connect('',''); const socket=Socket.all[0];socket.onopen!();
+    await socket.receive({setupComplete:{}});await connected;
+    const reply=client.sendUserTurn('테스트');
+    await socket.receive({relayError:{code,message:'untrusted server text'}});
+    expect(onError.mock.calls[0]?.[0].message).toContain(message);
+    expect(onError.mock.calls[0]?.[0].message).not.toContain('untrusted');
+    expect(client.isConnected).toBe(false);expect(await reply).toBe('timeout');
+  });
   it('relay mode sends Supabase auth in the first frame, never the URL or a Gemini token', async () => {
     const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic-jwt' });
     const pending = client.connect('', 'ignored-client-context');

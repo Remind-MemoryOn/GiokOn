@@ -50,6 +50,20 @@ async function fixture() {
 }
 
 describe('real local WebSocket relay', () => {
+  it.each([
+    [new Error('CLOVA_RATE_LIMIT'),'SYNTHESIS_LIMIT'],
+    [new Error('CLOVA_UNAVAILABLE'),'SYNTHESIS_UNAVAILABLE'],
+    [new DOMException('private timeout detail','TimeoutError'),'SYNTHESIS_TIMEOUT'],
+    [new Error('OUTPUT_REJECTED'),'OUTPUT_REJECTED'],
+    [new Error('private response body and token'),'SYNTHESIS_FAILED'],
+  ])('sends only a bounded synthesis failure code before closing: %s',async(error,code)=>{
+    const f=await fixture(); await f.start(2);
+    f.synthesize.mockRejectedValueOnce(error);
+    const closed=once(f.app,'close'); f.turn(); await closed;
+    expect(f.frames.filter(x=>x.relayError)).toEqual([{relayError:{code}}]);
+    expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(false);
+    expect(f.synthesize).toHaveBeenCalledOnce(); expect(f.release).toHaveBeenCalledOnce();
+  })
   it('v3 restores validated context once without starting generation before the next input', async () => {
     const f = await fixture()
     await f.start(3,{version:1,turns:[{role:'model',text:'들은 질문'},{role:'user',text:'채택한 답변'}]})

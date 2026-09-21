@@ -1,3 +1,4 @@
+import { safeVoiceFailureMessage } from '@giokon/core';
 export type AutomaticPhase = 'idle' | 'starting' | 'processing' | 'speaking' | 'listening' | 'pausing' | 'paused' | 'stopped';
 export interface AutomaticEngine {
   requestContinuation?(): Promise<{ text: string; audioChunksB64: string[] } | null>;
@@ -12,7 +13,7 @@ export interface AutomaticPorts {
   current(): boolean;
   ready(resuming: boolean): Promise<boolean>;
   resume?(engine: AutomaticEngine): Promise<'listen' | {text: string; audioChunksB64: string[]} | null>;
-  connect(onInput: (text: string) => void, onFailure: () => void, resuming: boolean): Promise<AutomaticEngine | null>;
+  connect(onInput: (text: string) => void, onFailure: (message?: string) => void, resuming: boolean): Promise<AutomaticEngine | null>;
   cancelPending(): Promise<void>;
   input(text: string): 'continue' | 'help';
   output(text: string, opener: boolean): boolean;
@@ -51,7 +52,7 @@ export class AutomaticConversation {
         return await this.stop('마이크 권한과 자동 대화 저장 준비를 확인해 주세요.');
       }
       if (!this.alive(generation)) return;
-      const engine = await this.ports.connect(text => { void this.receive(text, generation); }, () => { if (this.alive(generation)) void this.stop('음성 연결이 중단됐어요. 기록을 저장해 주세요.'); }, resuming);
+      const engine = await this.ports.connect(text => { void this.receive(text, generation); }, message => { if (this.alive(generation)) void this.stop(safeVoiceFailureMessage(message)); }, resuming);
       if (!this.alive(generation)) { await engine?.close(); return; }
       this.engine = engine;
       if (!engine) throw new Error('connection');

@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
+  failure: null as null | ((message:string)=>void),
   contexts: [] as unknown[], continuation: vi.fn(async()=>({text:'이어서 고향 이야기를 들려주시겠어요?',audioChunksB64:['pcm']})),
   status: [] as unknown[], change: null as null | ((state:string)=>void),
   input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
@@ -16,9 +17,9 @@ vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version}));
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
 vi.mock('./mic',()=>({ensureMicPermission:async()=>true}));
 vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
-  acquireLiveEngine:async(_key:unknown,_elder:unknown,_chronicles:unknown,_design:unknown,callbacks:{onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void},_session:unknown,context:unknown)=>{
+  acquireLiveEngine:async(_key:unknown,_elder:unknown,_chronicles:unknown,_design:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void},_session:unknown,context:unknown)=>{
     native.contexts.push(context);
-    native.input=callbacks.onDraftFinal;
+    native.input=callbacks.onDraftFinal; native.failure=callbacks.onError;
     native.partial=callbacks.onDraftInterrupted;
     return {requestContinuation:native.continuation,requestOpener:async()=>({text:'고향은 어디세요?',audioChunksB64:['pcm']}),
       submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
@@ -136,5 +137,15 @@ it('refuses resumption of a confirmed help request',async()=>{
   useApp.getState().setPendingStt('죽고 싶어요','gemini_live');
   useApp.getState().confirmRecoveredInput('죽고 싶어요');
   await view.resume(); expect(native.contexts).toHaveLength(1);
+  if(cleanup) cleanup();
+});
+
+it('retains the approved synthesis failure through the screen controller',async()=>{
+  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0](); await view.start();
+  const reason='음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.';
+  native.failure!(reason);
+  await vi.waitFor(()=>expect(native.status.at(-1)).toEqual({phase:'stopped',reason}));
+  expect(useApp.getState().active!.turns).toHaveLength(1);
   if(cleanup) cleanup();
 });

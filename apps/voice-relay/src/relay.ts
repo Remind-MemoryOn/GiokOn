@@ -1,7 +1,7 @@
 import { WebSocket, type RawData } from 'ws'
 import type { ClovaCredentials } from './output'
 import { synthesizeValidated } from './output'
-import { parseVoiceResumeContext } from '@giokon/core'
+import { parseVoiceResumeContext, type VoiceFailureCode } from '@giokon/core'
 
 export interface RelaySession {
   token: string
@@ -132,7 +132,18 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             if (output.length > 200) return close()
             if (!content.turnComplete) return
             if (!await allowed()) return close()
-            const result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.clova, abort.signal)
+            let result: Awaited<ReturnType<typeof synthesizeValidated>>
+            try { result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.clova, abort.signal) }
+            catch (error) {
+              if (!abort.signal.aborted) {
+                const code: VoiceFailureCode = error instanceof Error && error.message === 'OUTPUT_REJECTED' ? 'OUTPUT_REJECTED'
+                  : error instanceof Error && error.message === 'CLOVA_RATE_LIMIT' ? 'SYNTHESIS_LIMIT'
+                  : error instanceof Error && error.message === 'CLOVA_UNAVAILABLE' ? 'SYNTHESIS_UNAVAILABLE'
+                  : error instanceof Error && error.name === 'TimeoutError' ? 'SYNTHESIS_TIMEOUT' : 'SYNTHESIS_FAILED'
+                send({relayError:{code}})
+              }
+              return close()
+            }
             if (!await allowed()) return close()
             if (protocolVersion >= 2) {
               awaitingPlayback = turns

@@ -132,3 +132,10 @@ it('saves and finishes restored output playback before listening',async()=>{
   expect(f.ports.output).toHaveBeenLastCalledWith('재개 질문',false);
   expect(f.events).toEqual(['output','save','play','listen']);
 });
+
+it.each(['음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.','private provider detail'])('keeps only approved failure copy: %s',async message=>{
+  const f=fixture(); await f.controller.start();
+  vi.mocked(f.ports.connect).mock.calls[0][1](message);
+  await vi.waitFor(()=>expect(f.engine.close).toHaveBeenCalled());
+  expect(f.ports.status).toHaveBeenLastCalledWith('stopped',message.startsWith('음성 합성')?message:'음성 연결이 중단됐어요. 기록을 저장해 주세요.');
+});

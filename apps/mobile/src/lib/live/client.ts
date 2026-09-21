@@ -9,7 +9,7 @@
 //   - 초기 맥락(persona+설계)은 system_instruction 로 주입한다(3.1 에서 항상 유지되는
 //     경로 — 캐싱 미지원 대비).
 
-import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
+import { voiceFailureMessage, parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 
 export type LiveTurnResult = {
   /** 모델 응답 전문(output transcription). */
@@ -167,6 +167,7 @@ export class GeminiLiveClient {
             }
             this.handleServerContent(msg['serverContent'] as never);
           }
+          if (this.relay && 'relayError' in msg) throw new Error(voiceFailureMessage((msg.relayError as {code?:unknown} | null)?.code));
           if ('error' in msg) throw new Error('Live API가 요청을 거부했어요.');
           if ('sessionResumptionUpdate' in msg) {
             const update = msg['sessionResumptionUpdate'] as { newHandle?: string; resumable?: boolean };

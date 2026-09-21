@@ -32,3 +32,5 @@ export * from './speech'
 export * from './voice-flow'
 export * from './voice-context'
 export * from './generated-session'
+
+export * from './voice-failure'
