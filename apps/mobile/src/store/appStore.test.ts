@@ -71,3 +71,10 @@ it('records delivery only for the matching AI turn without implying a person hea
   const input = useApp.getState().active!.turns[1].id;
   expect(useApp.getState().markTurnPlayback(input,'고향 이야기','completed')).toBe(false);
 });
+
+it('appends a resumed response without rewriting an unplayed AI turn and rejects stale adoption',()=>{
+  const old=useApp.getState().active!.turns[0];
+  expect(useApp.getState().acceptResumedResponse('고향 이야기를 들려주세요.',old.id)).toBe(true);
+  expect(useApp.getState().active!.turns[0]).toEqual(old);
+  expect(useApp.getState().acceptResumedResponse('중복 질문',old.id)).toBe(false);
+});

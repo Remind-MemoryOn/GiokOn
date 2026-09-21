@@ -1,5 +1,6 @@
 export type AutomaticPhase = 'idle' | 'starting' | 'processing' | 'speaking' | 'listening' | 'pausing' | 'paused' | 'stopped';
 export interface AutomaticEngine {
+  requestContinuation?(): Promise<{ text: string; audioChunksB64: string[] } | null>;
   requestOpener(): Promise<{ text: string; audioChunksB64: string[] } | null>;
   submitUserTurn(text: string): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null>;
   playTurn(chunks: string[]): Promise<'completed' | 'interrupted' | 'empty'>;
@@ -45,7 +46,10 @@ export class AutomaticConversation {
     try {
       const ready = await this.ports.ready(resuming);
       if (!this.alive(generation)) return;
-      if (!ready) return await this.stop('마이크 권한과 자동 대화 저장 준비를 확인해 주세요.');
+      if (!ready) {
+        if (resuming) { this.status('paused', '입력 확인과 저장 상태를 확인한 뒤 다시 재개해 주세요.'); return; }
+        return await this.stop('마이크 권한과 자동 대화 저장 준비를 확인해 주세요.');
+      }
       if (!this.alive(generation)) return;
       const engine = await this.ports.connect(text => { void this.receive(text, generation); }, () => { if (this.alive(generation)) void this.stop('음성 연결이 중단됐어요. 기록을 저장해 주세요.'); }, resuming);
       if (!this.alive(generation)) { await engine?.close(); return; }

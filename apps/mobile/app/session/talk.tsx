@@ -442,6 +442,20 @@ export default function Talk() {
                 {automatic.phase === 'idle' ? '자동 대화 시작' : '대화 회수·저장'}
               </Text>
             </Pressable>
+            {!['idle','stopped'].includes(automatic.phase) && (
+              <Pressable
+                onPress={() => void (automatic.phase === 'paused' ? automatic.resume() : automatic.pause())}
+                disabled={automatic.phase === 'pausing' || (automatic.phase === 'paused' && pending !== null)}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: automatic.phase === 'pausing' || (automatic.phase === 'paused' && pending !== null) }}
+                className="items-center justify-center active:opacity-70"
+                style={{ width: 336, minHeight: 48, marginTop: 8, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
+              >
+                <Text className="text-[18px] font-semibold text-black" style={{ lineHeight: 28 }}>
+                  {automatic.phase === 'paused' ? '대화 재개' : automatic.phase === 'pausing' ? '일시정지 중…' : '잠시 멈추기'}
+                </Text>
+              </Pressable>
+            )}
             <Text className="text-[18px] font-medium text-black text-center" accessibilityLiveRegion="polite"
               style={{ lineHeight: 28, marginTop: 8, width: 336 }}>
               {automatic.reason ?? ({idle:'담당자가 시작하면 대화가 자동으로 이어져요.', starting:'대화를 준비하고 있어요.',
@@ -612,7 +626,10 @@ export default function Talk() {
               onPress={() => {
                 if (confirming) return;
                 if (RELAY_MODE) {
-                  if (useApp.getState().confirmRecoveredInput(draft)) void endAndSave();
+                  if (useApp.getState().confirmRecoveredInput(draft)) {
+                    setEdited(null);
+                    if (automatic.phase !== 'paused') void endAndSave();
+                  }
                   return;
                 }
                 void handleConfirm();
@@ -623,7 +640,7 @@ export default function Talk() {
               style={{ height: 57, borderRadius: 10, backgroundColor: '#e9822b', opacity: confirming ? 0.6 : 1 }}
             >
               <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
-                {RELAY_MODE ? '확인 후 저장' : confirming ? 'AI 응답 대기 중…' : '저장'}
+                {RELAY_MODE ? (automatic.phase === 'paused' ? '입력 확인' : '확인 후 저장') : confirming ? 'AI 응답 대기 중…' : '저장'}
               </Text>
             </Pressable>
           </View>

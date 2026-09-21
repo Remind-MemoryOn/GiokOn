@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { screenAiUtterance } from '@giokon/core';
+import { screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getTranscriptStorageVersion } from '@giokon/data';
 import { queryScope } from '../supabase';
 import { useApp, type ActiveSession } from '../../store/appStore';
@@ -17,22 +17,56 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
     const id = session.session.id;
     let disposed=false;
     let outputTurn: {id:string; text:string} | undefined;
+    let restoration: {context:VoiceResumeContext; lastId:string; listen:boolean} | undefined;
+    let restoringOutput = false;
+    let connectionGeneration = 0;
+    const resumable = () => {
+      const active=useApp.getState().active;
+      return !disposed && lease.current() && AppState.currentState === 'active' && active?.session.id === id && active.pendingStt === null &&
+        !active.safety.caregiverAlert && active.safety.recommendation === 'continue' ? active : null;
+    };
     const flow = new AutomaticConversation({
       current: () => !disposed && lease.current() && useApp.getState().active?.session.id === id,
-      ready: async () => AppState.currentState === 'active' && useApp.getState().active?.turns.length === 1 &&
-        await getTranscriptStorageVersion() === 1 && await ensureMicPermission(),
-      connect: (onInput,onFailure) => acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
+      ready: async resuming => {
+        restoringOutput=false;
+        restoration=undefined;
+        if (AppState.currentState !== 'active' || await getTranscriptStorageVersion() !== 1 || !await ensureMicPermission()) return false;
+        if (!resuming) return useApp.getState().active?.turns.length === 1;
+        if (!resumable() || !await save()) return false;
+        const active=resumable(), last=active?.turns.at(-1);
+        if (!active || !last) return false;
+        try {
+          const context=selectVoiceResumeContext(active.turns,active.playbackByTurnId ?? {});
+          const observed=active.playbackByTurnId?.[last.id];
+          restoration={context,lastId:last.id,listen:last.speaker === 'AI' && observed?.text === last.text && observed.result === 'completed'};
+          return true;
+        } catch { return false; }
+      },
+      connect: (onInput,onFailure,resuming) => {
+        const generation=++connectionGeneration;
+        return acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
         session.elder,session.chronicles,session.design,
         {onDraftFinal:onInput,onError:onFailure,onProcessingDenied:onFailure,
           onDraftInterrupted: text => {
-            if (!disposed && lease.current() && useApp.getState().active?.session.id === id)
+            if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id)
               useApp.getState().setPendingStt(text, 'gemini_live');
-          }},session.remoteId),
+          }},session.remoteId,resuming ? restoration?.context : undefined);
+      },
+      resume: async engine => {
+        if (!restoration || resumable()?.turns.at(-1)?.id !== restoration.lastId) return null;
+        if (restoration.listen) return 'listen';
+        restoringOutput=true;
+        return await engine.requestContinuation?.() ?? null;
+      },
       cancelPending: closeLiveEngine,
       input: text => useApp.getState().adoptAutomaticInput(text),
       output: (text,opener) => {
         if (!screenAiUtterance(text).allowed) return false;
-        if (opener) useApp.getState().overrideQuestion(text);
+        if (restoringOutput) {
+          restoringOutput=false;
+          if (!restoration || !useApp.getState().acceptResumedResponse(text,restoration.lastId)) return false;
+        }
+        else if (opener) useApp.getState().overrideQuestion(text);
         else if (!useApp.getState().acceptAutomaticResponse(text)) return false;
         const turn = useApp.getState().active?.turns.at(-1);
         if (turn?.speaker !== 'AI' || turn.text !== text) return false;
@@ -54,5 +88,5 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
     // remain scoped to that session; account changes invalidate the lease.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled,session?.remoteId,session?.session.id]);
-  return { ...state, start: () => controller.current?.start(), stop: () => controller.current?.stop() };
+  return { ...state, pause: () => controller.current?.pause(), resume: () => controller.current?.resume(), start: () => controller.current?.start(), stop: () => controller.current?.stop() };
 }

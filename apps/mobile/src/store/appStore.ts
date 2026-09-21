@@ -157,6 +157,7 @@ interface AppState {
   confirmUtterance: (finalText: string, live?: { question: string }) => void;
   adoptAutomaticInput: (text: string) => 'continue' | 'help';
   acceptAutomaticResponse: (text: string) => boolean;
+  acceptResumedResponse: (text: string, previousTurnId: string) => boolean;
   markTurnPlayback: (turnId: string, text: string, result: 'completed' | 'interrupted' | 'empty') => boolean;
   confirmRecoveredInput: (text: string) => boolean;
   /**
@@ -340,6 +341,17 @@ export const useApp = create<AppState>((set, get) => ({
   acceptAutomaticResponse: (text) => {
     const a = get().active;
     if (!a || a.turns.at(-1)?.speaker !== 'Elderly' || !text.trim() || !screenAiUtterance(text).allowed) return false;
+    const topic = detectTurnTopic(text) ?? a.currentTopic;
+    set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,
+      currentTopic: topic, phase: 'ai_speaking' } });
+    return true;
+  },
+
+  acceptResumedResponse: (text, previousTurnId) => {
+    const a = get().active;
+    if (!a || a.pendingStt !== null || a.turns.at(-1)?.id !== previousTurnId ||
+        a.safety.caregiverAlert || a.safety.recommendation !== 'continue' ||
+        !text.trim() || !screenAiUtterance(text).allowed) return false;
     const topic = detectTurnTopic(text) ?? a.currentTopic;
     set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,
       currentTopic: topic, phase: 'ai_speaking' } });

@@ -341,3 +341,17 @@ describe('restored engine acquisition', () => {
     await api.exports.closeLiveEngine()
   })
 })
+
+it('requests a continuation only on a restored relay and rechecks current processing permission',async()=>{
+  const api=engineApi('wss://voice.example.test/voice');
+  const args=['key',{},[],undefined,{onDraftFinal:vi.fn()},'session'];
+  const first=await api.exports.acquireLiveEngine(...args) as {requestContinuation():Promise<unknown>};
+  expect(await first.requestContinuation()).toBeNull();
+  const restored=await api.exports.acquireLiveEngine(...args,{version:1,turns:[]}) as {requestContinuation():Promise<unknown>};
+  expect(await restored.requestContinuation()).toMatchObject({text:'synthetic'});
+  expect(api.send).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('잠시 멈췄던'),60000);
+  api.canProcess.mockResolvedValue(false);
+  expect(await restored.requestContinuation()).toBeNull();
+  expect(api.send).toHaveBeenCalledTimes(1);
+  await api.exports.closeLiveEngine();
+});

@@ -222,6 +222,16 @@ export class LiveConversationEngine {
     }
   }
 
+  /** Fresh connection already received only the selected restored history. */
+  async requestContinuation(): Promise<LiveTurnResult | null> {
+    if (!this.resumeContext || !this.relay || !await this.verifyProcessing() || !this.available) return null;
+    try {
+      const result = await this.client!.sendUserTurn(
+        '(내부 지시) 잠시 멈췄던 회상 대화를 이어갑니다. 제공된 대화 이력만 참고하여 마지막 말씀에 이어 짧게 응답하고 질문 하나를 건네주세요. 이력이 없으면 첫 질문을 건네주세요. 중단 중의 말씀이나 개인 사실을 추측하지 마세요.', 60000);
+      return result && result !== 'timeout' ? result : null;
+    } catch { return null; }
+  }
+
   /** 청취 시작 — 마이크 스트리밍 + 실시간 전사(onDraft). */
   async startListening(): Promise<void> {
     if (this.micStop) return;
