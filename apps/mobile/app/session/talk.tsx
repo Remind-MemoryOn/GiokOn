@@ -446,6 +446,7 @@ export default function Talk() {
               style={{ lineHeight: 28, marginTop: 8, width: 336 }}>
               {automatic.reason ?? ({idle:'담당자가 시작하면 대화가 자동으로 이어져요.', starting:'대화를 준비하고 있어요.',
                 listening:'말씀해 주세요.', processing:'말씀을 기록하고 응답을 준비하고 있어요.', speaking:'듣고 있어요...',
+                pausing:'음성을 멈추고 있어요.', paused:'대화를 잠시 멈췄어요.',
                 stopped:'대화를 멈췄어요. 기록을 저장해 주세요.'}[automatic.phase])}
             </Text>
           </>

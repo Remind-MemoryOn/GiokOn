@@ -76,3 +76,59 @@ it('does not start after retrieval during preflight',async()=>{
   const starting=f.controller.start(); await f.controller.stop(); done(true); await starting;
   expect(f.ports.connect).not.toHaveBeenCalled();
 });
+
+it('waits for pause cleanup then reconnects without a new opener',async()=>{
+  const f=fixture(); f.ports.resume=vi.fn(async()=> 'listen' as const);
+  await f.controller.start();
+  let clean!:()=>void;
+  f.engine.close.mockImplementationOnce(()=>new Promise<void>(resolve=>{clean=resolve;}));
+  const paused=f.controller.pause();
+  await f.controller.resume();
+  expect(f.ports.connect).toHaveBeenCalledTimes(1);
+  clean(); await paused; await f.controller.resume();
+  expect(f.ports.ready).toHaveBeenLastCalledWith(true);
+  expect(f.ports.connect).toHaveBeenCalledTimes(2);
+  expect(f.engine.requestOpener).toHaveBeenCalledTimes(1);
+  expect(f.engine.startListening).toHaveBeenCalledTimes(2);
+});
+it('ignores previous connection input, failure and late output after resume',async()=>{
+  const f=fixture(); f.ports.resume=vi.fn(async()=> 'listen' as const);
+  await f.controller.start();
+  const [oldInput, oldFailure]=vi.mocked(f.ports.connect).mock.calls[0];
+  let resolve!: (value:{status:'ok';text:string;chunksB64:string[]})=>void;
+  f.engine.submitUserTurn.mockImplementationOnce(()=>new Promise(done=>{resolve=done;}));
+  oldInput('이전 말씀');
+  await vi.waitFor(()=>expect(f.engine.submitUserTurn).toHaveBeenCalledOnce());
+  await f.controller.pause(); await f.controller.resume();
+  oldInput('늦은 입력'); oldFailure();
+  resolve({status:'ok',text:'늦은 질문',chunksB64:['pcm']});
+  await new Promise(done=>setTimeout(done,0));
+  expect(f.ports.input).toHaveBeenCalledTimes(1);
+  expect(f.ports.output).toHaveBeenCalledTimes(1);
+  expect(f.ports.status).toHaveBeenLastCalledWith('listening',undefined);
+});
+it('cannot resume after terminal retrieval or unsupported restoration',async()=>{
+  const f=fixture(); await f.controller.start(); await f.controller.pause();
+  await f.controller.resume(); expect(f.ports.connect).toHaveBeenCalledTimes(1);
+  f.ports.resume=vi.fn(async()=> 'listen' as const);
+  await f.controller.stop(); await f.controller.resume();
+  expect(f.ports.connect).toHaveBeenCalledTimes(1);
+});
+
+it('a failed old preflight cannot stop a resumed connection',async()=>{
+  const f=fixture(); f.ports.resume=vi.fn(async()=> 'listen' as const);
+  let reject!: (error:Error)=>void;
+  vi.mocked(f.ports.ready).mockImplementationOnce(()=>new Promise((_resolve,fail)=>{reject=fail;}));
+  const starting=f.controller.start();
+  await f.controller.pause(); await f.controller.resume();
+  reject(new Error('old request')); await starting;
+  expect(f.ports.status).toHaveBeenLastCalledWith('listening',undefined);
+  expect(f.ports.connect).toHaveBeenCalledTimes(1);
+});
+it('saves and finishes restored output playback before listening',async()=>{
+  const f=fixture(); await f.controller.start(); await f.controller.pause();
+  f.ports.resume=vi.fn(async()=>({text:'재개 질문',audioChunksB64:['pcm']}));
+  f.events.length=0; await f.controller.resume();
+  expect(f.ports.output).toHaveBeenLastCalledWith('재개 질문',false);
+  expect(f.events).toEqual(['output','save','play','listen']);
+});
