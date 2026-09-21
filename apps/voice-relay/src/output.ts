@@ -2,12 +2,22 @@ import { screenAiUtterance } from '@giokon/core'
 
 export interface ClovaCredentials { clientId: string; clientSecret: string }
 
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener('abort', abort, {once:true})
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort))
+    if (signal.aborted) { signal.removeEventListener('abort', abort); abort() }
+  })
+}
+
 /** Parse RIFF chunks rather than assuming the provider always uses a 44-byte header. */
 export function wavToPcm24k(b: Buffer): Buffer {
   if (b.length < 44 || b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WAVE' || b.readUInt32LE(4) + 8 !== b.length) throw new Error('INVALID_WAV')
   let format = false
   let pcm: Buffer | undefined
-  for (let p = 12; p + 8 <= b.length;) {
+  let p = 12
+  for (; p + 8 <= b.length;) {
     const size = b.readUInt32LE(p + 4), start = p + 8, end = start + size
     if (end > b.length) throw new Error('TRUNCATED_WAV')
     const kind = b.toString('ascii', p, p + 4)
@@ -21,6 +31,7 @@ export function wavToPcm24k(b: Buffer): Buffer {
     }
     p = end + (size % 2)
   }
+  if (p !== b.length) throw new Error('TRUNCATED_WAV')
   if (!format || !pcm) throw new Error('MISSING_WAV_DATA')
   return pcm
 }
@@ -31,25 +42,36 @@ export async function synthesizeValidated(text: string, credentials: ClovaCreden
   // rather than silently replacing speech and leaving Gemini's history divergent.
   if (!text.trim() || text.length > 200 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text) || !screenAiUtterance(text).allowed) throw new Error('OUTPUT_REJECTED')
   signal.throwIfAborted()
-  const response = await fetcher('https://naveropenapi.apigw.ntruss.com/tts-premium/v1/tts', {
+  const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(15000)])
+  const request = fetcher('https://naveropenapi.apigw.ntruss.com/tts-premium/v1/tts', {
     method: 'POST',
     headers: { 'X-NCP-APIGW-API-KEY-ID': credentials.clientId, 'X-NCP-APIGW-API-KEY': credentials.clientSecret, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ speaker: 'nara', speed: '0', volume: '0', pitch: '0', format: 'wav', 'sampling-rate': '24000', text }),
-    signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+    signal: requestSignal,
+  }).then(response => {
+    if (requestSignal.aborted) {
+      void response.body?.cancel().catch(() => {})
+      requestSignal.throwIfAborted()
+    }
+    return response
   })
-  if (!response.ok || !response.body) { await response.body?.cancel(); throw new Error('CLOVA_FAILED') }
+  const response = await untilAborted(request, requestSignal)
+  if (!response.ok || !response.body) {
+    void response.body?.cancel().catch(() => {})
+    throw new Error(response.status === 429 ? 'CLOVA_RATE_LIMIT' : response.status >= 500 ? 'CLOVA_UNAVAILABLE' : 'CLOVA_FAILED')
+  }
   const reader = response.body.getReader(), chunks: Buffer[] = []
   let size = 0
   try {
     while (true) {
-      const { done, value } = await reader.read()
-      signal.throwIfAborted()
+      const { done, value } = await untilAborted(reader.read(), requestSignal)
+      requestSignal.throwIfAborted()
       if (done) break
       size += value.byteLength
       if (size > 2 * 1024 * 1024) throw new Error('AUDIO_TOO_LARGE')
       chunks.push(Buffer.from(value))
     }
-  } finally { await reader.cancel().catch(() => {}) }
-  signal.throwIfAborted()
+  } finally { void reader.cancel().catch(() => {}) }
+  requestSignal.throwIfAborted()
   return { text, pcm: wavToPcm24k(Buffer.concat(chunks)) }
 }

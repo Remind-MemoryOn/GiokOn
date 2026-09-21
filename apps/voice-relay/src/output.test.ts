@@ -12,6 +12,51 @@ function wav(rate = 24000) {
 }
 
 describe('validated Clova output', () => {
+  it.each([[429,'CLOVA_RATE_LIMIT'],[503,'CLOVA_UNAVAILABLE'],[401,'CLOVA_FAILED']] as const)('rejects HTTP %s without retrying or reading its error text', async (status,code) => {
+    const fetcher = vi.fn(async()=>new Response('provider diagnostic must not be exposed',{status}))
+    await expect(synthesizeValidated('안녕하세요.',{clientId:'synthetic',clientSecret:'synthetic'},new AbortController().signal,fetcher)).rejects.toThrow(code)
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+  it('applies the request timeout to a stalled response body', async () => {
+    const timeout = new AbortController()
+    const stub = vi.spyOn(AbortSignal,'timeout').mockReturnValue(timeout.signal)
+    try {
+      const fetcher = vi.fn(async()=>new Response(new ReadableStream<Uint8Array>()))
+      const pending = synthesizeValidated('안녕하세요.',{clientId:'synthetic',clientSecret:'synthetic'},new AbortController().signal,fetcher)
+      const failed = expect(pending).rejects.toThrow('test timeout')
+      await new Promise(resolve=>setTimeout(resolve,0))
+      timeout.abort(new Error('test timeout'))
+      await failed
+      expect(stub).toHaveBeenCalledWith(15000)
+    } finally { stub.mockRestore() }
+  })
+  it('settles cancellation even when the provider fetch does not settle', async () => {
+    const abort = new AbortController()
+    let resolve!: (value: Response) => void
+    const fetcher = vi.fn(() => new Promise<Response>(done => {resolve=done}))
+    let error: unknown
+    const pending = synthesizeValidated('안녕하세요.', {clientId:'synthetic',clientSecret:'synthetic'}, abort.signal, fetcher).catch(e => {error=e})
+    abort.abort()
+    await new Promise(done => setTimeout(done, 0))
+    try { expect(error).toBeInstanceOf(Error) }
+    finally { resolve(new Response(new Uint8Array(wav()))); await pending }
+  })
+  it('settles cancellation while reading a body whose read and cancel never settle', async () => {
+    const abort = new AbortController()
+    const body = new ReadableStream<Uint8Array>({cancel:()=>new Promise(()=>{})})
+    const fetcher = vi.fn(async()=>new Response(body))
+    let error: unknown
+    const pending = synthesizeValidated('안녕하세요.', {clientId:'synthetic',clientSecret:'synthetic'}, abort.signal, fetcher).catch(e => {error=e})
+    await new Promise(done => setTimeout(done, 0)); abort.abort()
+    await new Promise(done => setTimeout(done, 0))
+    expect(error).toBeInstanceOf(Error)
+    await pending
+  })
+  it('rejects trailing partial RIFF chunks instead of accepting ambiguous audio', () => {
+    const b = Buffer.concat([wav(), Buffer.alloc(3)])
+    b.writeUInt32LE(b.length-8,4)
+    expect(()=>wavToPcm24k(b)).toThrow()
+  })
   it.each(['', '바보', '가'.repeat(201)])('does not call Clova for invalid output', async text => {
     const fetcher = vi.fn()
     await expect(synthesizeValidated(text, { clientId: 'synthetic', clientSecret: 'synthetic' }, new AbortController().signal, fetcher)).rejects.toThrow()
