@@ -11,7 +11,7 @@
 import { parseVoiceResumeContext, type VoiceResumeContext, buildSystemPrompt, type ChronicleEntry, type ElderProfile, type SessionDesign } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
-import { micStreamingSupported, startMicStream } from './mic';
+import { hasMicPermission, micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 import { InputEndpoint, pcmLevel } from './endpoint';
 
@@ -237,6 +237,16 @@ export class LiveConversationEngine {
     if (this.micStop) return;
     const generation = ++this.listeningGeneration;
     if (!await this.verifyProcessing() || generation !== this.listeningGeneration || !this.available || this.micStop || this.client?.playbackTurnId != null) return;
+    let permitted = false;
+    try { permitted = await hasMicPermission(); } catch { /* Native permission failures deny capture. */ }
+    if (generation !== this.listeningGeneration || !this.available || this.micStop) return;
+    if (!permitted) {
+      void this.close();
+      this.callbacks.onError?.('마이크 권한을 확인하지 못했어요. 기록을 저장하고 권한 설정을 확인해 주세요.');
+      return;
+    }
+    if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
+    if (this.client?.playbackTurnId != null) return;
     this.draft = '';
     this.micStop = startMicStream({
       onData: (chunkB64) => {

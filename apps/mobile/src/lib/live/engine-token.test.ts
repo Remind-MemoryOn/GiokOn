@@ -15,6 +15,7 @@ function engineApi(relayUrl?: string) {
   const playPcmTurn = vi.fn(async (): Promise<string> => 'completed')
   const reportPlayback = vi.fn()
   const canProcess = vi.fn(async () => true)
+  const micPermission = vi.fn(async () => true)
   const send = vi.fn(async () => ({ text: 'synthetic', audioChunksB64: [] }))
   const streamAudio = vi.fn()
   let draft: (text: string) => void = () => {}
@@ -33,12 +34,12 @@ function engineApi(relayUrl?: string) {
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
       if (name === './client') return { GeminiLiveClient: class { constructor(_model: string, callbacks: {onDraft: (text: string) => void}, relay: unknown) { connections(relay); draft = callbacks.onDraft }; isConnected = true; playbackTurnId = relayUrl ? 1 : null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
       if (name === './endpoint') return { InputEndpoint, pcmLevel }
-      if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic }
+      if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic, hasMicPermission: micPermission }
       if (name === './player') return { stopPlayback, playPcmTurn }
       throw new Error(name)
     },
   })
-  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval }
+  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, micPermission, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval }
 }
 
 afterEach(() => vi.useRealTimers())
@@ -101,6 +102,31 @@ describe('automatic input endpoint integration', () => {
 })
 
 interface ListeningEngine { startListening(): Promise<void>; stopListening(): string }
+
+describe('microphone permission at each capture', () => {
+  it.each(['denied','failed'])('closes without a new capture when permission is %s', async reason => {
+    const api=engineApi(), error=vi.fn();
+    const engine=await api.exports.acquireLiveEngine('key',{},[],undefined,{onDraftFinal:vi.fn(),onError:error},'session') as ListeningEngine;
+    await engine.startListening(); engine.stopListening();
+    if(reason==='denied') api.micPermission.mockResolvedValueOnce(false);
+    else api.micPermission.mockRejectedValueOnce(new Error('native permission failure'));
+    await engine.startListening();
+    expect(api.startMic).toHaveBeenCalledTimes(1);
+    expect(api.close).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalledOnce();
+    await api.exports.closeLiveEngine();
+  });
+  it('ignores permission granted after retrieval', async () => {
+    const api=engineApi();
+    const engine=await api.exports.acquireLiveEngine('key',{},[],undefined,{onDraftFinal:vi.fn()},'session') as ListeningEngine;
+    let resolve!:(allowed:boolean)=>void;
+    api.micPermission.mockImplementationOnce(()=>new Promise(done=>{resolve=done}));
+    const pending=engine.startListening();
+    await vi.waitFor(()=>expect(api.micPermission).toHaveBeenCalled());
+    await api.exports.closeLiveEngine(); resolve(true); await pending;
+    expect(api.startMic).not.toHaveBeenCalled();
+  });
+});
 
 describe('listening cancellation generations', () => {
   it('recovers a partial and closes instead of finalizing when normal microphone stop fails', async () => {

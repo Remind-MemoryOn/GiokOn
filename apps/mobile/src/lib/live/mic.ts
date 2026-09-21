@@ -23,6 +23,18 @@ export async function ensureMicPermission(): Promise<boolean> {
   return requested.granted;
 }
 
+/** Recheck without prompting during automatic turns; an unresponsive native query is denial. */
+export async function hasMicPermission(): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Audio.getPermissionsAsync().then(permission => permission.granted),
+      new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), 5000); }),
+    ]);
+  } catch { return false; }
+  finally { if (timer !== undefined) clearTimeout(timer); }
+}
+
 export function micStreamingSupported(): boolean {
   return adapter.supported();
 }
