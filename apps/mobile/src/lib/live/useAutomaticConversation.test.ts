@@ -25,7 +25,7 @@ vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
       submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
       playTurn:native.play,startListening:native.listen,isListening:true,close:native.close};
   }}));
-import { DEFAULT_APPEARANCE } from '@giokon/core';
+import { DEFAULT_APPEARANCE, VOICE_FAILURE_MESSAGES } from '@giokon/core';
 import { useApp } from '../../store/appStore';
 import { useAutomaticConversation } from './useAutomaticConversation';
 beforeEach(()=>{
@@ -147,5 +147,20 @@ it('retains the approved synthesis failure through the screen controller',async(
   native.failure!(reason);
   await vi.waitFor(()=>expect(native.status.at(-1)).toEqual({phase:'stopped',reason}));
   expect(useApp.getState().active!.turns).toHaveLength(1);
+  if(cleanup) cleanup();
+});
+
+it('records relay review only for the current connection and keeps it for final save',async()=>{
+  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0]();await view.start();
+  const oldFailure=native.failure!;
+  await view.pause();await view.resume();
+  oldFailure(VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED);
+  expect(useApp.getState().active!.events).toHaveLength(0);
+  native.failure!(VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED);
+  expect(native.status.at(-1)).toMatchObject({phase:'stopped'});
+  expect(useApp.getState().active!.events).toHaveLength(1);
+  useApp.getState().finishSession();
+  expect(useApp.getState().lastFinished!.events[0].excerpt).toBe('');
   if(cleanup) cleanup();
 });

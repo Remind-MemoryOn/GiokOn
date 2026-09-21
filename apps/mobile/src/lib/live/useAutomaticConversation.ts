@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
+import { VOICE_FAILURE_MESSAGES, screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getTranscriptStorageVersion } from '@giokon/data';
 import { queryScope } from '../supabase';
 import { useApp, type ActiveSession } from '../../store/appStore';
@@ -46,7 +46,11 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
         const generation=++connectionGeneration;
         return acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
         session.elder,session.chronicles,session.design,
-        {onDraftFinal:onInput,onError:onFailure,onProcessingDenied:onFailure,
+        {onDraftFinal:onInput,onError: message => {
+            if (generation !== connectionGeneration || disposed || !lease.current() || useApp.getState().active?.session.id !== id) return;
+            if (message === VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED) useApp.getState().requireRelayReview();
+            onFailure(message);
+          },onProcessingDenied:onFailure,
           onDraftInterrupted: text => {
             if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id)
               useApp.getState().setPendingStt(text, 'gemini_live');

@@ -3,12 +3,13 @@ import { URL } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { describe, expect, it, vi } from 'vitest';
+import type { SessionSafetyEvent } from '../store/appStore';
 
 function fixture() {
   let generation = 0;
   let user = { id: 'a' };
   const active = (id: string) => ({ session: { id }, elder: { id: `elder-${id}` }, remoteId: null as string | null,
-    turns: [], syncedTurns: 0, events: [], startedAt: 'synthetic-date', currentTopic: null });
+    turns: [], syncedTurns: 0, events: [] as SessionSafetyEvent[], startedAt: 'synthetic-date', currentTopic: null });
   const attach = vi.fn();
   const finish = vi.fn();
   const clear = vi.fn();
@@ -36,7 +37,7 @@ function fixture() {
       throw new Error(name);
     },
   });
-  return { api: () => exports.useSessionPersistence!(), single, maybeSingle, from, attach, finish, clear,
+  return { state, builder, api: () => exports.useSessionPersistence!(), single, maybeSingle, from, attach, finish, clear,
     ready: () => { state.active.remoteId = 'remote'; },
     switchUser: () => { generation++; user = { id: 'b' }; state.active = active('b'); } };
 }
@@ -79,4 +80,12 @@ describe('session writes across account changes', () => {
     expect(f.finish).not.toHaveBeenCalled();
     expect(f.clear).not.toHaveBeenCalled();
   });
+});
+
+it('writes a relay review event with no fabricated excerpt or categories',async()=>{
+  const f=fixture();f.ready();
+  f.state.active.events.push({level:'watch',categories:[],matchedTerms:[],excerpt:'',caregiverAlert:'중계 확인 요청',acknowledgedAt:null,remoteId:null,ackSynced:false});
+  expect(await f.api().syncProgress()).toBe(true);
+  expect(f.builder.insert).toHaveBeenCalledWith(expect.objectContaining({session_id:'remote',level:'watch',categories:[],matched_terms:[],excerpt:'',caregiver_alert:'중계 확인 요청'}));
+  expect(f.state.markSynced).toHaveBeenCalledWith(expect.objectContaining({events:[expect.objectContaining({remoteId:'remote'})]}));
 });

@@ -17,6 +17,7 @@ import {
   respondToUserTurn,
   screenAiUtterance,
   snapshotVoicePlayback,
+  VOICE_FAILURE_MESSAGES,
   nowIso,
   uid,
   type ChronicleEntry,
@@ -169,6 +170,7 @@ interface AppState {
    */
   overrideQuestion: (text: string) => void;
   acknowledgeSafety: () => void;
+  requireRelayReview: () => void;
   cancelSession: () => void;
 
   // ── 진행 중 DB 동기화(영속화 계층이 호출) ──
@@ -404,6 +406,17 @@ export const useApp = create<AppState>((set, get) => ({
       }
     }
     set({ active: { ...a, turns, currentQuestion: adopted } });
+  },
+
+  requireRelayReview: () => {
+    const a=get().active;
+    // Keep an existing, more specific assessment and avoid duplicate stop events.
+    if (!a || a.safety.caregiverAlert) return;
+    const caregiverAlert=VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED;
+    const event: SessionSafetyEvent = {level:'watch',categories:[],matchedTerms:[],excerpt:'',caregiverAlert,
+      acknowledgedAt:null,remoteId:null,ackSynced:false};
+    set({active:{...a,events:[...a.events,event],safety:{...a.safety,caregiverAlert,
+      level:'watch',recommendation:'end_session',acknowledged:false}}});
   },
 
   acknowledgeSafety: () => {

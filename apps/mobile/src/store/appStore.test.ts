@@ -88,3 +88,22 @@ it('retains playback observations in the finished bundle without sharing mutable
   live[turn.id].result='interrupted';
   expect(useApp.getState().lastFinished!.playbackByTurnId?.[turn.id].result).toBe('completed');
 });
+
+it('retains a relay review request without inventing a transcript or crisis category',()=>{
+  const turns=useApp.getState().active!.turns;
+  useApp.getState().requireRelayReview(); useApp.getState().requireRelayReview();
+  const active=useApp.getState().active!;
+  expect(active.turns).toEqual(turns);
+  expect(active.events).toHaveLength(1);
+  expect(active.events[0]).toMatchObject({level:'watch',categories:[],matchedTerms:[],excerpt:'',acknowledgedAt:null});
+  expect(active.safety.recommendation).toBe('end_session');
+  useApp.getState().acknowledgeSafety();useApp.getState().finishSession();
+  expect(useApp.getState().lastFinished!.events[0].acknowledgedAt).not.toBeNull();
+});
+it('never replaces an existing crisis with a generic relay review',()=>{
+  useApp.getState().adoptAutomaticInput('죽고 싶어요');
+  const before=useApp.getState().active!;
+  useApp.getState().requireRelayReview();
+  expect(useApp.getState().active!.safety).toEqual(before.safety);
+  expect(useApp.getState().active!.events).toEqual(before.events);
+});
