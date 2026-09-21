@@ -5,9 +5,9 @@ import { WebSocket, WebSocketServer } from 'ws'
 import { createRelayServer } from './server'
 
 const cleanup: (() => void)[] = []
-afterEach(() => { for (const close of cleanup.splice(0)) close() })
+afterEach(() => { vi.useRealTimers(); for (const close of cleanup.splice(0)) close() })
 
-async function fixture() {
+async function fixture(respond = true) {
   const provider = new WebSocketServer({ port: 0, host: '127.0.0.1' })
   await once(provider, 'listening')
   cleanup.push(() => { for (const s of provider.clients) s.terminate(); provider.close() })
@@ -18,7 +18,7 @@ async function fixture() {
     ws.on('message', raw => {
       const msg = JSON.parse(raw.toString()); inputs.push(msg)
       if (msg.setup) ws.send(JSON.stringify({ setupComplete: {} }))
-      if (msg.realtimeInput?.activityEnd) ws.send(JSON.stringify({ serverContent: {
+      if (respond && msg.realtimeInput?.activityEnd) ws.send(JSON.stringify({ serverContent: {
         outputTranscription: { text: '오늘 어떤 이야기를 나눌까요?' },
         modelTurn: { parts: [{ inlineData: { data: 'GEMINI_RAW_AUDIO' } }] }, turnComplete: true,
       } }))
@@ -50,6 +50,24 @@ async function fixture() {
 }
 
 describe('real local WebSocket relay', () => {
+  it('clears the response deadline once the completed turn enters playback',async()=>{
+    const f=await fixture(); await f.start(2); vi.useFakeTimers(); f.turn();
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
+    await vi.advanceTimersByTimeAsync(45001);
+    expect(f.app.readyState).toBe(WebSocket.OPEN);
+    expect(f.frames.some(x=>x.relayError)).toBe(false);
+  })
+  it('closes a stalled model turn on a fixed deadline even if partial text arrives',async()=>{
+    const f=await fixture(false); await f.start(2); vi.useFakeTimers();
+    const closed=once(f.app,'close'); f.turn();
+    await vi.waitFor(()=>expect(f.inputs.some(x=>x.realtimeInput?.activityEnd)).toBe(true));
+    await vi.advanceTimersByTimeAsync(30000);
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'아직 생성 중'}}}));
+    await vi.advanceTimersByTimeAsync(15000);
+    await closed;
+    expect(f.frames.filter(x=>x.relayError)).toEqual([{relayError:{code:'RESPONSE_TIMEOUT'}}]);
+    expect(f.synthesize).not.toHaveBeenCalled();expect(f.release).toHaveBeenCalledOnce();
+  })
   it.each([
     [new Error('CLOVA_RATE_LIMIT'),'SYNTHESIS_LIMIT'],
     [new Error('CLOVA_UNAVAILABLE'),'SYNTHESIS_UNAVAILABLE'],

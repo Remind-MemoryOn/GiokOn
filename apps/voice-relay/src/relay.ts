@@ -29,6 +29,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let output = '', turns = 0, queuedBytes = 0, receivedBytes = 0
   let outputQueued = 0
   let protocolVersion = 1, awaitingPlayback: number | null = null
+  let responseTimer: ReturnType<typeof setTimeout> | undefined
   let playbackTimer: ReturnType<typeof setTimeout> | undefined
   let inputChain = Promise.resolve(), outputChain = Promise.resolve()
   let checking: Promise<boolean> | undefined
@@ -42,7 +43,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     if (abort.signal.aborted) return
     abort.abort()
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
-    clearTimeout(playbackTimer)
+    clearTimeout(playbackTimer); clearTimeout(responseTimer)
     session?.release()
     upstream?.terminate()
     app.close(1000, 'VOICE_SESSION_ENDED')
@@ -131,6 +132,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             if (typeof content.outputTranscription?.text === 'string') output += content.outputTranscription.text
             if (output.length > 200) return close()
             if (!content.turnComplete) return
+            clearTimeout(responseTimer); responseTimer = undefined
             if (!await allowed()) return close()
             let result: Awaited<ReturnType<typeof synthesizeValidated>>
             try { result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.clova, abort.signal) }
@@ -182,6 +184,12 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (r.activityEnd) {
         if (++turns > 60 || !await allowed()) return close()
         pending = true; activity = false; output = ''
+        // Leave the remaining 15 seconds of the app's 60-second wait for synthesis.
+        // Partial output never extends this deadline.
+        responseTimer = setTimeout(() => {
+          send({relayError:{code:'RESPONSE_TIMEOUT'}})
+          close()
+        }, 45000)
         forward({ realtimeInput: { activityEnd: {} } }); return
       }
       throw new Error('INVALID_INPUT')

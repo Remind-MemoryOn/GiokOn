@@ -1,5 +1,6 @@
 /** Public transport codes only; never display provider response bodies or keys. */
 export const VOICE_FAILURE_MESSAGES = {
+  RESPONSE_TIMEOUT: '대화 응답이 늦어 연결을 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.',
   SYNTHESIS_LIMIT: '음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.',
   SYNTHESIS_UNAVAILABLE: '음성 합성 서비스에 연결하지 못했어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.',
   SYNTHESIS_TIMEOUT: '음성 합성 응답이 늦어 대화를 멈췄어요. 기록을 저장하고 연결 상태를 확인해 주세요.',
