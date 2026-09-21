@@ -53,3 +53,28 @@ export function selectVoiceResumeContext(
   }
   return parseVoiceResumeContext(context)
 }
+
+/** Device timestamp and result only; no server verification or human-hearing claim. */
+export function parseVoicePlaybackObservation(value: unknown, expectedText: string): VoicePlaybackObservation {
+  if (!object(value) || Object.keys(value).length !== 3 || value.text !== expectedText ||
+      !expectedText.trim() || expectedText.length > 4000 ||
+      !['completed','interrupted','empty'].includes(String(value.result)) ||
+      typeof value.result !== 'string' || typeof value.observedAt !== 'string' ||
+      !Number.isFinite(Date.parse(value.observedAt)) || new Date(value.observedAt).toISOString() !== value.observedAt)
+    throw new Error('INVALID_PLAYBACK_OBSERVATION');
+  return {text:expectedText,result:value.result as VoicePlaybackObservation['result'],observedAt:value.observedAt};
+}
+
+/** Snapshot for persistence, rejecting mismatched associations rather than inventing delivery. */
+export function snapshotVoicePlayback(
+  turns: readonly ConversationTurn[],
+  observations: Readonly<Record<string,VoicePlaybackObservation>>,
+): Record<string,VoicePlaybackObservation> {
+  const byId=new Map(turns.map(turn=>[turn.id,turn]));
+  if (byId.size !== turns.length) throw new Error('INVALID_PLAYBACK_IDENTITY');
+  return Object.fromEntries(Object.entries(observations).map(([id,value])=>{
+    const turn=byId.get(id);
+    if (!turn || turn.speaker !== 'AI') throw new Error('INVALID_PLAYBACK_IDENTITY');
+    return [id,parseVoicePlaybackObservation(value,turn.text)];
+  }));
+}

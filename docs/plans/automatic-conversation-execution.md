@@ -146,3 +146,9 @@ player의 파일 쓰기·오디오 모드 설정·Sound 생성 전체 준비에 
 앱의 종료만 기다리지 않도록 서버 activityEnd 수용 시 45초 응답 제한을 시작한다. 부분 출력은 기한을 연장하지 않는다. 정상 turnComplete에서 제한을 해제하고 기존 Clova 15초 제한/재생 확인 95초 제한으로 넘어간다. 기한 초과는 공개 RESPONSE_TIMEOUT 코드 전달 후 공급자 종료·세션 점유 해제를 수행한다. 앱의 전체 응답 대기는 기존 60초이며 네트워크 지연까지 별도 여유를 보장하는 것은 아니다.
 
 신규 2건(부분 출력 중 정체/정상 응답 후 타이머 해제) 포함 중계 39건·전체 typecheck·copy/BOM 통과. 실제 모델 지연 측정·운영 배포 없음. Docker info 프로세스는 응답 대기 중으로 확인했으며 이미지 빌드 성공으로 기록하지 않는다.
+
+## N10 재생 관측 종료 스냅샷 — 2026-09-21
+
+FinishedSessionBundle에 playbackByTurnId의 검증된 사본을 포함해 종료 시 런타임 관측을 버리지 않도록 했다. 공통 parseVoicePlaybackObservation/snapshotVoicePlayback은 AI 턴과 정확한 문장 연결, completed/interrupted/empty, 정규 ISO 기기 시각을 검사한다. 다른 문장/없는 턴/사용자 턴의 관측이나 잘못된 형태는 거절한다. 없는 관측은 만들지 않고 실제 청취 사실로 바꾸지 않는다.
+
+신규 8건 포함 전체 601건(core253/data127/mobile182/relay39)·전체 타입·모바일 lint·copy/BOM/font/figma 통과. 이번 변경은 종료 묶음과 검증 계약이며 아직 DB 쓰기/조회 매퍼에 저장하지 않는다. 실제 영속화와 프로세스 재시작 복구는 후속이며 운영/DB 변경 없음.

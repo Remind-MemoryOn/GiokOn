@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import type { ConversationTurn } from './types'
-import { selectVoiceResumeContext, parseVoiceResumeContext } from './voice-context'
+import { snapshotVoicePlayback, parseVoicePlaybackObservation, selectVoiceResumeContext, parseVoiceResumeContext } from './voice-context'
 
 const turn = (id:string, speaker:ConversationTurn['speaker'], text:string): ConversationTurn => ({
   id,speaker,text,timestamp:'',provenance:speaker==='Elderly'?{kind:'automatic',presentedText:text}:{kind:'unknown'},
@@ -41,3 +41,27 @@ it.each([
 ])('rejects malformed or oversized context rather than truncating it: case %#',value=>{
   expect(()=>parseVoiceResumeContext(value)).toThrow()
 })
+
+it('round-trips a playback observation without inferring human hearing',()=>{
+  const observation={text:'질문',result:'completed' as const,observedAt:'2026-09-21T00:00:00.000Z'};
+  expect(parseVoicePlaybackObservation(JSON.parse(JSON.stringify(observation)),'질문')).toEqual(observation);
+  expect(snapshotVoicePlayback([turn('a','AI','질문')],{a:observation})).toEqual({a:observation});
+  const snapshot=snapshotVoicePlayback([turn('a','AI','질문')],{a:observation});
+  observation.text='외부 변경';
+  expect(snapshot.a.result).toBe('completed');
+});
+it.each([
+  {text:'질문',result:'heard',observedAt:'2026-09-21T00:00:00.000Z'},
+  {text:'다른 질문',result:'completed',observedAt:'2026-09-21T00:00:00.000Z'},
+  {text:'질문',result:'completed',observedAt:'unknown'},
+  {text:'질문',result:'completed',observedAt:'2026-02-30T00:00:00.000Z'},
+  {text:'질문',result:'completed',observedAt:'2026-09-21T00:00:00.000Z',heard:true},
+])('rejects invalid stored playback evidence: %#',value=>{
+  expect(()=>parseVoicePlaybackObservation(value,'질문')).toThrow('INVALID_PLAYBACK_OBSERVATION');
+});
+it('keeps absent observations absent and rejects orphan or non-AI associations',()=>{
+  expect(snapshotVoicePlayback([turn('a','AI','질문')],{})).toEqual({});
+  const observation={text:'질문',result:'completed' as const,observedAt:'2026-09-21T00:00:00.000Z'};
+  expect(()=>snapshotVoicePlayback([],{a:observation})).toThrow();
+  expect(()=>snapshotVoicePlayback([turn('a','Elderly','질문')],{a:observation})).toThrow();
+});

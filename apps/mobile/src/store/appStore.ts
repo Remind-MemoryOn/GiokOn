@@ -16,6 +16,7 @@ import {
   resolveSessionRecommendation,
   respondToUserTurn,
   screenAiUtterance,
+  snapshotVoicePlayback,
   nowIso,
   uid,
   type ChronicleEntry,
@@ -106,6 +107,7 @@ export interface FinishedSessionBundle {
   logId: string;
   elder: ElderProfile;
   turns: ConversationTurn[];
+  playbackByTurnId?: Record<string, VoicePlaybackObservation>;
   events: SessionSafetyEvent[];
   analysis: SessionAnalysis;
   startedAt: string;
@@ -451,6 +453,7 @@ export const useApp = create<AppState>((set, get) => ({
         logId,
         elder: a.elder,
         turns: a.turns,
+        playbackByTurnId: snapshotVoicePlayback(a.turns, a.playbackByTurnId ?? {}),
         events: a.events,
         analysis,
         startedAt: a.startedAt,

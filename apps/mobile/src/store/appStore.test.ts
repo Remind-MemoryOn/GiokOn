@@ -78,3 +78,13 @@ it('appends a resumed response without rewriting an unplayed AI turn and rejects
   expect(useApp.getState().active!.turns[0]).toEqual(old);
   expect(useApp.getState().acceptResumedResponse('중복 질문',old.id)).toBe(false);
 });
+
+it('retains playback observations in the finished bundle without sharing mutable entries',()=>{
+  const before=useApp.getState().active!, turn=before.turns[0];
+  useApp.getState().markTurnPlayback(turn.id,turn.text,'completed');
+  const live=useApp.getState().active!.playbackByTurnId!;
+  useApp.getState().finishSession();
+  expect(useApp.getState().lastFinished!.playbackByTurnId?.[turn.id]).toEqual(live[turn.id]);
+  live[turn.id].result='interrupted';
+  expect(useApp.getState().lastFinished!.playbackByTurnId?.[turn.id].result).toBe('completed');
+});
