@@ -35,8 +35,8 @@ async function fixture() {
   await once(app, 'open'); cleanup.push(() => app.terminate())
   const frames: any[] = []; app.on('message', raw => frames.push(JSON.parse(raw.toString())))
   const send = (x: unknown) => app.send(JSON.stringify(x))
-  async function start(protocolVersion?: number) {
-    send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt', protocolVersion } })
+  async function start(protocolVersion?: number, resumeContext?: unknown) {
+    send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt', protocolVersion, resumeContext } })
     send({ setup: { systemInstruction: { parts: [{ text: 'untrusted override' }] } } })
     await vi.waitFor(() => expect(frames.some(f => f.setupComplete)).toBe(true))
   }
@@ -50,6 +50,24 @@ async function fixture() {
 }
 
 describe('real local WebSocket relay', () => {
+  it('v3 restores validated context once without starting generation before the next input', async () => {
+    const f = await fixture()
+    await f.start(3,{version:1,turns:[{role:'model',text:'들은 질문'},{role:'user',text:'채택한 답변'}]})
+    await vi.waitFor(()=>expect(f.inputs.some(x=>x.clientContent)).toBe(true))
+    expect(f.inputs.find(x=>x.clientContent)).toEqual({clientContent:{turns:[
+      {role:'model',parts:[{text:'들은 질문'}]},{role:'user',parts:[{text:'채택한 답변'}]},
+    ],turnComplete:false}})
+    expect(f.synthesize).not.toHaveBeenCalled()
+    f.turn(); await vi.waitFor(()=>expect(f.frames.some(x=>x.relayOutput?.turnId===1)).toBe(true))
+    const closed=once(f.app,'close'); f.turn(); await closed
+    expect(f.synthesize).toHaveBeenCalledOnce() // v3 retains the playback receipt gate.
+  })
+  it.each([2,3])('rejects invalid restoration before authorization in v%s',async version=>{
+    const f=await fixture();const closed=once(f.app,'close')
+    f.send({relayAuth:{sessionId:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',accessToken:'synthetic',protocolVersion:version,
+      resumeContext:{version:1,turns:[{role:'system',text:'untrusted'}]}}})
+    await closed;expect(f.authorize).not.toHaveBeenCalled()
+  })
   it('shutdown cancels synthesis and releases the session without forwarding late audio', async () => {
     const f = await fixture(); await f.start(2)
     let finish!: (result: {text:string;pcm:Buffer}) => void

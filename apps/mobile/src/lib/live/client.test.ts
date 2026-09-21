@@ -45,6 +45,26 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     expect(Socket.all).toHaveLength(0);
   });
 
+  it('requires v3 when sending a restoration context and refuses a v2 acknowledgement',async()=>{
+    const resumeContext={version:1 as const,turns:[{role:'user' as const,text:'채택한 입력'}]};
+    const client=new GeminiLiveClient('relay',{}, {url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic',resumeContext});
+    const connecting=client.connect('','');const failed=expect(connecting).rejects.toThrow();
+    const socket=Socket.all[0];socket.onopen!();
+    expect(socket.sent[0]).toEqual({relayAuth:{sessionId:'session',accessToken:'synthetic',protocolVersion:3,resumeContext}});
+    await socket.receive({setupComplete:{relayProtocolVersion:2}});await failed;
+    expect(client.isConnected).toBe(false);
+  });
+  it('v3 keeps the playback gate after successful restoration negotiation',async()=>{
+    const client=new GeminiLiveClient('relay',{}, {url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic',
+      resumeContext:{version:1,turns:[{role:'user',text:'이전 답변'}]}});
+    const connecting=client.connect('',''); const socket=Socket.all[0];socket.onopen!();
+    await socket.receive({setupComplete:{relayProtocolVersion:3}});await connecting;
+    const reply=client.sendUserTurn('이어서 질문해 주세요.');
+    await socket.receive({relayOutput:{turnId:1},serverContent:{outputTranscription:{text:'다음 질문'},turnComplete:true}});await reply;
+    await expect(client.sendUserTurn('아직 재생 전')).rejects.toThrow();
+    client.reportPlayback(1,'completed');expect(client.playbackTurnId).toBeNull();client.close();
+  });
+
   it('negotiates playback receipts and blocks a new turn until completion', async () => {
     const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
     const connecting = client.connect('', ''); const socket = Socket.all[0]; socket.onopen!();

@@ -9,6 +9,8 @@
 //   - 초기 맥락(persona+설계)은 system_instruction 로 주입한다(3.1 에서 항상 유지되는
 //     경로 — 캐싱 미지원 대비).
 
+import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
+
 export type LiveTurnResult = {
   /** 모델 응답 전문(output transcription). */
   text: string;
@@ -21,6 +23,7 @@ export interface VoiceRelayConnection {
   sessionId: string;
   accessToken: string;
   playbackReceipts?: boolean;
+  resumeContext?: VoiceResumeContext;
 }
 
 type Handlers = {
@@ -90,6 +93,10 @@ export class GeminiLiveClient {
         if (endpoint.protocol !== 'wss:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || endpoint.pathname !== '/voice') throw new Error();
       } catch { return Promise.reject(new Error('음성 중계의 올바른 WSS 주소가 필요해요.')); }
     }
+    let resumeContext: VoiceResumeContext | undefined;
+    try { if (this.relay?.resumeContext) resumeContext = parseVoiceResumeContext(this.relay.resumeContext); }
+    catch { return Promise.reject(new Error('대화 복구 이력을 확인하지 못했어요.')); }
+    const protocolVersion = resumeContext ? 3 : this.relay?.playbackReceipts ? 2 : 1;
     const url = this.relay?.url ?? `${LIVE_WS_URL}?access_token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     this.ws = ws;
@@ -112,7 +119,8 @@ export class GeminiLiveClient {
       ws.onopen = () => {
         if (this.ws !== ws) return;
         if (this.relay) {
-          try { ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken, ...(this.relay.playbackReceipts ? { protocolVersion: 2 } : {}) } })); }
+          try { ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken,
+            ...(protocolVersion >= 2 ? { protocolVersion } : {}), ...(resumeContext ? {resumeContext} : {}) } })); }
           catch (e) { fail(e); return; }
         }
         // ⚠️ 3.1 미지원 필드(proactivity 등)는 절대 포함하지 않는다.
@@ -141,7 +149,7 @@ export class GeminiLiveClient {
           if (this.ws !== ws) return;
           const msg = JSON.parse(text) as Record<string, never>;
           if ('setupComplete' in msg && !settled) {
-            if (this.relay?.playbackReceipts && (msg.setupComplete as { relayProtocolVersion?: number })?.relayProtocolVersion !== 2) throw new Error('음성 중계 서버 업데이트가 필요해요.');
+            if (protocolVersion >= 2 && (msg.setupComplete as { relayProtocolVersion?: number })?.relayProtocolVersion !== protocolVersion) throw new Error('음성 중계 서버 업데이트가 필요해요.');
             settled = true;
             clearTimeout(setupTimer);
             this.cancelConnect = null;
@@ -151,7 +159,7 @@ export class GeminiLiveClient {
             return;
           }
           if ('serverContent' in msg) {
-            if (this.relay?.playbackReceipts && (msg.serverContent as { turnComplete?: boolean })?.turnComplete) {
+            if (protocolVersion >= 2 && (msg.serverContent as { turnComplete?: boolean })?.turnComplete) {
               const id = (msg as { relayOutput?: { turnId?: number } }).relayOutput?.turnId;
               if (!Number.isSafeInteger(id) || id! <= this.lastOutputTurn || !this.pendingTurn || this.awaitingPlayback !== null) throw new Error('음성 재생 순서를 확인하지 못했어요.');
               this.awaitingPlayback = id!;

@@ -1,6 +1,7 @@
 import { WebSocket, type RawData } from 'ws'
 import type { ClovaCredentials } from './output'
 import { synthesizeValidated } from './output'
+import { parseVoiceResumeContext } from '@giokon/core'
 
 export interface RelaySession {
   token: string
@@ -82,8 +83,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (!authenticated) {
         const a = msg.relayAuth
         if (!a || typeof a.sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(a.sessionId) || typeof a.accessToken !== 'string' || a.accessToken.length > 8192) throw new Error('AUTH_REQUIRED')
-        if (a.protocolVersion !== undefined && a.protocolVersion !== 2) throw new Error('UNSUPPORTED_PROTOCOL')
+        if (a.protocolVersion !== undefined && a.protocolVersion !== 2 && a.protocolVersion !== 3) throw new Error('UNSUPPORTED_PROTOCOL')
         protocolVersion = a.protocolVersion ?? 1
+        if (a.resumeContext !== undefined && protocolVersion !== 3) throw new Error('UNSUPPORTED_RESTORATION')
+        const resumeContext = a.resumeContext === undefined ? undefined : parseVoiceResumeContext(a.resumeContext)
         const acquired = await deps.authorize(a.sessionId, a.accessToken)
         if (abort.signal.aborted) { acquired.release(); return }
         session = acquired
@@ -106,7 +109,15 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             if (abort.signal.aborted) return
             const p = JSON.parse(rawProvider.toString())
             if (p.error || p.goAway) return close()
-            if (p.setupComplete) { ready = true; clearTimeout(setupTimer); send({ setupComplete: { relayProtocolVersion: protocolVersion } }); return }
+            if (p.setupComplete) {
+              if (ready) return close()
+              if (resumeContext) {
+                if (!await allowed()) return close()
+                forward({clientContent:{turns:resumeContext.turns.map(turn=>({role:turn.role,parts:[{text:turn.text}]})),turnComplete:false}})
+                if (abort.signal.aborted) return
+              }
+              ready = true; clearTimeout(setupTimer); send({ setupComplete: { relayProtocolVersion: protocolVersion } }); return
+            }
             const content = p.serverContent
             if (!content) return
             if (content.interrupted) return close()
@@ -123,11 +134,11 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             if (!await allowed()) return close()
             const result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.clova, abort.signal)
             if (!await allowed()) return close()
-            if (protocolVersion === 2) {
+            if (protocolVersion >= 2) {
               awaitingPlayback = turns
               playbackTimer = setTimeout(close, 95000)
             }
-            send({ ...(protocolVersion === 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
+            send({ ...(protocolVersion >= 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
             output = ''; pending = false
           }).catch(close)
         })
@@ -137,7 +148,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (msg.setup && !setupSeen) { setupSeen = true; return }
       if (msg.relayPlayback) {
         const receipt = msg.relayPlayback
-        if (protocolVersion !== 2 || !ready || pending || awaitingPlayback === null ||
+        if (protocolVersion < 2 || !ready || pending || awaitingPlayback === null ||
             Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || receipt.result !== 'completed') return close()
         if (!await allowed()) return close()
         clearTimeout(playbackTimer); awaitingPlayback = null
