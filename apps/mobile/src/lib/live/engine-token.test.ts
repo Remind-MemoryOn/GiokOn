@@ -3,10 +3,12 @@ import { URL } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { parseVoiceResumeContext } from '@giokon/core'
 import { InputEndpoint, pcmLevel } from './endpoint'
 
 function engineApi(relayUrl?: string) {
   const fetchMock = vi.fn(async () => Response.json({ token: 'synthetic-token', model: 'synthetic-model' }))
+  const connections = vi.fn()
   const connect = vi.fn(async () => {})
   const close = vi.fn()
   const stopPlayback = vi.fn(async () => {})
@@ -27,16 +29,16 @@ function engineApi(relayUrl?: string) {
     setInterval: vi.fn((callback: () => void) => { tick = callback; return 1 }), clearInterval,
     process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://synthetic.invalid', EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'synthetic', EXPO_PUBLIC_VOICE_RELAY_URL: relayUrl } },
     require: (name: string) => {
-      if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt' }
+      if (name === '@giokon/core') return { buildSystemPrompt: () => 'synthetic prompt', parseVoiceResumeContext }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
-      if (name === './client') return { GeminiLiveClient: class { constructor(_model: string, callbacks: {onDraft: (text: string) => void}) { draft = callbacks.onDraft }; isConnected = true; playbackTurnId = relayUrl ? 1 : null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
+      if (name === './client') return { GeminiLiveClient: class { constructor(_model: string, callbacks: {onDraft: (text: string) => void}, relay: unknown) { connections(relay); draft = callbacks.onDraft }; isConnected = true; playbackTurnId = relayUrl ? 1 : null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
       if (name === './endpoint') return { InputEndpoint, pcmLevel }
       if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic }
       if (name === './player') return { stopPlayback, playPcmTurn }
       throw new Error(name)
     },
   })
-  return { exports, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval }
+  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval }
 }
 
 afterEach(() => vi.useRealTimers())
@@ -307,5 +309,35 @@ describe('Live engine token session binding', () => {
     api.fetchMock.mockResolvedValueOnce(Response.json({ error: 'denied' }, { status: 403 }))
     expect(await api.exports.acquireLiveEngine('key', {}, [], undefined, {}, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')).toBeNull()
     expect(api.connect).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('restored engine acquisition', () => {
+  it('opens a fresh relay with a snapshot even for the same session key', async () => {
+    const api = engineApi('wss://voice.example.test/voice')
+    const args = ['key', {}, [], undefined, {onDraftFinal: vi.fn()}, 'session']
+    const first = await api.exports.acquireLiveEngine(...args)
+    const context = {version: 1, turns: [{role: 'user', text: '전주에서 살았어요.'}]}
+    const pending = api.exports.acquireLiveEngine(...args, context)
+    context.turns[0].text = '수정된 외부 값'
+    const restored = await pending
+    expect(restored).not.toBe(first)
+    expect(api.close).toHaveBeenCalledOnce()
+    expect(api.connections.mock.calls.at(-1)?.[0].resumeContext.turns[0].text).toBe('전주에서 살았어요.')
+    await api.exports.closeLiveEngine()
+  })
+  it('rejects restoration on the direct provider path before requesting a token', async () => {
+    const api = engineApi()
+    expect(await api.exports.acquireLiveEngine('key', {}, [], undefined, {onDraftFinal: vi.fn()}, 'session', {version:1,turns:[]})).toBeNull()
+    expect(api.fetchMock).not.toHaveBeenCalled()
+  })
+  it('rejects invalid context before closing an existing connection', async () => {
+    const api = engineApi('wss://voice.example.test/voice')
+    const args = ['key', {}, [], undefined, {onDraftFinal: vi.fn()}, 'session']
+    await api.exports.acquireLiveEngine(...args)
+    expect(await api.exports.acquireLiveEngine(...args, {version:9,turns:[]})).toBeNull()
+    expect(api.close).not.toHaveBeenCalled()
+    await api.exports.closeLiveEngine()
   })
 })

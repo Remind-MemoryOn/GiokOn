@@ -8,7 +8,7 @@
 //   - 어떤 단계든 실패하면 start() 가 false 를 반환해 호출부가 기존 파이프라인
 //     (expo-speech TTS + 타자/모의 입력)으로 조용히 폴백한다.
 
-import { buildSystemPrompt, type ChronicleEntry, type ElderProfile, type SessionDesign } from '@giokon/core';
+import { parseVoiceResumeContext, type VoiceResumeContext, buildSystemPrompt, type ChronicleEntry, type ElderProfile, type SessionDesign } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
 import { micStreamingSupported, startMicStream } from './mic';
@@ -97,6 +97,7 @@ export class LiveConversationEngine {
     private readonly design: SessionDesign | undefined,
     private callbacks: LiveEngineCallbacks,
     private readonly sessionId: string,
+    private readonly resumeContext?: VoiceResumeContext,
   ) {}
 
   /** 화면 재마운트(로딩 인터스티셜 왕복)에 대비해 콜백을 갈아끼운다. */
@@ -120,7 +121,7 @@ export class LiveConversationEngine {
       if (relayUrl) {
         const session = await getSession();
         if (!session?.access_token) throw new Error('AUTH_REQUIRED');
-        this.relay = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token, playbackReceipts: true };
+        this.relay = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token, playbackReceipts: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
       } else {
         ({ token, model } = await fetchLiveToken(this.sessionId));
       }
@@ -399,10 +400,17 @@ export async function acquireLiveEngine(
   design: SessionDesign | undefined,
   callbacks: LiveEngineCallbacks,
   sessionId: string | null,
+  resumeContext?: VoiceResumeContext,
 ): Promise<LiveConversationEngine | null> {
   // DB 저장에 실패한 로컬 세션에는 유료 AI 토큰을 발급하지 않는다.
   if (!sessionId) return null;
-  if (activeEngine && activeEngine.key !== key) {
+  let context: VoiceResumeContext | undefined;
+  if (resumeContext !== undefined) {
+    if (!process.env.EXPO_PUBLIC_VOICE_RELAY_URL?.trim()) return null;
+    try { context = parseVoiceResumeContext(resumeContext); } catch { return null; }
+  }
+  // Restored history belongs to a fresh provider connection, even for the same key.
+  if (context || (activeEngine && activeEngine.key !== key)) {
     const closingGeneration = engineGeneration + 1;
     await closeLiveEngine();
     if (engineGeneration !== closingGeneration) return null;
@@ -411,7 +419,7 @@ export async function acquireLiveEngine(
     activeEngine.engine.setCallbacks(callbacks);
     return activeEngine.engine.available ? activeEngine.engine : null;
   }
-  const engine = new LiveConversationEngine(elder, chronicles, design, callbacks, sessionId);
+  const engine = new LiveConversationEngine(elder, chronicles, design, callbacks, sessionId, context);
   const generation = engineGeneration;
   connectingEngines.add(engine);
   let ok: boolean;
