@@ -1,0 +1,25 @@
+# Relay image: deny by default, including all local configuration and credentials.
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!packages/
+!packages/core/
+!packages/core/package.json
+!packages/core/src/
+!packages/core/src/**
+!packages/data/
+!packages/data/package.json
+!packages/data/src/
+!packages/data/src/**
+!apps/
+!apps/voice-relay/
+!apps/voice-relay/package.json
+!apps/voice-relay/Dockerfile
+!apps/voice-relay/src/
+!apps/voice-relay/src/**
+**/*.test.*
+**/.env*
+**/*.pem
+**/*.key
+**/*credentials*

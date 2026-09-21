@@ -11,6 +11,7 @@ COPY packages/data/src ./packages/data/src
 COPY apps/voice-relay/src ./apps/voice-relay/src
 ENV VOICE_RELAY_BIND=0.0.0.0
 ENV PORT=8080
+WORKDIR /app/apps/voice-relay
 USER node
 EXPOSE 8080
-CMD ["pnpm", "-F", "@giokon/voice-relay", "start"]
+CMD ["node", "--import", "tsx", "src/main.ts"]
