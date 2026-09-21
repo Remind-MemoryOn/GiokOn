@@ -14,6 +14,7 @@ export interface AutomaticPorts {
   cancelPending(): Promise<void>;
   input(text: string): 'continue' | 'help';
   output(text: string, opener: boolean): boolean;
+  playback(result: 'completed' | 'interrupted' | 'empty'): void;
   save(): Promise<boolean>;
   status(phase: AutomaticPhase, reason?: string): void;
 }
@@ -65,6 +66,7 @@ export class AutomaticConversation {
     if (!this.alive()) return;
     this.status('speaking');
     const result = await this.engine!.playTurn(chunks);
+    if (this.ports.current()) this.ports.playback(result);
     if (!this.alive()) return;
     if (result !== 'completed') throw new Error('playback');
     this.status('listening');

@@ -73,6 +73,8 @@ export interface ActiveSession {
    */
   chronicles: ChronicleEntry[];
   turns: ConversationTurn[];
+  /** Runtime device observation only; absence is unknown, not completed delivery. */
+  playbackByTurnId?: Record<string, { text: string; result: 'completed' | 'interrupted' | 'empty'; observedAt: string }>;
   startedAt: string;
   currentQuestion: string;
   currentTopic: string;
@@ -154,6 +156,7 @@ interface AppState {
   confirmUtterance: (finalText: string, live?: { question: string }) => void;
   adoptAutomaticInput: (text: string) => 'continue' | 'help';
   acceptAutomaticResponse: (text: string) => boolean;
+  markTurnPlayback: (turnId: string, text: string, result: 'completed' | 'interrupted' | 'empty') => boolean;
   confirmRecoveredInput: (text: string) => boolean;
   /**
    * 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다.
@@ -339,6 +342,16 @@ export const useApp = create<AppState>((set, get) => ({
     const topic = detectTurnTopic(text) ?? a.currentTopic;
     set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,
       currentTopic: topic, phase: 'ai_speaking' } });
+    return true;
+  },
+
+  markTurnPlayback: (turnId, text, result) => {
+    const a = get().active;
+    if (!a?.turns.some(t => t.id === turnId && t.speaker === 'AI' && t.text === text)) return false;
+    const previous = a.playbackByTurnId?.[turnId];
+    if (previous?.text === text && previous.result === 'completed') return true;
+    set({ active: { ...a, playbackByTurnId: { ...a.playbackByTurnId,
+      [turnId]: { text, result, observedAt: nowIso() } } } });
     return true;
   },
 

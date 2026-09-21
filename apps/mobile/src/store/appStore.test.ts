@@ -60,3 +60,14 @@ it('rejects empty recovery confirmation without losing the pending input', () =>
   expect(useApp.getState().confirmRecoveredInput('  ')).toBe(false);
   expect(useApp.getState().active!.pendingStt).toBe('부분 입력');
 });
+
+it('records delivery only for the matching AI turn without implying a person heard it', () => {
+  const {id,text} = useApp.getState().active!.turns[0];
+  expect(useApp.getState().markTurnPlayback('missing',text,'completed')).toBe(false);
+  expect(useApp.getState().markTurnPlayback(id,'다른 질문','completed')).toBe(false);
+  expect(useApp.getState().markTurnPlayback(id,text,'interrupted')).toBe(true);
+  expect(useApp.getState().active!.playbackByTurnId?.[id]).toMatchObject({result:'interrupted'});
+  useApp.getState().adoptAutomaticInput('고향 이야기');
+  const input = useApp.getState().active!.turns[1].id;
+  expect(useApp.getState().markTurnPlayback(input,'고향 이야기','completed')).toBe(false);
+});

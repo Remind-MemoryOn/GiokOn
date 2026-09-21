@@ -39,8 +39,26 @@ it('binds the screen hook to automatic source adoption and the next microphone c
   await vi.waitFor(()=>expect(native.listen).toHaveBeenCalledTimes(2));
   expect(useApp.getState().active!.turns[1].provenance?.kind).toBe('automatic');
   expect(useApp.getState().active!.pendingStt).toBeNull();
+  const active = useApp.getState().active!;
+  for (const turn of active.turns.filter(t => t.speaker === 'AI')) {
+    expect(active.playbackByTurnId?.[turn.id]).toMatchObject({text:turn.text,result:'completed'});
+  }
   expect(save).toHaveBeenCalledTimes(3);
   if (cleanup) cleanup();
+});
+
+it('records interrupted playback even when retrieval precedes the native result',async()=>{
+  let finished!: (value:string)=>void;
+  native.play.mockImplementationOnce(()=>new Promise(resolve=>{finished=resolve;}));
+  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0]();
+  const starting=view.start();
+  await vi.waitFor(()=>expect(native.play).toHaveBeenCalled());
+  await view.stop(); finished('interrupted'); await starting;
+  const active=useApp.getState().active!, turn=active.turns[0];
+  expect(active.playbackByTurnId?.[turn.id]).toMatchObject({result:'interrupted'});
+  expect(native.listen).not.toHaveBeenCalled();
+  if(cleanup) cleanup();
 });
 it('stops the running loop on background transition',async()=>{
   const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);

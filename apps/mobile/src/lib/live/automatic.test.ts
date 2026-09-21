@@ -12,7 +12,7 @@ function fixture() {
     connect:vi.fn(async cb=>{onInput=cb; return engine;}), cancelPending:vi.fn(async()=>{}),
     input:vi.fn(()=>{events.push('input'); return 'continue' as const;}),
     output:vi.fn(()=>{events.push('output'); return true;}),
-    save:vi.fn(async()=>{events.push('save'); return true;}), status:vi.fn() };
+    playback:vi.fn(), save:vi.fn(async()=>{events.push('save'); return true;}), status:vi.fn() };
   const controller=new AutomaticConversation(ports);
   return {controller,ports,engine,events,input:(text:string)=>onInput(text)};
 }
@@ -48,6 +48,15 @@ it('stops after saving fails and retains the already adopted input',async()=>{
 it.each(['interrupted','empty'] as const)('does not open the microphone after %s playback',async result=>{
   const f=fixture(); f.engine.playTurn.mockResolvedValue(result);
   await f.controller.start(); expect(f.engine.startListening).not.toHaveBeenCalled();
+  expect(f.ports.playback).toHaveBeenCalledWith(result);
+});
+it('records completed playback before opening the next input',async()=>{
+  const f=fixture();
+  f.engine.startListening.mockImplementation(async()=>{
+    expect(f.ports.playback).toHaveBeenCalledWith('completed');
+  });
+  await f.controller.start();
+  expect(f.ports.playback).toHaveBeenCalledExactlyOnceWith('completed');
 });
 it('discards a late response after retrieval and ignores duplicate input callbacks',async()=>{
   const f=fixture(); await f.controller.start();

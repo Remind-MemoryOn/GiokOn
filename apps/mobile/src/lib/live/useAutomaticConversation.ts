@@ -16,6 +16,7 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
     const lease = queryScope.capture();
     const id = session.session.id;
     let disposed=false;
+    let outputTurn: {id:string; text:string} | undefined;
     const flow = new AutomaticConversation({
       current: () => !disposed && lease.current() && useApp.getState().active?.session.id === id,
       ready: async () => AppState.currentState === 'active' && useApp.getState().active?.turns.length === 1 &&
@@ -31,9 +32,15 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
       input: text => useApp.getState().adoptAutomaticInput(text),
       output: (text,opener) => {
         if (!screenAiUtterance(text).allowed) return false;
-        if (!opener) return useApp.getState().acceptAutomaticResponse(text);
-        useApp.getState().overrideQuestion(text);
-        return useApp.getState().active?.currentQuestion === text;
+        if (opener) useApp.getState().overrideQuestion(text);
+        else if (!useApp.getState().acceptAutomaticResponse(text)) return false;
+        const turn = useApp.getState().active?.turns.at(-1);
+        if (turn?.speaker !== 'AI' || turn.text !== text) return false;
+        outputTurn = {id:turn.id,text};
+        return true;
+      },
+      playback: result => {
+        if (outputTurn) useApp.getState().markTurnPlayback(outputTurn.id, outputTurn.text, result);
       },
       save,
       status: (phase,reason) => setState({phase,reason}),
