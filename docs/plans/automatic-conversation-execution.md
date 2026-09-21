@@ -89,3 +89,10 @@ stopListening의 native stop 실패는 빈 반환과 연결 종료로 처리하�
 자동 루프가 playTurn 결과를 앱 스토어의 playbackByTurnId에 기록한다. 값은 정확한 질문 text, completed/interrupted/empty, 앱 관측 시각이다. 어르신이 실제로 듣거나 이해했다는 증거는 아니다. 훅은 출력 채택 당시 턴 ID와 문장을 캡처하며 스토어는 해당 AI 턴/텍스트가 일치할 때만 반영한다. 완료 관측이 있는 동일 문장은 이후 실패로 소급 미전달 처리하지 않는다. 기록이 없는 턴은 완료로 추정하지 않는다.
 
 회수 도중 돌아온 재생 결과는 현재 계정/세션 범위에서만 반영하고 다음 청취는 열지 않는다. 재생 완료 기록은 다음 청취 이전에 반영된다. 신규 3건과 기존 실패 결과/훅 검증 강화 포함 전체 544건(core 234/data 127/mobile 154/relay 29)·전체 타입·모바일 lint·copy/BOM/font/figma 통과. 현재 런타임 전용이며 종료 번들/DB 저장/재접속 맥락 주입은 아직 없다. N10 전체 완료가 아니다.
+## N10 복구 이력 선별·wire 계약 — 2026-09-21
+
+packages/core/src/voice-context.ts에 공통 재생 관측 타입과 selectVoiceResumeContext/parseVoiceResumeContext를 추가했다. 최종 채택한 Elderly 문장은 user로, 정확한 텍스트의 completed 관측이 있는 AI만 model로 선별한다. 없는 관측은 완료로 추정하지 않는다. 교정 전 원문이나 화면 표시 입력은 맥락에 대신 넣지 않는다. 미확인 사용자 입력/담당자 메모를 조용히 생략하지 않고 복구를 거절한다.
+
+wire는 version 1, user/model과 text만 허용하고 120턴·턴별 4000자·총 16000자 한도에서 임의 잘라내기를 하지 않는다. 이 검증은 권한/세션 바인딩을 대체하지 않으며 후속 중계 핸들러에서 별도 검사가 필요하다. 모바일 playback 관측 타입도 이 공통 타입을 사용한다.
+
+신규 12건 포함 전체 556건(core 246/data 127/mobile 154/relay 29)·전체 타입·모바일 lint·copy/BOM/font/figma 통과. 아직 네트워크 메시지와 재개 UI에 연결하지 않은 계약 단계이며 실제 재개 완료가 아니다. DB/운영 변경 없음.

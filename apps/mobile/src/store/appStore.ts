@@ -27,6 +27,7 @@ import {
   type SessionDesign,
   type SessionRecommendation,
   type TherapyType,
+  type VoicePlaybackObservation,
 } from '@giokon/core';
 
 export interface RuntimeSafety {
@@ -74,7 +75,7 @@ export interface ActiveSession {
   chronicles: ChronicleEntry[];
   turns: ConversationTurn[];
   /** Runtime device observation only; absence is unknown, not completed delivery. */
-  playbackByTurnId?: Record<string, { text: string; result: 'completed' | 'interrupted' | 'empty'; observedAt: string }>;
+  playbackByTurnId?: Record<string, VoicePlaybackObservation>;
   startedAt: string;
   currentQuestion: string;
   currentTopic: string;
