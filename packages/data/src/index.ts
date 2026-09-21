@@ -41,3 +41,5 @@ export * from './hooks/shares'
 export * from './hooks/notifications'
 export * from './hooks/messages'
 export * from './hooks/inquiries'
+
+export * from './playback-storage'

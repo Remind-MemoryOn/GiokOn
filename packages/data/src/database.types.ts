@@ -831,6 +831,8 @@ export type Database = {
     }
     Views: { [_ in never]: never }
     Functions: {
+      // Planned functional RPC contract; not deployed or enabled by the app yet.
+      save_voice_playback_v1: { Args: { p_session_id: string; p_observations: Json }; Returns: number }
       transcript_storage_version: { Args: Record<PropertyKey, never>; Returns: number }
       can_process_profile: {
         Args: { p_profile_id: string }

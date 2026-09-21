@@ -152,3 +152,9 @@ player의 파일 쓰기·오디오 모드 설정·Sound 생성 전체 준비에 
 FinishedSessionBundle에 playbackByTurnId의 검증된 사본을 포함해 종료 시 런타임 관측을 버리지 않도록 했다. 공통 parseVoicePlaybackObservation/snapshotVoicePlayback은 AI 턴과 정확한 문장 연결, completed/interrupted/empty, 정규 ISO 기기 시각을 검사한다. 다른 문장/없는 턴/사용자 턴의 관측이나 잘못된 형태는 거절한다. 없는 관측은 만들지 않고 실제 청취 사실로 바꾸지 않는다.
 
 신규 8건 포함 전체 601건(core253/data127/mobile182/relay39)·전체 타입·모바일 lint·copy/BOM/font/figma 통과. 이번 변경은 종료 묶음과 검증 계약이며 아직 DB 쓰기/조회 매퍼에 저장하지 않는다. 실제 영속화와 프로세스 재시작 복구는 후속이며 운영/DB 변경 없음.
+
+## N10 재생 관측 데이터 어댑터 — 2026-09-21
+
+packages/data에 저장 RPC 클라이언트와 조회 관측 복구기를 추가했다. 세션/턴 순번으로 불변 payload를 보내며 전부 확인된 개수만 성공으로 판단한다. 계약 미설치·거절·부분 확인·인증 범위 변경·5초 제한을 성공으로 숨기지 않는다. NULL은 미관측, 잘못된 관측은 복구 거절이다.
+
+신규 14건 포함 data 141건·전체 타입(추가 시험 전)·data 타입·BOM 통과. 기능용 SQL/RPC와 앱 저장 연결은 아직 없으며 어댑터는 미활성이다. 구체 계약/후속 검증은 playback-storage-contract.md에 기록했다. Docker는 사용자 보고 dockerInference 문제로 보류하며 운영/DB 변경 없음.
