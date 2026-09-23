@@ -23,8 +23,16 @@
 - `apps/mobile` (@giokon/mobile): **어르신 대화 앱 (Expo SDK 54 + expo-router 6 + NativeWind 4.2)**.
   Figma 19화면 + 설정·동의 확인 = 전 화면 구현. 요양보호사가 조작하는 세션 실행 도구.
   백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규.
-  **현재 구현된 대화 AI = Gemini Live**(음성 입출력+LLM 통합, 2026-08-23) · 미가용 시
-  expo-speech+타자 폴백. ⚠️ **출시 목표 구조는 2026-09-12 에 갱신됐다** — `기술 결정` 참조.
+  음성 경로는 **런타임에 두 갈래**다(`EXPO_PUBLIC_VOICE_RELAY_URL` 하나로 갈린다 —
+  2026-09-23 확인): 설정하면 **중계 경로**(앱→voice-relay→Gemini Live→서버 검증→Clova→앱),
+  비우면 **직접 Gemini Live**(2026-08-23 구현). 둘 다 미가용이면 expo-speech+타자 폴백.
+  ⚠️ 그 변수는 `apps/mobile/.env.example` 에 **없다** — 빠뜨리면 중계·검증·Clova 가 통째로
+  우회된다. 출시 목표 구조는 중계 경로다(2026-09-13 확정) — `기술 결정` 참조.
+- `apps/voice-relay` (@giokon/voice-relay): **음성 중계 서버**(Node + ws, Docker).
+  `src/{main,server,relay,output}.ts` — 세션 권한·연결 통제·턴 식별·안전 규칙 검증을 거친
+  응답만 Clova TTS 로 내보낸다. 검증 안 된 원문 재생·늦은 이전 응답 혼입을 서버가 막는다.
+  ⚠️ `pnpm install --prefer-offline` 이 이 프로젝트의 node_modules 를 만들지 않는다 —
+  새 세션에서 `pnpm install --filter @giokon/voice-relay` 를 먼저 실행할 것(위 `현재 위치`).
 - `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
@@ -134,7 +142,49 @@
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
-## 현재 위치 (2026-09-21 — Clova 취소·응답 실패 경계)
+## 현재 위치 (2026-09-23 — 앱 현황 점검·모델 교체 미완)
+
+> 이번 세션은 **코드 변경 없이 앱 현황을 전수 점검**하고 메모리를 맞춘 것이다.
+> 기록 범위: `83ba6af`(메모리 마지막 반영) 이후 유일한 커밋 `8233b16` + 검증 결과.
+
+- **Gemini 모델 교체는 아직 적용되지 않았다.** `8233b16`("gemini model 변경")의 코드 변경은
+  `supabase/.env.example` **한 줄**뿐이고(`gemini-3.1-flash-live-preview` → `gemini-3.8-live`),
+  나머지는 사업계획 초안 텍스트 2개다. `.env.example` 은 **템플릿이라 런타임에 읽히지 않는다** —
+  실제 모델은 `live-token` 이 `GEMINI_LIVE_MODEL` **시크릿**으로 정해 앱에 돌려주고
+  (`json({ token, model })`), 앱은 그대로 따른다(`model: json.model ?? DEFAULT_MODEL`).
+  → **`supabase secrets set` 을 해야 바뀐다.** 하지 않으면 앱은 조용히 3.1 로 돈다.
+  ⚠️ 코드에 3.1 이 남은 곳: `live-token/index.ts:50`·`engine.ts:18` 의 `DEFAULT_MODEL`(폴백),
+  `.env.example:32` 주석(같은 파일 41행과 **모순**), `client.ts:3` 설계 근거 주석.
+  `gemini-3.8-live` 의 실재·Live 지원 여부는 **확인하지 못했다**(컨테이너 egress 가 Google 차단).
+  모델 제약(proactivity/affective 미지원 등)을 3.1 기준으로 전제한 코드가 그대로라 재검증 필요.
+
+- **`EXPO_PUBLIC_VOICE_RELAY_URL` 이 문서화돼 있지 않다.** 이 변수 하나가 음성 구조 전체를
+  가른다(`engine.ts:114·119·137`, `talk.tsx:45` `RELAY_MODE`) — 설정하면 중계 경로,
+  비우면 **직접 Gemini Live 경로**다. 그런데 `apps/mobile/.env.example` 에 없다.
+  `env.d.ts` 는 `[key: string]` 인덱스 시그니처라 **오타도 타입 검사가 못 잡는다**.
+  배포 시 이 변수를 빠뜨리면 중계·검증·Clova 경로가 통째로 우회된다.
+
+- ⚠️ **`pnpm install --prefer-offline`(session-start 훅)이 `apps/voice-relay/node_modules` 를
+  만들지 않는다.** 그 상태로는 `pnpm -r typecheck` 가 `TS2688 Cannot find type definition
+  file for 'node'` 로, `pnpm -r test` 가 voice-relay 에서 끊겨 **모바일 테스트까지 안 돈다**.
+  저장소 결함이 아니다(package.json·락파일 정상) — **새 세션에서 먼저
+  `pnpm install --filter @giokon/voice-relay` 를 실행**하면 해소된다.
+
+- ✅ **검증(2026-09-23, 위 설치 보정 후 실제 실행)**: typecheck 6패키지 · lint 0 ·
+  **test 631**(core 253 + data 141 + voice-relay 43 + mobile 194) · `check:figma` 177 ·
+  `check:font` 39 · `check:bom` 447 · `check:copy` 전부 통과. 마이그레이션 **53종**.
+
+- 앱 설정 현황(변동 없음 확인): Expo `~54.0.37` · RN `0.81.5` · `version 1.0.0` ·
+  번들 ID `kr.giokon.app`(iOS·Android 동일) · `supportsTablet: false` ·
+  plugins 에 `expo-build-properties`(API 36 고정) · infoPlist 마이크·사진 2종.
+
+- 🧹 저장소 루트에 `answer_draft.txt` · `tts_script_draft.txt`(사업계획 초안)가 있다.
+  `submissions/` 가 이미 있으므로 그쪽으로 옮기는 편이 맞다. 코드에는 영향 없다.
+
+- ⏳ **배포 직전 재확인(사용자 요청, 유지)**: ① 주황 `#e9822b` 대비 2.73:1(현행 유지 결정)
+  ② `supportsTablet: false` 유지 여부.
+
+## 이전 위치 (2026-09-21 — Clova 취소·응답 실패 경계)
 
 - N09 매 청취 시작 전에 기기 마이크 권한을 재조회한다. 자동 턴 중 권한 요청 창은 띄우지 않으며 거절/조회 실패/5초 초과는 연결 종료, 회수 후 늦은 허용은 무시한다. 신규6건 포함 모바일194건·타입/lint·앱 게이트 통과. 청취 중 OS 권한 변경 감지나 실제 기기 검증을 완료한 것은 아니다.
 
@@ -397,9 +447,16 @@ WebSocket 동일)이 그 자리를 막고 있다. **기존 토큰을 취소했�
   `proactivity`/`affective` 필드는 **보내면 연결이 깨진다**(아예 미포함) · 자동 VAD 를 끄고
   `NO_INTERRUPTION`(barge-in 차단, 턴 경계는 앱이 소유 — 요양보호사 확인·교정 흐름과 정합) ·
   초기 맥락은 `system_instruction` 주입(캐싱 미지원 대비).
-  **모델에 넘기는 것은 확정·교정된 텍스트뿐**이다(마이크 오디오는 전사 용도로만 스트리밍) →
-  DB 에 남은 텍스트와 모델이 본 텍스트가 항상 같다(감사 정합). **위기 발화는 모델을 우회**해
-  로컬 안전 응답을 유지한다. 키는 앱에 없다 — Edge Function `live-token` 이 JWT 검증 후
+  ~~**모델에 넘기는 것은 확정·교정된 텍스트뿐**이다 → DB 에 남은 텍스트와 모델이 본 텍스트가
+  항상 같다(감사 정합). **위기 발화는 모델을 우회**한다.~~
+  ⚠️ **이 두 문장은 2026-09-09 에 사실이 아니게 됐다**(2026-09-23 확인). `client.ts` 헤더가
+  스스로 *"'교정 텍스트만 모델이 본다'고 가정하면 안 된다"* 로 바꿔 적었다 — 마이크 원음이
+  `realtimeInput.audio` 로 모델에 전송된다. **감사 근거로 인용하지 말 것.**
+  위기 발화도 마찬가지다: 앱은 `submitUserTurn` 을 건너뛰지만 오디오는 이미 나갔고,
+  `activityEnd` 를 안 보내 활동 구간이 열린 채 남아 **다음 턴에 위기 오디오가 함께 들어간다**.
+  중계 모드는 `haltRelay()`→`closeLiveEngine()` 으로 연결을 닫아 해소됐으나(2026-09-21),
+  **직접 모드(`EXPO_PUBLIC_VOICE_RELAY_URL` 미설정)에는 그대로 남아 있다.**
+  로컬 안전 응답·에스컬레이션과 재생 가드(`playableChunks`)는 정상 동작한다. 키는 앱에 없다 — Edge Function `live-token` 이 JWT 검증 후
   ephemeral token 발급(90s/30min). 미가용·실패 시 **기존 파이프라인(expo-speech+타자 입력)으로
   무중단 폴백**한다. 견고성 4건 보강: sessionResumption 핸들로 1회 자동 재접속 ·
   타임아웃 `'timeout'` 명시 반환 + 세션당 1회 안내(조용한 폴백 제거) · "다시 듣기"는 엔진 생존과
