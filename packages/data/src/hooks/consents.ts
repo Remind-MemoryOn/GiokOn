@@ -63,6 +63,12 @@ export function useRecordConsent(): UseMutationResult<ConsentRow, Error, Consent
     },
     onSuccess: (row) => {
       if (row.profile_id) {
+        // 등록 직후 상세 화면으로 이동할 때 refetch를 기다리지 않아도 방금 저장한
+        // 동의가 즉시 체크 상태로 보이도록 캐시에 증빙을 먼저 반영한다.
+        qc.setQueryData<ConsentRow[]>(queryKeys.consents(row.profile_id), (current) => [
+          row,
+          ...(current ?? []).filter((item) => item.id !== row.id),
+        ])
         void qc.invalidateQueries({ queryKey: queryKeys.consents(row.profile_id) })
       }
     },
@@ -85,6 +91,9 @@ export function useRevokeConsent(): UseMutationResult<ConsentRow, Error, { id: s
     },
     onSuccess: (row) => {
       if (row.profile_id) {
+        qc.setQueryData<ConsentRow[]>(queryKeys.consents(row.profile_id), (current) =>
+          (current ?? []).map((item) => (item.id === row.id ? row : item)),
+        )
         void qc.invalidateQueries({ queryKey: queryKeys.consents(row.profile_id) })
       }
     },

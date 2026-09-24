@@ -62,8 +62,8 @@ const G = {
 const TABS = [
   { key: 'all', label: '전체', left: 426, w: 39, fx: '50:825',
     subtitle: '오늘도 어르신의 소중한 하루를 확인해보세요.' },
-  { key: 'journal', label: '프로그램일지', left: 589, w: 120, fx: '50:826',
-    subtitle: '오늘도 어르신의 프로그램일지를 확인해보세요.' },
+  { key: 'journal', label: '요양일지', left: 589, w: 77, fx: '50:826',
+    subtitle: '오늘도 어르신의 요양일지를 확인해보세요.' },
   { key: 'analysis', label: 'AI 회상 대화 요약', left: 769, w: 151, fx: '50:827',
     subtitle: '오늘도 어르신의 AI 회상 대화 요약을 확인해보세요.' },
   { key: 'photo', label: '공유 사진', left: 1012, w: 82, fx: '50:828',
@@ -73,7 +73,7 @@ type Tab = (typeof TABS)[number]['key'];
 
 /** 공개 항목 유형 → 배지(라벨·폭·톤). 디자인 실측. */
 const KIND: Partial<Record<ShareItemType, { label: string; w: number; tone: BadgeTone }>> = {
-  journal: { label: '프로그램일지', w: 125, tone: 'journal' },
+  journal: { label: '요양일지', w: 107, tone: 'journal' },
   analysis: { label: 'AI 회상 대화 요약', w: 175, tone: 'accent' },
   photo: { label: '공유 사진', w: 113, tone: 'chronicle' },
   report: { label: '관찰 포인트', w: 128, tone: 'info' },
@@ -130,7 +130,7 @@ export function FeedPage() {
         const d = new Date(j.journal_date);
         out.push({
           key: s.id, kind: 'journal', at: s.shared_at, on: j.journal_date,
-          title: Number.isNaN(d.getTime()) ? '프로그램일지' : `${d.getMonth() + 1}월 ${d.getDate()}일 프로그램일지`,
+          title: Number.isNaN(d.getTime()) ? '요양일지' : `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`,
           body: j.content, to: `/guardian/feed/journal/${j.id}`,
         });
       } else if (s.item_type === 'analysis') {

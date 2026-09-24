@@ -8,7 +8,7 @@
 //   헤더 0..114 — 공용 ScreenHeader(뒤로 @(29,74) · "동의 확인" Medium 18/30)
 //   제목   SemiBold 19/30 검정 @(29,144) 2줄
 //   부제   Regular 14/25 #7b7c7c @(29,208) 2줄 — 동의서 버전 포함
-//   동의 카드 335×97 r10 흰색 border #d9d9d9 @(29, 273 / 389 / 505) — pitch 116
+//   동의 카드 335×97 r10 흰색 border #d9d9d9 — 법률 문서 기준 필수 4종, 세로 스크롤
 //     체크박스 17 @(50, +23) · 제목 SemiBold 13/16 검정 @(79, +22)
 //     설명 Regular 12/16 #7b7c7c @(79, +44) w252
 //   비의료 고지 Regular 14/25 #7b7c7c @(39,617) w316 3줄
@@ -22,7 +22,7 @@
 // → checkbox-off/on 17×17)으로 쓴다. 선택 상태는 **흰 바탕 + 검정 테두리 + 검정 체크**다
 // (임시 구현은 검정 채움 + 흰 체크였다 — 실제 디자인과 달랐다).
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -40,6 +40,7 @@ import { NonMedicalFootnote } from '../../../src/components/banners';
 import { CheckBox } from '../../../src/components/consent';
 import { useElderView } from '../../../src/data/reads';
 import { useGrantConsents } from '../../../src/data/writes';
+import { WEB_ROUTES, webUrl } from '../../../src/lib/webUrl';
 
 /** Figma 콘텐츠 열. 카드만 335(우측 끝 364), 버튼은 336(우측 끝 365) — 원본 그대로. */
 const LEFT = 29;
@@ -73,6 +74,15 @@ export default function ConsentGate() {
   );
 
   const allChecked = required.every((t) => checked[t]);
+  const detailRoute: Record<ConsentType, string> = {
+    terms_required: WEB_ROUTES.terms,
+    privacy_required: WEB_ROUTES.memberPrivacyConsent,
+    elder_privacy_required: WEB_ROUTES.elderPrivacyConsent,
+    sensitive_health_voice: WEB_ROUTES.elderSensitiveConsent,
+    cross_border_transfer: WEB_ROUTES.elderCrossBorderConsent,
+    ai_processing: WEB_ROUTES.elderAiConsent,
+    marketing_optional: WEB_ROUTES.privacy,
+  };
 
   if (!elder || !id) {
     return (
@@ -175,6 +185,19 @@ export default function ConsentGate() {
               >
                 {def.summary}
               </Text>
+              <Pressable
+                onPress={(event) => {
+                  event.stopPropagation();
+                  const href = webUrl(detailRoute[t]);
+                  if (!href) return Alert.alert('웹 주소가 필요해요', 'EXPO_PUBLIC_WEB_URL을 설정한 뒤 상세 내용을 확인해 주세요.');
+                  void Linking.openURL(href);
+                }}
+                accessibilityRole="link"
+                accessibilityLabel={`${def.label} 상세보기`}
+                style={{ position: 'absolute', right: 13, bottom: 8 }}
+              >
+                <Text className="text-[11px] font-semibold" style={{ color: '#e9822b', textDecorationLine: 'underline' }}>상세보기</Text>
+              </Pressable>
             </Pressable>
           );
         })}

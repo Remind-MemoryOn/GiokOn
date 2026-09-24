@@ -54,15 +54,15 @@ export function JournalDetailPage() {
 
   const d = journal ? new Date(journal.journal_date) : null;
   const title = d && !Number.isNaN(d.getTime())
-    ? `${d.getMonth() + 1}월 ${d.getDate()}일 프로그램일지`
-    : '프로그램일지';
+    ? `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`
+    : '요양일지';
 
   return (
     <div className="relative -ml-[323px] w-[1440px]" style={{ minHeight: Y(1324) }}>
       <BackLink to="/guardian/feed?tab=journal" />
       <DetailHead
         fx={{ badge: '50:1074', label: '50:1075', at: '50:1076', title: '50:1073', author: '50:1077' }}
-        badge="프로그램일지"
+        badge="요양일지"
         tone="journal"
         badgeW={107}
         at={share?.shared_at ?? journal?.created_at ?? ''}
@@ -86,7 +86,7 @@ export function JournalDetailPage() {
             : '—'}
         </SectionBody>
 
-        <SectionTitle fx="50:1088" gap={SEC_GAP}>프로그램일지</SectionTitle>
+        <SectionTitle fx="50:1088" gap={SEC_GAP}>요양일지</SectionTitle>
         <SectionBody fx="50:1089" under pre width={690}>
           {journal?.content ?? '—'}
         </SectionBody>

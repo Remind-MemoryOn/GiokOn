@@ -122,6 +122,7 @@ function seedElderDetail(q: typeof queryClient) {
     },
   ]);
   q.setQueryData(queryKeys.consents(E1), [
+    { id: 'c0', profile_id: E1, consent_type: 'elder_privacy_required', revoked_at: null },
     { id: 'c1', profile_id: E1, consent_type: 'sensitive_health_voice', revoked_at: null },
     { id: 'c2', profile_id: E1, consent_type: 'cross_border_transfer', revoked_at: null },
     { id: 'c3', profile_id: E1, consent_type: 'ai_processing', revoked_at: null },

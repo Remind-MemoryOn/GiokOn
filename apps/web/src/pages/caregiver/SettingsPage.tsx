@@ -292,7 +292,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
           />
           <a
             data-fx="131:945"
-            href="/guide#privacy"
+            href="/privacy"
             className="absolute whitespace-nowrap text-[18px] leading-[21px] text-ink-700 underline"
             style={{ left: 110, top: 31.88 }}
           >
@@ -303,7 +303,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
           </span>
           <a
             data-fx="131:946"
-            href="/guide#terms"
+            href="/terms"
             className="absolute whitespace-nowrap text-[18px] leading-[21px] text-ink-700 underline"
             style={{ left: 274, top: 31.88 }}
           >

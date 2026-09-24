@@ -62,20 +62,20 @@ describe('동의 카탈로그', () => {
 })
 
 describe('필수 동의 판정', () => {
-  it('계정 필수 = privacy_required', () => {
-    expect(requiredAccountConsents()).toEqual(['privacy_required'])
+  it('계정 필수 = 이용약관·회원 개인정보', () => {
+    expect(requiredAccountConsents()).toEqual(['terms_required', 'privacy_required'])
   })
 
-  it('어르신 필수 = 민감·국외이전·AI고지', () => {
+  it('어르신 필수 = 개인정보·민감·국외이전·AI고지', () => {
     expect(requiredElderConsents().sort()).toEqual(
-      ['ai_processing', 'cross_border_transfer', 'sensitive_health_voice'].sort(),
+      ['elder_privacy_required', 'ai_processing', 'cross_border_transfer', 'sensitive_health_voice'].sort(),
     )
   })
 
   it('누락 필수 동의를 정확히 계산', () => {
     const granted: ConsentType[] = ['sensitive_health_voice']
     expect(missingRequiredConsents('elder', granted).sort()).toEqual(
-      ['ai_processing', 'cross_border_transfer'].sort(),
+      ['elder_privacy_required', 'ai_processing', 'cross_border_transfer'].sort(),
     )
   })
 

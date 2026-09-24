@@ -9,7 +9,7 @@ import { FindIdPage } from './pages/public/FindIdPage';
 import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/public/ResetPasswordPage';
 import { GuidePage } from './pages/public/GuidePage';
-import { PrivacyPolicyPage, TermsPage } from './pages/public/LegalPages';
+import { ConsentDocumentPage, PrivacyPolicyPage, TermsPage } from './pages/public/LegalPages';
 import {
   InquiryDetailPage,
   InquiryFormPage,
@@ -27,7 +27,6 @@ import { SessionsPage } from './pages/caregiver/SessionsPage';
 import { SessionListPage } from './pages/caregiver/SessionListPage';
 import { SessionPlanDialog } from './pages/caregiver/SessionPlanDialog';
 import { ConversationLogPage } from './pages/caregiver/ConversationLogPage';
-import { ConversationMonitoringPage } from './pages/caregiver/ConversationMonitoringPage';
 import { AnalysisPage } from './pages/caregiver/AnalysisPage';
 import { AnalysisEldersPage } from './pages/caregiver/AnalysisEldersPage';
 import { AnalysisElderPage } from './pages/caregiver/AnalysisElderPage';
@@ -86,6 +85,7 @@ function App() {
             로그인·온보딩의 법적 링크와 푸터가 여기를 가리킨다(2026-09-02 사용자 확정). */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/consents/:documentId" element={<ConsentDocumentPage />} />
         <Route path="/inquiries" element={<InquiryListPage />} />
         <Route path="/inquiries/new" element={<InquiryFormPage />} />
         <Route path="/inquiries/:inquiryId" element={<InquiryDetailPage />} />
@@ -128,7 +128,6 @@ function App() {
             <Route path="plan/:sessionId" element={<SessionPlanDialog />} />
           </Route>
           <Route path="sessions/:elderId/:sessionId" element={<ConversationLogPage />} />
-          <Route path="monitoring" element={<ConversationMonitoringPage />} />
           <Route path="analysis" element={<AnalysisPage />} />
           <Route path="analysis/elders" element={<AnalysisEldersPage />} />
           <Route path="analysis/:elderId" element={<AnalysisElderPage />} />

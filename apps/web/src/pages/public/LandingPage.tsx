@@ -11,7 +11,7 @@ import { asset } from '../../assets/ui';
 /** 중간 섹션의 "…싶으신가요?" 3묶음 — [일러스트, 좌표, 문구] */
 const PROMPTS = [
   { src: asset.landingSpot1, art: { left: 227, top: 1096, w: 167, h: 121 }, center: 310, width: 276, lines: ['AI 회상 대화 기록을 더 편리하게', '관리하고 싶으신가요?'] },
-  { src: asset.landingSpot2, art: { left: 672, top: 1096, w: 111, h: 122 }, center: 719, width: 247, lines: ['프로그램일지를 한곳에서', '관리하고 싶으신가요?'] },
+  { src: asset.landingSpot2, art: { left: 672, top: 1096, w: 111, h: 122 }, center: 719, width: 247, lines: ['요양일지까지 한곳에서', '관리하고 싶으신가요?'] },
   { src: asset.landingSpot3, art: { left: 1078, top: 1110, w: 108, h: 109 }, center: 1128, width: 247, lines: ['보호자와 소중한 기록을 함께', '나누고 싶으신가요?'] },
 ];
 
@@ -61,7 +61,7 @@ export function LandingPage() {
         >
           AI 회상 대화와
           <br />
-          프로그램일지를 더 쉽게 관리하는,
+          요양일지를 더 쉽게 관리하는,
         </h1>
         <img
           data-fx="12:21"
@@ -139,7 +139,7 @@ export function LandingPage() {
           className="absolute left-[118px] w-[695px] text-[45px] font-bold leading-[70px] text-ink-900"
           style={{ top: Y(1652) }}
         >
-          AI 회상 기록부터 프로그램일지,
+          AI 회상 기록부터 요양일지,
           <br />
           보호자 공유까지, 하나의 인지 활동 관리
           <br />웹 서비스,
@@ -229,7 +229,7 @@ export function LandingPage() {
           className="absolute left-[381px] w-[679px] text-center text-[24px] font-semibold leading-[35px] text-ink-700"
           style={{ top: Y(2320) }}
         >
-          AI 회상 기록 관리, 연대기 관리, 대화관찰리포트, 프로그램일지 관리, 보호자 공유까지.
+          AI 회상 기록 관리, 연대기 관리, AI 분석, 요양일지 관리,보호자 공유까지.
           <br />
           인지 활동 관리에 필요한 모든 기능을 하나의 웹에서 제공합니다.
         </p>

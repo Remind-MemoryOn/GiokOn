@@ -47,7 +47,9 @@ export default function Register() {
           await upsertChronicle({ elderId: elder.id, topic: KEY_MEMORY_TOPIC, content, keywords: [] });
         }
       }
-      router.replace(`/elder/${elder.id}`);
+      // 등록 흐름의 다음 단계는 동의 주체 확인과 필수 동의 4종이다.
+      // 동의를 완료하기 전에는 세션 시작으로 진행할 수 없다.
+      router.replace(`/consent/${elder.id}`);
     } catch (e) {
       Alert.alert('저장 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
     } finally {

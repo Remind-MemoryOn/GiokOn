@@ -12,7 +12,9 @@
 //    구조와 버전만 관리한다.
 
 export type ConsentType =
+  | 'terms_required'
   | 'privacy_required'
+  | 'elder_privacy_required'
   | 'sensitive_health_voice'
   | 'cross_border_transfer'
   | 'ai_processing'
@@ -65,11 +67,31 @@ export function isCurrentConsent(row: ConsentEvidence, now = Date.now()): boolea
 }
 
 export const CONSENT_CATALOG: Record<ConsentType, ConsentDefinition> = {
+  terms_required: {
+    type: 'terms_required',
+    subject: 'account',
+    label: '이용약관 동의(필수)',
+    summary: '기억온 서비스 이용조건과 회원의 권리·의무를 확인하고 동의합니다.',
+    required: true,
+    sensitive: false,
+    crossBorder: false,
+    version: CONSENT_VERSION,
+  },
   privacy_required: {
     type: 'privacy_required',
     subject: 'account',
     label: '개인정보 수집·이용 동의(필수)',
     summary: '요양보호사 계정 운영을 위한 최소 개인정보 수집·이용에 동의합니다.',
+    required: true,
+    sensitive: false,
+    crossBorder: false,
+    version: CONSENT_VERSION,
+  },
+  elder_privacy_required: {
+    type: 'elder_privacy_required',
+    subject: 'elder',
+    label: '어르신 개인정보 수집·이용 동의(필수)',
+    summary: '어르신 프로필과 생애정보를 회상 대화 제공에 이용하는 것에 동의합니다.',
     required: true,
     sensitive: false,
     crossBorder: false,
@@ -129,7 +151,7 @@ export function requiredAccountConsents(): ConsentType[] {
   return requiredConsents('account')
 }
 
-/** 어르신 세션 시작 전 확보돼야 하는 필수 동의(민감·국외이전·AI 고지). */
+/** 어르신 세션 시작 전 확보돼야 하는 필수 동의(개인정보·민감·국외이전·AI 고지). */
 export function requiredElderConsents(): ConsentType[] {
   return requiredConsents('elder')
 }

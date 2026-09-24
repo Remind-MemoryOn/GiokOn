@@ -121,12 +121,10 @@ function invalidateFor(
       break
     case 'sessions':
       void qc.invalidateQueries({ queryKey: queryKeys.recentSessions })
-      void qc.invalidateQueries({ queryKey: queryKeys.activeConversationMonitor })
       void qc.invalidateQueries({ queryKey: queryKeys.sessionCounts })
       if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.sessions(profileId) })
       break
     case 'session_logs': {
-      void qc.invalidateQueries({ queryKey: queryKeys.activeConversationMonitor })
       const sessionId =
         typeof event.row?.session_id === 'string' ? (event.row.session_id as string) : undefined
       if (sessionId) void qc.invalidateQueries({ queryKey: queryKeys.sessionLogs(sessionId) })

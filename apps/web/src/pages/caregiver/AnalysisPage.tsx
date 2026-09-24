@@ -151,7 +151,7 @@ export function AnalysisPage() {
         className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[40px] text-ink-900"
         style={{ top: Y(186) }}
       >
-        대화관찰리포트
+        분석
       </h1>
       <p
         data-fx="225:1739"

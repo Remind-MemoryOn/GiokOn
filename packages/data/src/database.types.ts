@@ -999,7 +999,9 @@ export type Database = {
       elder_gender: 'female' | 'male'
       org_role: 'org_admin' | 'caregiver' | 'guardian' | 'social_worker' | 'center_director'
       consent_type:
+        | 'terms_required'
         | 'privacy_required'
+        | 'elder_privacy_required'
         | 'sensitive_health_voice'
         | 'cross_border_transfer'
         | 'ai_processing'

@@ -24,7 +24,7 @@ const SECTIONS = [
   {
     fxHead: '55:1287', head: '활동 및 오류 관련 문의만 보내주세요', headTop: 187,
     fxBody: '55:1289', bodyTop: 225,
-    body: '어르신의 프로그램일지, AI 대화 기록 등 활동 및 오류 관련된 문의를 위한 메시지 기능입니다.\n개인적인 연락이나 서비스와 관련 없는 내용은 삼가 주세요.',
+    body: '어르신의 요양일지, AI 대화 기록 등 활동 및 오류 관련된 문의를 위한 메시지 기능입니다.\n개인적인 연락이나 서비스와 관련 없는 내용은 삼가 주세요.',
   },
   {
     fxHead: '55:1291', head: '메시지 내용은 자동으로 기록됩니다', headTop: 336,
@@ -216,7 +216,7 @@ function ComposeDialog({
                   value={body}
                   maxLength={MAX}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="어르신의 프로그램일지·회상 대화 기록에 대해 궁금한 점을 적어주세요."
+                  placeholder="어르신의 요양일지·회상 대화 기록에 대해 궁금한 점을 적어주세요."
                   className="min-h-[220px]"
                 />
               </Field>

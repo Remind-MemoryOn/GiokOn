@@ -10,6 +10,11 @@ const BASE = process.env.EXPO_PUBLIC_WEB_URL?.trim().replace(/\/+$/, '') || null
 export const WEB_ROUTES = {
   privacy: '/privacy',
   terms: '/terms',
+  memberPrivacyConsent: '/consents/member-privacy',
+  elderPrivacyConsent: '/consents/elder-privacy',
+  elderSensitiveConsent: '/consents/elder-sensitive',
+  elderCrossBorderConsent: '/consents/elder-cross-border',
+  elderAiConsent: '/consents/elder-ai',
   resetPassword: '/reset-password',
   signup: '/signup',
 } as const;

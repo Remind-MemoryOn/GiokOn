@@ -113,13 +113,28 @@ export function useDeleteProfile(): UseMutationResult<string, Error, string> {
   return useMutation({
     mutationFn: async (id: string) => {
       await purgeElderFiles(id)
-      const { error } = await getGiokonClient().from('profiles').delete().eq('id', id)
+      // delete()만 호출하면 RLS로 대상 행이 보이지 않거나 이미 삭제된 경우에도
+      // PostgREST가 오류 없이 0건 삭제로 응답할 수 있다. 삭제된 id를 돌려받아 실제
+      // 파기 여부를 확인해야 화면에서 거짓 성공을 표시하지 않는다.
+      const { data, error } = await getGiokonClient()
+        .from('profiles')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .maybeSingle()
       if (error) throw new Error(error.message)
+      if (!data) {
+        throw new Error('삭제 권한이 없거나 이미 삭제된 어르신입니다. 목록을 새로고침해 주세요.')
+      }
       return id
     },
     onSuccess: (id) => {
+      // 삭제 직후 목록으로 이동할 때 이전 캐시가 잠깐 다시 보이지 않게 즉시 제거한다.
+      qc.setQueryData<ProfileRow[]>(queryKeys.profiles, (rows) =>
+        rows?.filter((row) => row.id !== id),
+      )
+      qc.removeQueries({ queryKey: queryKeys.profile(id) })
       void qc.invalidateQueries({ queryKey: queryKeys.profiles })
-      void qc.invalidateQueries({ queryKey: queryKeys.profile(id) })
     },
   })
 }

@@ -36,7 +36,7 @@ export function Badge({ tone = 'mute', large, fixed, tag, className, ...rest }: 
       {...rest}
       className={cn(
         'inline-flex items-center justify-center rounded-pill font-semibold text-w-sub whitespace-nowrap',
-        tag ? 'h-[35px] min-w-[107px] px-3 !text-[18px]' : large ? 'h-[32px] px-[18px]' : 'h-[25px] px-[16px]',
+        tag ? 'h-[35px] w-[107px] px-0 !text-[20px]' : large ? 'h-[32px] px-[18px]' : 'h-[25px] px-[16px]',
         fixed && 'w-[82px] px-0',
         TONE[tone],
         className,

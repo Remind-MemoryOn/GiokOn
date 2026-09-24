@@ -6,11 +6,10 @@
 //
 // 카드 높이가 디자인에 고정돼 있어 목록은 **디자인과 같은 줄 수만** 보여주고
 // 나머지는 "자세히 보기"로 넘긴다(연대기 2 · 대화 이력 3 · 안전 이벤트 1).
-// ⚠️ 동의 문구는 Figma 라벨이 아니라 `@giokon/core` 동의 카탈로그가 SoT 다(법무 문구가
-//    바뀌면 화면이 따라와야 한다). 어르신 필수 동의 3종이라 행 수는 디자인과 같다.
+// ⚠️ 동의 문구와 4개 필수 항목은 `@giokon/core` 동의 카탈로그가 SoT 다.
 // ⚠️ 특이사항(profiles.note)은 없을 수 있다 → 값을 만들지 않고 `—`(Figma 도 "-").
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   toElderProfile,
   useChronicles,
@@ -19,17 +18,26 @@ import {
   useOrganization,
   useProfile,
   useProfileCaregivers,
+  useDeleteProfile,
   useRotateElderCode,
   useSafetyEvents,
   useSessions,
 } from '@giokon/data';
-import { CONSENT_CATALOG, birthLabel, elderAge, isKeyMemory, requiredConsents } from '@giokon/core';
+import {
+  CONSENT_CATALOG,
+  birthLabel,
+  elderAge,
+  isCurrentConsent,
+  isKeyMemory,
+  requiredConsents,
+} from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { cn, relativeDay } from '../../lib/utils';
 import { Dialog } from '../../components/ui/Dialog';
+import { Button } from '../../components/ui/Button';
 
 const Y = (v: number) => v - 122;
 /** 값이 없으면 만들어내지 않는다 — 화면은 `—`. */
@@ -197,7 +205,10 @@ function InfoRow({ fx, top, label, value }: { fx: string; top: number; label: st
 
 export function ElderDetailPage() {
   const { elderId } = useParams<{ elderId: string }>();
+  const navigate = useNavigate();
   const [infoOpen, setInfoOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
   const profileQuery = useProfile(elderId);
@@ -206,6 +217,7 @@ export function ElderDetailPage() {
   const consents = useConsents(elderId);
   const code = useElderCode(elderId);
   const rotate = useRotateElderCode();
+  const deleteProfile = useDeleteProfile();
   const sessions = useSessions(elderId);
   const chronicles = useChronicles(elderId);
   const safety = useSafetyEvents(elderId);
@@ -226,7 +238,14 @@ export function ElderDetailPage() {
   const consentRows = requiredConsents('elder').map((type) => ({
     type,
     label: CONSENT_CATALOG[type].label,
-    done: (consents.data ?? []).some((c) => c.consent_type === type && !c.revoked_at),
+    // 체크박스를 눌렀다는 화면 상태가 아니라 DB에 남은 유효한 동의 증빙으로 표시한다.
+    // 구버전에서 어르신 개인정보 동의를 privacy_required로 저장한 행은 호환해 보여 준다.
+    done: (consents.data ?? []).some(
+      (row) =>
+        (row.consent_type === type ||
+          (type === 'elder_privacy_required' && row.consent_type === 'privacy_required')) &&
+        isCurrentConsent(row),
+    ),
   }));
   // 주요 기억은 '기본 정보 수정' 폼이 관리한다 → 연대기 목록에서는 감춘다(두 곳에서 지워지지 않게).
   const chronicleRows = (chronicles.data ?? []).filter((c) => !isKeyMemory(c.topic)).slice(0, 2);
@@ -256,6 +275,21 @@ export function ElderDetailPage() {
       toast('success', '어르신 코드를 복사했어요.');
     } catch {
       toast('error', '복사에 실패했어요. 코드를 길게 눌러 직접 복사해 주세요.');
+    }
+  };
+
+  const deleteElder = async () => {
+    setDeleteError(null);
+    try {
+      await deleteProfile.mutateAsync(elder.id);
+      toast('success', `${elder.name} 어르신의 정보를 삭제했어요.`);
+      navigate('/caregiver/elders', { replace: true });
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : '삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
     }
   };
 
@@ -474,17 +508,22 @@ export function ElderDetailPage() {
           <div
             data-fx={i === 0 ? '161:756' : undefined}
             className="absolute left-[866px] h-[62px] w-[452px] rounded-[10px] bg-mute-pale"
-            style={{ top: Y(831 + i * 92) }}
+            style={{ top: Y(831 + i * 74) }}
           />
-          <img
-            src={asset.iconCheckCircle}
-            alt=""
-            width={34}
-            height={34}
+          <span
             data-fx={i === 0 ? '161:774' : undefined}
-            className={cn('absolute left-[897px] block', !c.done && 'opacity-30 grayscale')}
-            style={{ top: Y(845 + i * 92) }}
-          />
+            role="img"
+            aria-label={c.done ? '동의 완료' : '미동의'}
+            className={cn(
+              'absolute left-[897px] flex h-[34px] w-[34px] items-center justify-center rounded-full border-2 text-[22px] font-bold leading-none',
+              c.done
+                ? 'border-accent bg-accent text-white'
+                : 'border-line bg-white text-transparent',
+            )}
+            style={{ top: Y(845 + i * 74) }}
+          >
+            {c.done ? '✓' : ''}
+          </span>
           {/* ⚠️ 폭을 주지 않으면 "민감정보(건강·음성) 처리 동의(필수, 별도)" 가 오른쪽
               상태 pill(left 1212) 을 뚫고 **글자가 겹쳐 보인다**(2026-09-11 사용자 신고).
               라벨 문구는 core 동의 카탈로그가 SoT 라 길이를 코드가 정할 수 없다 →
@@ -492,14 +531,14 @@ export function ElderDetailPage() {
           <span
             data-fx={i === 0 ? '161:757' : undefined}
             className="absolute left-[953px] flex items-center text-w-body font-medium leading-[24px] tracking-[-0.2px] text-ink-900"
-            style={{ top: Y(831 + i * 92), height: 62, width: 245, wordBreak: 'keep-all' }}
+            style={{ top: Y(831 + i * 74), height: 62, width: 245, wordBreak: 'keep-all' }}
           >
             {c.label}
           </span>
           <Pill
             fx={i === 0 ? '161:768' : undefined}
             left={1212}
-            top={850 + i * 92}
+            top={850 + i * 74}
             width={82}
             height={25}
             className={cn(
@@ -507,7 +546,7 @@ export function ElderDetailPage() {
               c.done ? 'bg-live-soft text-live' : 'bg-mute text-ink-400',
             )}
           >
-            {c.done ? '완료' : '미동의'}
+            {c.done ? '동의 완료' : '미동의'}
           </Pill>
         </div>
       ))}
@@ -820,9 +859,13 @@ export function ElderDetailPage() {
         ))
       )}
 
-      {/* 삭제 — 실제 삭제는 확인 다이얼로그가 있는 목록/설정에서 (여기서는 이동만) */}
-      <Link
-        to="/caregiver/elders"
+      {/* 삭제 — 연결된 기록과 사진까지 파기하므로 명시적으로 한 번 더 확인한다. */}
+      <button
+        type="button"
+        onClick={() => {
+          setDeleteError(null);
+          setDeleteOpen(true);
+        }}
         className="absolute flex items-center gap-[10px] text-w-nav font-semibold leading-[30px] text-ink-500"
         style={{ left: 1147, top: Y(3295) }}
       >
@@ -833,7 +876,43 @@ export function ElderDetailPage() {
           style={{ width: 30, height: 30 }}
         />
         <span data-fx="196:140">어르신 정보 삭제하기</span>
-      </Link>
+      </button>
+
+      <Dialog
+        open={deleteOpen}
+        onClose={() => {
+          if (!deleteProfile.isPending) setDeleteOpen(false);
+        }}
+        title={`${elder.name} 어르신 정보를 삭제할까요?`}
+        description="연대기·대화 기록·분석·요양일지·동의 기록·사진까지 함께 삭제되며 되돌릴 수 없습니다."
+        size="md"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleteProfile.isPending}
+            >
+              취소
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => void deleteElder()}
+              disabled={deleteProfile.isPending}
+            >
+              {deleteProfile.isPending ? '삭제 중...' : '삭제하기'}
+            </Button>
+          </>
+        }
+      >
+        {deleteError ? (
+          <p role="alert" className="mb-6 rounded-[10px] bg-alert/10 px-5 py-4 text-w-body text-alert">
+            삭제하지 못했습니다: {deleteError}
+          </p>
+        ) : (
+          <p className="sr-only">삭제 후에는 어르신 정보를 복구할 수 없습니다.</p>
+        )}
+      </Dialog>
     </div>
   );
 }

@@ -116,11 +116,13 @@ export function OnboardingPage() {
   const [orgName, setOrgName] = useState('');
   const [elderCode, setElderCode] = useState('');
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [socialAgreed, setSocialAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const name = nameDraft ?? metaName ?? '';
   const phone = phoneDraft ?? metaPhone ?? '';
+  const isSocialAccount = user?.app_metadata?.provider !== 'email';
 
   if (loading) return null;
   if (!session) return <Navigate to="/login" replace />;
@@ -131,7 +133,7 @@ export function OnboardingPage() {
     if (!name.trim()) return toast('error', '이름을 입력해주세요.');
     if (!phone.trim()) return toast('error', '전화번호를 입력해주세요.');
     if (role === 'caregiver' && !orgName.trim()) return toast('error', '소속 기관명을 입력해주세요.');
-    if (!privacyAgreed || !socialAgreed) return toast('error', '필수 동의 항목에 체크해 주세요.');
+    if (!termsAgreed || !privacyAgreed || (isSocialAccount && !socialAgreed)) return toast('error', '필수 동의 항목에 체크해 주세요.');
 
     setSubmitting(true);
     try {
@@ -142,9 +144,9 @@ export function OnboardingPage() {
         orgName: role === 'caregiver' ? orgName.trim() : undefined,
         elderCode: role === 'guardian' ? elderCode.trim() || undefined : undefined,
         // 계정 필수 동의를 consents 에 기록한다(C2 — 이전에는 UI 게이트만으로 미기록).
-        consents: ['privacy_required'],
+        consents: ['terms_required', 'privacy_required'],
         consentVersion: CONSENT_VERSION,
-        socialAcknowledged: socialAgreed,
+        socialAcknowledged: isSocialAccount ? socialAgreed : true,
       });
       const row = await refreshUserRow();
       toast('success', '가입이 완료되었습니다. 환영합니다!');
@@ -159,7 +161,7 @@ export function OnboardingPage() {
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      <main className="relative mx-auto h-[1126px] w-full max-w-[1440px]">
+      <main className="relative mx-auto h-[1205px] w-full max-w-[1440px]">
         <h1
           data-fx="25:250"
           className="absolute left-[591px] whitespace-nowrap text-w-section font-semibold leading-[30px] text-ink-900"
@@ -267,13 +269,26 @@ export function OnboardingPage() {
           />
         )}
 
-        {/* 필수 동의 2건 */}
+        {/* 회원가입 필수 동의: 약관과 개인정보 동의를 분리해 각각 확인한다. */}
         <div
           data-fx="25:421"
           className="absolute left-[432px] h-[151px] w-[576px] rounded-[10px] border border-line bg-white"
           style={{ top: Y(916) }}
         />
         {[
+          {
+            fx: ['terms-check', 'terms-label'],
+            checkTop: 922,
+            textTop: 918,
+            leading: 21,
+            checked: termsAgreed,
+            set: setTermsAgreed,
+            label: '이용약관 동의(필수)',
+            detail: '/terms',
+            detailLabel: '약관 상세보기',
+            detailTop: 918,
+            body: <><span className="font-semibold text-ink-900">[필수]</span> 이용약관에 동의합니다.</>,
+          },
           {
             fx: ['25:602', '25:422'],
             checkTop: 952,
@@ -282,6 +297,10 @@ export function OnboardingPage() {
             checked: privacyAgreed,
             set: setPrivacyAgreed,
             label: '개인정보 수집·이용 동의(필수)',
+            detail: '/consents/member-privacy',
+            detailLabel: '수집·이용 상세보기',
+            detailFx: '25:428',
+            detailTop: 946.76,
             body: (
               <>
                 <span className="font-semibold text-ink-900">[필수]</span> 개인정보 수집·이용에
@@ -289,7 +308,7 @@ export function OnboardingPage() {
               </>
             ),
           },
-          {
+          ...(isSocialAccount ? [{
             fx: ['25:605', '25:468'],
             checkTop: 990,
             textTop: 984.79,
@@ -297,6 +316,9 @@ export function OnboardingPage() {
             checked: socialAgreed,
             set: setSocialAgreed,
             label: '소셜 계정 정보 제공 확인(필수)',
+            detail: '/privacy',
+            detailLabel: '처리방침 보기',
+            detailTop: 984.79,
             body: (
               <>
                 <span className="font-semibold text-ink-900">[필수]</span> 소셜
@@ -305,7 +327,7 @@ export function OnboardingPage() {
                 확인했습니다. 비밀번호는 저장되지 않습니다.
               </>
             ),
-          },
+          }] : []),
         ].map((c) => (
           <div key={c.fx[0]}>
             <input
@@ -326,17 +348,20 @@ export function OnboardingPage() {
             >
               {c.body}
             </label>
+            <Link
+              data-fx={'detailFx' in c ? c.detailFx : undefined}
+              to={c.detail}
+              target="_blank"
+              className="absolute text-w-label leading-[21px] text-[#8a8a8a] underline"
+              style={{
+                left: 'detailFx' in c ? 779 : 829,
+                top: Y(c.detailTop),
+              }}
+            >
+              {c.detailLabel}
+            </Link>
           </div>
         ))}
-        <Link
-          data-fx="25:428"
-          to="/privacy"
-          target="_blank"
-          className="absolute left-[779px] text-w-sub leading-[21px] text-[#aeaeae] underline"
-          style={{ top: Y(946.76) }}
-        >
-          처리방침 보기
-        </Link>
 
         <button
           type="button"
