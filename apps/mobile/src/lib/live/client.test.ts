@@ -194,4 +194,38 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     expect(client.isConnected).toBe(false);
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  describe('감독 화면 원격 제어(파일럿 M5)', () => {
+    it.each(['paused', 'ended'] as const)('%s 알림을 원격 제어로 넘기고 대기 중인 턴을 끝낸 뒤 입력을 막는다', async state => {
+      const onRemoteControl = vi.fn(), onError = vi.fn(), onClose = vi.fn();
+      const client = new GeminiLiveClient({ onRemoteControl, onError, onClose }, RELAY);
+      const connecting = client.connect(); const socket = Socket.all[0];
+      socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+      const reply = client.sendUserTurn('말씀');
+      await socket.receive({ relayControl: { state } });
+      expect(onRemoteControl).toHaveBeenCalledWith(state);
+      expect(await reply).toBe('timeout');
+      expect(client.isConnected).toBe(false);
+      // 원격 제어는 오류·예상 밖 끊김이 아니다 — 엔진이 "중계가 종료됐어요"를 띄우지 않게.
+      expect(onError).not.toHaveBeenCalled(); expect(onClose).not.toHaveBeenCalled();
+      const sent = socket.sent.length;
+      client.streamAudioChunk('AAAA');
+      expect(socket.sent).toHaveLength(sent);
+    });
+    it('준비 전(인증 시점에 이미 정지)에 온 알림도 원격 제어로 알리고 연결을 거부한다', async () => {
+      const onRemoteControl = vi.fn(), onError = vi.fn();
+      const client = new GeminiLiveClient({ onRemoteControl, onError }, RELAY);
+      const connecting = client.connect(); const failed = expect(connecting).rejects.toThrow();
+      const socket = Socket.all[0]; socket.onopen!();
+      await socket.receive({ relayControl: { state: 'paused' } });
+      await failed;
+      expect(onRemoteControl).toHaveBeenCalledWith('paused');
+      expect(onError).not.toHaveBeenCalled();
+    });
+    it.each([{ state: 'resume' }, {}, null])('모르는 제어 신호 %o 는 오류로 닫는다', async control => {
+      const { client, socket, onError } = await connected();
+      await socket.receive({ relayControl: control });
+      expect(onError).toHaveBeenCalled(); expect(client.isConnected).toBe(false);
+    });
+  });
 });

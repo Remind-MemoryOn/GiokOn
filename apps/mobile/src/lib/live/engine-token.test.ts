@@ -23,6 +23,7 @@ function engineApi(configured: string | undefined = RELAY, unset = false) {
   const send = vi.fn(async () => ({ text: 'synthetic', audioChunksB64: [] }))
   const streamAudio = vi.fn()
   let draft: (text: string) => void = () => {}
+  let clientCallbacks: Record<string, (...args: unknown[]) => void> = {}
   const micStop = vi.fn()
   const startMic = vi.fn((_options: { onData: (chunk: string) => void }) => ({ stop: micStop }))
   let tick: () => Promise<unknown> | void = () => {};
@@ -36,7 +37,7 @@ function engineApi(configured: string | undefined = RELAY, unset = false) {
     require: (name: string) => {
       if (name === '@giokon/core') return { parseVoiceResumeContext }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
-      if (name === './client') return { GeminiLiveClient: class { constructor(callbacks: {onDraft: (text: string) => void}, relay: unknown) { connections(relay); draft = callbacks.onDraft }; isConnected = true; playbackTurnId: number | null = null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
+      if (name === './client') return { GeminiLiveClient: class { constructor(callbacks: {onDraft: (text: string) => void}, relay: unknown) { connections(relay); draft = callbacks.onDraft; clientCallbacks = callbacks as never }; isConnected = true; playbackTurnId: number | null = null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
       if (name === './relay-config') return { voiceRelayUrl: () => parseVoiceRelayUrl(relayUrl), VOICE_RELAY_MISSING_MESSAGE }
       if (name === './endpoint') return { InputEndpoint, pcmLevel }
       if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic, hasMicPermission: micPermission }
@@ -44,7 +45,7 @@ function engineApi(configured: string | undefined = RELAY, unset = false) {
       throw new Error(name)
     },
   })
-  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, micPermission, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval }
+  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, micPermission, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval, client: () => clientCallbacks }
 }
 
 afterEach(() => vi.useRealTimers())
@@ -370,3 +371,37 @@ it('requests a continuation only on a restored relay and rechecks current proces
   expect(api.send).toHaveBeenCalledTimes(1);
   await api.exports.closeLiveEngine();
 });
+
+describe('감독 화면 원격 제어 수신(파일럿 M5)', () => {
+  it.each(['paused', 'ended'] as const)('%s 를 오류가 아닌 원격 제어로 넘기고, 뒤따르는 끊김을 오류로 알리지 않는다', async state => {
+    const api = engineApi()
+    const onError = vi.fn(), onRemoteControl = vi.fn()
+    const engine = await api.exports.acquireLiveEngine('key', { onDraftFinal: vi.fn(), onError, onRemoteControl }, 'session') as ListeningEngine
+    expect(engine).toBeTruthy()
+    api.client().onRemoteControl(state)
+    api.client().onRemoteControl(state)
+    expect(onRemoteControl).toHaveBeenCalledTimes(1)
+    expect(onRemoteControl).toHaveBeenCalledWith(state)
+    api.client().onClose()
+    await Promise.resolve()
+    expect(onError).not.toHaveBeenCalled()
+    expect(api.stopPlayback).toHaveBeenCalled() // 엔진 정리(마이크·재생)는 한다
+  })
+  it('처리기가 없으면 조용히 멈추지 않고 오류로 알린 뒤 닫는다', async () => {
+    const api = engineApi()
+    const onError = vi.fn()
+    await api.exports.acquireLiveEngine('key', { onDraftFinal: vi.fn(), onError }, 'session')
+    api.client().onRemoteControl('paused')
+    expect(onError).toHaveBeenCalledWith('감독 화면에서 대화를 잠시 멈췄어요.')
+    expect(api.close).toHaveBeenCalled()
+  })
+  it('접속 시점에 이미 정지된 세션은 연결 오류 안내 없이 원격 제어만 알린다', async () => {
+    const api = engineApi()
+    const onError = vi.fn(), onRemoteControl = vi.fn()
+    api.connect.mockImplementation(async () => { api.client().onRemoteControl('paused'); throw new Error('remote') })
+    const engine = await api.exports.acquireLiveEngine('key', { onDraftFinal: vi.fn(), onError, onRemoteControl }, 'session')
+    expect(engine).toBeNull()
+    expect(onRemoteControl).toHaveBeenCalledWith('paused')
+    expect(onError).not.toHaveBeenCalled()
+  })
+})

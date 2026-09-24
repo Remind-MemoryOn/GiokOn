@@ -203,7 +203,7 @@
 
 ## 6. 앱 파트 (`apps/mobile`)
 
-> **진행 현황(2026-09-24)** — ✅ M1·M2·M3·M4·M7 완료(PR `claude/app-development-session-4cvhm5`). ⏳ M5·M6 은 선행(D6·C3 / D7·C4 push) 대기.
+> **진행 현황(2026-09-24)** — ✅ M1·M2·M3·M4·M5·M7 완료(PR `claude/app-development-session-4cvhm5`. M5 는 선행 D1~D6·C2·C3 과 함께 — 마이그레이션은 로컬 검증만, 운영 미적용). ⏳ M6 은 선행(D7·C4 push) 대기.
 > 상세 기록은 루트 `AGENTS.md` "현재 위치 (2026-09-24 — 앱 파트 착수)".
 
 | # | 내용 | 파일 | 상태 |
@@ -212,7 +212,7 @@
 | **M2** | **어르신 표시 모드 분리** — `talk.tsx`(요양보호사) + `app/session/elder.tsx`(표시 전용) 신설, 공용 로직은 `src/features/session/` 으로 추출 | 신규 + 기존 | ✅ 2026-09-24 — ⚠️ 별도 라우트 대신 **`talk.tsx` 안의 표시 모드 전환**(컨트롤러 수명 분리 방지). 화면 `src/features/session/ElderView.tsx`. "시작"과 동시에 전환 |
 | **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` | ✅ 2026-09-24 — `check:figma` 부재 규칙으로 고정 |
 | **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` | ✅ 2026-09-24 — **PIN**(4자리, 요양보호사별, 서버 미전송, 5회 실패 30초 잠금). 진입은 어르신 화면의 작은 '선생님' 버튼. 설정 화면에서 변경 |
-| **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` | ⏳ 선행: D6·C3 |
+| **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` | ✅ 2026-09-24 — 원격 정지 중 현장 재개 불가(사용자 확정), 서버 재개는 2초 폴로 자동 반영 |
 | **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 | ⏳ 선행: D7·C4(push) |
 | **M7** | `persistWholeSession`(폴백) 저장 순서를 `finalizeSession` 과 맞춘다(세션 생성 → 턴·분석 → `ended`). 워커 첫 시도 성공률이 오른다 | `src/data/session-persistence.ts` | ✅ 2026-09-24 — `active` → 턴 → 분석 → 이벤트 → `ended` |
 

@@ -256,14 +256,15 @@ export default function Talk() {
         {!['idle','stopped'].includes(automatic.phase) && (
           <Pressable
             onPress={() => void (automatic.phase === 'paused' ? automatic.resume() : automatic.pause())}
-            disabled={automatic.phase === 'pausing' || (automatic.phase === 'paused' && pending !== null)}
+            // 감독 화면의 원격 일시정지는 현장에서 풀지 않는다(사용자 확정) — 감독 화면 재개 시 자동으로 이어진다.
+            disabled={automatic.phase === 'pausing' || (automatic.phase === 'paused' && (pending !== null || automatic.remote === true))}
             accessibilityRole="button"
-            accessibilityState={{ disabled: automatic.phase === 'pausing' || (automatic.phase === 'paused' && pending !== null) }}
+            accessibilityState={{ disabled: automatic.phase === 'pausing' || (automatic.phase === 'paused' && (pending !== null || automatic.remote === true)) }}
             className="items-center justify-center active:opacity-70"
             style={{ width: 336, minHeight: 48, marginTop: 8, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
           >
             <Text className="text-[18px] font-semibold text-black" style={{ lineHeight: 28 }}>
-              {automatic.phase === 'paused' ? '대화 재개' : automatic.phase === 'pausing' ? '일시정지 중…' : '잠시 멈추기'}
+              {automatic.phase === 'paused' ? (automatic.remote ? '감독 화면 재개 대기' : '대화 재개') : automatic.phase === 'pausing' ? '일시정지 중…' : '잠시 멈추기'}
             </Text>
           </Pressable>
         )}

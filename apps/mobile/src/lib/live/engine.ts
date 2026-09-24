@@ -12,7 +12,7 @@
 
 import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
-import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
+import { GeminiLiveClient, type LiveTurnResult, type RelayControlState, type VoiceRelayConnection } from './client';
 import { hasMicPermission, micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 import { InputEndpoint, pcmLevel } from './endpoint';
@@ -31,6 +31,11 @@ export interface LiveEngineCallbacks {
   onDraftInterrupted?: (text: string) => void;
   onError?: (message: string) => void;
   onProcessingDenied?: () => void;
+  /**
+   * 감독 화면의 원격 일시정지·종료(파일럿 M5). 오류가 아니다 — 이 알림 뒤의 연결 실패·끊김은
+   * onError 로 다시 알리지 않는다. 핸들러가 없으면 오류로 알리고 닫는다(조용히 멈추지 않게).
+   */
+  onRemoteControl?: (state: RelayControlState) => void;
 }
 
 export class LiveConversationEngine {
@@ -45,6 +50,7 @@ export class LiveConversationEngine {
   private failedStopDraft: string | null = null;
   private accessTimer: ReturnType<typeof setInterval> | null = null;
   private lastAccessCheck = 0;
+  private remoteControl: RelayControlState | null = null;
 
   private denyProcessing(): void {
     if (this.closing) return;
@@ -103,10 +109,11 @@ export class LiveConversationEngine {
       if (!this.closing) this.accessTimer = setInterval(() => { void this.verifyProcessing(); }, 2000);
       return !this.closing;
     } catch (e) {
-      this.callbacks.onError?.('음성 중계 연결을 확인해 주세요.');
-      console.info('[giokon] 음성 중계 연결 실패', e);
       this.client?.close();
       this.client = null;
+      if (this.remoteControl) return false; // 원격 제어로 거부된 연결 — 이미 onRemoteControl 로 알렸다.
+      this.callbacks.onError?.('음성 중계 연결을 확인해 주세요.');
+      console.info('[giokon] 음성 중계 연결 실패', e);
       return false;
     }
   }
@@ -126,9 +133,18 @@ export class LiveConversationEngine {
         this.endpoint?.transcript(performance.now());
       },
       onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
+      onRemoteControl: (state) => {
+        if (this.closing || this.remoteControl) return;
+        this.remoteControl = state;
+        const handler = this.callbacks.onRemoteControl;
+        if (handler) { handler(state); return; }
+        this.callbacks.onError?.(state === 'ended' ? '감독 화면에서 대화를 끝냈어요.' : '감독 화면에서 대화를 잠시 멈췄어요.');
+        void this.close();
+      },
       onClose: () => {
         this.client = null;
         if (this.closing) return;
+        if (this.remoteControl) { void this.close(); return; }
         // 의도하지 않은 끊김 — 중계 연결은 재사용하지 않는다(서버가 턴·재생 상태를 소유).
         this.callbacks.onError?.('음성 중계가 종료됐어요. 기록을 저장한 뒤 다시 시작해 주세요.');
         void this.close();

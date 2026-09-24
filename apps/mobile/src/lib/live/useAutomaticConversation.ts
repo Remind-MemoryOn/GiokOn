@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { VOICE_FAILURE_MESSAGES, screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
-import { getTranscriptStorageVersion } from '@giokon/data';
+import { getSessionControl, getTranscriptStorageVersion } from '@giokon/data';
 import { queryScope } from '../supabase';
 import { useApp, type ActiveSession } from '../../store/appStore';
 import { acquireLiveEngine, closeLiveEngine } from './engine';
@@ -10,7 +10,7 @@ import { AutomaticConversation, type AutomaticPhase } from './automatic';
 
 export function useAutomaticConversation(session: ActiveSession | null, save: () => Promise<boolean>) {
   const controller = useRef<AutomaticConversation | null>(null);
-  const [state, setState] = useState<{phase: AutomaticPhase; reason?: string}>({phase:'idle'});
+  const [state, setState] = useState<{phase: AutomaticPhase; reason?: string; remote?: boolean}>({phase:'idle'});
   useEffect(() => {
     if (!session?.remoteId) return;
     const lease = queryScope.capture();
@@ -47,7 +47,7 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
           return true;
         } catch { return false; }
       },
-      connect: (onInput,onFailure,resuming) => {
+      connect: (onInput,onFailure,resuming,onRemote) => {
         const generation=++connectionGeneration;
         return acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
         {onDraftFinal:onInput,onError: message => {
@@ -55,6 +55,9 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
             if (message === VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED) useApp.getState().requireRelayReview();
             onFailure(message);
           },onProcessingDenied:onFailure,
+          onRemoteControl: state => {
+            if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id) onRemote?.(state);
+          },
           onDraftInterrupted: text => {
             if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id)
               useApp.getState().setPendingStt(text, 'gemini_live');
@@ -68,6 +71,8 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
         return await engine.requestContinuation?.() ?? null;
       },
       cancelPending: closeLiveEngine,
+      // 원격 재개·종료 감지(파일럿 M5) — 중계와 같은 서버 판정. 세션 소유 서버 id 로만 묻는다.
+      control: () => getSessionControl(session.remoteId!),
       input: text => useApp.getState().adoptAutomaticInput(text),
       output: (text,opener) => {
         if (!screenAiUtterance(text).allowed) return false;
@@ -89,7 +94,7 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
         if (outputTurn) useApp.getState().markTurnPlayback(outputTurn.id, outputTurn.text, result);
       },
       save,
-      status: (phase,reason) => setState({phase,reason}),
+      status: (phase,reason,remote) => setState(remote ? {phase,reason,remote} : {phase,reason}),
     });
     controller.current=flow;
     const subscription=AppState.addEventListener('change',next=>{

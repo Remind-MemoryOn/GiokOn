@@ -1,20 +1,21 @@
-import { expect, it, vi } from 'vitest';
-import { AutomaticConversation, type AutomaticPorts } from './automatic';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AutomaticConversation, REMOTE_CONTROL_POLL_MS, REMOTE_END_REASON, REMOTE_PAUSE_REASON, type AutomaticPorts, type RemoteControlState } from './automatic';
 
 function fixture() {
   let onInput!: (text: string) => void;
+  let onRemote: ((state: 'paused' | 'ended') => void) | undefined;
   const events: string[] = [];
   const engine = { requestOpener: vi.fn(async () => ({text:'질문',audioChunksB64:['pcm']})),
     submitUserTurn: vi.fn(async () => ({status:'ok' as const,text:'다음 질문',chunksB64:['pcm']})),
     playTurn: vi.fn(async () => {events.push('play'); return 'completed' as 'completed'|'interrupted'|'empty';}),
     startListening: vi.fn(async () => {events.push('listen');}), isListening: true, close: vi.fn(async()=>{}) };
   const ports: AutomaticPorts = { current:()=>true, ready:vi.fn(async()=>true),
-    connect:vi.fn(async cb=>{onInput=cb; return engine;}), cancelPending:vi.fn(async()=>{}),
+    connect:vi.fn(async (cb,_failure,_resuming,remote)=>{onInput=cb; onRemote=remote; return engine;}), cancelPending:vi.fn(async()=>{}),
     input:vi.fn(()=>{events.push('input'); return 'continue' as const;}),
     output:vi.fn(()=>{events.push('output'); return true;}),
     playback:vi.fn(), save:vi.fn(async()=>{events.push('save'); return true;}), status:vi.fn() };
   const controller=new AutomaticConversation(ports);
-  return {controller,ports,engine,events,input:(text:string)=>onInput(text)};
+  return {controller,ports,engine,events,input:(text:string)=>onInput(text),remote:(state:'paused'|'ended')=>onRemote?.(state)};
 }
 it('automatically saves, plays and listens across two utterances without confirmation', async()=>{
   const f=fixture(); await f.controller.start();
@@ -138,4 +139,104 @@ it.each(['음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저�
   vi.mocked(f.ports.connect).mock.calls[0][1](message);
   await vi.waitFor(()=>expect(f.engine.close).toHaveBeenCalled());
   expect(f.ports.status).toHaveBeenLastCalledWith('stopped',message.startsWith('음성 합성')?message:'음성 연결이 중단됐어요. 기록을 저장해 주세요.');
+});
+
+describe('감독 화면 원격 제어(파일럿 M5)', () => {
+  afterEach(() => { vi.useRealTimers(); });
+  function remoteFixture(states: RemoteControlState[]) {
+    vi.useFakeTimers();
+    const f = fixture();
+    const control = vi.fn(async (): Promise<RemoteControlState> => states.length > 1 ? states.shift()! : states[0]);
+    f.ports.control = control;
+    f.ports.resume = vi.fn(async () => 'listen' as const);
+    return { ...f, control };
+  }
+  it('원격 일시정지는 마이크·연결을 즉시 닫고 "잠시 쉬어요" 상태로 멈추며 현장 재개를 막는다', async () => {
+    const f = remoteFixture(['paused']);
+    await f.controller.start();
+    f.remote('paused');
+    expect(f.engine.close).toHaveBeenCalled(); // 동기 — 다음 오디오 청크 전에 마이크가 닫힌다
+    await vi.waitFor(() => expect(f.ports.status).toHaveBeenLastCalledWith('paused', REMOTE_PAUSE_REASON, true));
+    expect(f.controller.remotePaused).toBe(true);
+    await f.controller.resume();
+    expect(f.ports.connect).toHaveBeenCalledTimes(1); // 현장 재개 불가(사용자 확정)
+  });
+  it('서버가 재개를 알리면 2초 폴 안에 저장된 흐름으로 이어간다', async () => {
+    const f = remoteFixture(['paused', 'running']);
+    await f.controller.start();
+    f.remote('paused');
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.connect).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.connect).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(f.ports.connect).mock.calls[1]?.[2]).toBe(true); // 재개 경로(새 오프너 아님)
+    expect(f.engine.requestOpener).toHaveBeenCalledTimes(1);
+    expect(f.controller.remotePaused).toBe(false);
+  });
+  it('원격 종료는 이유와 함께 멈추고 폴을 멈춘다', async () => {
+    const f = remoteFixture(['running']);
+    await f.controller.start();
+    f.remote('ended');
+    await vi.waitFor(() => expect(f.ports.status).toHaveBeenLastCalledWith('stopped', REMOTE_END_REASON));
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS * 3);
+    expect(f.control).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('원격 정지 중 서버가 종료를 알리면 멈춘다', async () => {
+    const f = remoteFixture(['ended']);
+    await f.controller.start();
+    f.remote('paused');
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.status).toHaveBeenLastCalledWith('stopped', REMOTE_END_REASON);
+  });
+  it('현장에서 멈춘 사이 감독 화면도 멈추면 현장 재개를 막고, 서버 재개 뒤에 이어간다', async () => {
+    const f = remoteFixture(['paused', 'running']);
+    await f.controller.start();
+    await f.controller.pause();
+    expect(f.controller.remotePaused).toBe(false);
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.status).toHaveBeenLastCalledWith('paused', REMOTE_PAUSE_REASON, true);
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.connect).toHaveBeenCalledTimes(2);
+  });
+  it('현장 일시정지는 서버가 계속 진행 중이어도 저절로 재개하지 않는다', async () => {
+    const f = remoteFixture(['running']);
+    await f.controller.start();
+    await f.controller.pause();
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS * 3);
+    expect(f.ports.connect).toHaveBeenCalledTimes(1);
+    expect(f.control).toHaveBeenCalledTimes(3);
+  });
+  it('상태 확인 실패는 추측하지 않고 다음 폴에 다시 본다', async () => {
+    const f = remoteFixture(['paused']);
+    await f.controller.start();
+    f.remote('paused');
+    await vi.waitFor(() => expect(f.controller.remotePaused).toBe(true));
+    f.control.mockRejectedValueOnce(new Error('offline'));
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.controller.remotePaused).toBe(true);
+    f.control.mockResolvedValue('running');
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.connect).toHaveBeenCalledTimes(2);
+  });
+  it('이전 연결의 원격 알림은 무시한다', async () => {
+    const f = remoteFixture(['running']);
+    await f.controller.start();
+    f.remote('paused');
+    await vi.waitFor(() => expect(f.controller.remotePaused).toBe(true));
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS);
+    expect(f.ports.connect).toHaveBeenCalledTimes(2);
+    const stale = vi.mocked(f.ports.connect).mock.calls[0]![3]!;
+    stale('ended');
+    expect(f.ports.status).not.toHaveBeenCalledWith('stopped', REMOTE_END_REASON);
+  });
+  it('회수(stop) 뒤에는 폴 타이머가 남지 않는다', async () => {
+    const f = remoteFixture(['paused']);
+    await f.controller.start();
+    f.remote('paused');
+    await vi.waitFor(() => expect(f.controller.remotePaused).toBe(true));
+    await f.controller.stop();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(f.controller.remotePaused).toBe(false);
+  });
 });

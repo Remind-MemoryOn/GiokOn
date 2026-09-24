@@ -33,7 +33,11 @@ type Handlers = {
   onDraft?: (text: string) => void;
   onError?: (e: unknown) => void;
   onClose?: () => void;
+  /** 감독 화면의 원격 일시정지·종료(파일럿 M5). 중계는 이 알림 뒤 곧 연결을 닫는다. */
+  onRemoteControl?: (state: RelayControlState) => void;
 };
+
+export type RelayControlState = 'paused' | 'ended';
 
 interface WsLike {
   send(data: string): void;
@@ -128,6 +132,15 @@ export class GeminiLiveClient {
             this.opened = true;
             resolve();
             this.handlers.onOpen?.();
+            return;
+          }
+          if ('relayControl' in msg) {
+            const state = (msg.relayControl as { state?: unknown } | null)?.state;
+            if (state !== 'paused' && state !== 'ended') throw new Error('음성 중계의 제어 신호를 확인하지 못했어요.');
+            // 준비 전(인증 시점에 이미 정지된 세션)에도 온다 — 연결 실패가 아니라 원격 제어로 알린다.
+            this.handlers.onRemoteControl?.(state);
+            if (!settled) fail(new Error('음성 중계가 원격 제어로 연결을 멈췄어요.'));
+            else this.close();
             return;
           }
           if ('serverContent' in msg) {

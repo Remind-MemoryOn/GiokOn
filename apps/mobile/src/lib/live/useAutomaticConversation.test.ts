@@ -5,6 +5,7 @@ const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
   status: [] as unknown[], change: null as null | ((state:string)=>void),
   input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
   opener:vi.fn(async():Promise<unknown>=>({text:'고향은 어디세요?',audioChunksB64:['pcm']})),
+  control:vi.fn(async()=> 'running'), remote:null as null | ((state:'paused'|'ended')=>void),
   play:vi.fn(async()=> 'completed'), listen:vi.fn(async()=>{}), close:vi.fn(async()=>{}) }));
 vi.mock('react',async original=>({...await original<typeof import('react')>(),
   useEffect:(effect:()=>void|(()=>void))=>{native.effects.push(effect);},
@@ -14,14 +15,14 @@ vi.mock('react',async original=>({...await original<typeof import('react')>(),
 vi.mock('react-native',()=>({AppState:{currentState:'active',addEventListener:(_event:string,cb:(state:string)=>void)=>{
   native.change=cb; return {remove:()=>{native.change=null;}};
 }}}));
-vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version}));
+vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version,getSessionControl:native.control}));
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
 vi.mock('./mic',()=>({ensureMicPermission:async()=>true}));
 vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
-  acquireLiveEngine:async(_key:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void},_session:unknown,context:unknown)=>{
+  acquireLiveEngine:async(_key:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void;onRemoteControl:(state:'paused'|'ended')=>void},_session:unknown,context:unknown)=>{
     native.contexts.push(context);
     native.input=callbacks.onDraftFinal; native.failure=callbacks.onError;
-    native.partial=callbacks.onDraftInterrupted;
+    native.partial=callbacks.onDraftInterrupted; native.remote=callbacks.onRemoteControl;
     return {requestContinuation:native.continuation,requestOpener:native.opener,
       submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
       playTurn:native.play,startListening:native.listen,isListening:true,close:native.close};
@@ -188,4 +189,24 @@ it('records relay review only for the current connection and keeps it for final 
   useApp.getState().finishSession();
   expect(useApp.getState().lastFinished!.events[0].excerpt).toBe('');
   if(cleanup) cleanup();
+});
+
+it('감독 화면 원격 일시정지를 받아 멈추고, 서버(session_tick) 재개 뒤 같은 세션으로 이어간다(파일럿 M5)',async()=>{
+  vi.useFakeTimers();
+  try {
+    native.control.mockResolvedValueOnce('paused').mockResolvedValue('running');
+    const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+    const cleanup=native.effects[0]();
+    await view.start();
+    native.remote!('paused');
+    expect(native.close).toHaveBeenCalled();
+    await vi.waitFor(()=>expect(native.status.at(-1)).toMatchObject({phase:'paused',remote:true}));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(native.control).toHaveBeenCalledWith('remote'); // 세션의 서버 id 로만 묻는다
+    expect(native.contexts).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.waitFor(()=>expect(native.contexts).toHaveLength(2)); // 재개 = 새 중계 연결
+    expect(native.status.at(-1)).not.toMatchObject({remote:true});
+    if (cleanup) cleanup();
+  } finally { vi.useRealTimers(); }
 });
