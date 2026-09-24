@@ -79,18 +79,28 @@ const SPECS = [
   // ── 대화 (Figma 17:108) ───────────────────────────────────────────────
   [`${APP}/app/session/talk.tsx`, '대화: X 닫기 17×17 에셋', [/icon-close\.png/, /width: 17, height: 17/]],
   [
-    `${APP}/app/session/talk.tsx`,
+    // 질문 카드는 요양보호사·어르신 화면 공용 컴포넌트로 옮겼다(계획 M2, 2026-09).
+    `${APP}/src/features/session/QuestionCard.tsx`,
     // 258 은 **최소** 높이 — 실제 AI 질문은 길이가 달라 카드가 늘어나야 한다(사용자 지적).
     // 로봇 (18,38) / 질문 (75.25,27) w251 은 padding·margin 합으로 동일하게 유지.
     '대화: 질문카드 336×min258 r10 #fdf3ea + 주황 테두리 · 로봇(18,38) 46.5 · 질문(75.25,27) w251',
     [/width: 336,\s*minHeight: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /paddingTop: 26/, /marginLeft: 17, marginTop: 11/, /RobotInline size=\{46\.5\}/, /marginLeft: 10\.75, width: 251/],
   ],
-  [`${APP}/app/session/talk.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
+  [`${APP}/src/features/session/QuestionCard.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
+  [`${APP}/app/session/talk.tsx`, '대화: 요양보호사·어르신 화면 모두 같은 질문 카드', [/<QuestionCard question=/]],
+  [`${APP}/src/features/session/ElderView.tsx`, '어르신 화면: 질문 카드·파형 226·마이크 123(표시 전용)·상태 Medium 23 lh42',
+    [/<QuestionCard question=/, /Waveform active=\{[^}]*\} width=\{226\}/, /MicIndicator yourTurn=\{[^}]*\} size=\{123\}/, /text-\[23px\] font-medium/, /lineHeight: 42/]],
+  [
+    `${APP}/src/features/session/ElderView.tsx`,
+    // 계획 M3: 위기 배너·전화번호·부분 전사 패널·중계 제어·X 는 어르신 화면에 두지 않는다.
+    '안전: 어르신 화면에 요양보호사 UI 가 없다',
+    [{ absent: /CrisisBanner|caregiverAlert|TextInput|icon-close|pendingStt|reason|automatic\.(pause|resume|stop)|\d{3}-\d{3,4}|109|119|1577/ }],
+  ],
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
   [
     `${APP}/src/components/brand.tsx`,
-    '대화: 마이크 2상태 에셋 123(회색=TTS 중·인식 중 / 주황=말할 차례)',
-    [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{disabled \? micWait : micReady\}/, /width: size, height: size/],
+    '대화: 마이크 2상태 에셋 123(주황=말할 차례 / 회색=그 외) — 어르신 화면의 표시 전용',
+    [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{yourTurn \? micReady : micWait\}/, /width: size, height: size/],
   ],
   // 마이크 버튼·다시 듣기·"AI가 이렇게 이해했어요" 패널·질문 로딩(28:37)은 직접 Gemini Live 모드의
   // 매 턴 수동 흐름이라 중계 단일화(계획 M1, 2026-09)와 함께 화면에서 삭제했다 — 규칙도 뺐다.

@@ -181,8 +181,8 @@
 | A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴 → 분석 → 이벤트 → `ended` | ✅ |
 | A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ✅ |
 | A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ✅ |
-| A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ⏳ |
-| A5 | M4 · T23.4 | 복귀 게이트 = **PIN**(`expo-secure-store`) | ⏳ |
+| A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ✅ |
+| A5 | M4 · T23.4 | 복귀 게이트 = **PIN**(`expo-secure-store`) | ✅ |
 
 - **사용자 결정(2026-09-24)**: ① `buildJournalDraft` 는 **남긴다** — 웹 `JournalWritePage.tsx` 가 아직 쓴다. 웹 W1 이 그 화면을 대체할 때 지운다.
   앱 파트는 웹 파일을 건드리지 않는다 · ② **M5(원격 제어 수신)·M6(푸시 토큰)은 보류** — D6/C3·D7 이 끝난 뒤 착수한다(가정 계약으로 먼저 만들지 않는다) ·
@@ -215,6 +215,22 @@
   - core test 253→201(삭제된 생성기·voice-flow 테스트분). 세션 시뮬레이션은 **안전 불변식**(위기·중단·학대·혼란·오탐 없음)만 남겼다.
     전 패키지 typecheck/lint/test · 웹 build · bom/copy/font/figma/design 통과. mobile 212.
 
+- ✅ **A5·A4 완료**(순서를 바꿔 PIN 부품을 먼저 커밋 — 커밋 사이에 "PIN 없이 나갈 수 있는 어르신 화면"이 생기지 않게).
+  - **사용자 결정(2026-09-24)**: 시작과 동시에 어르신 화면으로 전환 · 복귀는 구석의 작은 '선생님' 버튼 → PIN ·
+    PIN 은 처음 넘길 때 정하고 설정 메뉴에서 바꾼다 · 첫 사용 튜토리얼은 이번 범위 밖.
+  - PIN(`src/features/session/caregiverPin.ts`): 4자리, `expo-secure-store` 에 **요양보호사(user id)별**, 서버 미전송,
+    저장소를 못 읽으면 불통과, 5회 연속 실패 시 30초 잠금(프로세스 메모리). 설정 화면 맨 아래 "어르신 화면 > 요양보호사 PIN" 행.
+  - 어르신 표시 모드는 **별도 라우트가 아니라 `talk.tsx` 안의 모드 전환**이다(계획은 `elder.tsx` 라우트였다) — 자동 대화 컨트롤러를
+    한 화면이 계속 소유해야 연결·마이크 수명이 갈라지지 않는다. 화면은 `src/features/session/ElderView.tsx`,
+    질문 카드는 공용 `QuestionCard.tsx`, 어르신 문구는 `elderStatus.ts`(단계별 고정 — 컨트롤러 사유 문구·전화번호 금지, 테스트).
+  - 어르신 화면에 없는 것(계획 M3): 위기 배너·전화번호·부분 전사 패널·중계 제어·X. `check:figma` 에 **부재 규칙** 추가(174항목).
+    마이크는 누를 수 없는 표시(`MicIndicator`)로 바꾸고 안 쓰게 된 `MicButton` 삭제.
+  - 어르신 모드에서 안드로이드 뒤로가기(`BackHandler`)·iOS 스와이프(`gestureEnabled:false`) 차단. 마이크 권한은 넘기기 **전**에 확인한다
+    (OS 권한 창이 어르신 화면 위에 뜨지 않게). 진행 중 요양보호사 화면 좌상단 "어르신 화면으로"로 다시 넘길 수 있다.
+  - 검증: mobile 223 · typecheck/lint · bom/copy/font/figma · **Android·iOS JS 번들(expo export) 성공**. 실기기 확인은 하지 않았다.
+  - ⚠️ 남은 한계: ① 어르신 모드 중 권한·동의 상실로 세션이 끊기면 기존대로 `/main` 으로 이동해 **PIN 없이 요양보호사 화면이 보인다**
+    ② PIN 을 잊으면 앱을 완전히 종료(세션이 멈춘다) 후 설정에서 새로 정해야 한다 ③ 어르신 화면이 멈춰도 멀리 있는 요양보호사에게
+    알릴 길은 푸시(M6, 보류)·감독 화면(W2)이 생겨야 생긴다.
 ## 이전 위치 (2026-09-24 — 결정 4건 반영 · docs 정리)
 
 - ✅ **사용자 결정(2026-09-24)**: ① 신규 화면은 **기존 디자인과 최대한 같게** 최소 구현, 시안이 오면 교체 ·

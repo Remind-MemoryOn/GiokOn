@@ -13,13 +13,22 @@
 // 직접 모드의 UI 라서 함께 지웠다. 지금은 요양보호사가 한 번 시작하면 중계가 청취·응답·
 // 재생을 자동으로 이어 가고, 요양보호사는 멈추기·재개·회수만 한다.
 // 중단된 청취의 부분 전사만 하단 패널에서 확인·수정·제외한다(자동 채택하지 않는다).
+//
+// 표시 모드 두 가지(계획 M2·M3·M4, 2026-09-24):
+//   caregiver — 이 파일의 화면. 시작·멈추기·회수, 위기 배너(전화번호), 부분 전사 확인.
+//   elder     — 요양보호사가 "자동 대화 시작"을 누르면 곧바로 넘어가는 어르신 화면
+//               (src/features/session/ElderView). 요양보호사 UI 가 렌더되지 않는다.
+//               '선생님' 버튼 → PIN 확인 → caregiver 로 돌아온다. 뒤로가기·스와이프는 막는다.
+// 같은 라우트 안의 모드 전환으로 둔 이유: 자동 대화 컨트롤러(연결·마이크·재생)를 한 화면이
+// 계속 소유해야 한다. 라우트를 나누면 두 화면이 컨트롤러 수명을 나눠 가져야 한다.
 import { useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { Alert, BackHandler, View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
+import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RobotInline, Waveform } from '../../src/components/brand';
+import { Waveform } from '../../src/components/brand';
 import { AiDisclosureBanner, CrisisBanner } from '../../src/components/banners';
 import { closeLiveEngine } from '../../src/lib/live/engine';
+import { ensureMicPermission } from '../../src/lib/live/mic';
 import { useAutomaticConversation } from '../../src/lib/live/useAutomaticConversation';
 import { useApp } from '../../src/store/appStore';
 import { queryScope } from '../../src/lib/supabase';
@@ -27,6 +36,11 @@ import {
   useSessionPersistence,
   type SessionSaveResult,
 } from '../../src/data/session-persistence';
+import { useAuth } from '../../src/auth/AuthProvider';
+import { hasCaregiverPin } from '../../src/features/session/caregiverPin';
+import { CaregiverPinModal } from '../../src/features/session/CaregiverPinModal';
+import { ElderView } from '../../src/features/session/ElderView';
+import { QuestionCard } from '../../src/features/session/QuestionCard';
 import iconClose from '../../assets/brand/icon-close.png';
 
 const FRAME_H = 852;
@@ -44,6 +58,17 @@ export default function Talk() {
   const automatic = useAutomaticConversation(active, syncProgress);
   const { height } = useWindowDimensions();
   const finishing = useRef(false);
+  const { user } = useAuth();
+  const [mode, setMode] = useState<'caregiver' | 'elder'>('caregiver');
+  const [pinModal, setPinModal] = useState<'setup' | 'verify' | null>(null);
+  const checkingPin = useRef(false);
+
+  // 어르신 화면에서는 안드로이드 뒤로가기로 요양보호사 화면·이전 화면이 열리지 않게 한다.
+  useEffect(() => {
+    if (mode !== 'elder') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [mode]);
 
   const question = active?.currentQuestion;
   const pending = active?.pendingStt ?? null;
@@ -112,8 +137,78 @@ export default function Talk() {
 
   const showCrisis = active.safety.caregiverAlert && !active.safety.acknowledged;
 
+  const handOver = () => {
+    setMode('elder');
+    if (automatic.phase === 'idle') void automatic.start();
+  };
+
+  /**
+   * 시작과 동시에 어르신 화면으로. 넘기기 전에 요양보호사 화면에서 끝낼 것:
+   * ① 마이크 권한(OS 권한 창이 어르신 화면 위에 뜨지 않게) ② PIN(없으면 먼저 정한다 — 복귀 게이트).
+   */
+  const startAndHandOver = async () => {
+    if (checkingPin.current || !user?.id) return;
+    checkingPin.current = true;
+    try {
+      if (!await ensureMicPermission()) {
+        Alert.alert('마이크 권한', '어르신 말씀을 듣기 위해 마이크 권한이 필요해요.\n설정에서 허용해 주세요.');
+        return;
+      }
+      if (!stillCurrent()) return;
+      if (await hasCaregiverPin(user.id)) handOver();
+      else setPinModal('setup');
+    } catch {
+      Alert.alert('시작 준비를 확인하지 못했어요', '마이크 권한이나 기기 보안 저장소(PIN)를 확인하지 못해 어르신 화면으로 넘길 수 없어요. 앱을 다시 연 뒤 시도해 주세요.');
+    } finally {
+      checkingPin.current = false;
+    }
+  };
+
+  const pinGate = user?.id ? (
+    <CaregiverPinModal
+      visible={pinModal !== null}
+      mode={pinModal ?? 'verify'}
+      userId={user.id}
+      onDone={() => {
+        const was = pinModal;
+        setPinModal(null);
+        if (was === 'setup') handOver();
+        else setMode('caregiver');
+      }}
+      onCancel={() => setPinModal(null)}
+    />
+  ) : null;
+
+  if (mode === 'elder') {
+    return (
+      <>
+        <Stack.Screen options={{ gestureEnabled: false }} />
+        <ElderView question={question ?? ''} phase={automatic.phase} onCaregiver={() => setPinModal('verify')} />
+        {pinGate}
+      </>
+    );
+  }
+
+  const inConversation = !['idle', 'stopped'].includes(automatic.phase);
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <Stack.Screen options={{ gestureEnabled: true }} />
+      {pinGate}
+      {/* 진행 중이면 다시 어르신 화면으로 넘길 수 있다(X 반대편, 같은 높이). */}
+      {inConversation ? (
+        <View className="absolute left-[20px]" style={{ top: (64 / FRAME_H) * height, zIndex: 10 }}>
+          <Pressable
+            onPress={handOver}
+            accessibilityRole="button"
+            className="items-center justify-center active:opacity-60"
+            style={{ height: 36, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
+          >
+            <Text className="text-[14px] font-semibold" style={{ color: '#7b7c7c', lineHeight: 20 }}>어르신 화면으로</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* X 닫기 — Figma 17×17 @ (347.7, 76) */}
       <View className="absolute right-[28px]" style={{ top: (76 / FRAME_H) * height, zIndex: 10 }}>
         <Pressable onPress={endAndSave} accessibilityRole="button" accessibilityLabel="대화 종료" hitSlop={16}>
@@ -136,40 +231,9 @@ export default function Talk() {
         </View>
       ) : null}
 
-      {/*
-       * AI 질문 카드 — 주황 테두리 + 인라인 로봇.
-       *
-       * Figma 는 카드를 336×258 로 고정했지만 그 안의 질문은 자리표시자(짧은 한 문장)다.
-       * 실제 AI 질문은 길이가 제각각이라 고정 높이면 글자가 카드를 넘쳐 나갔다
-       * (사용자 지적 2026-08-13). Figma 높이는 **최소 높이**로 두고 길면 늘어나게 한다.
-       * 질문도 absolute 대신 흐름 배치로 두어야 카드가 함께 커진다 —
-       * 좌표(로봇 18/38 · 질문 75.25/27 w251)는 padding·마진으로 같게 유지한다.
-       */}
+      {/* AI 질문 카드 — Figma 336×min258 (src/features/session/QuestionCard) */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (121 / FRAME_H) * height }}>
-        <View
-          className="flex-row"
-          style={{
-            width: 336,
-            minHeight: 258,
-            borderRadius: 10,
-            backgroundColor: '#fdf3ea',
-            borderWidth: 1,
-            borderColor: '#e9822b',
-            paddingTop: 26,
-            paddingBottom: 26,
-          }}
-        >
-          <View style={{ marginLeft: 17, marginTop: 11 }}>
-            <RobotInline size={46.5} />
-          </View>
-          {/* 첫 인사 전에는 AI 질문이 없다 — 안내 문구는 화면 표시일 뿐 대화 기록이 아니다. */}
-          <Text
-            className="text-[28px] font-semibold text-black"
-            style={{ marginLeft: 10.75, width: 251, lineHeight: 50, color: question ? undefined : '#7b7c7c' }}
-          >
-            {question || '대화를 시작하면 첫 질문이 여기에 나와요.'}
-          </Text>
-        </View>
+        <QuestionCard question={question ?? ''} placeholder="대화를 시작하면 첫 질문이 여기에 나와요." />
       </View>
 
       {/* 파형 — 청취·재생 중에만 움직인다 */}
@@ -180,7 +244,7 @@ export default function Talk() {
       {/* 자동 대화 제어 + 상태 라벨 */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (536 / FRAME_H) * height }}>
         <Pressable
-          onPress={automatic.phase === 'idle' ? () => void automatic.start() : endAndSave}
+          onPress={automatic.phase === 'idle' ? () => void startAndHandOver() : endAndSave}
           accessibilityRole="button"
           className="items-center justify-center active:opacity-90"
           style={{ width: 336, minHeight: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
