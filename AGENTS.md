@@ -169,7 +169,28 @@
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
-## 현재 위치 (2026-09-24 — 결정 4건 반영 · docs 정리)
+## 현재 위치 (2026-09-24 — 앱 파트 착수)
+
+> 이 세션은 **앱 파트만** 맡는다(사용자 지시). 작업 브랜치 `claude/app-development-session-4cvhm5`, 테스크별 커밋.
+> 기준선(착수 전 실행): typecheck 6패키지 · test **631**(core 253 + data 141 + voice-relay 43 + mobile 194).
+
+**앱 테스크 분해(사용자 확정 2026-09-24)** — 계획 §6 기준. 진행 순서 = 표 순서.
+
+| # | 계획·tasks | 내용 | 상태 |
+|---|---|---|---|
+| A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴·분석·이벤트 → `ended` | ⏳ |
+| A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ⏳ |
+| A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ⏳ |
+| A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ⏳ |
+| A5 | M4 · T23.4 | 복귀 게이트 = **PIN**(`expo-secure-store`) | ⏳ |
+
+- **사용자 결정(2026-09-24)**: ① `buildJournalDraft` 는 **남긴다** — 웹 `JournalWritePage.tsx` 가 아직 쓴다. 웹 W1 이 그 화면을 대체할 때 지운다.
+  앱 파트는 웹 파일을 건드리지 않는다 · ② **M5(원격 제어 수신)·M6(푸시 토큰)은 보류** — D6/C3·D7 이 끝난 뒤 착수한다(가정 계약으로 먼저 만들지 않는다) ·
+  ③ 복귀 게이트 = **PIN** · ④ **T23.5 `live-token` 중계 전용화는 서버 파트**에 둔다(앱은 직접 호출 코드 삭제까지만).
+- 🔎 코드 대조로 확인: 첫 질문(오프너)은 `ai.ts` `generateOpener` 가 로컬에서 만들고 중계 인사가 오면 `overrideQuestion` 으로 교체된다.
+  `ai.ts` 를 지우면 오프너 도착 전 카드가 빈다 → **AI 발화로 기록하지 않는 대기 문구**로 대체한다(A3).
+
+## 이전 위치 (2026-09-24 — 결정 4건 반영 · docs 정리)
 
 - ✅ **사용자 결정(2026-09-24)**: ① 신규 화면은 **기존 디자인과 최대한 같게** 최소 구현, 시안이 오면 교체 ·
   ② 종료 정책 **권장안** — 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 유지 ·
