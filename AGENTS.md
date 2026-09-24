@@ -179,7 +179,7 @@
 | # | 계획·tasks | 내용 | 상태 |
 |---|---|---|---|
 | A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴 → 분석 → 이벤트 → `ended` | ✅ |
-| A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ⏳ |
+| A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ✅ |
 | A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ⏳ |
 | A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ⏳ |
 | A5 | M4 · T23.4 | 복귀 게이트 = **PIN**(`expo-secure-store`) | ⏳ |
@@ -191,6 +191,20 @@
   update 한다 — 동의 가드의 종료 예외와 같은 모양이라 철회 직후에도 닫힌다. ⚠️ `safety_events.session_id` 는 `on delete set null` 이라
   롤백으로 지워지지 않는다 → 이벤트는 쓰기 단계 **맨 뒤**(재시도 시 중복 방지). 회귀 2건 추가(옛 코드에서 순서 단언 실패 확인) ·
   mobile 196 · typecheck/lint · bom/copy/font/figma 통과. 운영 DB·실기기 검증 없음.
+- ✅ **A2 완료**(직접 모드 제거): `engine.ts`·`client.ts` 중계 전용(토큰 발급·`DEFAULT_MODEL`·직접 재접속·1.6초 무음 타이머 삭제) ·
+  `talk.tsx` 직접 경로·마이크 버튼·다시 듣기·`/session/loading` 삭제 · store `captureUtterance`·`confirmUtterance` 삭제 ·
+  **`expo-speech` 의존성 삭제**(lockfile 은 해당 12줄만 수작업 제거 — `pnpm remove` 가 mobile↔web 의 jiti/typescript peer 해석을
+  뒤섞어서 되돌렸다. `--frozen-lockfile` 통과) · 시작 화면에서 중계 주소 없으면 DB 세션 생성 전 차단 · `.env.example` 필수 3/3.
+  `check:figma` 에서 삭제한 화면의 규칙 제거(170항목). mobile 212 · 전 패키지 typecheck/lint/test · bom/copy/font/figma/design 통과.
+  - ⚠️ **발견·수정: RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(`Libraries/Blob/URL.js` 가 `https?://` 만 파싱 → 항상 `'/'`,
+    생성자가 끝에 `/` 추가). 기존 `client.ts` 의 `pathname !== '/voice'` 검사는 **실기기에서 모든 중계 주소를 거절**했을 것이다
+    (Node 테스트는 WHATWG URL 이라 통과). → `relay-config.ts` 정규식 판정으로 교체 + RN 형 URL 을 흉내 낸 회귀 테스트.
+    실기기 확인은 하지 않았다.
+  - 앱이 보내는 `setup` 은 이제 **빈 객체**다 — 중계가 모델·지시문을 서버 값으로 대체하고(`relay.ts:181`) 존재만 확인한다.
+    어르신 연대기로 만든 시스템 프롬프트를 앱이 네트워크로 보내던 것이 없어졌다.
+  - T24.5 의 앱 쪽(`engine.ts` `DEFAULT_MODEL`·`client.ts` 3.1 설계 주석)은 함께 사라졌다. 남은 것은 `live-token/index.ts` 폴백(서버 파트).
+  - ℹ️ `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 **네이버 로그인 함수 주소 파생**에만 쓰인다(`social.ts:105`). 앱 파트 범위 밖이라 그대로 두고
+    `.env.example` 설명만 실제 동작으로 고쳤다.
 - 🔎 코드 대조로 확인: 첫 질문(오프너)은 `ai.ts` `generateOpener` 가 로컬에서 만들고 중계 인사가 오면 `overrideQuestion` 으로 교체된다.
   `ai.ts` 를 지우면 오프너 도착 전 카드가 빈다 → **AI 발화로 기록하지 않는 대기 문구**로 대체한다(A3).
 

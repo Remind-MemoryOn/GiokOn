@@ -23,7 +23,7 @@
 
 - 인증: `index`(스플래시) · `login`
 - 어르신: `main`(목록·검색) · `register` · `elder/[id]` · `chronicle/[id]` · `settings/*`
-- 세션: `session/start`(대화 시작 전·AI 이용 고지) · `session/talk`(대화) · `session/loading` · `session/saved`
+- 세션: `session/start`(대화 시작 전·AI 이용 고지) · `session/talk`(대화) · `session/saved`
 - 기록·분석: `log/[id]` · `analysis/[logId]` · `observations` · `analytics` · `topics/[id]`
 - 동의: `consent/[id]`
 

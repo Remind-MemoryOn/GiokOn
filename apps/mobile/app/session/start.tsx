@@ -21,6 +21,7 @@ import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
 import { useElder, useChronicles, useDuePlannedRow } from '../../src/data/reads';
 import { useSessionPersistence } from '../../src/data/session-persistence';
+import { VOICE_RELAY_MISSING_MESSAGE, voiceRelayUrl } from '../../src/lib/live/relay-config';
 
 const FRAME_H = 852;
 
@@ -42,6 +43,11 @@ export default function SessionStart() {
 
   const onStart = async () => {
     if (starting.current) return;
+    // 음성 경로는 중계 단일이다 — 중계 주소가 없는 빌드는 DB 세션을 만들기 전에 막는다.
+    if (!voiceRelayUrl()) {
+      Alert.alert('대화를 시작할 수 없어요', VOICE_RELAY_MISSING_MESSAGE);
+      return;
+    }
     starting.current = true;
     setCheckingConsent(true);
     try {

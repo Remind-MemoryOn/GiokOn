@@ -13,7 +13,6 @@ function api() {
   const active = { elder: { id: 'elder' }, remoteId: 'session' };
   const canProcess = vi.fn(async () => true);
   const close = vi.fn(async () => {});
-  const cancelSpeak = vi.fn();
   const setState = vi.fn();
   const cancelQueries = vi.fn(async () => {});
   const clear = vi.fn();
@@ -25,10 +24,9 @@ function api() {
     if (name === '../lib/supabase') return { queryScope: { reset: () => { void cancelQueries(); clear(); } } };
     if (name === '../store/appStore') return { useApp: { getState: () => ({ active }), setState } };
     if (name === '../lib/live/engine') return { closeLiveEngine: close };
-    if (name === '../lib/speech') return { ExpoSpeechProvider: { cancelSpeak } };
     throw new Error(name);
   } });
-  return { exports, getRow, range, maybeSingle, from, query, close, cancelSpeak, setState, cancelQueries, clear, canProcess };
+  return { exports, getRow, range, maybeSingle, from, query, close, setState, cancelQueries, clear, canProcess };
 }
 
 describe('access checks and resource disposal', () => {
@@ -58,11 +56,10 @@ describe('access checks and resource disposal', () => {
     a.range.mockResolvedValue({ data: [], error: new Error('offline') });
     await expect(a.exports.loadAccessSnapshot!('user')).rejects.toThrow('offline');
   });
-  it('disposes Live, TTS, session state and query state', () => {
+  it('disposes the voice connection, session state and query state', () => {
     const a = api();
     a.exports.resetAccessResources!();
     expect(a.close).toHaveBeenCalledOnce();
-    expect(a.cancelSpeak).toHaveBeenCalledOnce();
     expect(a.setState).toHaveBeenCalledWith({ active: null, lastFinished: null });
     expect(a.cancelQueries).toHaveBeenCalledOnce();
     expect(a.clear).toHaveBeenCalledOnce();

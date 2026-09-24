@@ -8,11 +8,11 @@ import { acquireLiveEngine, closeLiveEngine } from './engine';
 import { ensureMicPermission } from './mic';
 import { AutomaticConversation, type AutomaticPhase } from './automatic';
 
-export function useAutomaticConversation(enabled: boolean, session: ActiveSession | null, save: () => Promise<boolean>) {
+export function useAutomaticConversation(session: ActiveSession | null, save: () => Promise<boolean>) {
   const controller = useRef<AutomaticConversation | null>(null);
   const [state, setState] = useState<{phase: AutomaticPhase; reason?: string}>({phase:'idle'});
   useEffect(() => {
-    if (!enabled || !session?.remoteId) return;
+    if (!session?.remoteId) return;
     const lease = queryScope.capture();
     const id = session.session.id;
     let disposed=false;
@@ -45,7 +45,6 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
       connect: (onInput,onFailure,resuming) => {
         const generation=++connectionGeneration;
         return acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
-        session.elder,session.chronicles,session.design,
         {onDraftFinal:onInput,onError: message => {
             if (generation !== connectionGeneration || disposed || !lease.current() || useApp.getState().active?.session.id !== id) return;
             if (message === VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED) useApp.getState().requireRelayReview();
@@ -91,6 +90,6 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
     // One controller owns one remote session. Its save callback and auth lease
     // remain scoped to that session; account changes invalidate the lease.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled,session?.remoteId,session?.session.id]);
+  }, [session?.remoteId,session?.session.id]);
   return { ...state, pause: () => controller.current?.pause(), resume: () => controller.current?.resume(), start: () => controller.current?.start(), stop: () => controller.current?.stop() };
 }

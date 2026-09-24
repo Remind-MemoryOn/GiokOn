@@ -14,14 +14,16 @@ class Socket {
   receive(data: unknown) { return this.onmessage?.({ data: JSON.stringify(data) }); }
 }
 
-describe('Live WebSocket 프로토콜 및 턴 격리', () => {
+const RELAY = { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic' };
+
+describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
   beforeEach(() => { Socket.all = []; vi.useFakeTimers(); vi.stubGlobal('WebSocket', Socket); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
   async function connected() {
     const onError = vi.fn();
-    const client = new GeminiLiveClient('test-model', { onError });
-    const connecting = client.connect('auth_tokens/synthetic', '합성 시스템 지시');
+    const client = new GeminiLiveClient({ onError }, RELAY);
+    const connecting = client.connect();
     const socket = Socket.all[0];
     socket.onopen!(); socket.receive({ setupComplete: {} });
     await connecting;
@@ -30,8 +32,8 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
 
   it.each([['SYNTHESIS_LIMIT','요청이 많아'],['unexpected private detail','음성 연결이 중단']])('maps relay failure %s to local copy and settles the pending turn',async(code,message)=>{
     const onError=vi.fn();
-    const client=new GeminiLiveClient('relay',{onError},{url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic'});
-    const connected=client.connect('',''); const socket=Socket.all[0];socket.onopen!();
+    const client=new GeminiLiveClient({onError},{url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic'});
+    const connected=client.connect(); const socket=Socket.all[0];socket.onopen!();
     await socket.receive({setupComplete:{}});await connected;
     const reply=client.sendUserTurn('테스트');
     await socket.receive({relayError:{code,message:'untrusted server text'}});
@@ -40,35 +42,37 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     expect(client.isConnected).toBe(false);expect(await reply).toBe('timeout');
   });
   it('relay mode sends Supabase auth in the first frame, never the URL or a Gemini token', async () => {
-    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic-jwt' });
-    const pending = client.connect('', 'ignored-client-context');
+    const client = new GeminiLiveClient({}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic-jwt' });
+    const pending = client.connect();
     const socket = Socket.all[0];
     expect(socket.url).toBe('wss://voice.example.test/voice');
     socket.onopen!();
     expect(socket.sent[0]).toEqual({ relayAuth: { sessionId: 'session', accessToken: 'synthetic-jwt' } });
+    // 중계가 모델·지시문을 서버 값으로 정한다 — 앱은 어르신 정보가 담긴 지시문을 보내지 않는다.
+    expect(socket.sent[1]).toEqual({ setup: {} });
     socket.receive({ setupComplete: {} }); await pending;
     client.close();
   });
 
   it('refuses insecure relay URLs', async () => {
-    const client = new GeminiLiveClient('relay', {}, { url: 'ws://remote.example.test/voice', sessionId: 'session', accessToken: 'synthetic' });
-    await expect(client.connect('', '')).rejects.toThrow();
+    const client = new GeminiLiveClient({}, { url: 'ws://remote.example.test/voice', sessionId: 'session', accessToken: 'synthetic' });
+    await expect(client.connect()).rejects.toThrow();
     expect(Socket.all).toHaveLength(0);
   });
 
   it('requires v3 when sending a restoration context and refuses a v2 acknowledgement',async()=>{
     const resumeContext={version:1 as const,turns:[{role:'user' as const,text:'채택한 입력'}]};
-    const client=new GeminiLiveClient('relay',{}, {url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic',resumeContext});
-    const connecting=client.connect('','');const failed=expect(connecting).rejects.toThrow();
+    const client=new GeminiLiveClient({}, {url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic',resumeContext});
+    const connecting=client.connect();const failed=expect(connecting).rejects.toThrow();
     const socket=Socket.all[0];socket.onopen!();
     expect(socket.sent[0]).toEqual({relayAuth:{sessionId:'session',accessToken:'synthetic',protocolVersion:3,resumeContext}});
     await socket.receive({setupComplete:{relayProtocolVersion:2}});await failed;
     expect(client.isConnected).toBe(false);
   });
   it('v3 keeps the playback gate after successful restoration negotiation',async()=>{
-    const client=new GeminiLiveClient('relay',{}, {url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic',
+    const client=new GeminiLiveClient({}, {url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic',
       resumeContext:{version:1,turns:[{role:'user',text:'이전 답변'}]}});
-    const connecting=client.connect('',''); const socket=Socket.all[0];socket.onopen!();
+    const connecting=client.connect(); const socket=Socket.all[0];socket.onopen!();
     await socket.receive({setupComplete:{relayProtocolVersion:3}});await connecting;
     const reply=client.sendUserTurn('이어서 질문해 주세요.');
     await socket.receive({relayOutput:{turnId:1},serverContent:{outputTranscription:{text:'다음 질문'},turnComplete:true}});await reply;
@@ -77,8 +81,8 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
   });
 
   it('negotiates playback receipts and blocks a new turn until completion', async () => {
-    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
-    const connecting = client.connect('', ''); const socket = Socket.all[0]; socket.onopen!();
+    const client = new GeminiLiveClient({}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
+    const connecting = client.connect(); const socket = Socket.all[0]; socket.onopen!();
     expect(socket.sent[0]).toEqual({ relayAuth: { sessionId: 'session', accessToken: 'synthetic', protocolVersion: 2 } });
     await socket.receive({ setupComplete: { relayProtocolVersion: 2 } }); await connecting;
     const turn = client.sendUserTurn('test');
@@ -92,15 +96,15 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
   });
 
   it('refuses an old relay when playback receipts were requested', async () => {
-    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
-    const connecting = client.connect('', ''); const rejected = expect(connecting).rejects.toThrow();
+    const client = new GeminiLiveClient({}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
+    const connecting = client.connect(); const rejected = expect(connecting).rejects.toThrow();
     Socket.all[0].onopen!(); await Socket.all[0].receive({ setupComplete: {} }); await rejected;
     expect(client.isConnected).toBe(false);
   });
 
   it('closes interrupted playback without sending a completion receipt or more input', async () => {
-    const client = new GeminiLiveClient('relay', {}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
-    const connecting = client.connect('', ''); const socket = Socket.all[0]; socket.onopen!();
+    const client = new GeminiLiveClient({}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });
+    const connecting = client.connect(); const socket = Socket.all[0]; socket.onopen!();
     await socket.receive({ setupComplete: { relayProtocolVersion: 2 } }); await connecting;
     const turn = client.sendUserTurn('test');
     await socket.receive({ relayOutput: { turnId: 1 }, serverContent: { outputTranscription: { text: '질문' }, turnComplete: true } }); await turn;
@@ -110,24 +114,16 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     await expect(client.sendUserTurn('next')).rejects.toThrow();
   });
 
-  it('단기 토큰 endpoint·setup 구조가 맞고 setupComplete 전에는 입력하지 않는다', async () => {
-    const client = new GeminiLiveClient('models/test-model', {});
-    const connecting = client.connect('auth_tokens/synthetic', 'system', 'resume-handle');
+  it('setupComplete 전에는 입력하지 않는다', async () => {
+    const client = new GeminiLiveClient({}, RELAY);
+    const connecting = client.connect();
     const socket = Socket.all[0];
-    expect(socket.url).toBe('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=auth_tokens%2Fsynthetic');
     socket.onopen!();
     expect(client.isConnected).toBe(false);
     await expect(client.sendUserTurn('early')).rejects.toThrow('연결돼');
-    expect(socket.sent).toEqual([{ setup: {
-      model: 'models/test-model', systemInstruction: { parts: [{ text: 'system' }] },
-      generationConfig: { responseModalities: ['AUDIO'] }, inputAudioTranscription: {}, outputAudioTranscription: {},
-      realtimeInputConfig: { automaticActivityDetection: { disabled: true }, activityHandling: 'NO_INTERRUPTION' },
-      sessionResumption: { handle: 'resume-handle' },
-    } }]);
+    expect(socket.sent).toEqual([{ relayAuth: { sessionId: 'session', accessToken: 'synthetic' } }, { setup: {} }]);
     socket.receive({ setupComplete: {} }); await connecting;
     expect(client.isConnected).toBe(true);
-    await socket.receive({ sessionResumptionUpdate: { newHandle: 'next-handle', resumable: true } });
-    expect(client.resumptionHandle).toBe('next-handle');
     client.close();
   });
 
@@ -135,7 +131,7 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     const { client, socket } = await connected();
     client.streamAudioChunk('PCM');
     const pending = client.sendUserTurn('확인한 문장');
-    expect(socket.sent.slice(1)).toEqual([
+    expect(socket.sent.slice(2)).toEqual([
       { realtimeInput: { activityStart: {} } },
       { realtimeInput: { audio: { data: 'PCM', mimeType: 'audio/pcm;rate=16000' } } },
       { realtimeInput: { text: '확인한 문장' } },
@@ -156,7 +152,7 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
     await expect(first).resolves.toBe('timeout');
     expect(socket.close).toHaveBeenCalled();
     expect(client.isConnected).toBe(false);
-    const reconnecting = client.connect('auth_tokens/new', 'system');
+    const reconnecting = client.connect();
     const nextSocket = Socket.all[1];
     nextSocket.onopen!(); nextSocket.receive({ setupComplete: {} }); await reconnecting;
     const second = client.sendUserTurn('B');
@@ -167,11 +163,13 @@ describe('Live WebSocket 프로토콜 및 턴 격리', () => {
   });
 
   it('setup 무응답은 연결 timeout으로 종료한다', async () => {
-    const client = new GeminiLiveClient('model', {});
-    const pending = client.connect('auth_tokens/test', 'system');
+    const client = new GeminiLiveClient({}, RELAY);
+    const pending = client.connect();
     const rejection = expect(pending).rejects.toThrow('초과');
     Socket.all[0].onopen!();
-    await vi.advanceTimersByTimeAsync(10000);
+    await vi.advanceTimersByTimeAsync(29999);
+    expect(client.isConnected).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
     await rejection;
     expect(Socket.all[0].close).toHaveBeenCalled();
     expect(client.isConnected).toBe(false);

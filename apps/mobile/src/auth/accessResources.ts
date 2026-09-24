@@ -2,13 +2,11 @@ import { getCurrentUserRow, getGiokonClient, canProcessSession } from '@giokon/d
 import { queryScope } from '../lib/supabase';
 import { useApp } from '../store/appStore';
 import { closeLiveEngine } from '../lib/live/engine';
-import { ExpoSpeechProvider } from '../lib/speech';
 import type { AccessSnapshot } from './accessMonitor';
 
 export function resetAccessResources(): void {
   // Close transport synchronously before waiting for native audio cleanup.
   void closeLiveEngine().catch(() => {});
-  ExpoSpeechProvider.cancelSpeak();
   useApp.setState({ active: null, lastFinished: null });
   queryScope.reset();
 }

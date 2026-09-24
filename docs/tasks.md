@@ -54,7 +54,7 @@
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
 | T23.1 | `ai.ts`·`voice-flow.ts`·`buildJournalDraft` 삭제 · `respondToUserTurn` → `evaluateUserTurn` 축소 · **안전 계층 유지** | C1 | — | ⏳ |
-| T23.2 | 직접 모드 제거 — `RELAY_MODE` 분기 삭제, `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화 | M1 | T23.1 | ⏳ |
+| T23.2 | 직접 모드 제거 — `RELAY_MODE` 분기 삭제, `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화 | M1 | T23.1 | ✅ (2026-09-24) |
 | T23.3 | 어르신 표시 모드 분리(`elder.tsx`) + 어르신 화면에서 요양보호사 UI 제거 | M2, M3 | T23.2 | ⏳ |
 | T23.4 | 복귀 게이트(숨김 제스처 또는 PIN) | M4 | T23.3 | ⏳ |
 | T23.5 | ⚠️ **`live-token` 중계 전용화** — 지금은 요양보호사 JWT 만으로 Gemini 단기 토큰이 나가 구버전 앱·JWT 소지자가 중계(출력 검열)를 건너뛸 수 있다. 중계만 가진 자격을 추가로 요구, 없으면 403 | C4 | T23.2 | ⏳ |

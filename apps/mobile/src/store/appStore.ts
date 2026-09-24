@@ -81,7 +81,7 @@ export interface ActiveSession {
   startedAt: string;
   currentQuestion: string;
   currentTopic: string;
-  /** STT가 인식했지만 아직 요양보호사가 확인/수정하지 않은 원문. */
+  /** 중단된 청취의 부분 전사 — 요양보호사가 확인/수정하기 전의 원문. */
   pendingStt: string | null;
   pendingInputSource: 'gemini_live' | 'manual' | 'unknown';
   phase: SessionPhase;
@@ -145,19 +145,9 @@ interface AppState {
     /** 웹 설계 값(planned 채택 시) — 대화 진행 입력으로 보존된다. */
     design?: SessionDesign,
   ) => void;
-  /** 마이크(폴백) — 요양보호사가 들은 말을 입력할 빈 패널을 연다. */
-  captureUtterance: () => void;
   setPendingStt: (text: string, source?: 'gemini_live' | 'manual' | 'unknown') => void;
   /** 확인 취소 → 대기 중 STT 폐기하고 마이크 대기 상태로. */
   discardUtterance: () => void;
-  /** 확인/수정 완료 → 어르신 턴 반영 + 다음 AI 질문 생성(core). */
-  /**
-   * Live 모드용 — 모델 응답을 그대로 이번 AI 발화로 채택한다.
-   * 안전 평가·이벤트는 여전히 core 파이프라인(respondToUserTurn)이 계산하고,
-   * 질문 본문만 교체한다(출력 가드 screenAiUtterance 재적용). 위기 시엔 호출하지
-   * 않는다 — 로컬 안전 응답이 우선이다.
-   */
-  confirmUtterance: (finalText: string, live?: { question: string }) => void;
   adoptAutomaticInput: (text: string) => 'continue' | 'help';
   acceptAutomaticResponse: (text: string) => boolean;
   acceptResumedResponse: (text: string, previousTurnId: string) => boolean;
@@ -240,20 +230,6 @@ export const useApp = create<AppState>((set, get) => ({
     });
   },
 
-  /**
-   * 폴백(Live 미가용) 입력 — **빈** 입력 패널을 연다.
-   *
-   * ⚠️ 예전에는 여기서 `pickElderUtterance()` 가 미리 써 둔 어르신 발화를 골라
-   * 넣었다(mockStt). 요양보호사가 그대로 저장하면 **어르신이 하지 않은 말**이
-   * session_logs 에 실제 기록으로 남았다 — 개인 기록을 임의값으로 만드는 것이라
-   * 비의료·정부심사 기준에서 특히 위험하다. 근거 없는 값은 만들지 않는다.
-   * 이제 요양보호사가 실제로 들은 말을 직접 입력한다(빈 문자열 = 패널 열림).
-   */
-  captureUtterance: () => {
-    const a = get().active;
-    if (!a) return;
-    set({ active: { ...a, pendingStt: '', pendingInputSource: 'manual', phase: 'processing' } });
-  },
   setPendingStt: (text, source = 'unknown') => {
     const a = get().active;
     if (!a) return;
@@ -263,68 +239,6 @@ export const useApp = create<AppState>((set, get) => ({
     const a = get().active;
     if (!a) return;
     set({ active: { ...a, pendingStt: null, phase: 'mic_ready' } });
-  },
-
-  confirmUtterance: (finalText, live) => {
-    const a = get().active;
-    if (!a || !finalText.trim()) return;
-    // 요양보호사가 STT 결과를 고쳤으면 원문을 함께 남긴다(session_logs.original_content).
-    const original = a.pendingStt && a.pendingStt !== finalText ? a.pendingStt : undefined;
-    // 어르신 턴에도 **직전 AI 질문의 주제**를 붙인다 — 분석은 앞선 AI 턴에서 주제를
-    // 이어받으므로 계산 결과는 같지만, DB 의 session_logs.topic 이 비어 있으면 나중에
-    // 기록만 보고는 어떤 주제에 대한 대답인지 알 수 없다(감사 지적).
-    const elderTurn = makeTurn('Elderly', finalText, a.currentTopic, original);
-    // Only the explicit caregiver confirmation action may assign this source.
-    // Automatic adoption must use a separate path and persistence contract.
-    elderTurn.provenance = { kind: 'caregiver_confirmed', presentedText: a.pendingStt || null, inputSource: a.pendingInputSource };
-    const history = [...a.turns, elderTurn];
-    // 안전 평가·이벤트는 항상 core 파이프라인이 산출한다 — Live 모드에서도 동일.
-    const guarded = respondToUserTurn(a.elder, a.session, history, finalText);
-
-    // Live 응답 채택 여부 — 출력 가드(screenAiUtterance)를 **다시** 통과시킨다.
-    // 막히면 안전 대체문으로 바꾸고, 그조차 없으면 로컬(core) 생성 질문을 유지한다.
-    let question = guarded.response.question;
-    let topic = guarded.response.topic;
-    if (live) {
-      const screen = screenAiUtterance(live.question);
-      if (screen.allowed) {
-        question = live.question;
-        // Live 질문의 주제를 텍스트에서 판별한다(core detectTurnTopic — 결정론 태깅).
-        // 근거가 있으면 화제 이동까지 기록된다(session_logs.switch_topic, 매퍼가
-        // 직전 턴 주제와 비교해 산출). 근거가 없으면 직전 주제를 유지한다 —
-        // 근거 없는 주제는 만들지 않는다(실서비스 원칙).
-        topic = detectTurnTopic(live.question) ?? a.currentTopic ?? topic;
-      } else if (screen.safeAlternative) {
-        question = screen.safeAlternative;
-        topic = a.currentTopic ?? topic;
-      }
-    }
-
-    const aiTurn = makeTurn('AI', question, topic);
-    // 자동 종료: 안전 권고가 없고 설계 세션 길이에 도달하면 마무리를 권고한다(core 정책).
-    const elderTurns = history.filter((t) => t.speaker === 'Elderly').length;
-    const recommendation = resolveSessionRecommendation(guarded.session.recommendation, elderTurns);
-    const safety: RuntimeSafety = {
-      escalate: guarded.escalate,
-      caregiverAlert: guarded.caregiverAlert,
-      level: guarded.event?.level ?? (guarded.caregiverAlert ? 'watch' : null),
-      recommendation,
-      acknowledged: false,
-    };
-    set({
-      active: {
-        ...a,
-        turns: [...history, aiTurn],
-        currentQuestion: question,
-        currentTopic: topic,
-        pendingStt: null,
-        phase: 'ai_speaking',
-        safety,
-        events: guarded.event
-          ? [...a.events, { ...guarded.event, acknowledgedAt: null, remoteId: null, ackSynced: false }]
-          : a.events,
-      },
-    });
   },
 
   adoptAutomaticInput: (text) => {

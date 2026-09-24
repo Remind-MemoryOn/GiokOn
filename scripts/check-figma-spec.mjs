@@ -87,33 +87,15 @@ const SPECS = [
   ],
   [`${APP}/app/session/talk.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 마이크 123 + 상태', [/MicButton onPress=\{onMic\} state=\{micState\} size=\{123\}/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 라벨 Medium 23 lh42', [/text-\[23px\] font-medium/, /lineHeight: 42/]],
-  [
-    `${APP}/app/session/talk.tsx`,
-    '대화: 다시듣기 336×57 3상태(기본 #cccdce / 누름 rgba(233,130,43,0.10) / 재생 #e9822b)',
-    [/icon-speaker\.png/, /width: 20, height: 20/, /'rgba\(233,130,43,0\.10\)'/, /backgroundColor: replaying\s*\n\s*\? '#e9822b'/, /borderColor: replaying \|\| replayPressed \? '#e9822b' : '#cccdce'/],
-  ],
-  [
-    `${APP}/app/session/talk.tsx`,
-    '대화: 마이크 라벨 짝(회색=듣고 있어요… / 주황=말씀해 주세요.)',
-    [/\? '듣고 있어요\.\.\.'/, /: '말씀해 주세요\.'/],
-  ],
   [
     `${APP}/src/components/brand.tsx`,
     '대화: 마이크 2상태 에셋 123(회색=TTS 중·인식 중 / 주황=말할 차례)',
     [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{disabled \? micWait : micReady\}/, /width: size, height: size/],
   ],
-  [`${APP}/app/session/talk.tsx`, '대화: 인식결과 인라인(페이지 이동 없음)', [/AI가 이렇게 이해했어요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
-
-  // ── 질문 로딩 (Figma 28:37) ───────────────────────────────────────────
-  [
-    `${APP}/app/session/loading.tsx`,
-    '로딩: 스피너 52 에셋 @ left 166(중앙 아님)',
-    [/loading-indicator\.png/, /left: 166/, /width: 52,\s*height: 52/],
-  ],
-  [`${APP}/app/session/loading.tsx`, '로딩: 문구 Medium 23 lh40 w289', [/text-\[23px\] font-medium/, /lineHeight: 40, width: 289/]],
-  [`${APP}/app/session/loading.tsx`, '로딩: X 닫기 17×17', [/icon-close\.png/, /width: 17, height: 17/]],
+  // 마이크 버튼·다시 듣기·"AI가 이렇게 이해했어요" 패널·질문 로딩(28:37)은 직접 Gemini Live 모드의
+  // 매 턴 수동 흐름이라 중계 단일화(계획 M1, 2026-09)와 함께 화면에서 삭제했다 — 규칙도 뺐다.
+  // 남은 하단 패널은 중단된 청취의 부분 전사 확인용이다(카운터 위치는 Figma 그대로).
+  [`${APP}/app/session/talk.tsx`, '대화: 부분 전사 인라인 확인(페이지 이동 없음)', [/중단 전 인식된 말씀을 확인해 주세요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
 
   // ── 대화저장 (Figma 28:79) ────────────────────────────────────────────
   [

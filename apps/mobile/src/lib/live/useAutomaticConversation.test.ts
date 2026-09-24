@@ -17,7 +17,7 @@ vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version}));
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
 vi.mock('./mic',()=>({ensureMicPermission:async()=>true}));
 vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
-  acquireLiveEngine:async(_key:unknown,_elder:unknown,_chronicles:unknown,_design:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void},_session:unknown,context:unknown)=>{
+  acquireLiveEngine:async(_key:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void},_session:unknown,context:unknown)=>{
     native.contexts.push(context);
     native.input=callbacks.onDraftFinal; native.failure=callbacks.onError;
     native.partial=callbacks.onDraftInterrupted;
@@ -35,7 +35,7 @@ beforeEach(()=>{
 });
 it('binds the screen hook to automatic source adoption and the next microphone cycle',async()=>{
   const save=vi.fn(async()=>true);
-  const view=useAutomaticConversation(true,useApp.getState().active,save);
+  const view=useAutomaticConversation(useApp.getState().active,save);
   const cleanup=native.effects[0]();
   expect(native.input).toBeNull(); // Explicit start, never mount-triggered recording.
   await view.start(); native.input!('고향은 전주예요');
@@ -53,7 +53,7 @@ it('binds the screen hook to automatic source adoption and the next microphone c
 it('records interrupted playback even when retrieval precedes the native result',async()=>{
   let finished!: (value:string)=>void;
   native.play.mockImplementationOnce(()=>new Promise(resolve=>{finished=resolve;}));
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0]();
   const starting=view.start();
   await vi.waitFor(()=>expect(native.play).toHaveBeenCalled());
@@ -64,22 +64,23 @@ it('records interrupted playback even when retrieval precedes the native result'
   if(cleanup) cleanup();
 });
 it('stops the running loop on background transition',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   native.change!('background'); native.input!('늦은 전사');
   expect(useApp.getState().active!.turns).toHaveLength(1);
   expect(native.status.at(-1)).toMatchObject({phase:'stopped'});
   if(cleanup) cleanup();
 });
-it('does not install automatic controls for the direct manual path',async()=>{
-  const view=useAutomaticConversation(false,useApp.getState().active,async()=>true);
+it('does not install automatic controls before the server session exists',async()=>{
+  const active=useApp.getState().active!;
+  const view=useAutomaticConversation({...active,remoteId:null},async()=>true);
   native.effects[0](); await view.start();
   expect(native.version).not.toHaveBeenCalled(); expect(native.input).toBeNull();
 });
 
 it('preserves an interrupted input for review without adopting or saving it',async()=>{
   const save=vi.fn(async()=>true);
-  const view=useAutomaticConversation(true,useApp.getState().active,save);
+  const view=useAutomaticConversation(useApp.getState().active,save);
   const cleanup=native.effects[0](); await view.start();
   native.close.mockImplementationOnce(async()=>{native.partial!('말씀 도중');});
   await view.stop();
@@ -92,7 +93,7 @@ it('preserves an interrupted input for review without adopting or saving it',asy
 });
 
 it('pauses and restores the completed question without repeating it',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   const original=useApp.getState().active!.turns.slice();
   await view.pause(); await view.resume();
@@ -103,7 +104,7 @@ it('pauses and restores the completed question without repeating it',async()=>{
   if(cleanup) cleanup();
 });
 it('requires partial input review, then resumes from the confirmed final text',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   native.close.mockImplementationOnce(async()=>{native.partial!('고향은 전');});
   await view.pause(); await view.resume();
@@ -119,7 +120,7 @@ it('requires partial input review, then resumes from the confirmed final text',a
 it('preserves the interrupted AI record and excludes it from restored model history',async()=>{
   let finish!:(value:string)=>void;
   native.play.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); const starting=view.start();
   await vi.waitFor(()=>expect(native.play).toHaveBeenCalledOnce());
   await view.pause(); finish('interrupted'); await starting;
@@ -132,7 +133,7 @@ it('preserves the interrupted AI record and excludes it from restored model hist
   if(cleanup) cleanup();
 });
 it('refuses resumption of a confirmed help request',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start(); await view.pause();
   useApp.getState().setPendingStt('죽고 싶어요','gemini_live');
   useApp.getState().confirmRecoveredInput('죽고 싶어요');
@@ -141,7 +142,7 @@ it('refuses resumption of a confirmed help request',async()=>{
 });
 
 it('retains the approved synthesis failure through the screen controller',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   const reason='음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.';
   native.failure!(reason);
@@ -151,7 +152,7 @@ it('retains the approved synthesis failure through the screen controller',async(
 });
 
 it('records relay review only for the current connection and keeps it for final save',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0]();await view.start();
   const oldFailure=native.failure!;
   await view.pause();await view.resume();
