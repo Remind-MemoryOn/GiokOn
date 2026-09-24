@@ -4,6 +4,9 @@
 > 이전 실행 목록(`non-db-development-backlog.md` N01~N35, `business-plan-development-delta.md`
 > D1~D11)은 **이전 제품 정의를 전제**하므로 이 문서가 대체한다. 역사 기록으로만 참조할 것.
 > 목표는 **파일럿 테스트 가능 수준**이지 정식 출시가 아니다.
+> ⚠️ **번호 주의**: 이 문서의 `D1~D10` 은 **DB 파트 항목 번호**다. 대체된
+> `business-plan-development-delta.md` 의 `D1~D11`(사업 기획 델타)과 **이름만 같고 무관**하다.
+> 다른 문서에서 이 번호를 인용할 때는 "파일럿 계획 D5"처럼 출처를 붙인다.
 
 ## 1. 무엇이 바뀌었나
 
@@ -117,14 +120,31 @@
 |---|---|---|
 | **D1** | `..._org_role_add_values.sql` | `alter type org_role add value 'social_worker'/'center_director'` — ⚠️ **이 파일에 다른 DDL 금지**. 같은 트랜잭션에서 신규 enum 값을 쓸 수 없다 |
 | **D2** | `..._notification_kind_add_values.sql` | `session_paused`·`journal_ready`·`journal_failed`. D1과 같은 제약 |
-| **D3** | `..._org_settings_capabilities.sql` | `org_settings`(facility_type·target_minutes·default_avoid_topics), `org_capability` enum, `org_capabilities`, 조직 생성 시드 트리거. 행이 없으면 기본집합으로 폴백(기존 조직 안전) |
-| **D4** | `..._org_scoped_rls.sql` | `app.is_care_team()`·`app.has_capability()` 신설. 9테이블 SELECT/UPDATE 술어를 `org_id = current_org_id() and is_care_team()` 로 교체. **보호자 브랜치는 복사해 무변경 유지** |
+| **D3** | `..._org_settings_capabilities.sql` | `org_settings`(facility_type·target_minutes·default_avoid_topics·default_program_type·default_location), `org_capability` enum, `org_capabilities`, 조직 생성 시드 트리거. 행이 없으면 기본집합으로 폴백(기존 조직 안전). **역할 부여 RPC `public.set_member_role(target, role)`** — 아래 "역할을 부여하는 경로" 참조 |
+| **D4** | `..._org_scoped_rls.sql` | `app.is_care_team()`·`app.has_capability()` 신설. 9테이블 SELECT/UPDATE 술어를 `org_id = current_org_id() and is_care_team()` 로 교체. **보호자 브랜치는 복사해 무변경 유지**. DELETE 정책은 **교체하지 않는다**(배정·관리자 기준 유지 — 교대근무가 요구하는 것은 열람·기록이지 삭제가 아니다) |
 | **D5** | `..._program_journals.sql` | `care_journals`·`journal_photos` DROP. `program_journals`·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` 신설 + 트리거 4종(확정 가드·이력·enqueue·공개 게이트). `care_grade` enum + `profiles.care_grade` 포함 |
-| **D6** | `..._session_phase_supervision.sql` | `session_phase` enum, `sessions` 컬럼 8개(phase·phase_started_at·target_minutes·paused_at/by·pause_reason·control_request·prompt_version), `session_interventions`, RPC `session_tick`/`advance_session_phase`/`request_session_control` |
+| **D6** | `..._session_phase_supervision.sql` | `session_phase` enum, `sessions` 컬럼 7개(phase·phase_started_at·paused_at/by·pause_reason·control_request·prompt_version), `session_interventions`, RPC `session_tick`/`advance_session_phase`/`request_session_control`. ⚠️ **목표 시간 컬럼은 새로 만들지 않는다** — `sessions.duration_minutes`(`20260822020000`, 5~120분, 웹 세션 설계의 "예상 소요 시간")가 이미 그 값이다. 비어 있으면 `org_settings.target_minutes` 로 폴백 |
 | **D7** | `..._push_tokens.sql` | `push_tokens`(본인 only RLS), `notifications.pushed_at` |
 | **D8** | `..._product_events.sql` | `product_events(event_key, payload, ...)` + definer 삽입 함수 |
 | **D9** | D5·D6 말미 | realtime publication 에 `program_journals`·`session_interventions` 추가. ⚠️ `if exists (pg_publication)` 가드 필수(CI는 순정 PG16) |
 | **D10** | 권고 | `app.current_consent_version()` 1개로 통일 — 지금 `'v1.0'` 이 SQL·TS 양쪽에 하드코딩돼 드리프트한다 |
+
+### 역할을 부여하는 경로 (D3 · W6)
+
+지금 역할을 바꾸는 길은 **온보딩 RPC 하나뿐**이다 — `20260908000000_users_privilege_hardening.sql`
+이 `users.role` 직접 쓰기를 컬럼 권한·트리거·정책 3중으로 막았고, 온보딩은 요양보호사·보호자만
+고를 수 있다. enum 에 `social_worker`·`center_director` 를 추가해도 **그 역할을 가질 방법이 없다.**
+그대로 두면 기본 위임(사회복지사·센터장)만 켜진 기관에서 일지를 확정할 사람이 0명이 된다.
+
+- `public.set_member_role(target_user_id, role)` — SECURITY DEFINER RPC, 3중 방어의 **신뢰된 우회로**.
+  호출자는 같은 기관의 `org_admin`·`center_director` 만. **자기 자신은 바꿀 수 없다**(셀프 승격 차단 원칙 유지).
+  보호자(`guardian`) ↔ 돌봄팀 역할 간 전환은 금지(보호자 격리가 역할 하나로 무너지지 않게).
+  기관의 마지막 `org_admin` 은 강등 불가. 변경은 `audit_log` 에 남긴다.
+- **권한 매트릭스 편집 자체는 위임 대상이 아니다** — `org_admin`·`center_director` 고정.
+  편집권을 위임할 수 있으면 위임받은 사람이 스스로 모든 권한을 켤 수 있다.
+- 3개 위임 항목의 기본 허용 = 사회복지사·센터장(기획서 예시) + `org_admin`.
+  매트릭스를 고칠 수 있는 역할을 기본값에서 빼 봐야 스스로 켜면 그만이라 의미가 없다.
+- RLS 회귀: 요양보호사가 호출 = 실패 · 자기 자신 대상 = 실패 · 타 기관 대상 = 실패 · 보호자 → 돌봄팀 = 실패.
 
 ### 자동 확정 차단을 DB 가 집행한다
 
@@ -157,7 +177,7 @@
 |---|---|---|
 | **M1** | **직접 모드 제거** — `RELAY_MODE` 분기·직접 UI 전체 삭제. `EXPO_PUBLIC_VOICE_RELAY_URL` 미설정 시 세션 시작 차단 | `app/session/talk.tsx`, `src/store/appStore.ts` |
 | **M2** | **어르신 표시 모드 분리** — `talk.tsx`(요양보호사) + `app/session/elder.tsx`(표시 전용) 신설, 공용 로직은 `src/features/session/` 으로 추출 | 신규 + 기존 |
-| **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`) | `talk.tsx` |
+| **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` |
 | **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` |
 | **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` |
 | **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 |
@@ -166,8 +186,8 @@
 **기기 1대 = 세션 1개는 이미 보장된다** — 중계 `main.ts` 의 `inUse` Set 이 `SESSION_BUSY` 로
 막는다. 여러 기기 병렬은 각기 다른 `session_id` 라 그대로 동작한다.
 
-고령 사용자 기준(큰 글씨·고대비·큰 터치 영역, 핵심 흐름 3단계 이내, 텍스트 입력 최소화)은
-M2 재작성 때 함께 적용한다. **검증 기준**: 기술에 익숙하지 않은 50~60대가 설명 없이 세션 1회를
+고령 사용자 기준(큰 글씨·고대비·큰 터치 영역, 핵심 흐름 3단계 이내, 텍스트 입력 최소화 — 선택형·버튼형 우선,
+첫 사용 시 따라 하기 튜토리얼 1회)은 M2 재작성 때 함께 적용한다. **검증 기준**: 기술에 익숙하지 않은 50~60대가 설명 없이 세션 1회를
 끝까지 진행할 수 있는지.
 
 ---
@@ -177,11 +197,11 @@ M2 재작성 때 함께 적용한다. **검증 기준**: 기술에 익숙하지 
 | # | 내용 | 파일 |
 |---|---|---|
 | **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) |
-| **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저) | `pages/caregiver/SupervisionPage.tsx` 신규 |
-| **W3** | 네비게이션 — `요양일지`→`프로그램 일지`, `분석`→`대화 관찰 리포트`, 보호자 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` |
+| **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 |
+| **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` |
 | **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` |
-| **W5** | 세션 설계에 `target_minutes`·단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` |
-| **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) | `pages/caregiver/OrgPage.tsx` |
+| **W5** | 세션 설계의 기존 "예상 소요 시간"(`duration_minutes`)을 **목표 시간**으로 쓴다 — 초기값을 지금의 고정 15분 대신 `org_settings.target_minutes` 에서 가져온다. 단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` |
+| **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) + **구성원 역할 지정**(`set_member_role` — 지금 구성원 표는 역할을 보여주기만 한다) | `pages/caregiver/OrgPage.tsx` |
 | **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 |
 | **W8** | 어르신 `care_grade` 드롭다운(주간보호 필수) | 등록·수정 화면 |
 
@@ -218,7 +238,7 @@ M2 재작성 때 함께 적용한다. **검증 기준**: 기술에 익숙하지 
 - `analysis.ts`: `opinionSignals?`·`baselineDeltas?` 추가 — 파일럿 범위 밖이지만 **데이터는 지금부터**
 
 **C3. `apps/voice-relay`**
-- 2초 폴을 **`session_tick` RPC 로 교체** → `{allowed, phase, target_minutes, paused, control_request}` 일괄 수신
+- 2초 폴을 **`session_tick` RPC 로 교체** → `{allowed, phase, target_minutes, paused, control_request}` 일괄 수신(`target_minutes` 는 `coalesce(sessions.duration_minutes, org_settings.target_minutes)` 로 계산한 값이지 컬럼이 아니다)
 - 단계 전환 시 `forward({clientContent:{turns, turnComplete:false}})` 로 지시 주입 —
   **`resumeContext` 주입과 완전히 같은 경로**다. 어르신에게 들리지 않고, 출력은 여전히 Clova 검증을 통과한다
 - `control_request` 처리: `pause`→입력 forward 차단 + `relayControl` 송신, `end`→`close()`
@@ -263,7 +283,7 @@ M2 재작성 때 함께 적용한다. **검증 기준**: 기술에 익숙하지 
 
 | 기관·세션별 변경 가능 (`org_settings`) | 고정 (코드 상수) |
 |---|---|
-| `target_minutes`, `default_avoid_topics`, `facility_type`, `program_type` 기본값 | `safety.ts` CRISIS_*, `screenAiUtterance`, 출력 200자 제한, 진단표현 금칙어, 턴 캡, 세션 수명 |
+| `target_minutes`(세션별 `duration_minutes` 가 우선), `default_avoid_topics`, `facility_type`, `default_program_type`, `default_location` | `safety.ts` CRISIS_*, `screenAiUtterance`, 출력 200자 제한, 진단표현 금칙어, 턴 캡, 세션 수명 |
 
 **DB 설정으로 안전 가드를 끌 수 있으면 안 된다.**
 
@@ -305,14 +325,16 @@ W7(동의 UI) → 파일럿 개시 전 블로커
 7. `check:copy` 비의료 린트 ↔ 공단 서식 문구 충돌 가능 — W1 착수 전 사전 검증.
 8. `pnpm install --prefer-offline` 이 `apps/voice-relay/node_modules` 를 만들지 않는다 —
    `pnpm install --filter @giokon/voice-relay` 선행.
+9. **새 역할을 부여할 경로가 없다** — `users.role` 은 3중으로 잠겨 있고 온보딩은 요양보호사·보호자만 고른다.
+   `set_member_role` RPC(D3)·역할 지정 UI(W6) 없이 D1 만 넣으면 사회복지사·센터장은 영원히 0명이다.
 
 ### 안전 아키텍처를 약화시키지 말 것
-9. **공단 일지의 진행자 칸에 AI 를 쓸 수 없다.** `facilitator_user_id` 를 확정 시 NOT NULL 로
+10. **공단 일지의 진행자 칸에 AI 를 쓸 수 없다.** `facilitator_user_id` 를 확정 시 NOT NULL 로
    강제하고 `tool_used`("AI 대화 프로그램 보조")를 별도 필드로 둔다.
-10. **위기 시 즉시 `close` 를 `paused` 로 약화시키지 말 것**(§9-4).
-11. **위임 대상은 3개뿐**(일지 확정·공개 철회·보호자 연결 승인). 위기 대응·출력 검열·진단표현 금지·
+11. **위기 시 즉시 `close` 를 `paused` 로 약화시키지 말 것**(§9-4).
+12. **위임 대상은 3개뿐**(일지 확정·공개 철회·보호자 연결 승인). 위기 대응·출력 검열·진단표현 금지·
     Clova 경유를 `org_capabilities` 에 넣는 순간 안전 구조가 설정 한 줄로 무력화된다.
-12. 주간보호 출석 테이블을 만들지 말 것(기준 1).
+13. 주간보호 출석 테이블을 만들지 말 것(기준 1).
 
 ---
 
@@ -333,6 +355,7 @@ bash supabase/tests/run-rls-regression.sh   # PG16 실기동, 마이그레이션
 - **service_role 로 `status='final'` 시도 = 실패**(기준 2)
 - `guardian_text_approved_at` 없이 공개 시도 = 실패
 - 확정 후 수정 시 revision 행 자동 생성
+- `set_member_role`: 요양보호사 호출·자기 자신 대상·타 기관 대상·보호자↔돌봄팀 전환 = 전부 실패
 
 ### 기준 2 전용 테스트
 "AI 산출물이 사람 확인 없이 공식 기록이 되거나 보호자에게 가는 경로가 없다"를

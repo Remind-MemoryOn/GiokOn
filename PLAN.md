@@ -255,6 +255,8 @@ giokon/
   규칙 기반 대화(`packages/core/src/ai.ts`)는 **삭제**, 안전 계층은 **유지**. 직접 Gemini Live 모드 **폐기**.
 - **M22.2 권한 재설계**: 요양보호사별 배정 격리 → **기관 단위 + 역할 기반**. `org_role` 에 `social_worker`·`center_director`
   추가, 기관별 위임은 `org_capabilities`(일지 확정·공개 철회·보호자 연결 승인 3종만).
+  ⚠️ 새 역할을 **부여하는 경로**도 함께 만든다 — `users.role` 은 3중으로 잠겨 있어 `set_member_role` RPC
+  (`org_admin`·`center_director` 만, 자기 자신 불가)와 구성원 역할 지정 UI 가 없으면 사회복지사·센터장은 0명이다.
 - 상세: `pilot-development-plan.md` §4 A·D · §5 D1~D4·D6 · §9.
 
 #### M23. 고령자 UI + 어르신 표시 모드 (2026-09-23 신설)

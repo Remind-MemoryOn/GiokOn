@@ -16,10 +16,14 @@
 
 기억온 v1 데이터베이스는 Supabase PostgreSQL을 사용한다. 인증은 **Supabase Auth**를 사용하며, 데이터 접근은 클라이언트(웹·모바일)가 supabase-js로 직접 연동하고 **RLS(`auth.uid()`)** 로 소유자별로 격리한다. Supabase는 DB·Auth·Storage·Edge Functions를 통합 제공한다.
 
+> ⚠️ "소유자별 격리"는 v1 서술이다. 격리 모델은 두 번 바뀌었다 — **현재**(`20260722100000`)는 기관(org_id) + **담당 배정**
+> (`app.is_assigned_caregiver`), **파일럿 목표**(2026-09-23)는 기관 + **역할**(`app.is_care_team()` · `app.has_capability()`)이다.
+> 전환 전후 모두 보호자는 `guardian_shares`(공개 커밋) 경유로만 읽는다. 아래 "파일럿 신규·변경" 참조.
+
 ## Files
 
 - `supabase/migrations/`: v1 스키마, 인덱스, 트리거, RLS 정책. (RLS는 `auth.uid()` 기준으로 작성한다.)
-- `supabase/functions/`: AI 파이프라인 Edge Functions(STT→LLM→TTS).
+- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `session-report`(세션 분석 생성) · `naver-auth` · `stt-transcribe`(요양일지 음성 — 기획 변경으로 재검토 대상). 파일럿에서 일지 초안 워커·푸시 발송 워커가 추가된다. 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
 - `docs/database.md`: Supabase 적용 절차와 접근 모델.
 
 ## Tables
@@ -34,11 +38,11 @@
 웹 1차 MVP 신규(2026-07-13 인터뷰 반영 — Phase W, 계획 확정·마이그레이션 예정):
 
 - `session_analyses`: 세션 종료 시 AI 분석 결과(`core/analysis` SessionAnalysis JSON·버전). RLS 조직 범위(**guardian 제외**). 앱이 insert.
-- `care_journals`: 요양일지(내용·source[photo/voice/typed/ai_draft]·사진 경로·draft/final). **민감정보 취급**(동의·보관파기). guardian 직접 접근 불가.
+- ~~`care_journals`~~: 요양일지(내용·source[photo/voice/typed/ai_draft]·사진 경로·draft/final). **민감정보 취급**(동의·보관파기). guardian 직접 접근 불가. ⚠️ **2026-09-23 삭제 확정 → `program_journals`**(아래 파일럿 절).
 - `profile_guardians`: 어르신↔보호자 연결(status pending/approved/revoked·승인자).
 - `guardian_invites`: 어르신별 1회성·72h 만료 초대 코드(QR=코드 URL).
-- `guardian_shares`: 공개 커밋(항목 유형[일지/분석/세션요약/리포트]·승인자·시점·**철회**). **보호자는 승인된 연결+미철회 행만 SELECT**.
-- Storage 버킷 `journal-photos`(private): 일지 사진 원본. RLS·보관 정책 적용.
+- `guardian_shares`: 공개 커밋(항목 유형[일지/분석/세션요약/리포트]·승인자·시점·**철회**). **보호자는 승인된 연결+미철회 행만 SELECT**. 파일럿에서도 **공개 수단으로 재사용**한다(일지 공개 여부를 status 에 넣지 않는다).
+- Storage 버킷 `journal-photos`(private): 일지 사진 원본. RLS·보관 정책 적용. ⚠️ 2026-09-23: `journal_photos` 삭제와 함께 기존 객체 정리(아래).
 - ⚠️ RLS 가드(필수 선행, T17.0): `safety_events` SELECT에 guardian 역할 배제 — 보호자 기관 합류 시 위기 발췌 노출 차단.
 
 인증 개편 신규/변경(2026-07-16 — 소셜 로그인·회원가입·연결, 계획 확정·마이그레이션 예정):
@@ -54,7 +58,7 @@
 - `elder_codes`: 어르신별 **영속·비소진** 코드(profile_id 1:1·unique). 어르신 생성 트리거가 자동 발급. **보호자 미열람**(별도 테이블·RLS로 권한 상승 차단) — 보호자는 코드를 link RPC 입력으로만 사용. 회전(rotate) 지원.
 - `profile_caregivers`: 어르신↔요양보호사 **배정**(다대다·status active/removed·감사). 코드로 self-claim.
 - **자식 FK 완화**: chronicle_entries/sessions/session_logs의 복합 FK `(profile_id,user_id)` → `profile_id`(자식은 session_id) 단독 + `user_id` nullable actor(SET NULL). → 새 담당자의 **쓰기 연속성** 확보.
-- **RLS 재작성(배정 기반)**: profiles·chronicle_entries·sessions·session_logs·session_analyses·care_journals·guardian_shares(요양보호사 브랜치)·safety_events·consents 를 `org_id=현재기관 AND 비 guardian AND (배정 or org_admin)`으로. 같은 기관 org_id 격리 유지(타 기관 이관은 범위 밖). 보호자 경로(공개 커밋·연결 승인)는 유지.
+- **RLS 재작성(배정 기반 — ⚠️ 파일럿에서 기관 단위로 다시 바뀐다)**: profiles·chronicle_entries·sessions·session_logs·session_analyses·care_journals·guardian_shares(요양보호사 브랜치)·safety_events·consents 를 `org_id=현재기관 AND 비 guardian AND (배정 or org_admin)`으로. 같은 기관 org_id 격리 유지(타 기관 이관은 범위 밖). 보호자 경로(공개 커밋·연결 승인)는 유지.
 - `app.is_assigned_caregiver(profile_id)`(security definer): 배정 판정 헬퍼(RLS 재귀 방지).
 - `claim_elder_by_code(p_code)`(RPC): **활성 담당/관리자**만 같은 기관의 다른 어르신을 즉시 인계(멱등). 미승인 요양보호사의 자가 승격 우회는 가드로 차단.
 - `link_guardian_by_elder_code(p_code)`(RPC): 보호자 연결(영속·비소진·멱등). 구 `redeem_guardian_invite`(1회성) 대체.
@@ -78,7 +82,32 @@
 온보딩 단순화 + 음성 STT(`20260722150000` · Edge Function, 2026-07-25):
 
 - `complete_onboarding` 개정: **요양보호사 = 소속 기관명 입력**(새 기관+org_admin)으로 되돌림(어르신 코드 합류 토글 제거 — 코드는 보호자용). 보호자 브랜치(어르신 코드 연결) 유지. 여러 요양보호사 같은 기관 합류(연속성)는 추후 기관 초대 메커니즘으로(런북).
-- Edge Function **`stt-transcribe`**(신규): 요양일지 음성 파일 → CLOVA CSR 인식 → `{text}`. CLOVA 키는 서버 시크릿(`NCP_CLOVA_CLIENT_ID/SECRET`). 데이터층 `transcribeAudio(file)`. 미배포 시 UI 안내.
+- Edge Function **`stt-transcribe`**(신규 — ⚠️ 요양일지 음성 입력용이라 기획 변경 후 재검토 대상): 요양일지 음성 파일 → CLOVA CSR 인식 → `{text}`. CLOVA 키는 서버 시크릿(`NCP_CLOVA_CLIENT_ID/SECRET`). 데이터층 `transcribeAudio(file)`. 미배포 시 UI 안내.
+
+파일럿 신규·변경(2026-09-23 기획 변경 — **계획 확정, 마이그레이션 미작성**. 상세·순서: [`pilot-development-plan.md`](plans/pilot-development-plan.md) §5 D1~D10):
+
+- **접근 모델 전환**: 요양보호사별 배정 격리 → **기관 단위 + 역할 기반**. 교대근무라 같은 기관의 돌봄팀은 담당과 관계없이 기록을 본다.
+  `app.is_care_team()`(비 guardian 돌봄팀) · `app.has_capability(capability)`(기관별 위임) 신설, 9테이블 SELECT/UPDATE 술어를
+  `org_id = app.current_org_id() and app.is_care_team()` 로 교체(D4). **보호자 브랜치는 복사해 무변경 유지.**
+  `app.is_assigned_caregiver()` 는 **삭제하지 않는다** — "내 담당" 필터·알림 대상이 쓴다.
+- `org_role` enum 에 `social_worker`·`center_director` 추가(D1) · `notification_kind` 에 `session_paused`·`journal_ready`·`journal_failed`(D2).
+  ⚠️ `alter type ... add value` 는 **각각 단독 마이그레이션 파일** — 같은 트랜잭션에서 새 값을 쓸 수 없다.
+- `org_settings`(시설 유형·목표 시간·기본 피할 주제·기본 프로그램 유형·기본 장소) · `org_capabilities`(일지 확정·공개 철회·보호자 연결 승인
+  **3종만** 역할별 위임) · **`set_member_role(target, role)`** RPC — `users.role` 이 3중으로 잠겨 있어(`20260908000000`) 이 RPC 가 없으면
+  새 역할을 가질 방법이 없다(D3).
+- ⚠️ **`care_journals`·`journal_photos` DROP**(데이터 포함 — 사용자 확정). `program_journals`(공단 서식 필드를 **개별 컬럼**으로,
+  상태 `generating|pending_review|final|failed`) · `program_journal_photos` · `program_journal_revisions`(확정 후 수정 이력) ·
+  `journal_generation_jobs`(초안 생성 큐) + 트리거 4종 — **확정 가드(`auth.uid() is null` 이면 `final` 불가 — 서비스 계정 워커는 확정을 못 쓴다)** ·
+  이력 · 세션 종료 enqueue · 공개 게이트(확정 + 보호자 문장 승인 + 권한). `care_grade` enum + `profiles.care_grade`(D5).
+  Storage 버킷 `journal-photos` 의 기존 객체는 데이터 삭제 확정에 따라 함께 정리한다 — SQL 로 `storage.objects` 행만 지우면 실제 파일이
+  남으므로 Storage API 로 지운다.
+- `session_phase` enum + `sessions` 컬럼 7개(phase·phase_started_at·paused_at·paused_by·pause_reason·control_request·prompt_version) ·
+  `session_interventions`(감독 개입 기록) · RPC `session_tick`·`advance_session_phase`·`request_session_control`(D6).
+  목표 시간은 **기존 `sessions.duration_minutes`** 를 쓴다 — 새 컬럼을 만들지 않는다.
+- `push_tokens`(본인 행만) · `notifications.pushed_at`(D7) · `product_events` + definer 삽입 함수(D8 — 시간 절감·열람 이력의 유일한 증거).
+- realtime publication 에 `program_journals`·`session_interventions` 추가(D9, `if exists (pg_publication)` 가드) ·
+  동의 버전 단일화 `app.current_consent_version()`(D10).
+- ⚠️ **출석 테이블은 만들지 않는다**(ERP 영역). 주간보호 제공 여부는 `program_journals` 행 유무 + `delivered`/`non_delivery_reason` 로만 표현한다.
 
 ## Access Model
 
@@ -90,12 +119,20 @@ create policy profiles_select_own on profiles
   for select using (user_id = auth.uid());
 ```
 
+> ⚠️ 위 예시는 v1 패턴이다. 현재는 `org_id = app.current_org_id() and <비 guardian> and (app.is_assigned_caregiver(profile_id) or app.is_org_admin())`,
+> 파일럿 목표(D4)는 아래와 같다 — 위임 권한이 필요한 쓰기(일지 확정 등)는 정책이 아니라 트리거·RPC 에서 `app.has_capability()` 로 검사한다.
+
+```sql
+-- 파일럿 목표 술어(D4) — 같은 기관 돌봄팀 읽기
+using (org_id = app.current_org_id() and app.is_care_team())
+```
+
 공급자 키는 서버에만 둔다. 현재 토큰 발급·웹 STT 등은 Edge Function이 처리한다. 새 장시간 음성 중계는 별도 실행 환경에서 호출자 권한을 집행하며, 서버 권한으로 기록하더라도 호출자·기관·대상·동의 검증을 생략하지 않는다.
 
-목표 흐름(2026-09-13 승인, 미구현):
+음성 중계 흐름(2026-09-13 승인 → **코드 구현·로컬 검증 완료, 운영 배포·실기기 미검증**. 2026-09-23 **유일한 음성 경로로 확정** — 앱 직접 연결은 폐기):
 
 1. 앱이 음성 중계에 인증된 연결을 요청한다. 중계가 세션·기관·배정·동의·상태·한도를 검사한다.
-2. 중계가 Gemini Live 입력과 연결 수명을 통제한다. 기존 앱 직접 연결 경로의 전환 정책도 필요하다.
+2. 중계가 Gemini Live 입력과 연결 수명을 통제한다. ~~기존 앱 직접 연결 경로의 전환 정책도 필요하다.~~ → 직접 경로는 **폐기**(파일럿 계획 M1). 파일럿에서는 중계의 2초 권한 폴을 `session_tick` RPC 로 바꿔 단계·원격 제어를 함께 받는다(D6).
 3. Live 출력 전사 → 서버 검증·채택 → Clova 합성 → 앱 재생으로 연결한다. Live Structured Outputs를 전제하지 않는다.
 4. 생성·채택·실제 재생과 전사/교정 출처를 구분하는 기록 계약을 설계한다. 기존 컬럼과 신규 필요 항목은 DB 작업에서 대조하며 고정 `audio_url` 반환을 전제하지 않는다. 상세: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현).
 
@@ -139,6 +176,7 @@ NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 ## Notes
 
 - 실시간 동기화: 웹 1차 MVP(Phase W)부터 **Supabase Realtime 구독**을 사용한다 — `sessions`·`session_analyses`·`guardian_shares` 변경을 웹 대시보드/분석/보호자 화면에 실시간 반영(T-E3). 별도 실시간 DB는 두지 않는다.
+- ⚠️ Realtime 에 테이블을 추가할 때는 publication(마이그레이션)과 **`packages/data` `realtime.ts` 의 세 곳**(`RealtimeTable` 타입·`DEFAULT_TABLES`·`invalidateFor`)을 함께 바꾼다. publication 에만 넣으면 아무도 듣지 않는다(2026-09-04 에 겪었다). 파일럿 대상: `program_journals`·`session_interventions`.
 - 어르신 출생연도는 입력 검증 기준에 맞춰 `1900..2006`으로 제한한다.
 - TTS 출력 저장·재사용은 공급자 계약 확인 전 기능으로 전제하지 않는다. 기존 오디오 관련 컬럼이 있어도 저장 구현 완료를 뜻하지 않으며, 텍스트 기록·입력 원음·TTS 출력에 동일한 24시간 정책을 적용하지 않는다.
 - API 응답의 `timestamp` 필드는 DB의 `session_logs.spoken_at`에서 매핑한다.

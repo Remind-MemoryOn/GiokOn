@@ -323,11 +323,11 @@
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
 | T22.1 | `org_role` 에 `social_worker`·`center_director` 추가 — ⚠️ **단독 마이그레이션**(같은 트랜잭션에서 신규 enum 값 사용 불가) | D1 | — | ⏳ |
-| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) | D3 | T22.1 | ⏳ |
+| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) + ⚠️ **역할 부여 RPC `set_member_role`**(`org_admin`·`center_director` 만 · 자기 자신 불가 · 보호자↔돌봄팀 전환 불가 · 마지막 `org_admin` 강등 불가). 없으면 새 역할은 0명이다 | D3 | T22.1 | ⏳ |
 | T22.3 | `app.is_care_team()`·`app.has_capability()` + **9테이블 RLS 기관 단위 전환**(보호자 브랜치 무변경) | D4 | T22.2 | ⏳ |
 | T22.4 | `= 'caregiver'` 비교 전면 grep → `is_care_team()` 치환(새 역할이 조용히 빠지는 것 방지) | §11-6 | T22.3 | ⏳ |
-| T22.5 | 권한 매트릭스 UI(3종 × 역할) + 기관 설정 | W6 | T22.3 | ⏳ |
-| T22.6 | RLS 회귀 단언: 같은 기관 다른 담당자 열람 성공 · 타 기관·guardian 0건 · 신규 역할 동작 · 위임 on/off | §12 | T22.3 | ⏳ |
+| T22.5 | 권한 매트릭스 UI(3종 × 역할) + 기관 설정 + 구성원 역할 지정 | W6 | T22.3 | ⏳ |
+| T22.6 | RLS 회귀 단언: 같은 기관 다른 담당자 열람 성공 · 타 기관·guardian 0건 · 신규 역할 동작 · 위임 on/off · `set_member_role` 거부 4종 | §12 | T22.3 | ⏳ |
 
 ### M20 — 프로그램 일지 자동 생성 (머지 단위 ②) → `PLAN.md` M20
 | ID | 작업 | 계획 | 의존 | 상태 |
@@ -345,13 +345,13 @@
 ### M21 — 감독 화면 + 대화 단계 (머지 단위 ③) → `PLAN.md` M21·M22.1
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T21.1 | `session_phase` + `sessions` 컬럼 8개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control` | D6 | T22.3 | ⏳ |
+| T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ⏳ |
 | T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ⏳ |
 | T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입(`resumeContext` 와 같은 경로) · 원격 제어 처리 | C3 | T21.1, T21.2 | ⏳ |
 | T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ⏳ |
 | T21.5 | 웹 감독 화면(반응형) + 원격 일시정지·재개·종료 | W2 | T21.3 | ⏳ |
 | T21.6 | 앱 원격 제어 수신("잠시 쉬어요" + 마이크 중단) | M5 | T21.3 | ⏳ |
-| T21.7 | 세션 설계에 목표 시간·단계 미리보기·기관 기본 피할 주제 | W5 | T21.1 | ⏳ |
+| T21.7 | 세션 설계: 목표 시간(기존 `duration_minutes`, 초기값을 고정 15분 대신 기관 설정에서) · 단계 미리보기 · 기관 기본 피할 주제 | W5 | T21.1 | ⏳ |
 
 ### M23 — core 정리 + 어르신 표시 모드 (머지 단위 ④, **반드시 한 PR**) → `PLAN.md` M22.1·M23
 | ID | 작업 | 계획 | 의존 | 상태 |
