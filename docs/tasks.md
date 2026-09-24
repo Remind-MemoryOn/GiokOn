@@ -300,14 +300,82 @@
 | T18.1 | 도구화 3종: **일지 초안**(M19)·**공개 실행**(M17.2 대행)·**데이터 설명**(보호자용) — 서버 검증 + **실행 전 사람 확인 게이트** | T16, T17, T19 | ✅ (2026-07-19 웹 MVP) |
 | T18.2 | 작업 지향 대화 에이전트(SCR-W11): 요양보호사=초안·공개 대행·요약 / 보호자=**커밋 데이터만 근거** 설명(관찰 지표 언어·진단 표현 금지). MVP=mock, 실 LLM 무변경 전환 | T18.1 | ✅ (2026-07-19 웹 MVP) |
 
-### M19 — 요양일지 (현직자 1순위 요청, 2026-07-13 신설) → `PLAN.md` §2′ M19
+### ~~M19 — 요양일지 (현직자 1순위 요청, 2026-07-13 신설)~~ → **폐기, M20 프로그램 일지로 대체(2026-09-23)**
+
+> ⚠️ 아래 T19.x 는 당시 기록이다. **T19.3(실 AI 파이프라인, ⏳)은 착수하지 않고 폐기한다** —
+> 음성 입력 경로는 "요양보호사 음성 자가기록"(기획서 §5-1 삭제 대상)에 해당하고, 일지 자체가
+> 공단 형식 프로그램 일지로 바뀐다. 기존 `care_journals` 데이터는 삭제(사용자 확정).
 
 | ID | 작업 | 의존 | 상태 |
 |---|---|---|---|
 | T19.1 | `care_journals` 마이그레이션(내용·source[photo/voice/typed/ai_draft]·사진 경로·draft/final) + Storage `journal-photos`(private) + RLS 조직 패턴(guardian 직접 접근 불가) + **민감정보 취급**(동의·보관파기)·감사 | T14.1 | ✅ (2026-07-19 웹 MVP) |
 | T19.2 | 작성 UI(SCR-W06): 사진 업로드 / 타이핑 / 음성 입력 3경로 + AI 초안 → **요양보호사 확인 후 저장** | T19.1 | ✅ (2026-07-19 웹 MVP) |
-| T19.3 | 실 AI 파이프라인: 사진→LLM 비전·음성→STT Edge Function(그 전 mock) | T19.1, 실AI | ⏳ |
+| T19.3 | 실 AI 파이프라인: 사진→LLM 비전·음성→STT Edge Function(그 전 mock) | T19.1, 실AI | ❌ 폐기(2026-09-23) |
 | T19.4 | 일지 → 공개 체크리스트(M17.2) 항목 연동 | T19.2, T17.2 | ✅ (2026-07-19 웹 MVP) |
+
+## 3-4. 파일럿 트랙 (M20~M23) — 2026-09-23 기획 변경
+
+> **실행 계획의 SoT = [`docs/plans/pilot-development-plan.md`](plans/pilot-development-plan.md)**.
+> 아래 태스크의 "계획" 열은 그 문서의 항목 ID(D=DB · M=앱 · W=웹 · C=연동)다.
+> 순서는 계획 §10 의 머지 단위 ①~⑤ 를 따른다 — **①(권한 재설계)이 나머지 전부의 선행**.
+
+### M22 — 권한 재설계 (머지 단위 ①) → `PLAN.md` M22.2
+| ID | 작업 | 계획 | 의존 | 상태 |
+|---|---|---|---|---|
+| T22.1 | `org_role` 에 `social_worker`·`center_director` 추가 — ⚠️ **단독 마이그레이션**(같은 트랜잭션에서 신규 enum 값 사용 불가) | D1 | — | ⏳ |
+| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) | D3 | T22.1 | ⏳ |
+| T22.3 | `app.is_care_team()`·`app.has_capability()` + **9테이블 RLS 기관 단위 전환**(보호자 브랜치 무변경) | D4 | T22.2 | ⏳ |
+| T22.4 | `= 'caregiver'` 비교 전면 grep → `is_care_team()` 치환(새 역할이 조용히 빠지는 것 방지) | §11-6 | T22.3 | ⏳ |
+| T22.5 | 권한 매트릭스 UI(3종 × 역할) + 기관 설정 | W6 | T22.3 | ⏳ |
+| T22.6 | RLS 회귀 단언: 같은 기관 다른 담당자 열람 성공 · 타 기관·guardian 0건 · 신규 역할 동작 · 위임 on/off | §12 | T22.3 | ⏳ |
+
+### M20 — 프로그램 일지 자동 생성 (머지 단위 ②) → `PLAN.md` M20
+| ID | 작업 | 계획 | 의존 | 상태 |
+|---|---|---|---|---|
+| T20.1 | `care_journals`·`journal_photos` DROP → `program_journals`(공단 12필드 개별 컬럼)·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` + `care_grade` | D5 | T22.3 | ⏳ |
+| T20.2 | 트리거 4종: **확정 가드(`auth.uid() is null` 이면 `final` 불가)** · 확정 후 수정 이력 · 세션 종료 enqueue · 공개 게이트 | D5 | T20.1 | ⏳ |
+| T20.3 | `generated-session.ts` 확장 — 공단 필드·보호자 문장 스키마, 금지어 `인지 저하`·`우울`·`정서 불안`·`병원 진료 권장` 추가 | C2 | — | ⏳ |
+| T20.4 | `program-journal.ts` 신규 — `mapAnalysisToJournalFields`·`screenJournalDraft`(적중 필드만 비움)·`buildGuardianText` | C2 | T20.3 | ⏳ |
+| T20.5 | ⚠️ `session-report` 의 `REPORT_ALLOWED_USER_IDS` 데모 허용목록 → org 게이트(안 하면 파일럿 전원 403) | C4 | — | ⏳ |
+| T20.6 | 워커 `program-journal-draft`(큐 소비·지수 백오프·`attempts>5` 실패) — **`pending_review` 까지만** | C4 | T20.2, T20.5 | ⏳ |
+| T20.7 | 앱 폴백 저장 순서 정리(세션 생성 → 턴·분석 → `ended`) | M7 | — | ⏳ |
+| T20.8 | 웹 프로그램 일지 목록·상세·확정·이력·재시도 + 네비 이름 변경 | W1, W3 | T20.6 | ⏳ |
+| T20.9 | 보호자 표현 전환(판정형→기술형·고정 문구·`guardian_text` 만 렌더) + `session_summary` 미렌더 버그 | W4 | T20.8 | ⏳ |
+
+### M21 — 감독 화면 + 대화 단계 (머지 단위 ③) → `PLAN.md` M21·M22.1
+| ID | 작업 | 계획 | 의존 | 상태 |
+|---|---|---|---|---|
+| T21.1 | `session_phase` + `sessions` 컬럼 8개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control` | D6 | T22.3 | ⏳ |
+| T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ⏳ |
+| T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입(`resumeContext` 와 같은 경로) · 원격 제어 처리 | C3 | T21.1, T21.2 | ⏳ |
+| T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ⏳ |
+| T21.5 | 웹 감독 화면(반응형) + 원격 일시정지·재개·종료 | W2 | T21.3 | ⏳ |
+| T21.6 | 앱 원격 제어 수신("잠시 쉬어요" + 마이크 중단) | M5 | T21.3 | ⏳ |
+| T21.7 | 세션 설계에 목표 시간·단계 미리보기·기관 기본 피할 주제 | W5 | T21.1 | ⏳ |
+
+### M23 — core 정리 + 어르신 표시 모드 (머지 단위 ④, **반드시 한 PR**) → `PLAN.md` M22.1·M23
+| ID | 작업 | 계획 | 의존 | 상태 |
+|---|---|---|---|---|
+| T23.1 | `ai.ts`·`voice-flow.ts`·`buildJournalDraft` 삭제 · `respondToUserTurn` → `evaluateUserTurn` 축소 · **안전 계층 유지** | C1 | — | ⏳ |
+| T23.2 | 직접 모드 제거 — `RELAY_MODE` 분기 삭제, `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화 | M1 | T23.1 | ⏳ |
+| T23.3 | 어르신 표시 모드 분리(`elder.tsx`) + 어르신 화면에서 요양보호사 UI 제거 | M2, M3 | T23.2 | ⏳ |
+| T23.4 | 복귀 게이트(숨김 제스처 또는 PIN) | M4 | T23.3 | ⏳ |
+
+### 푸시 (머지 단위 ⑤)
+| ID | 작업 | 계획 | 의존 | 상태 |
+|---|---|---|---|---|
+| T21.8 | `push_tokens` + `notifications.pushed_at` + `notification_kind` 확장(단독 파일) | D2, D7 | — | ⏳ |
+| T21.9 | 워커 `push-dispatch`(Expo Push) — ⚠️ 본문에 어르신 성함·발화 금지 | C4 | T21.8, T21.4 | ⏳ |
+| T21.10 | 앱 푸시 토큰 등록 — ⚠️ EAS 재빌드 필요 | M6 | T21.8 | ⏳ |
+
+### 공통·선결
+| ID | 작업 | 계획 | 의존 | 상태 |
+|---|---|---|---|---|
+| T24.1 | ⚠️ **어르신 동의 부여/철회 UI** — `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | W7 | — | ⏳ |
+| T24.2 | `product_events` + 삽입 함수 — "시간 절감"의 유일한 증거. **1주차에 넣는다** | D8 | — | ⏳ |
+| T24.3 | 어르신 `care_grade` 입력(주간보호 필수) | W8 | T20.1 | ⏳ |
+| T24.4 | 동의 버전 단일화(`app.current_consent_version()`) | D10 | — | ⏳ |
+| T24.5 | gemini-3.8-live 기준 재검증 — 폴백 상수 2곳·`client.ts` 설계 근거 주석(3.1에서 도출한 제약) | — | — | ⏳ |
 
 ### 웹 1차 MVP 실행 순서 (Phase W)
 
