@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSystemPrompt, PROMPT_VERSION, RESPONSE_JSON_SCHEMA } from './prompt'
+import { buildSystemPrompt, PROMPT_VERSION } from './prompt'
 import { screenAiUtterance } from './safety'
 import { DEFAULT_APPEARANCE } from './types'
 import type { ChronicleEntry, ElderProfile } from './types'
@@ -101,24 +101,5 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt(elder, chronicle)).not.toContain('오늘 세션 설계')
     // 빈 설계 객체도 섹션을 만들지 않는다
     expect(buildSystemPrompt(elder, chronicle, {})).not.toContain('오늘 세션 설계')
-  })
-})
-
-describe('RESPONSE_JSON_SCHEMA — Structured Outputs', () => {
-  it('question·topic·switchTopic·safety를 필수로 강제한다', () => {
-    expect(RESPONSE_JSON_SCHEMA.schema.required).toEqual([
-      'question', 'topic', 'switchTopic', 'safety',
-    ])
-    expect(RESPONSE_JSON_SCHEMA.strict).toBe(true)
-  })
-
-  it('safety.risk enum이 결정론 레이어와 일치한다', () => {
-    const risk = RESPONSE_JSON_SCHEMA.schema.properties.safety.properties.risk
-    expect(risk.enum).toEqual(['none', 'grief', 'watch', 'crisis'])
-  })
-
-  it('위기 분류 enum이 결정론 레이어와 일치한다', () => {
-    const cats = RESPONSE_JSON_SCHEMA.schema.properties.safety.properties.categories.items
-    expect(cats.enum).toEqual(['self_harm', 'medical_emergency', 'abuse'])
   })
 })

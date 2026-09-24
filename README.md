@@ -1,78 +1,104 @@
 # 기억온 (GiEok-On)
 
-> **2026-09-12 현재 개발 기준**: [개발 실행안](docs/plans/business-plan-development-delta.md)의 현재 구현/변경 목표/인수 조건을 적용한다. 앱은 Live 직접 입력·대화와 검증 Clova 출력, 담당자 시작·회수형 진행으로 변경할 계획이다. 웹 일지는 자유서술형이며 현재 초안은 규칙 기반이다. 사람의 최종 확인·선별 공개는 유지한다. 신규 LLM·과금·계측·학습 기능과 과거 구현/배포 이력을 구분한다.
+> 📌 **2026-09-23 기획 변경을 반영했다.** "무엇을 만들지"의 SoT =
+> [`docs/plans/pilot-development-plan.md`](docs/plans/pilot-development-plan.md) · 프로젝트 메모리 = [`AGENTS.md`](AGENTS.md).
 
-> 요양보호사가 입력한 어르신 연대기를 바탕으로 AI가 회상 대화를 돕고 세션 기록을 자동으로 남기는 **AI 기반 인지활동 보조 앱**.
+> **AI 가 어르신 한 분의 인생사에 맞춘 회상 대화(인지활동 프로그램)를 진행하고, 그 대화가 공단 형식
+> 프로그램 일지 초안으로 자동으로 남는 도구.** 요양보호사는 계획하고 감독하며 확인한다.
+> 보호자는 어르신이 나눈 이야기를 받아 본다.
 
-기억온은 요양보호사가 어르신의 생애 정보(연대기)를 입력하면, LLM·TTS·STT 기반 AI가 어르신과 1:1 음성 회상 대화를 진행하고 세션 결과를 자동 저장한다. 의료·치료 효과를 단정하지 않으며, **회상 대화와 기록 보조**가 핵심 가치다.
+의료·치료 효과를 단정하지 않는다(비의료 포지셔닝 — [`docs/compliance.md`](docs/compliance.md) §3).
+**AI 산출물은 사람이 확인하기 전에는 공식 기록도, 보호자에게 가는 글도 되지 않는다.**
 
 - **팀:** 리마인드 (임성훈(기획·개발) · 박진우(개발·영업) · 고서연(UI/UX·프론트엔드 디자인))
-- **상세 계획:** [`PLAN.md`](./PLAN.md) · **설계 문서:** [`docs/`](./docs)
+- **현재 목표:** **파일럿** — 1기관 · 기기 2~4대 · 요양원 + 주간보호. 정식 출시가 아니다.
 
 ---
 
-## 핵심 가치
+## 핵심 흐름
 
-1. **요양보호사의 손이 닿지 못하는 시간을 AI가 채운다** — 연대기를 입력하면 그 이후 AI가 어르신과 대화를 이어간다.
-2. **어르신의 실제 삶에 기반한 개인화 대화** — 출신지·직업·가족·주요 기억을 바탕으로 질문을 생성한다.
-3. **생활 기록 작성과 공개 부담 감소 목표** — 음성 초안을 담당자가 확인·수정·공개한다. 회상 발화 기록은 당일 관찰 일지나 법정 기록을 대신하지 않는다.
+```
+[설계]  요양보호사가 세션 설계(주제 · 피할 주제 · 목표 시간)를 확인한다
+[진행]  기기 N대에서 1:1 세션 병렬 진행 — AI 가 대화하고, 요양보호사는 감독 화면으로 지켜본다
+        위기 발화 → 즉시 중단 + 요양보호사 휴대폰 푸시
+[기록]  세션 종료 → 분석 → 프로그램 일지 초안 자동 생성 (확인 대기)
+[확정]  요양보호사·사회복지사가 확인·수정·확정 — 서버는 확정을 쓸 수 없다
+[공유]  공개를 고르면 보호자 웹 "오늘의 이야기"에 보호자용 문장만 나간다
+```
+
+판단이 애매할 때의 기준 셋: ① 기존 ERP(케어포·엔젤시스템·이지케어)가 하는 기능은 만들지 않는다 ·
+② AI 산출물이 사람 확인 없이 공식 기록이 되거나 보호자에게 가는 경로는 막는다(테스트로 검증) ·
+③ 제공 횟수·기록 품질·시간 절감을 측정할 이벤트를 1주차부터 남긴다.
 
 ---
 
 ## 아키텍처 (개요)
 
-웹+모바일 하이브리드 **모노레포**. 웹은 요양보호사 관리 화면, 모바일은 어르신 대화 화면을 담당하고, 로직·데이터·디자인 토큰은 공유 패키지로 묶는다.
+pnpm 모노레포, 워크스페이스 7개. 웹·모바일은 UI 를 공유하지 않고 도메인 로직·데이터·디자인 토큰만 공유한다.
 
 ```
 giokon/
 ├─ apps/
-│  ├─ web/        # 요양보호사 관리 웹 (React + Vite + Tailwind)
-│  └─ mobile/     # 어르신 대화 앱 (Expo / React Native + NativeWind)
+│  ├─ web/          # 요양보호사 웹 + 보호자 웹 (React 19 + Vite + Tailwind)
+│  ├─ mobile/       # 세션 진행 앱 — 요양보호사 모드 + 어르신 표시 모드 (Expo SDK 54 + NativeWind)
+│  └─ voice-relay/  # 음성 중계 서버 (Node + ws, Docker)
 ├─ packages/
-│  ├─ core/       # 도메인 타입 · Zustand 스토어 · AI 인터페이스(+목업) · 도메인 규칙
-│  ├─ data/       # supabase-js 클라이언트 · 데이터 액세스 · Supabase Auth
-│  └─ theme/      # 디자인 토큰(색·타이포·간격) — 웹 Tailwind + 모바일 NativeWind 공용
-├─ supabase/      # 마이그레이션 · Edge Functions(AI/STT/TTS) · Storage 정책
-└─ docs/          # 기획·설계 문서
+│  ├─ core/         # 도메인 타입 · 안전 계층(safety) · 프롬프트 · 생성문 검증 · 분석
+│  ├─ data/         # supabase-js · TanStack Query 훅 · Realtime · Supabase Auth
+│  └─ theme/        # 디자인 토큰 — 웹 Tailwind + 모바일 NativeWind 공용
+├─ supabase/        # 마이그레이션 · RLS · Edge Functions · RLS 회귀 테스트
+└─ docs/            # 기획·설계·런북
 ```
 
-**데이터/인증 흐름:** 클라이언트(웹·모바일)가 **supabase-js로 Supabase에 직접 연동**하고, **Supabase Auth + RLS(`auth.uid()`)** 로 소유자별 데이터를 격리한다. AI/STT/TTS처럼 API 키 보호가 필요한 부분만 **Supabase Edge Functions** 가 담당한다. (별도 Node/Express 서버·Firebase 미사용)
+**데이터·인증:** 클라이언트가 supabase-js 로 Supabase 에 직접 연동하고 RLS 로 격리한다. 격리 단위는 지금
+기관 + 담당 배정이고, 파일럿에서 **기관 + 역할**(요양보호사·사회복지사·센터장·기관 관리자)로 바뀐다.
+보호자는 공개된 항목만 본다. 비밀 키는 Edge Function·중계 서버에만 둔다.
+
+**음성:** 앱 → `voice-relay` → Gemini Live → 출력 검증(`screenAiUtterance`) → CLOVA Voice → 앱. Gemini 가 만든
+오디오 원본은 어르신에게 전달하지 않는다. 앱이 Gemini 에 직접 붙는 경로는 **폐기**한다.
 
 | 영역 | 기술 |
 |---|---|
-| 관리자 웹 | React 19 + Vite + Tailwind CSS |
-| 모바일 앱 | Expo (React Native) + NativeWind |
-| 공유 로직/상태 | TypeScript + Zustand (`packages/core`) |
-| 데이터·인증 | Supabase (PostgreSQL · Auth · Storage · Edge Functions) |
-| LLM / STT / TTS | 현재 Gemini Live 통합 음성·대화 / 변경 목표 Live 입력·대화 + 검증 Clova 출력 (자동 진행·중계·출력 배선 후속) |
-| 디자인 | Figma 핸드오프 → 디자인 토큰 단일 소스 |
-| 배포 | 웹: Vercel · 모바일: EAS Build/Submit |
+| 웹 | React 19 + Vite + Tailwind CSS (요양보호사 · 보호자) |
+| 모바일 앱 | Expo SDK 54 (React Native 0.81) + NativeWind |
+| 음성 중계 | Node + ws (Docker, 호스팅 미정) |
+| 공유 로직/상태 | TypeScript + Zustand + TanStack Query |
+| 데이터·인증 | Supabase 서울 (PostgreSQL · Auth · Storage · Realtime · Edge Functions) |
+| 대화 AI | Gemini Live `gemini-3.8-live` — 모델은 서버 시크릿 `GEMINI_LIVE_MODEL` 로만 바꾼다 |
+| 음성 출력 | CLOVA Voice (검증된 문장만) |
+| 푸시 | Expo Push (파일럿에서 추가) |
+| 디자인 | 웹 = Figma 단독 기준 |
+| 배포 | 웹: Vercel · 모바일: EAS Build |
 
 ---
 
-## v1 범위
+## 파일럿 범위
 
-**핵심 루프**에 집중한다.
-
-- ✅ 포함: 요양보호사 로그인, 어르신 연대기 등록/수정, 세션 시작, 음성 대화(TTS·STT), STT 수정, 세션 종료, 세션 로그 조회 — **관리는 웹, 어르신 대화는 모바일**.
-- ⏭️ v2 이후: 보호자 화면, 아바타 꾸미기, 음악·미술·인지자극 모듈, 기관 어드민, 수익화.
-
-접근성 제약(어르신 화면): 텍스트 ≥18pt, 마이크 버튼 ≥60px, AI 질문 TTS 자동 재생, 조작 최소화.
+- ✅ **포함**: 프로그램 일지 자동 생성 · 분석 → 일지 매핑 · 감독 화면(웹 반응형) · 안전 이벤트 푸시 ·
+  대화 정책(도입 → 회상 → 마무리·의견수렴) · 권한 재설계(기관 단위 + 역할) · 고령자 UI(어르신 표시 모드)
+- ⏭️ **범위 밖**: 카카오 알림톡 · ERP 연동/붙여넣기 복사 · 월간 계획표 · 현황판 · "평소와 다름" 플래그 ·
+  보호자 연대기 소재 · 보호자 → 요양보호사 메시지(동결 — 제거 아님)
+- 상세: [`docs/requirements.md`](docs/requirements.md) · [`docs/design.md`](docs/design.md)
 
 ---
 
 ## 개발 (개략)
 
-> 모노레포 전환은 진행 중이다. 현재 시연용 웹 프로토타입은 [`frontend/`](./frontend)에 있다(향후 `apps/web`로 이전 예정). 단계별 작업은 [`docs/tasks.md`](./docs/tasks.md), 전체 계획은 [`PLAN.md`](./PLAN.md) 참고.
-
 ```bash
-# 현재 프로토타입 (frontend/)
-cd frontend
-npm install
-npm run dev      # http://localhost:5173 (Chrome/Edge 권장 — 음성 기능)
+pnpm install
+pnpm install --filter @giokon/voice-relay   # ⚠️ --prefer-offline 설치는 중계 의존성을 만들지 않는다
+pnpm web                                     # 웹 개발 서버
+
+# 검증 게이트
+pnpm -r typecheck && pnpm -r lint && pnpm -r test
+pnpm check:bom && pnpm check:font && pnpm check:figma && pnpm check:copy
+bash supabase/tests/run-rls-regression.sh    # RLS 회귀 (PostgreSQL 16 실기동)
 ```
 
-환경변수(예정): 클라이언트는 `SUPABASE_URL` + `SUPABASE_ANON_KEY`, Edge Functions는 `SUPABASE_SERVICE_ROLE_KEY` 및 provider 키(OpenAI/Clova)를 secrets로 관리한다. 실제 키는 커밋하지 않는다.
+환경변수: 클라이언트는 공개 값만 쓴다 — 웹 `VITE_SUPABASE_URL`·`VITE_SUPABASE_PUBLISHABLE_KEY`, 앱
+`EXPO_PUBLIC_SUPABASE_*`·**`EXPO_PUBLIC_VOICE_RELAY_URL`(파일럿에서 필수)**. ⚠️ `EXPO_PUBLIC_*` 는 앱 번들에 들어가
+**공개된다** — 비밀 값을 넣지 않는다. 서버 비밀(`GEMINI_API_KEY`·`GEMINI_LIVE_MODEL`·`NCP_CLOVA_*`·`NAVER_*`)은
+Supabase secrets 와 중계 서버 환경에만 둔다. 실제 키는 커밋하지 않는다(`.env` 는 gitignore).
 
 ---
 
@@ -83,8 +109,7 @@ npm run dev      # http://localhost:5173 (Chrome/Edge 권장 — 음성 기능)
 | 문서 | 내용 |
 |---|---|
 | [`docs/compliance.md`](./docs/compliance.md) | 개인정보(PIPA)·동의·대리동의·SaMD 비의료·PIA/CPO |
-| [`docs/security.md`](./docs/security.md) | 안전성확보조치·암호화·RBAC·감사로그·pentest·ISMS-P |
-| [`docs/infrastructure.md`](./docs/infrastructure.md) | 리전·풀링·부하·백업/DR·SLO·비용 |
+| [`docs/security.md`](./docs/security.md) | 안전성확보조치·암호화·RBAC·감사로그 + 인프라(리전·백업·SLO·비용) |
 | [`docs/ai-safety.md`](./docs/ai-safety.md) | 위기 에스컬레이션·가드레일·투명성(AI기본법) |
 | [`docs/accessibility.md`](./docs/accessibility.md) | KWCAG 2.2·인증·자동/수동 테스트 |
 
@@ -94,11 +119,14 @@ npm run dev      # http://localhost:5173 (Chrome/Edge 권장 — 음성 기능)
 
 | 문서 | 내용 |
 |---|---|
+| [`docs/plans/pilot-development-plan.md`](./docs/plans/pilot-development-plan.md) | **파일럿 개발 계획 — "무엇을 만들지"의 SoT** (DB · 앱 · 웹 · 연동 파트) |
+| [`AGENTS.md`](./AGENTS.md) | 프로젝트 메모리 — 작업 방침 · 기술 결정 · 현재 위치 |
+| [`docs/plans/launch-checklist.md`](./docs/plans/launch-checklist.md) | 출시 점검표 — 파일럿 → 정식 출시 |
+| [`docs/new-hire/`](./docs/new-hire/README.md) | 새로 합류한 사람을 위한 쉬운 설명 |
 | [`PLAN.md`](./PLAN.md) | 전체 개발 계획 (모듈 설계 · 태스크 · 마일스톤) |
 | [`docs/product.md`](./docs/product.md) | 제품 개요 · 문제 정의 · 타깃 · 비즈니스 모델 |
-| [`docs/requirements.md`](./docs/requirements.md) | 기능/비기능 요구사항 (MoSCoW) |
-| [`docs/design.md`](./docs/design.md) | 화면·API·데이터·오류·상태 설계 |
-| [`docs/structure.md`](./docs/structure.md) | 서비스 구조 · 폴더 구조 · 엔티티 관계 |
-| [`docs/tech.md`](./docs/tech.md) | 기술 스택 · 외부 API · 배포 |
+| [`docs/requirements.md`](./docs/requirements.md) | 파일럿 요구사항(`PF-`·`PN-`) |
+| [`docs/design.md`](./docs/design.md) | 파일럿 화면 설계(`SCR-08·09`·`SCR-W12·W15~W21`) + 지금 있는 웹 화면 |
+| [`docs/structure.md`](./docs/structure.md) | 구조 · 역할·권한 · 모듈 · 기술 기준 |
 | [`docs/database.md`](./docs/database.md) | Supabase 스키마 · 인증/접근 모델 |
-| [`docs/tasks.md`](./docs/tasks.md) | 모듈·Phase 기반 작업 분해 |
+| [`docs/tasks.md`](./docs/tasks.md) | 작업 목록 — 파일럿 트랙 + 완료 색인 |

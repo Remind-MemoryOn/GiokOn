@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { VOICE_FAILURE_MESSAGES, screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
-import { getTranscriptStorageVersion } from '@giokon/data';
+import { getSessionControl, getTranscriptStorageVersion } from '@giokon/data';
 import { queryScope } from '../supabase';
 import { useApp, type ActiveSession } from '../../store/appStore';
 import { acquireLiveEngine, closeLiveEngine } from './engine';
 import { ensureMicPermission } from './mic';
 import { AutomaticConversation, type AutomaticPhase } from './automatic';
 
-export function useAutomaticConversation(enabled: boolean, session: ActiveSession | null, save: () => Promise<boolean>) {
+export function useAutomaticConversation(session: ActiveSession | null, save: () => Promise<boolean>) {
   const controller = useRef<AutomaticConversation | null>(null);
-  const [state, setState] = useState<{phase: AutomaticPhase; reason?: string}>({phase:'idle'});
+  const [state, setState] = useState<{phase: AutomaticPhase; reason?: string; remote?: boolean}>({phase:'idle'});
   useEffect(() => {
-    if (!enabled || !session?.remoteId) return;
+    if (!session?.remoteId) return;
     const lease = queryScope.capture();
     const id = session.session.id;
     let disposed=false;
     let outputTurn: {id:string; text:string} | undefined;
     let restoration: {context:VoiceResumeContext; lastId:string; listen:boolean} | undefined;
     let restoringOutput = false;
+    // Paused before the relay greeting arrived: resuming asks for the opener again.
+    let openerPending = false;
     let connectionGeneration = 0;
     const resumable = () => {
       const active=useApp.getState().active;
@@ -30,11 +32,14 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
       ready: async resuming => {
         restoringOutput=false;
         restoration=undefined;
+        openerPending=false;
         if (AppState.currentState !== 'active' || await getTranscriptStorageVersion() !== 1 || !await ensureMicPermission()) return false;
-        if (!resuming) return useApp.getState().active?.turns.length === 1;
+        // No local opener exists: the conversation starts empty until the relay greets.
+        if (!resuming) return useApp.getState().active?.turns.length === 0;
         if (!resumable() || !await save()) return false;
         const active=resumable(), last=active?.turns.at(-1);
-        if (!active || !last) return false;
+        if (!active) return false;
+        if (!last) { openerPending=true; return true; }
         try {
           const context=selectVoiceResumeContext(active.turns,active.playbackByTurnId ?? {});
           const observed=active.playbackByTurnId?.[last.id];
@@ -42,27 +47,32 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
           return true;
         } catch { return false; }
       },
-      connect: (onInput,onFailure,resuming) => {
+      connect: (onInput,onFailure,resuming,onRemote) => {
         const generation=++connectionGeneration;
         return acquireLiveEngine(`${session.elder.id}:${session.startedAt}`,
-        session.elder,session.chronicles,session.design,
         {onDraftFinal:onInput,onError: message => {
             if (generation !== connectionGeneration || disposed || !lease.current() || useApp.getState().active?.session.id !== id) return;
             if (message === VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED) useApp.getState().requireRelayReview();
             onFailure(message);
           },onProcessingDenied:onFailure,
+          onRemoteControl: state => {
+            if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id) onRemote?.(state);
+          },
           onDraftInterrupted: text => {
             if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id)
               useApp.getState().setPendingStt(text, 'gemini_live');
           }},session.remoteId,resuming ? restoration?.context : undefined);
       },
       resume: async engine => {
+        if (openerPending) return resumable()?.turns.length === 0 ? await engine.requestOpener() : null;
         if (!restoration || resumable()?.turns.at(-1)?.id !== restoration.lastId) return null;
         if (restoration.listen) return 'listen';
         restoringOutput=true;
         return await engine.requestContinuation?.() ?? null;
       },
       cancelPending: closeLiveEngine,
+      // 원격 재개·종료 감지(파일럿 M5) — 중계와 같은 서버 판정. 세션 소유 서버 id 로만 묻는다.
+      control: () => getSessionControl(session.remoteId!),
       input: text => useApp.getState().adoptAutomaticInput(text),
       output: (text,opener) => {
         if (!screenAiUtterance(text).allowed) return false;
@@ -70,7 +80,10 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
           restoringOutput=false;
           if (!restoration || !useApp.getState().acceptResumedResponse(text,restoration.lastId)) return false;
         }
-        else if (opener) useApp.getState().overrideQuestion(text);
+        else if (opener || openerPending) {
+          openerPending=false;
+          if (!useApp.getState().acceptOpener(text)) return false;
+        }
         else if (!useApp.getState().acceptAutomaticResponse(text)) return false;
         const turn = useApp.getState().active?.turns.at(-1);
         if (turn?.speaker !== 'AI' || turn.text !== text) return false;
@@ -81,7 +94,7 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
         if (outputTurn) useApp.getState().markTurnPlayback(outputTurn.id, outputTurn.text, result);
       },
       save,
-      status: (phase,reason) => setState({phase,reason}),
+      status: (phase,reason,remote) => setState(remote ? {phase,reason,remote} : {phase,reason}),
     });
     controller.current=flow;
     const subscription=AppState.addEventListener('change',next=>{
@@ -91,6 +104,6 @@ export function useAutomaticConversation(enabled: boolean, session: ActiveSessio
     // One controller owns one remote session. Its save callback and auth lease
     // remain scoped to that session; account changes invalidate the lease.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled,session?.remoteId,session?.session.id]);
+  }, [session?.remoteId,session?.session.id]);
   return { ...state, pause: () => controller.current?.pause(), resume: () => controller.current?.resume(), start: () => controller.current?.start(), stop: () => controller.current?.stop() };
 }

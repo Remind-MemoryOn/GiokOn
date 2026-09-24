@@ -1,792 +1,90 @@
-# design.md
+# 화면 설계 — 파일럿
 
-> **2026-09-12 현재 계획**: [음성 상세](plans/voice-ai-personalization.md)와 [개발 실행안](plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
+> 📌 2026-09-24 정리: 2026-06 MVP 설계(REST API 초안·순차 STT 파이프라인·JSON 응답 형식 등 이미 쓰지 않는 설계)를 걷어 냈다.
+> 신규 화면은 **기존 디자인과 최대한 같게** 최소 구현하고 시안이 오면 교체한다(2026-09-24 확정).
 
-> 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 신규 화면/요소 — 동의(민감정보·대리/설명동의)·AI 이용 사전 고지·위기 안내(사람 에스컬레이션)·정보주체 권리(열람/삭제)·KWCAG 접근성·기관관리(RBAC). 프론트는 **Claude Design 트랙**으로 직접 구현(외부 업체본과 비교). 상세: PLAN §2′(M9·M12·M13·M14·M15) · `docs/{compliance,ai-safety,accessibility}.md`.
+> 요구사항은 [`requirements.md`](requirements.md)(`PF-`·`PN-`), 실행 항목은
+> [`pilot-development-plan.md`](plans/pilot-development-plan.md)(`M#`·`W#`) 가 SoT 다.
+> 기존 화면 ID 는 이력 문서·마이그레이션 주석이 인용하므로 **재사용하지 않고** 새 번호를 매겼다.
+> 웹 화면의 시각 기준은 여전히 Figma 다([`apps/web/AGENTS.md`](../apps/web/AGENTS.md) §1). 시안이 없는 신규 화면은 **기존 화면의 카드·모달·글꼴·색·간격을
+> 그대로 써서** 만들고(새 시각 요소를 지어내지 않는다), 시안이 오면 그 화면만 교체한다.
 
-## 1. 설계 개요
-
-| 항목 | 내용 |
-|---|---|
-| 서비스명 | 기억온 (GiEok-On) |
-| 설계 기준 | MVP Must 4개 + Should 6개 |
-| 클라이언트 | React 관리자 웹(요양보호사) + React Native 모바일 앱(어르신) — 모노레포 |
-| 서버 | Supabase (supabase-js 직접연동 + AI는 Edge Functions) |
-| DB | Supabase PostgreSQL (RLS: `auth.uid()`) |
-| AI 파이프라인(신규 계획) | Gemini Live 직접 음성·대화 → 예외 재확인·개인화 정책 → 서버 안전 검증 → Clova Voice TTS |
-
-**설계 원칙**
-- 어르신 화면은 조작 최소화. 버튼 1개, 텍스트 18pt 이상
-- AI 파이프라인은 스트리밍 우선. 체감 대기 3초 이하 목표
-- 프로필·세션·로그의 source of truth는 Supabase. 클라이언트는 표시·입력 담당
-- 일반 운영 오디오는 처리 후 삭제. 별도 선택 학습 동의·권리·보유기간이 확인된 자료만 격리 저장(신규 설계).
-
----
-
-## 2. 주요 화면 설계
-
-### 화면 목록 전체
+## 1. 화면 목록 변경분
 
 ```
-[모바일 앱]
-  ├── SCR-01  로그인
-  ├── SCR-02  어르신 목록
-  ├── SCR-03  연대기 입력 (신규)
-  ├── SCR-04  연대기 수정
-  ├── SCR-05  세션 이력 목록
-  ├── SCR-06  세션 로그 상세
-  └── SCR-07  어르신 대화 화면 ← 핵심
+[모바일 앱 — 요양보호사 모드]
+  ├── SCR-02  어르신 목록                  유지 — 핵심 흐름 1단계 "어르신 선택"
+  ├── SCR-09  대화 시작 전(설계 확인·시작)  신규 ID — 기존 session/start 화면에 오늘 설계 요약 추가
+  └── SCR-07  어르신 대화 화면              ⚠ 대체 → SCR-08 (요양보호사 UI 가 어르신 화면에 섞여 있었다)
 
-[관리자 웹]
-  ├── SCR-W01 로그인
-  ├── SCR-W02 대시보드
-  ├── SCR-W03 어르신 관리
-  └── SCR-W04 세션 이력
+[모바일 앱 — 어르신 표시 모드]
+  └── SCR-08  어르신 표시 모드              신규 — 조작 요소 0 · 복귀 게이트 · "잠시 쉬어요"
+                                             ✅ 2026-09-24 구현(대화 화면 안의 모드 전환 · 복귀 = '선생님' 버튼 → PIN)
 
-[관리자 웹 — 1차 MVP 추가 (2026-07-13 인터뷰 반영, PLAN §2′ Phase W)]
-  ├── SCR-W05 랜딩·통합 로그인·역할 라우팅 (소셜 3종·W01 개정)
-  ├── SCR-W06 요양일지 작성 (사진/음성/타이핑 + AI 초안)
-  ├── SCR-W07 분석 페이지 (개인/전체 · Realtime)
-  ├── SCR-W08 데이터 공개 체크리스트
-  ├── SCR-W09 보호자 대시보드 (커밋 열람 — 재정의)
-  ├── SCR-W10 어르신 코드·담당·보호자 연결 관리 (영속 코드 재설계 2026-07-22)
-  ├── SCR-W11 AI 에이전트 패널
-  └── SCR-W12 온보딩(회원가입) — 소셜 로그인 후 기본정보 입력
+[요양보호사 웹]
+  ├── SCR-W06 요양일지 작성                 ⚠ 폐기 → SCR-W15 · SCR-W16
+  ├── SCR-W15 프로그램 일지 목록            신규 (W1)
+  ├── SCR-W16 프로그램 일지 상세·확정       신규 (W1 · W4)
+  ├── SCR-W17 감독 화면                     신규 (W2) — 반응형 우선
+  ├── SCR-W12 온보딩                       재정의 — 요양보호사 "새 기관 / 초대 코드로 합류" (W9) — 파일럿 블로커
+  ├── SCR-W18 기관 설정·권한·구성원·초대   기관 관리 확장 (W6)
+  ├── SCR-W19 어르신 처리 동의 부여·철회    신규 (W7) — 파일럿 블로커
+  ├── SCR-W07 분석 페이지                   유지 — 기관 내부 화면이라 이름도 유지
+  ├── SCR-W08 공개 체크리스트               유지 — 일지 공개에 게이트 조건 추가
+  └── SCR-W11 AI 에이전트 패널              축소 — "일지 초안" 도구는 자동 생성이 대체
+
+[보호자 웹]
+  ├── SCR-W09 보호자 대시보드·공개된 소식   유지 — 소식 필터 "요양일지" → "오늘의 이야기"
+  ├── SCR-W20 대화 관찰 리포트              재명명 — 기존 보호자 "분석" + 기술형 표현 + 고정 문구
+  └── SCR-W21 오늘의 이야기 상세            신규 — 보호자용 문장만 렌더
 ```
 
----
-
-### SCR-01 — 로그인
-
-**목적:** 요양보호사 인증
-
-**주요 요소:**
-- 서비스 로고 + 이름 (기억온)
-- 이메일 입력 필드
-- 비밀번호 입력 필드 (마스킹)
-- 로그인 버튼
-- 회원가입 · 비밀번호 재설정 링크
-- 오류 메시지 영역
-
-**동작:**
-1. 이메일·비밀번호 입력 → 로그인 버튼 탭
-2. Supabase Auth 검증
-3. 성공 → 세션(JWT) 저장 → SCR-02 이동
-4. 실패 → "이메일 또는 비밀번호가 올바르지 않습니다" 표시
-
----
-
-### SCR-02 — 어르신 목록
-
-**목적:** 담당 어르신 현황 파악 및 세션 시작
-
-**주요 요소:**
-- 상단: 요양보호사 이름 + 로그아웃 버튼
-- 어르신 카드 목록 (이름, 출생연도, 마지막 세션 날짜)
-- 카드별 `세션 시작` 버튼
-- 우측 하단: `+ 새 어르신` 플로팅 버튼
-
-**동작:**
-- 카드 탭 → SCR-05 (세션 이력)
-- `세션 시작` 탭 → `session-start` Edge Function 호출 → SCR-07 이동
-- `+ 새 어르신` 탭 → SCR-03 이동
-
----
-
-### SCR-03 — 연대기 입력 (신규)
-
-**목적:** 어르신 생애 정보 등록
-
-**주요 요소:**
-
-| 필드 | 입력 방식 | 필수 여부 |
-|---|---|---|
-| 이름 | 텍스트 | 필수 |
-| 출생연도 | 숫자 (예: 1945) | 필수 |
-| 출신지 | 텍스트 (예: 전북 전주) | 선택 |
-| 직업 이력 | 텍스트 (예: 식당 운영, 30년) | 선택 |
-| 가족 구성 | 텍스트 (예: 딸 둘, 사위 둘) | 선택 |
-| 주요 기억 1~5 | 텍스트 + `+ 추가` 버튼 | 선택 |
-| 취미 | 텍스트 | 선택 |
-
-- 개인정보 수집 동의 체크(어르신/보호자 동의) — 저장 전 필수, 동의일 기록
-- 하단: `저장` 버튼
-
-**동작:**
-1. 필수 항목 검증 → 미입력 시 해당 필드 빨간 테두리 + 안내 메시지
-2. 저장 버튼 탭 → `profiles` insert (supabase-js)
-3. 성공 → SCR-02 복귀 + 목록 갱신
-
----
-
-### SCR-04 — 연대기 수정
-
-**목적:** 기존 연대기 보완
-
-**주요 요소:** SCR-03과 동일 구조. 저장된 데이터 자동 채워짐.
-
-**동작:**
-1. 화면 진입 시 `profiles` 조회 (supabase-js) → 기존 데이터 폼에 자동 입력
-2. 수정 후 저장 → `profiles` update (supabase-js)
-3. 성공 → SCR-02 복귀
-
----
-
-### SCR-05 — 세션 이력 목록
-
-**목적:** 어르신별 과거 세션 조회
-
-**주요 요소:**
-- 어르신 이름 + 연대기 수정 버튼 (상단)
-- 세션 카드 목록 (날짜, 총 턴 수, 진행 시간)
-- 날짜 내림차순 정렬
-
-**동작:**
-- 화면 진입 시 `sessions` 조회 (supabase-js)
-- 세션 카드 탭 → SCR-06 이동
-
----
-
-### SCR-06 — 세션 로그 상세
-
-**목적:** 세션 대화 전문 확인
-
-**주요 요소:**
-- 세션 날짜·시간·턴 수 (상단 요약)
-- 대화 말풍선 목록 (AI / 어르신 구분, 발화 시각 표시)
-- 스크롤 가능
-
-**동작:**
-- 화면 진입 시 `session_logs` 조회 (supabase-js)
-- AI 발화: 좌측 말풍선 (회색)
-- 어르신 발화: 우측 말풍선 (파란색)
-
----
-
-### SCR-07 — 어르신 대화 화면 ★ 핵심
-
-**목적:** AI와 어르신의 1:1 음성 회상 대화
-
-**주요 요소:**
-
-```
-┌────────────────────────────┐
-│  [세션 종료]       기억온   │  ← 상단 바
-├────────────────────────────┤
-│                            │
-│   AI: 전주에서 오래         │
-│       사셨다고 하셨는데,    │  ← 최신 AI 질문 (18pt+)
-│       거기서 제일           │
-│       기억에 남는 게        │
-│       뭐예요?               │
-│                            │
-│   어르신: 거기서 김치       │  ← 어르신 발화 텍스트
-│           공장을 했지...   │
-│                            │
-│      🎙  말씀해 주세요      │  ← 마이크 버튼 (60px+)
-│                            │
-└────────────────────────────┘
-```
-
-**상태별 UI:**
-
-| 상태 | 마이크 버튼 | 안내 텍스트 |
-|---|---|---|
-| AI 음성 재생 중 | 비활성 (회색) | "듣고 있어요..." |
-| 마이크 활성 | 활성 (빨간 점) | "말씀해 주세요" |
-| STT 처리 중 | 로딩 | "잠깐만요..." |
-| 오류 | 재시도 아이콘 | "다시 말씀해 주세요" |
-
-**동작:**
-1. 화면 진입 → 서버에서 첫 질문 + 오디오 URL 수신
-2. 오디오 자동 재생 (TTS)
-3. 재생 완료 → 마이크 자동 활성화
-4. 어르신 발화 → 오디오 파일 서버 전송
-5. 서버: STT → LLM → TTS 순차 처리
-6. 클라이언트: 다음 질문 텍스트 표시 + 오디오 재생
-
----
-
-## 3. 화면별 핵심 UI 요소
+## 2. 신규·재정의 화면의 핵심 요소
 
 | 화면 | 핵심 요소 | 특이사항 |
 |---|---|---|
-| SCR-01 | 이메일·비밀번호 폼 | 로딩 스피너 (로그인 중) |
-| SCR-02 | 어르신 카드 + 세션 시작 버튼 | 빈 목록 시 "어르신을 추가해 주세요" |
-| SCR-03 | 연대기 입력 폼 | 주요 기억 항목 동적 추가 (최대 5개) |
-| SCR-07 | 마이크 버튼 (60px+) + 말풍선 | 텍스트 최소 18pt. 버튼 외 조작 최소화 |
+| SCR-08 어르신 표시 모드 | 큰 사진(연대기 사진) · 자막 · "말하는 중" 표시. 원격 일시정지를 받으면 "잠시 쉬어요" 화면 + 마이크 정지 | **조작 요소 0개**. 위기 배너(전화번호)·전사 수정 패널·중계 컨트롤·확인 없는 종료 X 를 두지 않는다. 복귀는 숨김 제스처(4모서리 순차 탭) 또는 PIN. 사진이 없으면 사진 영역을 비운다(자리표시 이미지 금지) |
+| SCR-09 대화 시작 전 | 웹에서 설계한 오늘 세션이 있으면 그 요약(제목·목표·피할 주제·목표 시간)을 보여 주고 채택한다 → 시작하기 → SCR-08 | 설계가 없으면 요약 영역을 비운다. 동의가 없으면 시작 불가(현행 가드). 중계 URL 이 없으면 시작 불가(직접 모드 폐기) |
+| SCR-W15 프로그램 일지 목록 | **"확인 대기 N건" 최상단** · 상태 칩(생성 중 / 확인 대기 / 확정 / 생성 실패) · 어르신 · 운영 일시 | 생성 실패 행에 재시도. 초안 도착은 Realtime 으로 즉시 반영 |
+| SCR-W16 프로그램 일지 상세 | 공단 서식 필드 폼 · 필드별 AI 초안 배지 · 보호자용 문장 + 승인 · 확정 · 이력 탭 · 다시 생성 | 확정 버튼은 권한(`has_capability` — 일지 확정)일 때만 활성. **진행자 칸에 AI 선택지 없음**(사람만). **확정 후 수정은 사유 입력 필수**. 진단 표현으로 비워진 필드는 "사람이 채워야 함"으로 보인다 |
+| SCR-W17 감독 화면 | 기관 안 진행 중 세션 카드: 어르신 · 기기 · 경과 시간 · 현재 단계 · 상태(진행 중 / 침묵 지속 / **위기 발화 강조** / 종료 요청) + 일시정지 · 재개 · 종료 | **휴대폰 브라우저 우선**. Realtime(`sessions`·`session_interventions`). 개입은 전부 행으로 남는다. **위기 카드에 위기 안내(전화번호·대응 절차)** — 어르신 화면에서 옮겨 온 것 |
+| SCR-W12 온보딩 (재정의) | 요양보호사: **새 기관 만들기(기관명)** 또는 **초대 코드로 합류** · 합류 선택 시 "승인 대기" 화면 | ⚠️ 지금은 가입하는 요양보호사마다 새 기관이 생겨 직원이 같은 기관에 모일 수 없다. 승인 전에는 데이터 0건(`users.org_id` NULL) |
+| SCR-W18 기관 설정·권한·구성원·초대 | 기관 기본값(시설 유형 · 목표 시간 · 기본 피할 주제 · 기본 장소 · 프로그램 유형) · 권한 매트릭스(일지 확정 · 공개/철회 · 보호자 연결 승인 × 역할) · 구성원 역할 지정 · **직원 초대 코드 발급·회수 · 합류 승인** | 매트릭스 편집·역할 지정·초대·합류 승인은 `org_admin`·`center_director` 만. 자기 역할·자기 합류 요청은 못 바꾸거나 승인할 수 없다. 합류 승인 화면에 "승인하면 기관 전체 기록 열람" 명시. 위기 대응·출력 검열·진단 표현 금지는 **설정 항목으로 두지 않는다** |
+| SCR-W19 어르신 처리 동의 | 동의 주체(본인 / 법정대리인) · 항목(AI 대화·음성 처리 · 국외 이전 · 녹음 파일 미저장 고지) · 버전 · 시각 · 철회 | ⚠️ 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리켜 `/` 로 튕긴다. 문구는 법률 검토 후 확정(기획 확인 사항) |
+| SCR-W20 대화 관찰 리포트 | 대화 시간 추이 · 말씀하신 이름·장소 · 긍정 표현이 많았던 주제 등 **기술형 관찰** | 점수·등급·"저하 의심"·"우울 경향"·"진료 권장" 금지. 데이터가 없는 항목은 표시하지 않는다. 하단 고정: "본 리포트는 대화 기록 요약이며 진단·평가 목적이 아닙니다." |
+| SCR-W21 오늘의 이야기 상세 | 확정·승인된 보호자용 문장 + 공유 사진 | 공단 서식 필드는 렌더하지 않는다(`guardian_text` 만). 열람 기록·요양보호사 알림 유지 |
 
-### 3-2. 웹 1차 MVP 신규 화면 (2026-07-13 인터뷰 반영)
+## 3. 파일럿 사용자 흐름
+
+```
+[웹 · 요양보호사]  세션 설계 (목표 시간 초기값 = 기관 설정)
+      ↓
+[앱 · 요양보호사 모드]  어르신 선택(SCR-02) → 설계 확인(SCR-09) → 시작      ← 3단계 이내
+      ↓  기기를 어르신께
+[앱 · 어르신 표시 모드]  SCR-08 — 도입 → 회상 → 마무리·의견수렴 (단계는 서버가 관리)
+      ↕  원격 일시정지 · 재개 · 종료          ⚠ 위기 발화 → 즉시 종료 + 즉시 기록 + 푸시
+[웹 · 감독 화면]  SCR-W17 (요양보호사 휴대폰 브라우저)
+      ↓  세션 종료
+[서버]  일지 초안 자동 생성 → 확인 대기        (워커는 확정을 쓸 수 없다)
+      ↓
+[웹]  SCR-W15 → SCR-W16 확인·수정·확정(권한자) → 보호자 문장 승인 → 공개(SCR-W08)
+      ↓
+[보호자 웹]  오늘의 이야기(SCR-W21) · 대화 관찰 리포트(SCR-W20)
+```
+
+## 4. 지금 있는 웹 화면 (2026-07 웹 1차 MVP)
+
+> 파일럿에서 바뀌지 않는 화면의 기능 기준이다. 모바일 MVP 화면(SCR-01~07)의 시각 기준은 Figma 런북(`runbooks/figma-app-extraction.md`)에 있다.
 
 | 화면 | 핵심 요소 | 특이사항 |
 |---|---|---|
 | SCR-W05 랜딩·통합 로그인 | 서비스 소개 + **로그인/회원가입 탭(이메일 아이디·비밀번호)** + **소셜 3버튼(구글·카카오·네이버)** + 아이디/비밀번호 찾기 링크 → (미온보딩→SCR-W12) → 역할 기반 자동 라우팅 | **이메일 로그인 재도입(2026-07-23)**. 네이버=커스텀 연동. 소셜은 본인인증(이름·전화) 프리필 |
 | SCR-W13 아이디(이메일) 찾기 | 이름+전화 → `find_login_email` → 마스킹 이메일(`ab***@dom`) 표시 | 1건 일치만 반환·존재 노출 최소화. 프로덕션 본인인증 게이트 권장 |
 | SCR-W14 비밀번호 찾기/재설정 | `/forgot-password`(메일 발송) → 메일 링크 → `/reset-password`(새 비밀번호) | Supabase Auth 재설정. 실 발송은 SMTP 설정 필요 |
-| SCR-W06 요양일지 작성 | 입력 3경로 탭(사진 업로드/타이핑/음성). 음성=**실시간 브라우저 STT + 음성 파일 업로드→CLOVA STT**(Edge Function `stt-transcribe`) 2방식. AI 초안 미리보기 → 확인·저장 | AI 초안·STT 결과는 **항상 사람 확인 후 저장**. 사진=Storage(private). STT 키는 서버 시크릿 |
+| ~~SCR-W06 요양일지 작성~~ ⚠️ **폐기(2026-09-23) → SCR-W15·W16** | 입력 3경로 탭(사진 업로드/타이핑/음성). 음성=**실시간 브라우저 STT + 음성 파일 업로드→CLOVA STT**(Edge Function `stt-transcribe`) 2방식. AI 초안 미리보기 → 확인·저장 | AI 초안·STT 결과는 **항상 사람 확인 후 저장**. 사진=Storage(private). STT 키는 서버 시크릿 |
 | SCR-W07 분석 페이지 | 개인/전체 관찰 지표(참여도·응답률·발화량·주제 반응) + 세션별 요약 | **Realtime 구독** — 앱 대화 종료 즉시 갱신·새 분석 배지. 효능·향상 표현 금지 |
 | SCR-W08 공개 체크리스트 | 오늘의 일지·분석·요약 체크박스 목록 → 미리보기 → "공개하기" / 철회 | 공개=guardian_shares 커밋. 철회 가능·감사로그 |
 | SCR-W09 보호자 대시보드 | 연결(승인)된 어르신별 공개 항목 타임라인 | **커밋된 데이터만** 렌더(RLS 강제). GuardianGuard 필수 |
 | SCR-W10 어르신 코드·담당·연결 | (요양보호사) 어르신 상세 **영속 코드 상시 표시·복사·회전(서버 생성)** + 담당 요양보호사 목록(**합류 승인 대기 승인/거절** 포함) + 보호자 연결 승인/거절. 어르신 관리에 "**코드로 담당 추가**"(활성 담당만) · EldersPage **합류 승인 대기 배너** · (보호자) 대시보드 "**어르신 연결**"에서 코드 입력 | 코드 하나로 보호자 연결·담당 인계 겸용(비소진). 담당 변경/추가 시 기록 연속. QR/`/join` 제거. 링크=`link_guardian_by_elder_code`, 배정=`claim_elder_by_code`, 합류 승인=`approve_caregiver_assignment`, 회전=`rotate_elder_code` |
-| SCR-W11 AI 에이전트 패널 | 대화 입력 + 도구 실행 카드(일지 초안·공개 대행·데이터 설명) | **실행 전 사람 확인 게이트**. 보호자 모드=설명 전용(커밋 데이터 근거) |
+| SCR-W11 AI 에이전트 패널 | 대화 입력 + 도구 실행 카드(일지 초안·공개 대행·데이터 설명) — ⚠️ 2026-09-23: 일지 초안은 세션 종료 자동 생성이 대체 | **실행 전 사람 확인 게이트**. 보호자 모드=설명 전용(커밋 데이터 근거) |
 | SCR-W12 온보딩(회원가입) | 소셜/이메일 가입 후 기본정보 입력 — 이름(프리필)·전화(소셜 본인인증 프리필)·역할. **요양보호사=소속 기관명 입력**(새 기관+org_admin) / 보호자=어르신 코드(선택) + 개인정보·소셜 제3자 동의 | 완료(`onboarded_at`) 전엔 데이터 화면 차단. `complete_onboarding` RPC 원자 처리. (2026-07-25: 요양보호사 어르신-코드 합류 토글 제거 — 코드는 보호자용 개념) |
-
----
-
-## 4. 사용자 인터랙션 흐름
-
-### 전체 Happy Path
-
-```
-[요양보호사]
-로그인 (SCR-01)
-    ↓
-어르신 목록 (SCR-02)
-    ↓  [+ 새 어르신]
-연대기 입력 (SCR-03) → 저장 → 목록 복귀
-    ↓  [세션 시작]
-세션 초기화 → "어르신께 기기를 전달해 주세요" 핸드오프 안내
-    ↓
-[어르신] 대화 화면 진입 (SCR-07)
-    ↓
-AI 음성 자동 재생
-    ↓
-마이크 자동 활성화
-    ↓
-어르신 발화 → STT → LLM → TTS → 반복
-    ↓  (3~5턴)
-세션 자동 종료(턴 수 도달/침묵) — 요양보호사는 웹/복귀 시에도 종료 가능
-    ↓
-세션 로그 자동 저장
-    ↓
-세션 이력 목록 (SCR-05) 복귀
-```
-
-### STT 오인식 수정 흐름
-
-```
-어르신 발화 → STT 변환 → 텍스트 화면 표시
-    ↓  [요양보호사 개입]
-텍스트 탭 → 수정 모달 팝업
-    ↓
-수정 완료 → 수정된 텍스트로 LLM 재요청
-    ↓
-다음 질문 생성 → 정상 흐름 복귀
-```
-
----
-
-## 5. 주요 기능 동작 방식
-
-### 5-1. AI 파이프라인 (핵심)
-
-```
-클라이언트
-  session-respond Edge Function 호출 { session_id, audio: File }
-        ↓
-  [STT]
-  audio → Supabase Storage 임시 업로드
-         → [과거 순차 STT 설계, 현재는 Live 직접 음성 경로]
-         → Supabase Storage 오디오 즉시 삭제
-        ↓
-  [LLM]
-  system_prompt = buildPrompt(profile, history)
-  messages = [...history, { role: "user", content: transcript }]
-  LLM streaming 호출 (현행 프런티어 · Structured Outputs)
-  → JSON: { question, topic, switch_topic }
-        ↓
-  [TTS]
-  검증된 question → Clova Voice API → 앱 재생 (보관·재사용은 계약 허용 시에만 설계)
-        ↓
-클라이언트
-  응답: { question, audioUrl, topic, switch_topic, transcript }
-```
-
-### 5-2. LLM 프롬프트 구조
-
-```
-[system]
-당신은 회상 대화 전문 AI입니다.
-아래 어르신의 연대기를 바탕으로 자연스러운 회상 대화를 이끌어 주세요.
-
-[어르신 정보]
-이름: {name} / 출생: {birth_year}년 / 출신지: {hometown}
-직업: {job} / 가족: {family}
-주요 기억: {memories}
-취미: {hobbies}
-
-[대화 원칙]
-- 어르신의 실제 연대기에 기반한 질문만 한다
-- 동일한 주제를 3회 이상 연속 반복하지 않는다
-- 어르신이 짧게 답하거나 침묵하면 더 쉬운 질문으로 전환한다
-- 사별, 전쟁, 고통스러운 기억이 언급되면 즉시 긍정적 주제로 전환한다
-- 반드시 아래 JSON 형식으로만 응답한다
-
-[응답 형식]
-{
-  "question": "다음 질문 텍스트",
-  "topic": "현재 주제 (고향 | 직업 | 가족 | 취미 | 기억)",
-  "switch_topic": false
-}
-
-[대화 이력]
-{conversation_history}
-```
-
-### 5-3. 세션 상태 관리
-
-```
-세션 상태: idle → active → ended
-
-idle:   세션 시작 전
-active: 세션 진행 중 (Supabase sessions/session_logs에 기록)
-ended:  세션 종료 후 (status='ended'로 마감)
-```
-
-### 5-4. TTS 스트리밍 처리
-
-```
-LLM 스트리밍 응답 수신
-    ↓
-문장 단위 감지 (마침표, 물음표, 느낌표)
-    ↓
-문장 완성 후 서버 의미·안전 검증을 통과한 텍스트만 Clova Voice TTS 요청
-    ↓
-오디오 청크 클라이언트 전송 (순차 재생)
-    ↓
-전체 질문 완성 후 다음 입력 대기
-```
-
----
-
-## 6. API 초안
-
-아래 계약은 **논리적 요청/응답 형태**를 정의한다. 실제 전송은 두 가지로 나뉜다. 프로필·세션 이력·로그 같은 **CRUD는 클라이언트가 supabase-js로 직접** 수행하고(RLS로 소유자 격리), **세션 AI 단계(start/respond/correct/end)는 Edge Functions**가 처리한다.
-
-### 인증
-
-| 항목 | 내용 |
-|---|---|
-| 방식 | Supabase Auth (JWT) — supabase-js가 자동 첨부 |
-| 헤더 | `Authorization: Bearer {supabase access token}` |
-| 미인증 응답 | `401 Unauthorized` |
-
----
-
-### 프로필 API
-
-#### `POST /api/profile` — 연대기 등록
-
-```json
-// Request
-{
-  "name": "이순자",
-  "birth_year": 1945,
-  "hometown": "전북 전주",
-  "job": "식당 운영, 30년",
-  "family": "딸 둘, 사위 둘, 손자 셋",
-  "memories": ["남편과 처음 만난 장터", "첫째 딸 결혼식"],
-  "hobbies": "텃밭 가꾸기"
-}
-
-// Response 201
-{
-  "id": "uuid",
-  "created_at": "2026-04-20T09:00:00Z"
-}
-
-// Error 400
-{
-  "error": "MISSING_REQUIRED_FIELD",
-  "fields": ["name", "birth_year"]
-}
-```
-
-#### `GET /api/profile/:id` — 연대기 조회
-
-```json
-// Response 200
-{
-  "id": "uuid",
-  "name": "이순자",
-  "birth_year": 1945,
-  "hometown": "전북 전주",
-  "job": "식당 운영, 30년",
-  "family": "딸 둘, 사위 둘, 손자 셋",
-  "memories": ["남편과 처음 만난 장터", "첫째 딸 결혼식"],
-  "hobbies": "텃밭 가꾸기",
-  "updated_at": "2026-04-20T09:00:00Z"
-}
-```
-
-#### `PATCH /api/profile/:id` — 연대기 수정
-
-```json
-// Request (변경 필드만 포함)
-{
-  "hobbies": "텃밭 가꾸기, 화투"
-}
-
-// Response 200
-{
-  "id": "uuid",
-  "updated_at": "2026-04-21T10:00:00Z"
-}
-```
-
-#### `GET /api/profiles` — 어르신 목록 조회
-
-```json
-// Response 200
-{
-  "profiles": [
-    {
-      "id": "uuid",
-      "name": "이순자",
-      "birth_year": 1945,
-      "last_session_at": "2026-04-20T09:30:00Z"
-    }
-  ]
-}
-```
-
----
-
-### 세션 API
-
-#### `POST /api/session/start` — 세션 시작
-
-```json
-// Request
-{
-  "profile_id": "uuid"
-}
-
-// Response 200
-{
-  "session_id": "uuid",
-  "question": "어르신, 전주에서 오래 사셨다고 하셨는데, 거기서 제일 기억에 남는 게 뭐예요?",
-  "audio_url": "https://storage.../tts_001.mp3",
-  "topic": "고향"
-}
-```
-
-#### `POST /api/session/respond` — 어르신 응답 처리
-
-```
-// Request (multipart/form-data)
-session_id: "uuid"
-audio: File (wav/mp3, 최대 60초)
-
-// Response 200
-{
-  "transcript": "거기서 김치 공장을 했지. 전국에서 사람들이 왔어.",
-  "question": "김치 공장이요? 얼마나 오래 하셨어요?",
-  "audio_url": "https://storage.../tts_002.mp3",
-  "topic": "직업",
-  "switch_topic": false,
-  "turn": 2
-}
-
-// Error 422 (STT 실패)
-{
-  "error": "STT_FAILED",
-  "message": "음성을 인식하지 못했습니다. 다시 말씀해 주세요."
-}
-```
-
-#### `PATCH /api/session/respond/correct` — STT 오인식 수정
-
-```json
-// Request
-{
-  "session_id": "uuid",
-  "turn": 2,
-  "corrected_text": "거기서 김치 공장을 했지"
-}
-
-// Response 200
-{
-  "question": "김치 공장이요? 얼마나 오래 하셨어요?",
-  "audio_url": "https://storage.../tts_002c.mp3",
-  "topic": "직업"
-}
-```
-
-#### `POST /api/session/end` — 세션 종료
-
-```json
-// Request
-{
-  "session_id": "uuid"
-}
-
-// Response 200
-{
-  "session_id": "uuid",
-  "turn_count": 4,
-  "duration_seconds": 623,
-  "ended_at": "2026-04-20T09:40:23Z"
-}
-```
-
-#### `GET /api/profile/:id/sessions` — 세션 이력 목록
-
-```json
-// Response 200
-{
-  "sessions": [
-    {
-      "id": "uuid",
-      "started_at": "2026-04-20T09:30:00Z",
-      "ended_at": "2026-04-20T09:40:23Z",
-      "turn_count": 4,
-      "duration_seconds": 623
-    }
-  ]
-}
-```
-
-#### `GET /api/session/:id/logs` — 세션 로그 상세
-
-```json
-// Response 200
-{
-  "session_id": "uuid",
-  "logs": [
-    {
-      "role": "ai",
-      "content": "전주에서 오래 사셨다고 하셨는데, 거기서 제일 기억에 남는 게 뭐예요?",
-      "timestamp": "2026-04-20T09:30:05Z"
-    },
-    {
-      "role": "user",
-      "content": "거기서 김치 공장을 했지.",
-      "timestamp": "2026-04-20T09:30:42Z",
-      "duration_ms": 4200
-    }
-  ]
-}
-```
-
----
-
-## 7. 데이터베이스 스키마 초안
-
-### PostgreSQL
-
-```sql
--- 요양보호사 계정 (auth.users와 1:1 연결)
-CREATE TABLE users (
-  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name        VARCHAR(50) NOT NULL,
-  email       VARCHAR(255) UNIQUE NOT NULL,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 어르신 연대기
-CREATE TABLE profiles (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name        VARCHAR(50) NOT NULL,
-  birth_year  SMALLINT NOT NULL CHECK (birth_year BETWEEN 1900 AND 2006),
-  hometown    VARCHAR(100),
-  job         VARCHAR(200),
-  family      TEXT,
-  memories    TEXT[],              -- 배열로 저장 (최대 5개)
-  hobbies     VARCHAR(200),
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 세션 메타
-CREATE TABLE sessions (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  user_id         UUID NOT NULL REFERENCES users(id),
-  status          VARCHAR(10) NOT NULL DEFAULT 'active'
-                  CHECK (status IN ('active', 'ended')),
-  turn_count      SMALLINT DEFAULT 0,
-  duration_seconds INTEGER,
-  started_at      TIMESTAMPTZ DEFAULT NOW(),
-  ended_at        TIMESTAMPTZ
-);
-
--- 세션 대화 전문
-CREATE TABLE session_logs (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id       UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  profile_id       UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role             VARCHAR(5) NOT NULL CHECK (role IN ('ai', 'user')),
-  content          TEXT NOT NULL,
-  topic            VARCHAR(20),        -- ai 발화에만 기록
-  audio_url        TEXT,               -- TTS 결과 오디오 (ai 발화)
-  audio_expires_at TIMESTAMPTZ,        -- 오디오 만료 (24h 후 정리)
-  spoken_at        TIMESTAMPTZ DEFAULT NOW(),
-  duration_ms      INTEGER             -- user 발화 길이 (ms)
-);
-
--- 인덱스
-CREATE INDEX idx_profiles_user_id ON profiles(user_id);
-CREATE INDEX idx_sessions_profile_id ON sessions(profile_id);
-CREATE INDEX idx_sessions_status ON sessions(status);
-CREATE INDEX idx_session_logs_session_id ON session_logs(session_id);
-```
-
-### 세션 진행 중 상태
-
-v1에서는 별도 실시간 DB 없이 진행 중 세션도 Supabase의 `sessions`(`status='active'`, `current_topic`, `turn_count`)와 `session_logs`에 직접 기록한다. 세션 종료 시 `sessions.status='ended'`로 마감한다. 실시간 모니터링이 필요해지면 Supabase Realtime을 검토한다.
-
----
-
-## 8. 입력값 검증 규칙
-
-### 연대기 입력 (POST/PATCH /api/profile)
-
-| 필드 | 타입 | 필수 | 규칙 |
-|---|---|---|---|
-| name | string | ✅ | 1~50자. 공백만 입력 불가 |
-| birth_year | integer | ✅ | 1900 이상 2006 이하 |
-| hometown | string | ❌ | 최대 100자 |
-| job | string | ❌ | 최대 200자 |
-| family | string | ❌ | 최대 500자 |
-| memories | string[] | ❌ | 최대 5개. 항목당 최대 200자 |
-| hobbies | string | ❌ | 최대 200자 |
-
-### 세션 응답 (POST /api/session/respond)
-
-| 필드 | 타입 | 필수 | 규칙 |
-|---|---|---|---|
-| session_id | UUID | ✅ | 존재하는 active 세션 |
-| audio | File | ✅ | wav/mp3/m4a. 최대 10MB. 최대 60초 |
-
-### STT 수정 (PATCH /api/session/respond/correct)
-
-| 필드 | 타입 | 규칙 |
-|---|---|---|
-| corrected_text | string | 1~500자. 공백만 입력 불가 |
-| turn | integer | 1 이상. 현재 세션 턴 수 이하 |
-
----
-
-## 9. 오류 처리 방식
-
-### 공통 오류 응답 형식
-
-```json
-{
-  "error": "ERROR_CODE",
-  "message": "사용자 친화적 메시지 (한국어)",
-  "detail": "개발자용 상세 메시지 (영어, 선택)"
-}
-```
-
-### 오류 코드 정의
-
-| HTTP | 코드 | 상황 | 클라이언트 처리 |
-|---|---|---|---|
-| 400 | `MISSING_REQUIRED_FIELD` | 필수 항목 누락 | 해당 필드 빨간 테두리 + 안내 |
-| 400 | `INVALID_AUDIO_FORMAT` | 지원하지 않는 오디오 형식 | "지원하지 않는 형식입니다" |
-| 401 | `UNAUTHORIZED` | 미인증 요청 | 로그인 화면으로 이동 |
-| 403 | `FORBIDDEN` | 타인 데이터 접근 | "접근 권한이 없습니다" |
-| 404 | `PROFILE_NOT_FOUND` | 존재하지 않는 프로필 | 목록 화면으로 이동 |
-| 404 | `SESSION_NOT_FOUND` | 존재하지 않는 세션 | 목록 화면으로 이동 |
-| 409 | `SESSION_ALREADY_ACTIVE` | 이미 진행 중인 세션 | 진행 중 세션으로 이동 |
-| 422 | `STT_FAILED` | 음성 인식 실패 | "다시 말씀해 주세요" + 재시도 |
-| 422 | `LLM_PARSE_FAILED` | LLM 응답 형식 오류(Structured Outputs로 사실상 제거) | 재시도 1회 후 안내 |
-| 429 | `RATE_LIMIT_EXCEEDED` | API 호출 한도 초과 | "잠시 후 다시 시도해 주세요" |
-| 500 | `INTERNAL_SERVER_ERROR` | 서버 오류 | "일시적 오류입니다. 잠시 후 다시 시도해 주세요" |
-| 503 | `AI_SERVICE_UNAVAILABLE` | LLM / Clova 불가 | 재시도 1회 → 실패 시 세션 일시 중단 안내 |
-
-### 재시도 정책
-
-```
-LLM / TTS / STT 오류 발생
-    ↓
-1회 자동 재시도 (1초 후)
-    ↓ 실패
-클라이언트에 오류 응답 전달
-    ↓
-화면: 안내 메시지 표시 + 수동 재시도 버튼
-```
-
----
-
-## 10. 상태 변화 및 알림 처리
-
-### 세션 상태 흐름
-
-```
-[idle]
-  → 세션 시작 버튼 탭
-[active]
-  → AI 재생 중 / 마이크 대기 중 / STT 처리 중 반복
-  → 세션 종료 버튼 탭
-[ended]
-  → 로그 저장 완료 → 세션 이력 목록으로 이동
-```
-
-### 대화 화면 내 상태
-
-| 상태 | 마이크 | 안내 텍스트 | 비고 |
-|---|---|---|---|
-| `ai_speaking` | 비활성 | "듣고 있어요..." | TTS 재생 중 |
-| `mic_ready` | 활성 (빨간 점) | "말씀해 주세요" | 입력 대기 |
-| `processing` | 로딩 | "잠깐만요..." | STT+LLM+TTS 처리 중 |
-| `error` | 재시도 아이콘 | "다시 말씀해 주세요" | 오류 발생 |
-| `session_ended` | 없음 | "오늘 대화 잘 하셨어요!" | 종료 |
-
-### 침묵 감지 처리
-
-```
-마이크 활성화 후
-    ↓ 10초 경과, 발화 없음
-"어르신, 잘 들리시나요?" 음성 재생
-    ↓ 추가 10초 경과, 발화 없음
-더 쉬운 질문으로 주제 전환 (switch_topic: true)
-    ↓ 추가 10초 경과
-세션 일시 중단 안내 후 대기
-```
-
----
-
-## 11. 보안 고려사항
-
-| 항목 | 적용 방식 |
-|---|---|
-| API 인증 | Supabase Auth (JWT) 검증. CRUD는 RLS, AI는 Edge Function에서 JWT 검증 |
-| 데이터 접근 제어 | RLS `user_id = auth.uid()` 정책. 타인 데이터는 조회 0건/거부 |
-| API 키 관리 | Edge Function secrets에서만 관리. 클라이언트 미노출 |
-| 오디오 처리 | Supabase Storage 임시 업로드 → STT 완료 즉시 삭제 |
-| HTTPS | 모든 통신 TLS 1.2 이상 강제 |
-| 입력값 검증 | 서버 사이드에서 타입·길이·형식 검증 (클라이언트 검증은 UX 보조 용도) |
-| 로그 보안 | 세션 로그에 오디오 원본 미저장. 텍스트만 보관 |
-| RLS | 모든 테이블에 `user_id = auth.uid()` 정책으로 소유자만 접근 |
-
----
-
-## 12. 테스트 포인트
-
-### 기능 테스트
-
-| ID | 테스트 항목 | 확인 방법 |
-|---|---|---|
-| T-01 | 연대기 저장 후 LLM 첫 질문에 연대기 정보 포함 여부 | LLM 응답 텍스트 수동 확인 |
-| T-02 | 동일 주제 3회 연속 반복 방지 | 10턴 세션 진행 후 로그 검토 |
-| T-03 | 침묵 10초 후 주제 전환 | 10초 침묵 유지 → 응답 확인 |
-| T-04 | STT 변환 후 텍스트 3초 이내 표시 | 스톱워치 수동 측정 |
-| T-05 | TTS 첫 청크 재생 2초 이내 시작 | 스톱워치 수동 측정 |
-| T-06 | 세션 종료 후 로그 Supabase 저장 | DB 직접 조회 |
-| T-07 | STT 오인식 수정 후 LLM 재요청 | 수정 텍스트 기반 다음 질문 확인 |
-| T-08 | 타인 프로필 접근 차단 | 다른 계정 토큰으로 조회 시 RLS로 0건/거부 |
-
-### 파일럿 전 필수 확인
-
-| ID | 항목 | 기준 |
-|---|---|---|
-| P-01 | 노인 발화 STT 인식률 | 일상 발화 5문장 테스트, 3문장 이상 정확 인식 |
-| P-02 | 전체 파이프라인 응답 시간 | STT+LLM+TTS 합산 5초 이내 |
-| P-03 | 연속 5턴 오류 없이 진행 | 내부 시나리오 테스트 3회 이상 |
-| P-04 | Edge Function 웜업 확인 | 파일럿 30분 전 호출로 활성화 |
-| P-05 | TestFlight 배포 설치 확인 | 파일럿 참가자 기기에 사전 설치 완료 |

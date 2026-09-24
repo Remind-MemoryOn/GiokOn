@@ -1,27 +1,27 @@
-// @giokon/core — 안전 가드 통합 대화 오케스트레이션 (M12 배선)
+// @giokon/core — 어르신 발화 안전 평가 (M12 배선 · 2026-09 중계 단일화로 축소)
 //
-// 세션 파이프라인(웹/모바일/Edge Function)은 매 사용자 발화에 respondToUserTurn을
-// 호출한다. 처리 순서(mock/실 LLM 동일):
+// 대화 **생성**은 이제 음성 중계(voice-relay → Gemini Live)만 한다. 예전 규칙 기반 생성기
+// (`ai.ts` generateReply/generateOpener)는 중계 모드에서 계산되고 버려지는 코드였고,
+// 직접 모드 폐기로 폴백 용도도 없어져 삭제했다(계획 C1).
+//
+// 여기 남은 것은 매 어르신 발화에 대한 **결정론 안전 평가**다 — 클라이언트는
+// evaluateUserTurn 을 호출한다:
 //   1) 상황 평가(assessUtterance) — 위기·고통·중단·거부·혼란·애도·침묵·일반.
-//   2) 응답 생성(generateReply) — 상황 인지형(평가 결과 공유, 이중 평가 없음).
-//   3) 출력 가드레일(screenAiUtterance) — 의학·교정·유해 표현 차단·대체.
-//      (실 LLM 발화도 이 후단 가드를 반드시 통과한다.)
-//   4) 세션 안전 스냅샷 — 권고(계속/휴식 제안/마무리)와 에스컬레이션·이벤트 산출.
+//   2) 세션 안전 스냅샷 — 권고(계속/휴식 제안/마무리)와 에스컬레이션·이벤트 산출.
+// AI 출력 검열(screenAiUtterance)은 이 파일이 아니라 출력을 채택하는 쪽(중계·앱 스토어)이 한다.
 //
 // 에스컬레이션은 "감지 → 사람 도달"까지가 완성이다: escalate=true 시 caregiverAlert
 // 문구와 safety_events 저장용 event 초안을 함께 반환한다(영속화는 데이터 레이어).
 
-import { generateOpener, generateReply, historyBeforeUtterance, type AiResponse } from './ai'
 import {
   assessEngagement,
   assessUtterance,
   buildCaregiverAlert,
-  screenAiUtterance,
   type CrisisCategory,
   type Engagement,
   type UtteranceAssessment,
 } from './safety'
-import type { ChronicleEntry, ConversationTurn, ElderProfile, Session } from './types'
+import type { ConversationTurn } from './types'
 
 // ─────────────────────────────────────────────────────────────
 // 세션 진행 권고 — 대화를 계속할지, 쉬어갈지, 마무리할지
@@ -47,7 +47,7 @@ export interface SessionSafetySnapshot {
 
 /**
  * 이력 + 현재 평가로 세션 안전 상태를 계산한다(순수).
- * history는 현재 발화 "이전"까지의 턴이어야 한다(respondToUserTurn이 정규화).
+ * history는 현재 발화 "이전"까지의 턴이어야 한다(evaluateUserTurn이 정규화).
  */
 export function computeSessionSafety(
   history: ConversationTurn[],
@@ -135,12 +135,26 @@ function buildSafetyEventDraft(
 }
 
 // ─────────────────────────────────────────────────────────────
-// 오케스트레이션
+// 발화 평가
 // ─────────────────────────────────────────────────────────────
 
-export interface GuardedTurn {
-  /** 어르신에게 재생할 최종 응답. */
-  response: AiResponse
+/**
+ * 이력 끝에 현재 발화가 이미 추가돼 있으면 제거한다.
+ * 호출부에 따라 history가 현재 발화를 포함하기도(앱 스토어: 턴 추가 후 평가),
+ * 포함하지 않기도 하므로 두 호출 형태를 모두 허용한다.
+ */
+export function historyBeforeUtterance(
+  history: ConversationTurn[],
+  lastUserText: string,
+): ConversationTurn[] {
+  const last = history[history.length - 1]
+  if (last && last.speaker === 'Elderly' && last.text === lastUserText) {
+    return history.slice(0, -1)
+  }
+  return history
+}
+
+export interface UserTurnEvaluation {
   /** 현재 발화의 상황 평가(로깅·관측용). */
   assessment: UtteranceAssessment
   /** 현재 발화의 관여도. */
@@ -153,88 +167,17 @@ export interface GuardedTurn {
   caregiverAlert: string | null
   /** safety_events 저장용 초안(저장 불필요 시 null). */
   event: SafetyEventDraft | null
-  /** AI 생성 발화가 출력 가드레일로 대체됐는지(관측용). */
-  screened: boolean
 }
 
-// 오프너에는 평가할 사용자 발화가 없다.
-const NO_ASSESSMENT: UtteranceAssessment = {
-  situation: 'normal',
-  risk: 'none',
-  crisisCategories: [],
-  matchedTerms: [],
-  escalate: false,
-  hasDistressSignal: false,
-}
-
-/** 세션 시작 오프너(사용자 발화 없음 → 출력 가드만 통과시킨다). */
-export function openConversation(
-  elder: ElderProfile,
-  session: Session,
-  chronicle: ChronicleEntry[],
-): GuardedTurn {
-  const generated = generateOpener(elder, session, chronicle)
-  const screen = screenAiUtterance(generated.question)
-  const screened = !screen.allowed && !!screen.safeAlternative
-
-  return {
-    response: screened
-      ? { ...generated, question: screen.safeAlternative as string }
-      : generated,
-    assessment: NO_ASSESSMENT,
-    engagement: 'normal',
-    session: {
-      crisisCount: 0,
-      distressStreak: 0,
-      refusalStreak: 0,
-      silenceStreak: 0,
-      recommendation: 'continue',
-    },
-    escalate: false,
-    caregiverAlert: null,
-    event: null,
-    screened,
-  }
-}
-
-/** 사용자 발화에 대한 안전 가드 통합 응답. */
-export function respondToUserTurn(
-  elder: ElderProfile,
-  session: Session,
+/** 어르신 발화 1건의 결정론 안전 평가(응답은 만들지 않는다). */
+export function evaluateUserTurn(
   history: ConversationTurn[],
   lastUserText: string,
-): GuardedTurn {
-  // 1) 상황 평가 — 한 번만 수행하고 응답 생성기와 공유한다.
+): UserTurnEvaluation {
   const assessment = assessUtterance(lastUserText)
   const engagement = assessEngagement(lastUserText)
-
-  // 2) 상황 인지 응답 생성(위기 포함 — 안전 응답은 생성기가 만든다).
-  const generated = generateReply(elder, session, history, lastUserText, assessment)
-
-  // 3) 출력 가드레일 — 위기 안전 응답은 신뢰된 템플릿이므로 검열 대상에서 제외.
-  let response = generated
-  let screened = false
-  if (assessment.situation !== 'crisis') {
-    const screen = screenAiUtterance(generated.question)
-    if (!screen.allowed && screen.safeAlternative) {
-      response = { ...generated, question: screen.safeAlternative }
-      screened = true
-    }
-  }
-
-  // 4) 세션 안전 스냅샷 + 에스컬레이션 산출물.
-  const sessionSafety = computeSessionSafety(historyBeforeUtterance(history, lastUserText), assessment)
+  const session = computeSessionSafety(historyBeforeUtterance(history, lastUserText), assessment)
   const caregiverAlert = buildCaregiverAlert(assessment)
   const event = buildSafetyEventDraft(assessment, lastUserText, caregiverAlert)
-
-  return {
-    response,
-    assessment,
-    engagement,
-    session: sessionSafety,
-    escalate: assessment.escalate,
-    caregiverAlert,
-    event,
-    screened,
-  }
+  return { assessment, engagement, session, escalate: assessment.escalate, caregiverAlert, event }
 }

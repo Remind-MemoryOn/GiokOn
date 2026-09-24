@@ -1,8 +1,22 @@
 # 기억온 (GiokOn) — 프로젝트 메모리
 
-> **2026-09-13 개발 방향 확정**: 사용자 승인으로 앱→음성 중계 서버→Gemini Live→서버 검증→Clova→앱 구조를 개발 기준으로 채택했다. 서버의 연결 통제·자동 턴·기록 출처·계측 계약을 먼저 정하고 공통 보안 보강과 한 세션의 시작·회수 흐름을 구현한다. 호스팅은 미정이며 기능 구현·배포 완료가 아니다. **DB 제외 개발 목록은 [N01~N35](docs/plans/non-db-development-backlog.md)**. DB 작업은 제외하되 서버/API 작업과 DB 의존성을 구분한다. R013 이후 감사 과제와 R010 부분 해결 판정은 유지한다.
-
-> **2026-09-12 현재 개발 기준**: 팀은 임성훈(기획·개발), 박진우(개발·영업), 고서연(UI/UX·프론트엔드 디자인) 3인이다. 최신 사업 기획의 개발 반영은 [실행안](docs/plans/business-plan-development-delta.md)에 정리했다. 시설 3곳 접점·현장 테스트 미실시·발표 1주 후 예정이며 신규 개발 완료를 의미하지 않는다. 아래 날짜별 완료 이력은 당시 사실로 보존한다.
+> ## ⚠️ 2026-09-23 기획 변경 — 제품 정의가 바뀌었다
+>
+> **변경 전**: 요양보호사 업무를 전반적으로 돕는 도구(회상 대화 + 요양일지 + 보호자 소통)
+> **변경 후**: **인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로
+> 자동으로 남는 도구.** 요양보호사는 계획하고 감독하며 확인한다.
+>
+> **📋 "무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](docs/plans/pilot-development-plan.md)**
+> (DB·앱·웹·연동 4파트, 파일럿 범위). 이전 실행 목록 **N01~N35**·**D1~D11** 은 이 문서로 대체돼
+> 2026-09-24 삭제했다(git 이력). 출시 점검은 [`docs/plans/launch-checklist.md`](docs/plans/launch-checklist.md),
+> 새로 합류한 사람의 입문 문서는 [`docs/new-hire/`](docs/new-hire/README.md).
+>
+> **판단 기준 셋**: ① 기존 ERP(케어포·엔젤시스템·이지케어)가 하는 기능은 만들지 않는다
+> ② **AI 산출물이 사람 확인 없이 공식 기록이 되거나 보호자에게 가는 경로는 없어야 한다**(테스트로 검증)
+> ③ "제공 횟수·기록 품질·시간 절감"을 측정 가능하게 하는 이벤트 로그를 1주차부터 남긴다.
+>
+> 팀은 임성훈(기획·개발), 박진우(개발·영업), 고서연(UI/UX·프론트엔드 디자인) 3인이다.
+> 시설 3곳 접점·현장 테스트 미실시. 아래 날짜별 완료 이력은 당시 사실로 보존한다.
 
 > 📌 **이 파일이 프로젝트 메모리의 단일 소스(SoT)다(2026-09-11 사용자 확정).**
 > 어떤 AI 에이전트로 작업하든(Claude Code·Codex·Cursor 등) **여기를 읽고, 여기에 기록한다.**
@@ -14,8 +28,9 @@
 > SoT·기능 델타·상태 규칙·카피 규약). 루트와 충돌하면 더 구체적인 그 문서를 따른다.
 > 같은 자리의 `apps/web/CLAUDE.md` 도 포인터 스텁이다 — 두 계열 모두 규칙에 걸리게 한 구조다.
 
-요양보호사가 어르신 연대기를 입력하면 AI가 1:1 음성 회상 대화를 진행·기록하는
-인지활동 보조 플랫폼. 상세 계획은 `PLAN.md`, 스펙은 `docs/`.
+요양보호사가 어르신 연대기를 입력하면 AI가 1:1 음성 회상 대화를 진행하고, 그 결과가
+**공단 형식 프로그램 일지 초안**으로 남는 인지활동 프로그램 도구.
+실행 계획은 `docs/plans/pilot-development-plan.md`, 스펙은 `docs/`.
 
 ## 구조 (pnpm 모노레포)
 - `apps/web` (@giokon/web): **요양보호사·보호자 전용** 관리 웹 (React 19 + Vite + Tailwind).
@@ -23,9 +38,22 @@
 - `apps/mobile` (@giokon/mobile): **어르신 대화 앱 (Expo SDK 54 + expo-router 6 + NativeWind 4.2)**.
   Figma 19화면 + 설정·동의 확인 = 전 화면 구현. 요양보호사가 조작하는 세션 실행 도구.
   백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규.
-  **현재 구현된 대화 AI = Gemini Live**(음성 입출력+LLM 통합, 2026-08-23) · 미가용 시
-  expo-speech+타자 폴백. ⚠️ **출시 목표 구조는 2026-09-12 에 갱신됐다** — `기술 결정` 참조.
-- `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
+  음성 경로는 **중계 단일**이다(2026-09-23 확정): 앱→voice-relay→Gemini Live→서버 검증→Clova→앱.
+  **직접 Gemini Live 모드는 폐기한다** — 검열되지 않은 원본 오디오 경로가 코드에 살아 있으면
+  "AI 산출물이 사람 확인 없이 나가지 않는다"가 코드 레벨에서 거짓이 되고, 단계·원격 제어·
+  안전 일시정지가 전부 서버 권위인데 직접 모드에는 서버가 없다.
+  ✅ (2026-09-24) 앱에서 직접 모드 코드를 삭제했다. `EXPO_PUBLIC_VOICE_RELAY_URL` 은 **필수**(없거나 형식이 틀리면 시작 화면에서 차단),
+  `apps/mobile/.env.example` 필수 3/3. ⏳ 서버 쪽 `live-token` 중계 전용화(T23.5)는 남았다.
+- `apps/voice-relay` (@giokon/voice-relay): **음성 중계 서버**(Node + ws, Docker).
+  `src/{main,server,relay,output}.ts` — 세션 권한·연결 통제·턴 식별·안전 규칙 검증을 거친
+  응답만 Clova TTS 로 내보낸다. 검증 안 된 원문 재생·늦은 이전 응답 혼입을 서버가 막는다.
+  ⚠️ `pnpm install --prefer-offline` 이 이 프로젝트의 node_modules 를 만들지 않는다 —
+  새 세션에서 `pnpm install --filter @giokon/voice-relay` 를 먼저 실행할 것.
+  안 하면 `pnpm -r typecheck` 가 TS2688 로, `pnpm -r test` 가 여기서 끊겨 모바일 테스트까지 안 돈다.
+- `packages/core`: 도메인 타입·**안전 규칙**·프롬프트·분석.
+  ✅ (2026-09-24) **규칙 기반 대화 로직(`ai.ts` 779줄)·`voice-flow.ts` 는 삭제했다**(C1). 대화 생성은 중계만 한다.
+  `conversation.ts` 는 안전 평가 `evaluateUserTurn` 만 남았다. **안전 계층**(`assessUtterance`·`screenAiUtterance`·
+  `buildCaregiverAlert`·`buildSafetyEventDraft`)은 **절대 유지**한다.
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
 - `supabase/migrations`: DB 스키마·RLS
@@ -47,9 +75,13 @@
 - **엔터프라이즈·정부심사 기준(2026-07-03 상향)**: 데이터 국내 보관(서울 리전)·「안전성 확보조치
   기준」·민감정보 별도동의·비의료 포지셔닝 락다운·AI 안전(위기 에스컬레이션·투명성/AI기본법)·KWCAG
   접근성·멀티테넌시(organizations/RBAC)·부하/백업/DR을 상시 준수. 상세는 PLAN §2′·§3 +
-  `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.
+  `docs/{compliance,security,ai-safety,accessibility}.md`(인프라는 `security.md` 에 합쳤다).
 - **커밋은 `main` 브랜치에 직접** (사용자 승인). ※ 원격 세션이 작업 브랜치를 지정해 주면 그쪽을 따른다.
 - **테스크별 커밋(2026-09-19 사용자 확정)**: 각 테스크의 개발·검증·진행 기록을 마친 뒤 반드시 커밋하고 다음 테스크로 넘어간다.
+- **계획 문서 완료 표시 필수(2026-09-24 사용자 지시)**: 테스크를 끝내면 커밋 전에 **팀원이 보는 계획 문서 전부**에 완료(✅ 날짜)·남음(⏳ 선행 조건)을
+  표시한다 — 이 파일만이 아니라 `docs/plans/pilot-development-plan.md`(SoT, §5~§8 상태 열) · `docs/tasks.md` · `docs/plans/launch-checklist.md` ·
+  해당 앱의 `README.md` · `docs/structure.md` §4 · `docs/new-hire/02-status.md`·`03-remaining.md` · 관련 요구 ID(`docs/requirements.md`) · `PLAN.md`.
+  계획과 다르게 구현했으면 그 차이도 같은 자리에 적는다.
 - **Supabase 배포 기본 방식(2026-09-09 사용자 확정)**: 특별한 호환성·운영 문제가 없으면 Supabase
   CLI를 우선 사용한다. 대상 프로젝트와 함수명을 명시하고, 기존 JWT 검증 등 운영 설정을 확인·유지하며,
   배포 후 상태와 소스를 검증한다. SQL Editor로 이미 적용한 DB 변경은 이력·실제 스키마를 대조한 뒤
@@ -70,22 +102,29 @@
 
 ## 기술 결정
 - 서버상태 = **TanStack Query**, UI상태 = **Zustand**.
-- AI 스택 — **계획과 구현을 구분해서 읽을 것**:
-  - **지금 코드에 있는 것(앱 대화)** = **Gemini Live API**(`gemini-3.1-flash-live-preview`,
-    음성 입력·출력·LLM 한 세션). 키는 앱에 두지 않고 Edge Function **`live-token`** 이
-    Supabase JWT 를 검증해 ephemeral token 을 발급한다(모델 잠금 + 자격·동의·사용량 검사,
-    R005/R010). 구현 위치는 `apps/mobile/src/lib/live/`.
-  - **출시 목표 구조(2026-09-12 사용자 확정, 변경분 미구현)** = `docs/plans/voice-ai-personalization.md`.
-    **Gemini Live 직접 음성 입력·프롬프트 대화 → 서버 검증 텍스트 → Clova TTS**.
-    일반 오디오 API 우선·Live 비교용이라는 9월 11일 설계를 대체한다. Live의 Structured Outputs는 전제하지 않는다.
-    담당자는 세션 설계·시작·회수·사후 확인을 지원하며 매 턴 승인 없는 자동 진행을 목표로 한다.
-    현재 전사 확인 패널·Live 원본 재생과 다르므로 상태 전이·중단·예외 대응·출력 배선이 필요하다.
-    장기에는 독립 수집·사람 전사·검수 자료로 Whisper와 **Qwen3.5-9B** 특화를 각각 평가한다.
-    Clova 유지, Ollama는 추론 후보. Gemini 참여 세션의 출력·파생 자료는 계약 확인 전 학습 제외.
-    세부 개발 차이·인수 조건은 `docs/plans/business-plan-development-delta.md` D1~D11을 따른다.
-
-  - 분석·프롬프트는 계속 core. 서버 키 보호·모델 버전 검증은 어느 구조에서도 유지한다.
-  - 웹 요양일지 STT 는 별개 기능이다 — Edge Function `stt-transcribe`(NCP CLOVA), 배포됨.
+- AI 스택 — **중계 단일 경로**(2026-09-23 확정):
+  ```
+  앱 ──▶ voice-relay ──▶ Gemini Live ──▶ 서버 검증 ──▶ Clova TTS ──▶ 앱
+  ```
+  - **모델 = `gemini-3.8-live`**(2026-09-22 사용자 확정). 키는 앱에 두지 않는다 —
+    Edge Function **`live-token`** 이 Supabase JWT 를 검증해 ephemeral token 을 발급하고
+    (자격·동의·사용량 검사 포함) **모델 ID 를 응답에 담아 돌려준다.** 앱·중계는 그 값을 따른다.
+    ⚠️ **모델 교체는 `GEMINI_LIVE_MODEL` 시크릿으로만 한다** — `.env.example` 은 템플릿이라
+    런타임에 읽히지 않는다. `supabase secrets set` 을 해야 실제로 바뀐다.
+    ⚠️ 코드의 `DEFAULT_MODEL` 폴백이 `live-token/index.ts` 에 아직 3.1 기준으로 남았다(앱 `engine.ts` 쪽은 2026-09-24 직접 모드와 함께 삭제).
+    3.1 에서 도출한 설정(proactivity/affective 미포함, 자동 VAD off, NO_INTERRUPTION)은 이제 **중계 `relay.ts` 의 setup** 에만 있다 —
+    **3.8 로 재검증 후 갱신 필요**(서버 파트).
+  - **서버가 출력을 검증한다**: Gemini 의 `inlineData` 오디오는 **앱에 전달되지 않는다.**
+    `screenAiUtterance` 를 통과한 텍스트만 Clova 로 합성해 내보낸다(`voice-relay/output.ts`).
+    턴 식별·재생 영수증 게이팅(v2)·복구 맥락(v3)도 중계가 소유한다.
+  - **직접 Gemini Live 모드는 폐기**(2026-09-23). 구조 절 참조.
+  - 분석·프롬프트·**안전 규칙**은 계속 core. 서버 키 보호·모델 버전 검증은 유지한다.
+  - **생성문 검증은 이미 강하다 — 재사용 자산.** `packages/core/src/generated-session.ts` 가
+    모든 문장에 어르신 발화의 `turnId`+원문 인용을 강제하고(`GroundedClaim`) 진단·효능 표현을
+    정규식으로 막는다. 프로그램 일지도 **이 계약을 확장해서** 쓴다(새로 만들지 말 것).
+  - 장기에는 독립 수집·사람 전사·검수 자료로 Whisper·**Qwen3.5-9B** 특화를 평가한다.
+    Gemini 참여 세션의 출력·파생 자료는 계약 확인 전 학습 제외.
+  - ⚠️ 웹 요양일지 STT(`stt-transcribe`, NCP CLOVA)는 **요양일지 폐기와 함께 용도를 재검토**한다.
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
   **로그인 = 소셜 3종(구글·카카오·네이버) + 이메일(아이디)·비밀번호 병행(2026-07-23 재도입 — 이전 "이메일 제거" 결정 사용자 요청으로 철회), 아이디/비밀번호 찾기·회원가입 포함, 회원가입 = 이메일 또는 OAuth 후 온보딩(기본정보 입력). 소셜은 provider 본인인증(이름·전화) 정보를 온보딩에 프리필**
   (구글·카카오=네이티브, 네이버=커스텀 Edge Function `naver-auth`). 계획: PLAN §2′ M17.4~17.7·Phase W1.
@@ -97,7 +136,7 @@
 ## Supabase
 - **운영 프로젝트 = `MemoryOn`(ref `ufkbzpdjomtmxjipmwub`, 서울 ap-northeast-2)** — 앱·웹이 함께
   쓰는 실 DB다. 데이터 국내 보관 요건 충족. (구 도쿄 `GiokOn`/`xilmtqnotomuyjifenmo` 는 이전 완료로 사용하지 않는다.)
-- 마이그레이션 **53종**(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것. 2026-09-20 전사 출처 1종은 로컬 검증만 완료, 운영 미적용.
+- 마이그레이션 **53종 운영 적용분 + 파일럿 로컬 전용분**(2026-09-24~ `20260924*` — 운영 미적용, 아래 "현재 위치" B 표) (`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것. 2026-09-20 전사 출처 1종은 로컬 검증만 완료, 운영 미적용.
   16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·org RBAC·감사 로그 +
   2026-09 보안 하드닝 R002·R005·R007·R010~R012).
 - ✅ **마이그레이션 이력 정합 완료(2026-09-13, 사용자 승인 후 적용)**. 그전까지는 이력이
@@ -124,8 +163,8 @@
 - 운영 DB 에 DDL 을 적용할 때는 CLI `db query --linked --file` 로 **한 건씩** 적용하고 같은
   트랜잭션에 이력을 기록한다(R005~R012 가 쓴 방식). `db push` 는 이제 쓸 수 있지만, 여러 건이
   한꺼번에 나가므로 **운영에서는 여전히 한 건씩을 기본으로** 한다.
-- 개별 마이그레이션의 라이브 반영 근거는 `docs/runbooks/p1-remediation-progress.md` ·
-  `p0-fixes-2026-09-09.md` 의 "운영" 문단에 있다. 적용 여부를 추측해 단정하지 않는다 —
+- 개별 마이그레이션의 라이브 반영 근거는 `docs/runbooks/security-fixes.md` 에 모았다(원래 p0·p1 런북의 "운영" 문단 —
+  원문은 git 이력). 적용 여부를 추측해 단정하지 않는다 —
   **확인할 수단이 있다**(바로 아래).
 - ✅ **라이브 DB 는 Supabase MCP 로 직접 조회할 수 있다**(2026-09-13 확인). 컨테이너 egress 가
   `*.supabase.co` 를 막는 것은 **HTTP 직결**이고, MCP 는 그 경로를 타지 않는다.
@@ -134,41 +173,278 @@
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
-## 현재 위치 — 웹 (2026-09-23 전수 점검)
+## 현재 위치 — 웹 (2026-09-24 — 웹 파트 착수 준비 · `jinwoo` 브랜치 검토)
 
-> 웹 트랙의 현재 상태다. **앱 음성 트랙의 현재 위치는 바로 아래 09-21 절**이다(둘은 병행한다).
-> 웹 규칙의 SoT 는 **`apps/web/AGENTS.md`** — 이 절은 요약과 열린 항목만 둔다.
+> 이 세션은 **웹 파트만** 맡는다(사용자 지시). 작업 브랜치 `claude/web-development-session-6mb8mk` 를 **main `6e8c1b9` 에서 다시 시작**했다
+> (예전 브랜치 끝 `aaf6b3d` 의 09-23 웹 점검 기록은 main 에 없어서 이번 갱신에 옮겨 적었다 — 원본은 로컬 `backup/web-session-aaf6b3d`).
+> 웹 규칙 SoT 는 `apps/web/AGENTS.md`, 무엇을 만들지는 `docs/plans/pilot-development-plan.md` §7(W1~W9).
 
-- **웹 변경은 전부 `main` 에 머지돼 있다.** 09-07 이후 웹을 바꾼 것:
-  · **PR #7**(09-07 머지): W-1~W-7 출시 준비 + 대시보드 chevron 세로 늘어짐 수정 +
-    이미지 비율 게이트(`img:audit`) · `guardian_invites` 클러스터 제거 마이그레이션.
-  · **PR #9**(09-11 머지): 사용자 신고 9건. 🔴 **사이드바가 어느 페이지에서도 눌리지 않았다** —
-    화면 24종이 절대좌표용으로 본문을 `-ml-[323px] w-[1440px]` 당겨 사이드바를 덮고 클릭을 가로챘다
-    (`Sidebar` `relative z-30` + 히트테스트 게이트 `nav:audit`). 그 외 로고→역할별 메인 · 24시간제
-    `TimeField` · 공개 설정 모달 축소(`Dialog fit`) · 정렬 실동작 등.
-  · **PR #10**(09-13 머지): 날짜 칸 정렬 · 잘린 휴지통 아이콘을 사용자 재추출본으로 교체(중복 판 제거) ·
-    정렬 드롭다운 타이포 통일.
-  · **09-14 다른 세션(`e2d2ed4`)**: 웹 일지에 **실 LLM 초안 경로**(`SessionJournalDialog` →
-    `session-report`) 추가 — 상세는 아래 09-14 절. 웹 메모리의 "초안은 규칙 기반" 서술을 이번에 바로잡았다.
-  · **09-10 보안 수정** R009(계정별 `QueryClient`)·R010(대상 동의 STT)·R011(동의 증거) 이 웹에 남긴
-    불변식을 웹 메모리 §3 에 옮겨 적었다(판정 SoT 는 `p1-remediation-progress.md`).
-- **검증(2026-09-23, `8233b16` 에서 실제 실행)**: typecheck 6패키지 · web lint 0 · 테스트 **631**
-  (core 253 + data 141 + voice-relay 43 + mobile 194) · `check:design` 186 · `check:copy` ·
-  Figma **1511 프로브** · 잉크 **810** · 이미지 **564** · 사이드바 **137** · `route-smoke` **65/65** ·
-  `check:a11y` 57화면(차단 0) · `test:auth` PASS · 빌드. 이미지 581→564 는 삭제가 아니라 휴지통 17곳이
-  `object-contain` 이 돼 판정에서 빠진 것(실측 564+17=581).
-- ⏳ **열린 항목**:
-  ① **`apps/web/supabase/config.toml`**(`project_id="web"`, 커밋 `20250e5`) — `apps/web` 에서
-     `supabase init` 을 돌린 흔적으로 보인다. 마이그레이션·함수가 없는 빈 프로젝트 폴더이고 루트
-     `supabase/` 엔 `config.toml` 이 없다. **지울지 사용자 결정 필요**(웹 메모리 §7).
-  ② **LLM 일지 흐름의 자동 회귀가 없다** — `report-flow-smoke.mjs` 는 `channel:'msedge'` 라 Edge
-     기기에서만 돌고 package.json·CI 에 연결돼 있지 않다.
-  ③ `test:auth` 는 원격 컨테이너에서 그대로는 안 돈다(`executablePath` 미지정 — 코드는 정상).
-  ④ 사용자 판단 대기: 휴지통 에셋이 1x(21×22)라 @3x/@4x 재추출 권장 · 날짜 칸 아이콘을 더 왼쪽으로
-     옮길지 · `TimeField` 분 5분 단위 유지 여부 · 대비 미달 26종·283곳(시안 색) · `naver-auth` 재배포
-     (도메인 구매 후, `WEB_ORIGINS`·네이버 콘솔 Callback URL 함께).
+**기준선(2026-09-24, main `6e8c1b9` 에서 실제 실행)**: typecheck 6패키지 · 테스트 **678**(core 212 + data 155 + mobile 261 + relay 50) ·
+`check:design` 186 · `check:figma-web` 1511 / 잉크 810 / 이미지 564 / 사이드바 137 · `route-smoke` 65/65 · `check:a11y` 57화면 차단 0.
 
-## 현재 위치 (2026-09-21 — Clova 취소·응답 실패 경계)
+### `jinwoo` 브랜치 검토 (2026-09-24, `a3d1de0` — 4커밋, 작성자 jinrain_03)
+
+분기점 `8233b16`(9-22). main 과 **텍스트 충돌은 없다**. 병합본에서 typecheck·lint·테스트 680(모바일 +2)·`check:design`·`check:copy`·
+`check:bom`·`check:figma`·`check:font`·스모크 65/65·a11y 차단 0 은 통과했다. **그러나 main 병합 불가로 판정했다**:
+
+1. 🔴 **`check:figma-web` 회귀 — 편차 192건**(main 0건, 34화면). 사이드바에 `모니터링` 을 끼우고 라벨을 두 줄로 바꿔 아래 항목이 **+79px** 밀렸고,
+   랜딩 히어로 +35px, 요양일지 작성 화면은 Figma 좌표계를 버리고 자유 배치로 다시 썼다. 웹 디자인 SoT(Figma 단독·임의 재디자인 금지) 위반.
+2. 🔴 **게이트를 코드에 맞춰 고쳤다** — `scripts/check-web-design.mjs` 에서 작성 화면의 Figma 실측 정규식(카드 1057×928·방식 탭·저장 버튼)·
+   사이드바 `mb-[86px]` 등을 지우고 새 코드를 단언하게 바꿨다. 그래서 `check:design` 통과는 의미가 없다.
+3. 🔴 **계획 §7 과 반대 방향**: 요양보호사 `분석` → `대화관찰리포트`(W3: 요양보호사는 `분석` 유지, 보호자만 변경) ·
+   보호자 화면에 `프로그램일지` 노출(W3·W4: 보호자 필터는 `오늘의 이야기`, 공단 서식은 보호자에게 직접 노출 금지) ·
+   작성 화면은 `care_journals`+`buildJournalDraft` 위에서 고쳤다(W1 은 `program_journals` 로 대체하고 둘 다 삭제).
+4. 🟠 **모니터링 화면 ≠ W2 감독 화면** — 저장된 발화만 5초 폴링, 단계·일시정지/재개/종료 없음, "최대 5명"(확정은 1명당 4대).
+5. 🟠 이용안내(`GuidePage`) 앱 단계에서 **AI 투명성 문구와 "키워드 기반 … 의학적 판단이 아닙니다" 고지가 빠졌다**(웹 §4).
+6. 🟡 `docs/progress-summary-2026-09-22.md` 는 삭제된 문서(`non-db-development-backlog.md`)를 가리키고, SoT 밖에 현황을 따로 적는다.
+
+커밋 메시지 스스로 "비교 검토용 시안 · 최신 main 구조에 맞춘 재작업 필요"라고 적었다. **쓸 만한 것**: ① 모바일 `8fb2392`
+조회 실패 배너(출시 점검표 "앱 읽기 오류가 기록 없음으로 보이는 문제" 해당, 테스트 2건) — 앱 파트 소관이고 **어르신 표시 모드(M2)에도
+뜨는지** 확인이 필요하다 · ② `ElderConsentsPage`(철회 전용) — W7 의 출발점 · ③ `useActiveConversations` 훅 — W2 참고.
+
+### 웹 테스크 분해 (제안 — 사용자 확정 대기)
+
+| # | 계획·tasks | 내용 | DB 선행 | 상태 |
+|---|---|---|---|---|
+| WT1 | W7 · T24.1 | 어르신 동의 화면(`/caregiver/elders/:id/consents` — 지금 없는 라우트) · **파일럿 블로커** | 없음(기존 `consents`) | ⏳ |
+| WT2 | W9 · T22.8 | 온보딩 "새 기관 / 초대 코드 합류" + 승인 대기 화면 + `routeForUser`·`CaregiverGuard` · **파일럿 블로커** | D3(로컬만) | ⏳ |
+| WT3 | W6 · T22.5·T22.8 | 기관 관리: 역할 지정·초대 코드 발급/회수·합류 승인/거절 + 권한 매트릭스·기관 설정 + `isAdmin`·`ROLE_LABEL`·TopBar 호칭(T22.4 웹 발견분) | D3·D4(로컬만) | ⏳ |
+| WT4 | W5 · T21.7 | 세션 설계 목표 시간(≤10분, 초기값 `org_settings.target_minutes`) · 기관 기본 피할 주제 · 단계 미리보기 | D3·D6(로컬만) | ⏳ |
+| WT5 | W2 · T21.5 | 감독 화면(반응형) + 원격 일시정지·재개·종료 + data `supervision.ts` + realtime `session_interventions` | D6(로컬만) | ⏳ |
+| WT6 | W3·W4 일부 · T20.9 | 보호자 `분석`→`대화 관찰 리포트` · 리포트 하단 고정 문구 · `session_summary` 미렌더 버그 · 죽은 `'report'` | 없음 | ⏳ |
+| WT7 | W1·W3 · T20.8 | 프로그램 일지 목록·상세·확정·이력·재시도 + 요양보호사 네비 이름 · `buildJournalDraft`·`SessionJournalDialog` 삭제 | **D5·C4 미착수** | ⛔ 대기 |
+| WT8 | W8 · T24.3 | 어르신 `care_grade` | **D5 미착수** | ⛔ 대기 |
+
+⚠️ **운영 DB 에 없는 객체를 부른다**: WT2~WT5 가 쓰는 RPC·테이블(`20260924*`)은 **로컬 PG16 검증만** 됐고 운영 미적용이다.
+이 웹 변경이 운영 DB 보다 먼저 배포되면 온보딩·기관 관리가 깨진다 → 배포 순서는 **마이그레이션 → 웹**.
+
+### 09-23 웹 전수 점검에서 넘어온 열린 항목
+① `apps/web/supabase/config.toml`(`project_id="web"`) 삭제 여부 — 사용자 결정 · ② LLM 일지 흐름 자동 회귀 없음(`report-flow-smoke.mjs` 는 msedge 전용 —
+W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다) · ③ `test:auth` 원격 실행 불가(`executablePath` 미지정) ·
+④ 사용자 판단 대기: 휴지통 @3x/@4x 재추출 · `TimeField` 5분 단위 · 대비 미달 26종·283곳 · `naver-auth` 재배포(도메인 구매 후).
+
+## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
+
+> PR #14(A1~A5·B1~B9) 머지 뒤, 사용자 지시 "다음 테스크" = 남은 유일한 앱 테스크 **M6**. 선행 D7 을 같은 방식(로컬 검증만)으로 함께 했다.
+> 브랜치는 머지된 이력 위에서 main 으로 다시 시작했다(같은 이름).
+
+| # | 계획·tasks | 내용 | 상태 |
+|---|---|---|---|
+| C1 | D7 · T21.8 | `20260924050000_push_tokens.sql` — `push_tokens` + `register_push_token`·`revoke_push_token` + `notifications.pushed_at` | ✅ 로컬 — 쓰기는 RPC 전용: 교대 근무로 **기기를 이어 쓰면 토큰 주인이 옮겨 가야** 앞사람 알림이 뒷사람 기기로 가지 않는데, 본인 전용 RLS 로는 남의 행을 옮길 수 없다. 돌봄팀만 등록(보호자 거부). `pushed_at` 은 R012 신원 가드에 추가(사용자가 재발송·억제 불가, 읽음 처리는 유지). 회귀 변형 4종 실패 확인 |
+| C2 | M6 · T21.10 | 앱 `src/lib/push.ts` — 돌봄팀 로그인 시 권한→Expo 토큰→등록, 로그아웃 **전** 회수(최대 3초, 실패해도 로그아웃) | ✅ — 등록·회수를 한 줄로 직렬화(회수가 진행 중 등록을 앞지르지 않게). 거부·시뮬레이터·실패는 앱 사용을 막지 않는다. ⚠️ `expo-notifications` 네이티브 모듈 → **EAS 재빌드 필요**. 알림 탭 딥링크는 발송 문구(C4) 확정 후 |
+
+- ⚠️ `pnpm add expo-notifications` 가 lockfile 의 eslint·vite peer(jiti 1.x/2.x) 배정을 앱↔웹 사이에서 맞바꿨다. `--frozen-lockfile`·웹 빌드·린트·`expo export` 통과로 확인하고 그대로 둔다.
+- 범위 밖(서버 파트): C4 `push-dispatch`(Expo Push 발송 — `pushed_at is null` 소비, 본문에 어르신 성함·발화 금지, 발송 시 수신자 역할·기관 재확인) · D2 `notification_kind` 확장 · T21.4.
+
+## 이전 위치 (2026-09-24 — M5 선행 경로: 권한 재설계 → 대화 단계 → 중계 → 앱)
+
+> 앱 테스크 A1~A5 완료 후, 남은 앱 테스크(M5·M6)가 전부 DB·중계 선행을 요구해 **사용자가 범위를 넓혔다**(2026-09-24):
+> **"M5 까지 가는 길"** — 웹 화면은 건드리지 않는다. 마이그레이션은 **로컬 PG16 회귀로만 검증하고 운영 DB 에 적용하지 않는다**(적용은 한 건씩 별도 요청).
+>
+> ✅ **B1~B9 전부 완료(2026-09-24)** — M5 까지 닿았다. ⚠️ **운영 반영은 아직 0건**: 마이그레이션 5건(`20260924000000`~`040000`)은 로컬 검증만.
+> 운영 순서 = 마이그레이션(한 건씩, 사용자 요청 시) → `database.types` 대조 → **중계 배포**(역순이면 `session_tick` 부재로 전 세션 차단) → 앱 빌드.
+> 남은 앱 테스크: M6(푸시 토큰 — D7·C4 대기). 남은 선행 후보(범위 밖, 요청 시): T21.4 위기 이벤트 즉시 기록 · T21.11 · T21.12 · 웹 W2 감독 화면.
+
+- **사용자 결정(2026-09-24)**: ① **INSERT 권한** — 대화 기록(sessions·session_logs·session_analyses·safety_events)·연대기(chronicle_entries) INSERT 와
+  대화 처리 권한(`can_process_profile`·`reserve_live_token`)을 **같은 기관 돌봄팀 전원**으로 연다(교대 근무자도 대화 진행).
+  **동의(consents)·보호자 공개(guardian_shares) INSERT 는 배정·관리자 기준 유지**(민감). DELETE 는 계획대로 배정·관리자 유지.
+  계획 D4 는 SELECT/UPDATE 만 적었고 INSERT 는 비어 있었다 — "배정은 접근 게이트가 아니다"(계획 D3) 와 맞춘 결정이다.
+  ② **사회복지사·센터장도 세션을 진행**할 수 있다(돌봄팀 전원).
+
+| # | 계획·tasks | 내용 | 상태 |
+|---|---|---|---|
+| B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ✅ 로컬 |
+| B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ✅ 로컬 — `is_care_team`·`is_org_manager` 헬퍼도 여기서(새 정책이 씀). 회귀는 변형 2종(자기 자신·마지막 관리자 가드 제거)이 실패하는 것 확인 |
+| B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ✅ 로컬 — 합류 대기자 = `onboarded_at` 있음·`org_id` NULL. 웹 라우팅 인계는 계획 §7 W9 상태 열 |
+| B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ✅ 로컬 — ⚠️ `chronicle_entries` 복합 FK 부재로 타 기관 기록이 가능했던 구멍을 회귀가 잡아 FK 추가. 기존 `rls_regression.sql` 은 단언 2건만 새 모델로 바꿨다(요양보호사 = 같은 기관 전체 열람 · 미배정도 live-token 허용) |
+| B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ✅ — SQL 에 남은 `'caregiver'`·배정 술어는 의도(역할 목록·DELETE·동의·공개·어르신 코드·메시지). 앱 접근 감시(R008)가 **배정 소실을 권한 상실로 보고 대화를 끊던 것**을 제거(DB 판정은 유지). data `completeOnboarding({ inviteCode })`. 웹 발견분은 계획 §7 W6·W9 |
+| B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ✅ 로컬 — 새 컬럼 RPC 전용(트리거) · 4대 제한은 **최근 30분 시작분만** 셈(좀비 방지) · 앱은 `SESSION_SUPERVISOR_LIMIT` 이면 이유 안내(재시도 안 함). 회귀가 `end_requested` 가 NULL 로 나가던 것을 잡음 |
+| B7 | C2 · T21.2 | core `session-phase.ts` + `PROMPT_VERSION` 저장 | ✅ — `PROMPT_VERSION` v2.0(단계·내부 지시 규칙). `buildSystemPrompt` 의 phase 인자는 두지 않음(지시문 주입과 중복) |
+| B8 | C3 · T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 처리 | ✅ — 지시는 모델 생성·재생 대기·발화 중이면 미루고 **턴 사이에만** 넣는다. 단계 턴 수는 음성이 실제 전달된 발화만 셈. 원격 제어 알림 뒤 입력·출력 전달 중단 → 2초 유예 뒤 닫기. 앱 오프너 지시문은 단계 중립으로(도입 지시와 충돌하던 것). ⚠️ **배포 순서: DB 마이그레이션(`20260924040000`) → 중계** — 역순이면 `session_tick` 부재로 전 세션 차단. 범위 밖(별도): T21.4 안전 이벤트 즉시 기록 · T21.11 휴식 요청 → 마무리 전환 · T21.12 중계 수명 25→10분 |
+| B9 | M5 · T21.6 | 앱 원격 일시정지 수신("잠시 쉬어요" + 마이크 중단) | ✅ — `relayControl` 을 오류가 아닌 원격 제어로 받는다(인증 시점에 이미 정지된 세션 포함, 뒤따르는 끊김은 오류 안내 없음). 마이크·연결은 **동기로** 닫힌다. 멈춘 동안(원격·현장 공통) 2초마다 `session_tick`(data `getSessionControl`) — 원격 정지만 서버 재개 시 **자동으로 이어가고**(재개 경로 = 새 중계 연결 + 복구 맥락), 현장 정지는 저절로 풀지 않는다. **사용자 결정: 원격 정지는 현장에서 풀 수 없다**(재개 버튼 비활성 "감독 화면 재개 대기"). 원격 종료 → 멈춤(요양보호사가 저장 — 앱이 자동 저장하지 않는다). 한계: 정지 순간 말씀 중이던 부분 전사는 기존 규칙대로 확인 대기가 되어 자동 재개되지 않는다(요양보호사 확인 필요) |
+
+- ⚠️ **회귀 작성 함정(2026-09-24 발견)**: RPC 인자 안에서 `(select id from <RLS 테이블> ...)` 로 조회하면 그 시점 `test.uid` 가 비어 있어
+  **NULL 이 들어가고, 구현과 무관하게 "없음" 오류로 단언이 통과한다.** 대상 id 는 슈퍼유저로 임시 테이블에 먼저 뽑아 쓴다.
+  새 단언은 **가드를 지운 변형이 실패하는지** 확인한다(B2·B3 에서 변형 4종 확인 — 1건은 이 함정 때문에 처음엔 통과했다).
+- 로컬 검증 도구: `bash supabase/tests/run-rls-regression.sh`(PG16 실기동, 전 마이그레이션 적용 → `rls_regression.sql`) — 이 컨테이너에서 4초.
+
+## 이전 위치 (2026-09-24 — 앱 파트 착수)
+
+> 이 세션은 **앱 파트만** 맡는다(사용자 지시). 작업 브랜치 `claude/app-development-session-4cvhm5`, 테스크별 커밋.
+> 기준선(착수 전 실행): typecheck 6패키지 · test **631**(core 253 + data 141 + voice-relay 43 + mobile 194).
+
+**앱 테스크 분해(사용자 확정 2026-09-24)** — 계획 §6 기준. 진행 순서 = 표 순서.
+
+| # | 계획·tasks | 내용 | 상태 |
+|---|---|---|---|
+| A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴 → 분석 → 이벤트 → `ended` | ✅ |
+| A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ✅ |
+| A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ✅ |
+| A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ✅ |
+| A5 | M4 · T23.4 | 복귀 게이트 = **PIN**(`expo-secure-store`) | ✅ |
+
+- **사용자 결정(2026-09-24)**: ① `buildJournalDraft` 는 **남긴다** — 웹 `JournalWritePage.tsx` 가 아직 쓴다. 웹 W1 이 그 화면을 대체할 때 지운다.
+  앱 파트는 웹 파일을 건드리지 않는다 · ② **M5(원격 제어 수신)·M6(푸시 토큰)은 보류** — D6/C3·D7 이 끝난 뒤 착수한다(가정 계약으로 먼저 만들지 않는다. → M5 는 B1~B9 로 완료, M6 은 여전히 D7 대기) ·
+  ③ 복귀 게이트 = **PIN** · ④ **T23.5 `live-token` 중계 전용화는 서버 파트**에 둔다(앱은 직접 호출 코드 삭제까지만).
+- ✅ **A1 완료**: 폴백 저장이 `active` 로 만들고 턴·분석·안전 이벤트를 쓴 뒤 종료 필드(status·ended_at·duration_seconds)만
+  update 한다 — 동의 가드의 종료 예외와 같은 모양이라 철회 직후에도 닫힌다. ⚠️ `safety_events.session_id` 는 `on delete set null` 이라
+  롤백으로 지워지지 않는다 → 이벤트는 쓰기 단계 **맨 뒤**(재시도 시 중복 방지). 회귀 2건 추가(옛 코드에서 순서 단언 실패 확인) ·
+  mobile 196 · typecheck/lint · bom/copy/font/figma 통과. 운영 DB·실기기 검증 없음.
+- ✅ **A2 완료**(직접 모드 제거): `engine.ts`·`client.ts` 중계 전용(토큰 발급·`DEFAULT_MODEL`·직접 재접속·1.6초 무음 타이머 삭제) ·
+  `talk.tsx` 직접 경로·마이크 버튼·다시 듣기·`/session/loading` 삭제 · store `captureUtterance`·`confirmUtterance` 삭제 ·
+  **`expo-speech` 의존성 삭제**(lockfile 은 해당 12줄만 수작업 제거 — `pnpm remove` 가 mobile↔web 의 jiti/typescript peer 해석을
+  뒤섞어서 되돌렸다. `--frozen-lockfile` 통과) · 시작 화면에서 중계 주소 없으면 DB 세션 생성 전 차단 · `.env.example` 필수 3/3.
+  `check:figma` 에서 삭제한 화면의 규칙 제거(170항목). mobile 212 · 전 패키지 typecheck/lint/test · bom/copy/font/figma/design 통과.
+  - ⚠️ **발견·수정: RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(`Libraries/Blob/URL.js` 가 `https?://` 만 파싱 → 항상 `'/'`,
+    생성자가 끝에 `/` 추가). 기존 `client.ts` 의 `pathname !== '/voice'` 검사는 **실기기에서 모든 중계 주소를 거절**했을 것이다
+    (Node 테스트는 WHATWG URL 이라 통과). → `relay-config.ts` 정규식 판정으로 교체 + RN 형 URL 을 흉내 낸 회귀 테스트.
+    실기기 확인은 하지 않았다.
+  - 앱이 보내는 `setup` 은 이제 **빈 객체**다 — 중계가 모델·지시문을 서버 값으로 대체하고(`relay.ts:181`) 존재만 확인한다.
+    어르신 연대기로 만든 시스템 프롬프트를 앱이 네트워크로 보내던 것이 없어졌다.
+  - T24.5 의 앱 쪽(`engine.ts` `DEFAULT_MODEL`·`client.ts` 3.1 설계 주석)은 함께 사라졌다. 남은 것은 `live-token/index.ts` 폴백(서버 파트).
+  - ℹ️ `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 **네이버 로그인 함수 주소 파생**에만 쓰인다(`social.ts:105`). 앱 파트 범위 밖이라 그대로 두고
+    `.env.example` 설명만 실제 동작으로 고쳤다.
+- ✅ **A3 완료**(core 정리): `ai.ts`(779줄)·`voice-flow.ts`·테스트·`RESPONSE_JSON_SCHEMA` 삭제. `conversation.ts` 는 안전 평가 전용
+  `evaluateUserTurn(history, text)` 만 남겼다(평가·세션 권고·알림·이벤트 — `openConversation`·`respondToUserTurn` 삭제).
+  `safety.ts`·`buildJournalDraft`·`buildSystemPrompt`(시그니처 포함, 중계가 씀) 무변경. 웹 `lib/ai.ts` 는 `export *` 라 손대지 않아도 된다.
+  - **세션은 빈 기록으로 시작한다** — 예전에는 로컬 규칙 오프너(`generateOpener`)가 첫 AI 턴으로 저장되고 중계 인사가 오면 덮어썼다.
+    이제 중계 인사가 출력 가드를 통과하면 `acceptOpener` 가 첫 AI 턴으로 추가한다. 그전 카드에는 회색 안내 문구(기록 아님)·`currentTopic=null`.
+  - 회귀 방지: 인사 도착 전 "잠시 멈추기" → 재개 시 턴이 0개라 거절되던 경로를 **인사 재요청**으로 처리(테스트: 수정 전 실패 확인).
+  - 직접 모드 잔재 `playback.ts`(원음 캐시) 삭제 — 같은 불변식(막힌 출력은 채택·재생 안 함)을 `check:figma` 가 중계 컨트롤러에서 검사하도록 규칙 이동(171항목).
+  - core test 253→201(삭제된 생성기·voice-flow 테스트분). 세션 시뮬레이션은 **안전 불변식**(위기·중단·학대·혼란·오탐 없음)만 남겼다.
+    전 패키지 typecheck/lint/test · 웹 build · bom/copy/font/figma/design 통과. mobile 212.
+
+- ✅ **A5·A4 완료**(순서를 바꿔 PIN 부품을 먼저 커밋 — 커밋 사이에 "PIN 없이 나갈 수 있는 어르신 화면"이 생기지 않게).
+  - **사용자 결정(2026-09-24)**: 시작과 동시에 어르신 화면으로 전환 · 복귀는 구석의 작은 '선생님' 버튼 → PIN ·
+    PIN 은 처음 넘길 때 정하고 설정 메뉴에서 바꾼다 · 첫 사용 튜토리얼은 이번 범위 밖.
+  - PIN(`src/features/session/caregiverPin.ts`): 4자리, `expo-secure-store` 에 **요양보호사(user id)별**, 서버 미전송,
+    저장소를 못 읽으면 불통과, 5회 연속 실패 시 30초 잠금(프로세스 메모리). 설정 화면 맨 아래 "어르신 화면 > 요양보호사 PIN" 행.
+  - 어르신 표시 모드는 **별도 라우트가 아니라 `talk.tsx` 안의 모드 전환**이다(계획은 `elder.tsx` 라우트였다) — 자동 대화 컨트롤러를
+    한 화면이 계속 소유해야 연결·마이크 수명이 갈라지지 않는다. 화면은 `src/features/session/ElderView.tsx`,
+    질문 카드는 공용 `QuestionCard.tsx`, 어르신 문구는 `elderStatus.ts`(단계별 고정 — 컨트롤러 사유 문구·전화번호 금지, 테스트).
+  - 어르신 화면에 없는 것(계획 M3): 위기 배너·전화번호·부분 전사 패널·중계 제어·X. `check:figma` 에 **부재 규칙** 추가(174항목).
+    마이크는 누를 수 없는 표시(`MicIndicator`)로 바꾸고 안 쓰게 된 `MicButton` 삭제.
+  - 어르신 모드에서 안드로이드 뒤로가기(`BackHandler`)·iOS 스와이프(`gestureEnabled:false`) 차단. 마이크 권한은 넘기기 **전**에 확인한다
+    (OS 권한 창이 어르신 화면 위에 뜨지 않게). 진행 중 요양보호사 화면 좌상단 "어르신 화면으로"로 다시 넘길 수 있다.
+  - 검증: mobile 223 · typecheck/lint · bom/copy/font/figma · **Android·iOS JS 번들(expo export) 성공**. 실기기 확인은 하지 않았다.
+  - ⚠️ 남은 한계: ① 어르신 모드 중 권한·동의 상실로 세션이 끊기면 기존대로 `/main` 으로 이동해 **PIN 없이 요양보호사 화면이 보인다**
+    ② PIN 을 잊으면 앱을 완전히 종료(세션이 멈춘다) 후 설정에서 새로 정해야 한다 ③ 어르신 화면이 멈춰도 멀리 있는 요양보호사에게
+    알릴 길은 푸시(M6, 보류)·감독 화면(W2)이 생겨야 생긴다.
+## 이전 위치 (2026-09-24 — 결정 4건 반영 · docs 정리)
+
+- ✅ **사용자 결정(2026-09-24)**: ① 신규 화면은 **기존 디자인과 최대한 같게** 최소 구현, 시안이 오면 교체 ·
+  ② 종료 정책 **권장안** — 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 유지 ·
+  ③ **세션 1회 최대 10분**(어르신 1명 기준, 서버 고정) · **요양보호사 1명당 동시 최대 4대** ·
+  ④ **태블릿 지원** — `apps/mobile/app.json` `ios.supportsTablet: true` 로 변경(세로 고정 유지). 배포 직전 재확인 D 는 닫혔고 **C(주황 대비)만 남는다**.
+  구현 항목은 tasks T21.11~T21.14 · 계획 §2·§6·§9.
+- 📚 **docs 정리**: 합친 것 — `tech.md`→`structure.md` §5 · `infrastructure.md`→`security.md` "인프라" ·
+  `web-launch`·`app-release-remaining`·`app-release-plan`·`go-live-external-setup`→**`plans/launch-checklist.md`** ·
+  `p0-fixes`·`p1-remediation-progress`·`seoul-region-migration`→**`runbooks/security-fixes.md`** ·
+  `transcript-storage-rollout`·`playback-storage-contract`→`database.md` "대화 기록 저장 계약" · `interview-findings`→`product.md` §9.
+  삭제 — `business-plan-development-delta` · `non-db-development-backlog` · `mvp-roadmap` · `app-readiness-report` ·
+  `demo-recording-readiness` · `demo-llm-implementation` · `mobile-live-data-wiring` · `automatic-conversation-execution` ·
+  `voice-development-tasks`. `requirements`·`design`·`product`·`structure`·`tasks` 는 2026-06 MVP 본문을 걷어 내고 현재 기준만 남겼다.
+  ⚠️ **아래 "이전 위치" 기록에 나오는 문서 이름은 위 대응표로 찾는다**(원문은 git 이력).
+- 🆕 `docs/new-hire/` — 새로 합류한 사람용 쉬운 설명(프로젝트 소개 · 지금 진행 상황 · 파트별 남은 일).
+
+## 현재 위치 (2026-09-23 — 기획 변경 반영, 문서 재작성)
+
+- 📋 **기획 변경 설명서를 받아 전체 계획을 다시 세웠다** → `docs/plans/pilot-development-plan.md`.
+  DB·앱·웹·연동 4파트 + 파일럿 범위. 이 문서가 "무엇을 만들지"의 SoT 다.
+- **파일럿 범위 확정**: 프로그램 일지 자동생성 · 분석→일지 매핑 · 감독 화면 · 안전 이벤트 푸시 ·
+  대화 정책 체계화 · 권한 재설계 · 고령자 UI. 시설은 **요양원 + 주간보호** 둘 다, 1기관 동시 2~4대.
+- **탐색에서 드러난 결정적 사실 넷**(계획 §3 상세):
+  ① **권한 모델이 기획서와 정반대다** — 기획서는 기관 단위를 요구하는데 현재는 9테이블이
+  요양보호사별 배정 격리다(`20260722100000`). 사회복지사·센터장 역할도 없다. **모든 것의 선행.**
+  ② **규칙 기반 대화(`ai.ts` 779줄)는 이미 죽어 있다** — 중계 모드에서 `generateReply` 결과가
+  계산되고 버려진다. 중계 단일화로 폴백 용도까지 없어져 파일 전체 삭제 가능.
+  ③ **어르신이 든 화면에 요양보호사 UI 가 그대로 있다** — 위기 배너 전화번호·STT 수정 패널·
+  확인 없이 종료하는 X 버튼. 표시 모드 분리는 신규 기능이기 전에 **현 상태 결함 수정**이다.
+  ④ **생성문 검증은 이미 강하다** — `generated-session.ts` 의 근거 강제·진단표현 차단을
+  **확장**해서 쓴다. 못 막는 것만 추가: `인지 저하`·`우울`·`정서 불안`·`병원 진료 권장`.
+- ⚠️ **파일럿 블로커 6건**(계획 §11): `alter type ... add value` 트랜잭션 제약 ·
+  `REPORT_ALLOWED_USER_IDS` 데모 허용목록(교체 없으면 전원 403) ·
+  **`safety_events` 가 세션 종료 시 일괄 기록돼 실시간 안전 푸시가 구조적으로 불가능** ·
+  **어르신 동의 철회 UI 부재**(`ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다) ·
+  **직원이 같은 기관에 합류할 경로 부재** · **`live-token` 이 중계가 아닌 호출자에게도 토큰을 준다**(아래).
+- 🔎 **문서 재작성 중 코드 대조로 드러나 계획에 반영한 것**(2026-09-24):
+  ① **직원 합류 경로가 없다** — 2026-07-25 이후 `complete_onboarding` 은 요양보호사마다 **새 기관 + `org_admin`** 을 만든다.
+  1기관·여러 직원 파일럿이 성립하지 않는다 → 기관 초대 코드 + `org_admin`·`center_director` 승인, **승인 전 `users.org_id` NULL**
+  ("org_id 없으면 0건" 불변식 재사용)(D3·W9). 기관 단위 열람에서는 **합류 승인 = 기관 전체 열람**이라 승인자를 좁혔다.
+  ② **새 역할을 부여할 경로가 없다** — `users.role` 은 3중 잠금(`20260908000000`), 온보딩은 요양보호사·보호자만.
+  → `set_member_role` RPC(자기 자신·보호자↔돌봄팀·마지막 관리자 강등 불가) + 역할 지정 UI. 매트릭스 편집권은 위임 불가.
+  ③ **`live-token` 이 중계와 앱 직접 호출을 구분하지 못한다** — 중계도 사용자 JWT 로 부른다(`voice-relay/src/main.ts:41`).
+  앱 직접 모드를 지워도 구버전 앱·JWT 소지자는 출력 검열을 건너뛴다 → **중계 전용 자격 추가, 없으면 403**(C4).
+  ④ 목표 시간은 **기존 `sessions.duration_minutes`**(5~120, `20260822020000`)를 쓴다 — 계획 초안의 `target_minutes` 컬럼은 중복이었다.
+  ⑤ 어르신 화면의 위기 안내(전화번호)는 **삭제가 아니라 이동**(요양보호사 모드·감독 화면 위기 카드).
+  ⑥ D4 는 SELECT/UPDATE 만 기관 단위로 바꾸고 **DELETE 는 배정·관리자 기준 유지**.
+  ⑦ 이름 변경 "분석 → 대화 관찰 리포트"는 **보호자 메뉴만**(기획 6-5). 요양보호사 `분석` 은 유지.
+  ⑧ (✅ 2026-09-24 해결 — 태블릿 지원 `true` 로 변경) 기획서는 "태블릿 N대"를 전제하는데 앱은 `ios.supportsTablet:false`·`portrait` — 값은 그대로, **파일럿 기기 확정 때 재확인**.
+  ⑨ 파일럿 계획의 `D1~D10` 은 DB 파트 번호다. 대체된 사업 기획 델타의 `D1~D11` 과 **이름만 같다** — 인용 시 출처를 붙인다.
+  ⑩ **중계는 위기뿐 아니라 급성 고통·휴식 요청("그만할래")·거부에도 즉시 연결을 끊는다**(`relay.ts:123-127`, `INPUT_REVIEW_REQUIRED`).
+  기획의 종료 정책("그만할래" → 마무리 단계로 짧게)과 부딪힌다 → 권장: 휴식 요청·거부만 마무리 전환, **위기·급성 고통은 즉시 종료 유지**.
+  급성 고통을 바꾸는 것은 안전 완화라 기획·안전 책임자 확인 사항(계획 §9-5·§13, tasks T21.11).
+  ⑪ **파일럿 신규 화면은 Figma 시안이 없다** — 웹 W1·W2·W6·W7·W9, 앱 M2(어르신 표시 모드). 웹 규칙은 "Figma 단독·임의 재디자인 금지"다.
+  시안 선행 vs "시안에 없는 화면" 선례(기존 디자인 언어로 최소 구현 → 시안 오면 교체) 중 **결정 대기**(계획 §7 머리말·§13). 결정 전엔 DB·연동이 먼저.
+  ⑫ `live-token` 한도는 **사용자 기준**(분당 3·일 20). 요양보호사 1명이 기기 여러 대를 자기 계정으로 시작하면 먼저 닿는다 —
+  기기·계정 운영 방식이 곧 일지 진행자 기록이 되므로 기획 결정(계획 §13).
+  ⑬ `apps/web/src/lib/supabase.ts` 주석·콘솔의 "목업 데이터로 동작"은 낡은 문구다(웹 목업 스토어는 이미 없다 — 코드 미수정).
+- 📝 문서 진행: Tier 1(PLAN·tasks·백로그 2종·웹 AGENTS·루트 AGENTS) ✅ · Tier 2(requirements `PF-01~47`·`PN-01~09` ·
+  design `SCR-08·09`·`SCR-W12·W15~W21` · product · database · structure · web-launch §5 · app-release-remaining §7 ·
+  음성 계획 2종) ✅ · Tier 3(README 5종·tech §0·security 역할→범위 표·compliance 처리목록·ai-safety §0-1·accessibility·
+  infrastructure §10·런북 4종·데모 촬영 기록) ✅.
+  기존 요구 ID·화면 ID 는 코드 주석·마이그레이션이 인용하므로 **재번호·재사용하지 않고** 폐기·대체 표시만 했다.
+- ⚠️ **안전 아키텍처를 약화시키지 말 것**(계획 §11): 공단 일지 진행자 칸에 AI 를 쓸 수 없다
+  (`facilitator_user_id` NOT NULL + `tool_used` 별도) · **위기 시 즉시 `close` 를 `paused` 로
+  낮추지 말 것**(기록만 확장) · 위임 대상은 3개뿐(일지확정·공개철회·보호자연결승인)이며
+  위기 대응·출력 검열·진단표현 금지를 `org_capabilities` 에 넣으면 설정 한 줄로 무력화된다.
+- ✅ 이번 세션 검증(설치 보정 후 실행): typecheck 6패키지 · lint 0 · test **631**
+  (core 253 + data 141 + voice-relay 43 + mobile 194) · `check:figma` 177 · `check:font` 39 ·
+  `check:bom` · `check:copy` 통과. 마이그레이션 53종.
+
+## 이전 위치 (2026-09-23 — 앱 현황 점검·모델 교체 미완)
+
+> 이번 세션은 **코드 변경 없이 앱 현황을 전수 점검**하고 메모리를 맞춘 것이다.
+> 기록 범위: `83ba6af`(메모리 마지막 반영) 이후 유일한 커밋 `8233b16` + 검증 결과.
+
+- **Gemini 모델 교체는 아직 적용되지 않았다.** `8233b16`("gemini model 변경")의 코드 변경은
+  `supabase/.env.example` **한 줄**뿐이고(`gemini-3.1-flash-live-preview` → `gemini-3.8-live`),
+  나머지는 사업계획 초안 텍스트 2개다. `.env.example` 은 **템플릿이라 런타임에 읽히지 않는다** —
+  실제 모델은 `live-token` 이 `GEMINI_LIVE_MODEL` **시크릿**으로 정해 앱에 돌려주고
+  (`json({ token, model })`), 앱은 그대로 따른다(`model: json.model ?? DEFAULT_MODEL`).
+  → **`supabase secrets set` 을 해야 바뀐다.** 하지 않으면 앱은 조용히 3.1 로 돈다.
+  ⚠️ 코드에 3.1 이 남은 곳: `live-token/index.ts:50`·`engine.ts:18` 의 `DEFAULT_MODEL`(폴백),
+  `.env.example:32` 주석(같은 파일 41행과 **모순**), `client.ts:3` 설계 근거 주석.
+  `gemini-3.8-live` 의 실재·Live 지원 여부는 **확인하지 못했다**(컨테이너 egress 가 Google 차단).
+  모델 제약(proactivity/affective 미지원 등)을 3.1 기준으로 전제한 코드가 그대로라 재검증 필요.
+
+- **`EXPO_PUBLIC_VOICE_RELAY_URL` 이 문서화돼 있지 않다.** 이 변수 하나가 음성 구조 전체를
+  가른다(`engine.ts:114·119·137`, `talk.tsx:45` `RELAY_MODE`) — 설정하면 중계 경로,
+  비우면 **직접 Gemini Live 경로**다. 그런데 `apps/mobile/.env.example` 에 없다.
+  `env.d.ts` 는 `[key: string]` 인덱스 시그니처라 **오타도 타입 검사가 못 잡는다**.
+  배포 시 이 변수를 빠뜨리면 중계·검증·Clova 경로가 통째로 우회된다.
+
+- ⚠️ **`pnpm install --prefer-offline`(session-start 훅)이 `apps/voice-relay/node_modules` 를
+  만들지 않는다.** 그 상태로는 `pnpm -r typecheck` 가 `TS2688 Cannot find type definition
+  file for 'node'` 로, `pnpm -r test` 가 voice-relay 에서 끊겨 **모바일 테스트까지 안 돈다**.
+  저장소 결함이 아니다(package.json·락파일 정상) — **새 세션에서 먼저
+  `pnpm install --filter @giokon/voice-relay` 를 실행**하면 해소된다.
+
+- ✅ **검증(2026-09-23, 위 설치 보정 후 실제 실행)**: typecheck 6패키지 · lint 0 ·
+  **test 631**(core 253 + data 141 + voice-relay 43 + mobile 194) · `check:figma` 177 ·
+  `check:font` 39 · `check:bom` 447 · `check:copy` 전부 통과. 마이그레이션 **53종**.
+
+- 앱 설정 현황(변동 없음 확인): Expo `~54.0.37` · RN `0.81.5` · `version 1.0.0` ·
+  번들 ID `kr.giokon.app`(iOS·Android 동일) · `supportsTablet: false` ·
+  plugins 에 `expo-build-properties`(API 36 고정) · infoPlist 마이크·사진 2종.
+
+- 🧹 저장소 루트에 `answer_draft.txt` · `tts_script_draft.txt`(사업계획 초안)가 있다.
+  `submissions/` 가 이미 있으므로 그쪽으로 옮기는 편이 맞다. 코드에는 영향 없다.
+
+- ⏳ **배포 직전 재확인(사용자 요청, 유지)**: ① 주황 `#e9822b` 대비 2.73:1(현행 유지 결정)
+  ② `supportsTablet: false` 유지 여부.
+
+## 이전 위치 (2026-09-21 — Clova 취소·응답 실패 경계)
 
 - N09 매 청취 시작 전에 기기 마이크 권한을 재조회한다. 자동 턴 중 권한 요청 창은 띄우지 않으며 거절/조회 실패/5초 초과는 연결 종료, 회수 후 늦은 허용은 무시한다. 신규6건 포함 모바일194건·타입/lint·앱 게이트 통과. 청취 중 OS 권한 변경 감지나 실제 기기 검증을 완료한 것은 아니다.
 
@@ -431,9 +707,16 @@ WebSocket 동일)이 그 자리를 막고 있다. **기존 토큰을 취소했�
   `proactivity`/`affective` 필드는 **보내면 연결이 깨진다**(아예 미포함) · 자동 VAD 를 끄고
   `NO_INTERRUPTION`(barge-in 차단, 턴 경계는 앱이 소유 — 요양보호사 확인·교정 흐름과 정합) ·
   초기 맥락은 `system_instruction` 주입(캐싱 미지원 대비).
-  **모델에 넘기는 것은 확정·교정된 텍스트뿐**이다(마이크 오디오는 전사 용도로만 스트리밍) →
-  DB 에 남은 텍스트와 모델이 본 텍스트가 항상 같다(감사 정합). **위기 발화는 모델을 우회**해
-  로컬 안전 응답을 유지한다. 키는 앱에 없다 — Edge Function `live-token` 이 JWT 검증 후
+  ~~**모델에 넘기는 것은 확정·교정된 텍스트뿐**이다 → DB 에 남은 텍스트와 모델이 본 텍스트가
+  항상 같다(감사 정합). **위기 발화는 모델을 우회**한다.~~
+  ⚠️ **이 두 문장은 2026-09-09 에 사실이 아니게 됐다**(2026-09-23 확인). `client.ts` 헤더가
+  스스로 *"'교정 텍스트만 모델이 본다'고 가정하면 안 된다"* 로 바꿔 적었다 — 마이크 원음이
+  `realtimeInput.audio` 로 모델에 전송된다. **감사 근거로 인용하지 말 것.**
+  위기 발화도 마찬가지다: 앱은 `submitUserTurn` 을 건너뛰지만 오디오는 이미 나갔고,
+  `activityEnd` 를 안 보내 활동 구간이 열린 채 남아 **다음 턴에 위기 오디오가 함께 들어간다**.
+  중계 모드는 `haltRelay()`→`closeLiveEngine()` 으로 연결을 닫아 해소됐으나(2026-09-21),
+  **직접 모드(`EXPO_PUBLIC_VOICE_RELAY_URL` 미설정)에는 그대로 남아 있다.**
+  로컬 안전 응답·에스컬레이션과 재생 가드(`playableChunks`)는 정상 동작한다. 키는 앱에 없다 — Edge Function `live-token` 이 JWT 검증 후
   ephemeral token 발급(90s/30min). 미가용·실패 시 **기존 파이프라인(expo-speech+타자 입력)으로
   무중단 폴백**한다. 견고성 4건 보강: sessionResumption 핸들로 1회 자동 재접속 ·
   타임아웃 `'timeout'` 명시 반환 + 세션당 1회 안내(조용한 폴백 제거) · "다시 듣기"는 엔진 생존과

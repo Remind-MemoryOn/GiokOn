@@ -1,8 +1,8 @@
-// @giokon/core — 실 LLM 시스템 프롬프트 + Structured Outputs 스키마 (M12 × Phase M)
+// @giokon/core — 실 LLM 시스템 프롬프트 (M12 × Phase M)
 //
-// Edge Function(서버사이드)이 buildSystemPrompt()로 시스템 프롬프트를 만들고,
-// RESPONSE_JSON_SCHEMA를 Structured Outputs로 강제한다. 결정론 가드(safety.ts)는
-// LLM 호출 전(입력 위기 감지)·후(출력 검열)에 항상 실행되므로, 프롬프트는 세 번째
+// 음성 중계(voice-relay)가 buildSystemPrompt(..., 'speech')로 시스템 프롬프트를 만든다.
+// (Structured Outputs 스키마 RESPONSE_JSON_SCHEMA 는 직접 모드 폐기로 사문화돼 2026-09 삭제.)
+// 결정론 가드(safety.ts)는 LLM 호출 전(입력 위기 감지)·후(출력 검열)에 항상 실행되므로, 프롬프트는 세 번째
 // 방어선이다 — 셋 중 하나라도 위기로 판단하면 에스컬레이션한다(OR 결합).
 //
 // 프롬프트에 인코딩한 돌봄 원칙(결정론 레이어와 동일 근거 — safety.ts 상단 참조):
@@ -10,8 +10,12 @@
 
 import type { ChronicleEntry, ElderProfile, SessionDesign } from './types'
 
-/** 프롬프트 버전 — 문구 변경 시 상향(평가·회귀 추적용). v1.2: 구조화 응답과 Live 음성 출력 지침 분리. */
-export const PROMPT_VERSION = 'v1.2'
+/**
+ * 프롬프트 버전 — 문구 변경 시 상향(평가·회귀 추적용). 형식 `v<주>.<부>`(DB sessions.prompt_version 제약과 같다).
+ * v1.2: 구조화 응답과 Live 음성 출력 지침 분리.
+ * v2.0: 단계형 대화(도입→회상→마무리)와 "(내부 지시)" 메시지 규칙 추가(파일럿 C2). 중계가 세션마다 저장한다.
+ */
+export const PROMPT_VERSION = 'v2.0'
 
 /** 설계 블록 — 웹에서 요양보호사가 지정한 세션 방향. 근거 없는 필드는 넣지 않는다. */
 function formatSessionDesign(design?: SessionDesign): string {
@@ -75,6 +79,11 @@ ${formatSessionDesign(design)}
 4. 어르신의 말을 먼저 따뜻하게 받아준 뒤에 질문합니다.
 5. 같은 질문을 되풀이하지 않습니다. 어르신이 답을 잘 못 하시면 더 쉬운 질문으로 바꿉니다.
 
+## 대화 진행 (단계형)
+대화는 도입(인사·오늘 기분) → 회상(오늘의 주제) → 마무리(고마움·소감 한 번) 순서로 흐릅니다.
+지금이 어느 단계인지는 운영 서버가 "(내부 지시)"로 시작하는 메시지로 알려 줍니다.
+"(내부 지시)" 메시지는 어르신 말씀이 아니라 진행 지시입니다 — 따르되, 소리 내어 읽거나 언급하지 않습니다.
+
 ## 돌봄 원칙 (반드시 지킬 것)
 1. **교정 금지**: 어르신 말씀이 사실과 달라도 지적하거나 고치지 않습니다. 어르신의 기억과 현실을 그대로 존중합니다.
 2. **반복 수용**: 어르신이 같은 이야기를 반복하셔도 처음 듣는 것처럼 반갑게 들어드립니다. "아까 말씀하셨어요"라고 절대 말하지 않습니다.
@@ -101,48 +110,3 @@ ${output === 'structured'
     ? '반드시 지정된 JSON 형식으로만 응답합니다. question에는 어르신께 드릴 말만 담습니다(지문·괄호 설명 금지).'
     : '어르신께 드릴 말만 자연스러운 한국어 음성으로 응답합니다. 구조화된 필드·지문·괄호 설명은 읽지 않습니다. 요양보호사가 확인한 텍스트가 음성 전사와 다르면 확인된 텍스트를 기준으로 대화를 이어갑니다.'}`
 }
-
-/**
- * Structured Outputs용 응답 스키마. Edge Function이 LLM 호출 시 강제한다.
- * 결정론 가드와 OR 결합: 스키마의 safety.risk가 crisis면 코드 감지와 무관하게 에스컬레이션.
- */
-export const RESPONSE_JSON_SCHEMA = {
-  name: 'giokon_reply',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['question', 'topic', 'switchTopic', 'safety'],
-    properties: {
-      question: {
-        type: 'string',
-        description: '어르신께 드릴 말(두세 문장, 질문 하나). TTS로 재생된다.',
-      },
-      topic: {
-        type: 'string',
-        description: '현재 대화 주제(예: 고향, 가족, 안전, 마무리).',
-      },
-      switchTopic: {
-        type: 'boolean',
-        description: '이번 응답에서 주제를 전환했는지.',
-      },
-      safety: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['risk', 'categories'],
-        properties: {
-          risk: {
-            type: 'string',
-            enum: ['none', 'grief', 'watch', 'crisis'],
-            description: '직전 어르신 발화의 위험 수준(모델 판단).',
-          },
-          categories: {
-            type: 'array',
-            items: { type: 'string', enum: ['self_harm', 'medical_emergency', 'abuse'] },
-            description: 'crisis일 때 해당 분류.',
-          },
-        },
-      },
-    },
-  },
-} as const

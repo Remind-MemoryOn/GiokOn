@@ -1,4 +1,11 @@
 import { safeVoiceFailureMessage } from '@giokon/core';
+/** 감독 화면의 원격 제어(파일럿 M5) — 중계 알림(`relayControl`)과 서버 판정(`session_tick`) 공통 값. */
+export type RemoteControlState = 'running' | 'paused' | 'ended' | 'denied';
+/** 원격 일시정지 중 서버 상태를 다시 보는 간격 — 요구사항 "원격 재개가 2초 안에 반영". */
+export const REMOTE_CONTROL_POLL_MS = 2000;
+export const REMOTE_PAUSE_REASON = '감독 화면에서 대화를 잠시 멈췄어요. 감독 화면에서 재개하면 자동으로 이어져요.';
+export const REMOTE_END_REASON = '감독 화면에서 대화를 끝냈어요. 기록을 저장해 주세요.';
+export const REMOTE_DENIED_REASON = '대화를 이어갈 수 없는 상태예요. 기록을 저장해 주세요.';
 export type AutomaticPhase = 'idle' | 'starting' | 'processing' | 'speaking' | 'listening' | 'pausing' | 'paused' | 'stopped';
 export interface AutomaticEngine {
   requestContinuation?(): Promise<{ text: string; audioChunksB64: string[] } | null>;
@@ -13,31 +20,80 @@ export interface AutomaticPorts {
   current(): boolean;
   ready(resuming: boolean): Promise<boolean>;
   resume?(engine: AutomaticEngine): Promise<'listen' | {text: string; audioChunksB64: string[]} | null>;
-  connect(onInput: (text: string) => void, onFailure: (message?: string) => void, resuming: boolean): Promise<AutomaticEngine | null>;
+  connect(onInput: (text: string) => void, onFailure: (message?: string) => void, resuming: boolean,
+    onRemote?: (state: 'paused' | 'ended') => void): Promise<AutomaticEngine | null>;
+  /** 멈춘 동안 서버의 원격 제어 상태를 읽는다(`session_tick`). 없으면 원격 재개·종료를 감지하지 않는다. */
+  control?(): Promise<RemoteControlState>;
   cancelPending(): Promise<void>;
   input(text: string): 'continue' | 'help';
   output(text: string, opener: boolean): boolean;
   playback(result: 'completed' | 'interrupted' | 'empty'): void;
   save(): Promise<boolean>;
-  status(phase: AutomaticPhase, reason?: string): void;
+  /** remote = 감독 화면의 원격 일시정지로 멈춰 있다(현장 재개 불가 — 사용자 확정 2026-09-24). */
+  status(phase: AutomaticPhase, reason?: string, remote?: boolean): void;
 }
 export class AutomaticConversation {
   private generation = 0;
   private phase: AutomaticPhase = 'idle';
   private engine: AutomaticEngine | null = null;
   private closing: Promise<void> | null = null;
+  /** 원격 일시정지로 멈춤 — 서버가 재개를 알릴 때까지 현장 재개를 막는다. */
+  private remoteHeld = false;
+  private watchTimer: ReturnType<typeof setTimeout> | null = null;
   constructor(private ports: AutomaticPorts) {}
   private alive(generation: number): boolean { return generation === this.generation && !['stopped','pausing','paused'].includes(this.phase) && this.ports.current(); }
   private status(phase: AutomaticPhase, reason?: string): void {
     this.phase = phase;
-    if (this.ports.current()) this.ports.status(phase, reason);
+    if (this.ports.current()) {
+      if (this.remoteHeld) this.ports.status(phase, reason, true);
+      else this.ports.status(phase, reason);
+    }
+    if (phase === 'paused') this.watch();
+  }
+  get remotePaused(): boolean { return this.remoteHeld; }
+  /** 멈춘 동안 서버의 원격 제어 상태를 2초마다 본다 — 원격 재개면 이어가고, 원격 종료면 멈춘다. */
+  private watch(): void {
+    if (!this.ports.control || this.watchTimer) return;
+    const generation = this.generation;
+    const tick = async (): Promise<void> => {
+      this.watchTimer = null;
+      if (generation !== this.generation || this.phase !== 'paused' || !this.ports.current()) return;
+      let state: RemoteControlState | null = null;
+      try { state = await this.ports.control!(); } catch { /* 확인 실패는 상태를 바꾸지 않는다 — 다음 폴에 다시 본다. */ }
+      if (generation !== this.generation || this.phase !== 'paused' || !this.ports.current()) return;
+      if (state === 'ended') return void this.stop(REMOTE_END_REASON);
+      if (state === 'denied') return void this.stop(REMOTE_DENIED_REASON);
+      if (state === 'running' && this.remoteHeld) {
+        this.remoteHeld = false;
+        return void this.resume();
+      }
+      if (state === 'paused' && !this.remoteHeld) {
+        // 현장에서 멈춘 사이 감독 화면도 멈췄다 — 현장 재개를 막고 안내를 바꾼다.
+        this.remoteHeld = true;
+        this.ports.status('paused', REMOTE_PAUSE_REASON, true);
+      }
+      this.watchTimer = setTimeout(() => void tick(), REMOTE_CONTROL_POLL_MS);
+    };
+    this.watchTimer = setTimeout(() => void tick(), REMOTE_CONTROL_POLL_MS);
+  }
+  private unwatch(): void {
+    if (this.watchTimer) clearTimeout(this.watchTimer);
+    this.watchTimer = null;
+  }
+  /** 중계의 원격 제어 알림 — 해당 연결 세대에서만 받는다. */
+  private remote(state: 'paused' | 'ended', generation: number): void {
+    if (generation !== this.generation || this.phase === 'stopped') return;
+    if (state === 'ended') { void this.stop(REMOTE_END_REASON); return; }
+    this.remoteHeld = true;
+    void this.pause();
   }
   async start(): Promise<void> {
     if (this.phase !== 'idle') return;
     await this.begin(false);
   }
   async resume(): Promise<void> {
-    if (this.phase !== 'paused' || !this.ports.resume) return;
+    if (this.phase !== 'paused' || !this.ports.resume || this.remoteHeld) return;
+    this.unwatch();
     this.closing = null;
     await this.begin(true);
   }
@@ -52,7 +108,8 @@ export class AutomaticConversation {
         return await this.stop('마이크 권한과 자동 대화 저장 준비를 확인해 주세요.');
       }
       if (!this.alive(generation)) return;
-      const engine = await this.ports.connect(text => { void this.receive(text, generation); }, message => { if (this.alive(generation)) void this.stop(safeVoiceFailureMessage(message)); }, resuming);
+      const engine = await this.ports.connect(text => { void this.receive(text, generation); }, message => { if (this.alive(generation)) void this.stop(safeVoiceFailureMessage(message)); }, resuming,
+        state => this.remote(state, generation));
       if (!this.alive(generation)) { await engine?.close(); return; }
       this.engine = engine;
       if (!engine) throw new Error('connection');
@@ -109,7 +166,7 @@ export class AutomaticConversation {
     this.status('pausing');
     try {
       await this.cleanup();
-      if (this.phase === 'pausing') this.status('paused');
+      if (this.phase === 'pausing') this.status('paused', this.remoteHeld ? REMOTE_PAUSE_REASON : undefined);
     } catch { await this.stop('음성 중지를 확인하지 못했어요. 기록을 저장해 주세요.'); }
   }
   private cleanup(): Promise<void> {
@@ -117,6 +174,8 @@ export class AutomaticConversation {
     return this.closing;
   }
   async stop(reason?: string): Promise<void> {
+    this.unwatch();
+    this.remoteHeld = false;
     if (this.phase === 'stopped') { await this.cleanup().catch(() => {}); return; }
     this.status('stopped', reason);
     // Cancel a connecting singleton too; never wait for provider work to finish.

@@ -3,6 +3,7 @@ import { once } from 'node:events'
 import type { AddressInfo } from 'node:net'
 import { WebSocket, WebSocketServer } from 'ws'
 import { createRelayServer } from './server'
+import { CONTROL_CLOSE_GRACE_MS, type SessionTick } from './relay'
 
 const cleanup: (() => void)[] = []
 afterEach(() => { vi.useRealTimers(); for (const close of cleanup.splice(0)) close() })
@@ -25,8 +26,12 @@ async function fixture(respond = true) {
     })
   })
   const allowed = vi.fn(async () => true), release = vi.fn()
+  // 서버(session_tick) 상태 — 기본은 단계 정보 없음(기존 시나리오는 단계·제어와 무관하게 돈다).
+  const server: Omit<SessionTick, 'allowed'> = {}
+  const tick = vi.fn(async (): Promise<SessionTick> => ({ ...server, allowed: await allowed() }))
+  const advancePhase = vi.fn(async (phase: NonNullable<SessionTick['phase']>) => { server.phase = phase; server.phaseElapsedSeconds = 0; return true })
   const synthesize = vi.fn(async (text: string) => ({ text, pcm: Buffer.from([1, 0, 2, 0]) }))
-  const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', allowed, release }))
+  const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', tick, advancePhase, release }))
   const connectProvider = vi.fn(() => new WebSocket(`ws://127.0.0.1:${(provider.address() as AddressInfo).port}`))
   const relay = createRelayServer({ authorize, connectProvider, synthesize, clova: { clientId: 'synthetic', clientSecret: 'synthetic' } })
   relay.server.listen(0, '127.0.0.1'); await once(relay.server, 'listening')
@@ -46,7 +51,8 @@ async function fixture(respond = true) {
     send({ realtimeInput: { text: '확인한 합성 테스트 발화' } })
     send({ realtimeInput: { activityEnd: {} } })
   }
-  return { relay, app, send, start, turn, frames, inputs, authorize, connectProvider, synthesize, allowed, release, peer: () => peer }
+  const directives = () => inputs.filter(x => x.clientContent?.turns?.[0]?.parts?.[0]?.text?.startsWith('(내부 지시)')).map(x => x.clientContent.turns[0].parts[0].text as string)
+  return { relay, app, send, start, turn, frames, inputs, authorize, connectProvider, synthesize, allowed, release, peer: () => peer, server, tick, advancePhase, directives }
 }
 
 describe('real local WebSocket relay', () => {
@@ -213,4 +219,68 @@ describe('real local WebSocket relay', () => {
     resolve({ text: 'late', pcm: Buffer.from([1, 0]) })
     expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(false)
   })
+})
+
+describe('pilot C3 — server phases and remote control', () => {
+  it('starts the intro phase on the server clock and injects its directive only between turns', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: null, elapsedSeconds: 0, targetMinutes: 10 })
+    await f.start(2)
+    await vi.waitFor(() => expect(f.advancePhase).toHaveBeenCalledWith('intro'))
+    await vi.waitFor(() => expect(f.directives()).toEqual([expect.stringContaining('도입 단계')]))
+    // 지시는 model 턴을 시작하지 않는다(turnComplete=false) — 어르신께 들리지 않는다.
+    expect(f.inputs.find(x => x.clientContent)?.clientContent.turnComplete).toBe(false)
+  })
+  it('counts only spoken elder turns and moves to reminiscence, never during a pending response', async () => {
+    const f = await fixture(false)
+    Object.assign(f.server, { phase: 'intro', phaseElapsedSeconds: 5, elapsedSeconds: 5, targetMinutes: 10 })
+    await f.start(2)
+    await vi.waitFor(() => expect(f.directives()).toHaveLength(1))
+    // 텍스트만 있는 첫 인사 요청은 어르신 대답이 아니다
+    f.send({ realtimeInput: { activityStart: {} } }); f.send({ realtimeInput: { text: '(내부 지시) 첫 말씀' } }); f.send({ realtimeInput: { activityEnd: {} } })
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityEnd)).toBe(true))
+    await f.tick(); await new Promise(r => setTimeout(r, 2100))
+    expect(f.advancePhase).not.toHaveBeenCalledWith('reminiscence')
+  })
+  it('advances to reminiscence after a spoken answer and injects the directive before the next activity', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: 'intro', phaseElapsedSeconds: 5, elapsedSeconds: 5, targetMinutes: 10 })
+    await f.start(2); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
+    await vi.waitFor(() => expect(f.advancePhase).toHaveBeenCalledWith('reminiscence'), { timeout: 5000 })
+    // 재생 확인 전에는 지시를 넣지 않는다
+    expect(f.directives().some(t => t.includes('회상 단계'))).toBe(false)
+    f.send({ relayPlayback: { turnId: 1, result: 'completed' } })
+    await vi.waitFor(() => expect(f.directives().some(t => t.includes('회상 단계'))).toBe(true))
+  })
+  it('moves to closing near the target time', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: 'reminiscence', phaseElapsedSeconds: 400, elapsedSeconds: 510, targetMinutes: 10 })
+    await f.start(2)
+    await vi.waitFor(() => expect(f.advancePhase).toHaveBeenCalledWith('closing'))
+    await vi.waitFor(() => expect(f.directives().some(t => t.includes('마무리 단계'))).toBe(true))
+  })
+  it.each([['paused', { paused: true }], ['ended', { endRequested: true }]] as const)(
+    'remote %s: tells the app, stops forwarding input and output, then closes after a grace period', async (state, flags) => {
+      const f = await fixture()
+      await f.start(2)
+      Object.assign(f.server, flags)
+      await f.tick()
+      await vi.waitFor(() => expect(f.frames.some(x => x.relayControl?.state === state)).toBe(true), { timeout: 3000 })
+      const forwarded = f.inputs.length
+      f.turn()
+      await new Promise(r => setTimeout(r, 200))
+      expect(f.inputs.length).toBe(forwarded)  // 입력이 모델로 가지 않는다
+      expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(false)  // 새 AI 음성이 오지 않는다
+      const closed = once(f.app, 'close')
+      await closed
+    }, CONTROL_CLOSE_GRACE_MS + 5000)
+  it('does not open the model connection when the session is already paused at connect', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { paused: true })
+    f.send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt', protocolVersion: 2 } })
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayControl?.state === 'paused')).toBe(true))
+    expect(f.connectProvider).not.toHaveBeenCalled()
+    await once(f.app, 'close')
+  }, CONTROL_CLOSE_GRACE_MS + 5000)
 })

@@ -15,7 +15,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "kr.giokon.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "어르신과의 회상 대화에서 말씀을 인식하기 위해 마이크를 사용합니다.",
@@ -36,6 +36,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
+      "expo-notifications",
       [
         "expo-build-properties",
         {

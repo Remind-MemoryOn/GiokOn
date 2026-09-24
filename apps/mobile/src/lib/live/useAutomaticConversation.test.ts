@@ -4,6 +4,8 @@ const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
   contexts: [] as unknown[], continuation: vi.fn(async()=>({text:'이어서 고향 이야기를 들려주시겠어요?',audioChunksB64:['pcm']})),
   status: [] as unknown[], change: null as null | ((state:string)=>void),
   input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
+  opener:vi.fn(async():Promise<unknown>=>({text:'고향은 어디세요?',audioChunksB64:['pcm']})),
+  control:vi.fn(async()=> 'running'), remote:null as null | ((state:'paused'|'ended')=>void),
   play:vi.fn(async()=> 'completed'), listen:vi.fn(async()=>{}), close:vi.fn(async()=>{}) }));
 vi.mock('react',async original=>({...await original<typeof import('react')>(),
   useEffect:(effect:()=>void|(()=>void))=>{native.effects.push(effect);},
@@ -13,15 +15,15 @@ vi.mock('react',async original=>({...await original<typeof import('react')>(),
 vi.mock('react-native',()=>({AppState:{currentState:'active',addEventListener:(_event:string,cb:(state:string)=>void)=>{
   native.change=cb; return {remove:()=>{native.change=null;}};
 }}}));
-vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version}));
+vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version,getSessionControl:native.control}));
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
 vi.mock('./mic',()=>({ensureMicPermission:async()=>true}));
 vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
-  acquireLiveEngine:async(_key:unknown,_elder:unknown,_chronicles:unknown,_design:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void},_session:unknown,context:unknown)=>{
+  acquireLiveEngine:async(_key:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void;onRemoteControl:(state:'paused'|'ended')=>void},_session:unknown,context:unknown)=>{
     native.contexts.push(context);
     native.input=callbacks.onDraftFinal; native.failure=callbacks.onError;
-    native.partial=callbacks.onDraftInterrupted;
-    return {requestContinuation:native.continuation,requestOpener:async()=>({text:'고향은 어디세요?',audioChunksB64:['pcm']}),
+    native.partial=callbacks.onDraftInterrupted; native.remote=callbacks.onRemoteControl;
+    return {requestContinuation:native.continuation,requestOpener:native.opener,
       submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
       playTurn:native.play,startListening:native.listen,isListening:true,close:native.close};
   }}));
@@ -35,7 +37,7 @@ beforeEach(()=>{
 });
 it('binds the screen hook to automatic source adoption and the next microphone cycle',async()=>{
   const save=vi.fn(async()=>true);
-  const view=useAutomaticConversation(true,useApp.getState().active,save);
+  const view=useAutomaticConversation(useApp.getState().active,save);
   const cleanup=native.effects[0]();
   expect(native.input).toBeNull(); // Explicit start, never mount-triggered recording.
   await view.start(); native.input!('고향은 전주예요');
@@ -53,7 +55,7 @@ it('binds the screen hook to automatic source adoption and the next microphone c
 it('records interrupted playback even when retrieval precedes the native result',async()=>{
   let finished!: (value:string)=>void;
   native.play.mockImplementationOnce(()=>new Promise(resolve=>{finished=resolve;}));
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0]();
   const starting=view.start();
   await vi.waitFor(()=>expect(native.play).toHaveBeenCalled());
@@ -64,22 +66,23 @@ it('records interrupted playback even when retrieval precedes the native result'
   if(cleanup) cleanup();
 });
 it('stops the running loop on background transition',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   native.change!('background'); native.input!('늦은 전사');
   expect(useApp.getState().active!.turns).toHaveLength(1);
   expect(native.status.at(-1)).toMatchObject({phase:'stopped'});
   if(cleanup) cleanup();
 });
-it('does not install automatic controls for the direct manual path',async()=>{
-  const view=useAutomaticConversation(false,useApp.getState().active,async()=>true);
+it('does not install automatic controls before the server session exists',async()=>{
+  const active=useApp.getState().active!;
+  const view=useAutomaticConversation({...active,remoteId:null},async()=>true);
   native.effects[0](); await view.start();
   expect(native.version).not.toHaveBeenCalled(); expect(native.input).toBeNull();
 });
 
 it('preserves an interrupted input for review without adopting or saving it',async()=>{
   const save=vi.fn(async()=>true);
-  const view=useAutomaticConversation(true,useApp.getState().active,save);
+  const view=useAutomaticConversation(useApp.getState().active,save);
   const cleanup=native.effects[0](); await view.start();
   native.close.mockImplementationOnce(async()=>{native.partial!('말씀 도중');});
   await view.stop();
@@ -91,8 +94,31 @@ it('preserves an interrupted input for review without adopting or saving it',asy
   expect(useApp.getState().active!.pendingStt).toBe('말씀 도중');
 });
 
+it('starts from an empty record and adopts the relay greeting as the first AI turn',async()=>{
+  expect(useApp.getState().active!.turns).toEqual([]);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0](); await view.start();
+  expect(useApp.getState().active!.turns.map(t=>[t.speaker,t.text])).toEqual([['AI','고향은 어디세요?']]);
+  if(cleanup) cleanup();
+});
+it('resumes a pause taken before the greeting by requesting the opener again, discarding the late one',async()=>{
+  let greet!: (value:unknown)=>void;
+  native.opener.mockImplementationOnce(()=>new Promise(resolve=>{greet=resolve;}));
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0]();
+  const starting=view.start();
+  await vi.waitFor(()=>expect(native.opener).toHaveBeenCalledOnce());
+  await view.pause(); greet({text:'늦게 온 인사',audioChunksB64:['pcm']}); await starting;
+  expect(useApp.getState().active!.turns).toEqual([]);
+  await view.resume();
+  expect(native.opener).toHaveBeenCalledTimes(2);
+  expect(native.contexts[1]).toBeUndefined();
+  expect(useApp.getState().active!.turns.map(t=>t.text)).toEqual(['고향은 어디세요?']);
+  expect(native.listen).toHaveBeenCalledOnce();
+  if(cleanup) cleanup();
+});
 it('pauses and restores the completed question without repeating it',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   const original=useApp.getState().active!.turns.slice();
   await view.pause(); await view.resume();
@@ -103,7 +129,7 @@ it('pauses and restores the completed question without repeating it',async()=>{
   if(cleanup) cleanup();
 });
 it('requires partial input review, then resumes from the confirmed final text',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   native.close.mockImplementationOnce(async()=>{native.partial!('고향은 전');});
   await view.pause(); await view.resume();
@@ -119,7 +145,7 @@ it('requires partial input review, then resumes from the confirmed final text',a
 it('preserves the interrupted AI record and excludes it from restored model history',async()=>{
   let finish!:(value:string)=>void;
   native.play.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); const starting=view.start();
   await vi.waitFor(()=>expect(native.play).toHaveBeenCalledOnce());
   await view.pause(); finish('interrupted'); await starting;
@@ -132,7 +158,7 @@ it('preserves the interrupted AI record and excludes it from restored model hist
   if(cleanup) cleanup();
 });
 it('refuses resumption of a confirmed help request',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start(); await view.pause();
   useApp.getState().setPendingStt('죽고 싶어요','gemini_live');
   useApp.getState().confirmRecoveredInput('죽고 싶어요');
@@ -141,7 +167,7 @@ it('refuses resumption of a confirmed help request',async()=>{
 });
 
 it('retains the approved synthesis failure through the screen controller',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();
   const reason='음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.';
   native.failure!(reason);
@@ -151,7 +177,7 @@ it('retains the approved synthesis failure through the screen controller',async(
 });
 
 it('records relay review only for the current connection and keeps it for final save',async()=>{
-  const view=useAutomaticConversation(true,useApp.getState().active,async()=>true);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0]();await view.start();
   const oldFailure=native.failure!;
   await view.pause();await view.resume();
@@ -163,4 +189,24 @@ it('records relay review only for the current connection and keeps it for final 
   useApp.getState().finishSession();
   expect(useApp.getState().lastFinished!.events[0].excerpt).toBe('');
   if(cleanup) cleanup();
+});
+
+it('감독 화면 원격 일시정지를 받아 멈추고, 서버(session_tick) 재개 뒤 같은 세션으로 이어간다(파일럿 M5)',async()=>{
+  vi.useFakeTimers();
+  try {
+    native.control.mockResolvedValueOnce('paused').mockResolvedValue('running');
+    const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+    const cleanup=native.effects[0]();
+    await view.start();
+    native.remote!('paused');
+    expect(native.close).toHaveBeenCalled();
+    await vi.waitFor(()=>expect(native.status.at(-1)).toMatchObject({phase:'paused',remote:true}));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(native.control).toHaveBeenCalledWith('remote'); // 세션의 서버 id 로만 묻는다
+    expect(native.contexts).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.waitFor(()=>expect(native.contexts).toHaveLength(2)); // 재개 = 새 중계 연결
+    expect(native.status.at(-1)).not.toMatchObject({remote:true});
+    if (cleanup) cleanup();
+  } finally { vi.useRealTimers(); }
 });

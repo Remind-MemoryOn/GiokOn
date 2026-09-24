@@ -10,7 +10,7 @@
 
 /** public.users 중 판정에 필요한 부분만. */
 export interface AccessUserRow {
-  role: 'org_admin' | 'caregiver' | 'guardian';
+  role: 'org_admin' | 'caregiver' | 'guardian' | 'social_worker' | 'center_director';
   org_id: string | null;
   onboarded_at: string | null;
 }

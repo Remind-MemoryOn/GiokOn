@@ -1,21 +1,25 @@
-// Live 대화 엔진 — 토큰 발급 → 접속 → (전사 기반) 청취 → 확정 텍스트 턴.
+// 음성 대화 엔진 — 중계 접속 → (전사 기반) 청취 → 확정 텍스트 턴 → 검증된 음성 재생.
+//
+// 경로는 **중계 단일**이다(계획 M1): 앱 ─▶ voice-relay ─▶ Gemini Live ─▶ 서버 검증 ─▶ Clova ─▶ 앱.
+// 앱은 Gemini 토큰을 받지 않고 모델·시스템 지시도 정하지 않는다 — 중계가 서버에서 만든다.
+// 직접 Gemini Live 경로·기기 TTS 폴백은 삭제했다(검열되지 않은 원본 오디오 경로).
 //
 // 앱의 세션 상태 머신과의 계약:
-//   - listening 중 마이크 오디오가 Live로 전달되고, 실시간 전사가 onDraft 로
-//     흘러 요양보호사 확인·수정 패널(pendingStt)을 채운다.
-//   - 확인 텍스트를 submitUserTurn으로 추가하고 activityEnd로 응답 생성을 요청한다.
-//     같은 세션의 모델이 원래 오디오도 처리한다는 점을 전제로 한다.
-//   - 어떤 단계든 실패하면 start() 가 false 를 반환해 호출부가 기존 파이프라인
-//     (expo-speech TTS + 타자/모의 입력)으로 조용히 폴백한다.
+//   - listening 중 마이크 오디오가 중계로 전달되고, 전사가 발화 경계(InputEndpoint)에서
+//     onDraftFinal 로 확정된다. 중단된 청취의 부분 전사는 onDraftInterrupted 로만 간다.
+//   - 확정 텍스트를 submitUserTurn 으로 보내고 activityEnd 로 응답 생성을 요청한다.
+//   - 어떤 단계든 실패하면 onError 로 알리고 연결을 닫는다. 조용한 폴백은 없다.
 
-import { parseVoiceResumeContext, type VoiceResumeContext, buildSystemPrompt, type ChronicleEntry, type ElderProfile, type SessionDesign } from '@giokon/core';
+import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
-import { GeminiLiveClient, type LiveTurnResult, type VoiceRelayConnection } from './client';
+import { GeminiLiveClient, type LiveTurnResult, type RelayControlState, type VoiceRelayConnection } from './client';
 import { hasMicPermission, micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 import { InputEndpoint, pcmLevel } from './endpoint';
+import { VOICE_RELAY_MISSING_MESSAGE, voiceRelayUrl } from './relay-config';
 
-const DEFAULT_MODEL = 'gemini-3.1-flash-live-preview';
+/** 중계 응답 대기 한도(오프너·턴·이어가기 공통). */
+const RELAY_TURN_TIMEOUT_MS = 60000;
 
 export interface LiveEngineCallbacks {
   /**
@@ -27,27 +31,11 @@ export interface LiveEngineCallbacks {
   onDraftInterrupted?: (text: string) => void;
   onError?: (message: string) => void;
   onProcessingDenied?: () => void;
-}
-
-/** ephemeral token 을 Edge Function(live-token)에서 받는다. */
-async function fetchLiveToken(sessionId: string): Promise<{ token: string; model: string }> {
-  const url = process.env.EXPO_PUBLIC_LIVE_TOKEN_URL?.trim() ||
-    `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/live-token`;
-  const session = await getSession();
-  if (!session?.access_token) throw new Error('로그인 세션이 없어요.');
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ session_id: sessionId }),
-  });
-  if (!res.ok) throw new Error(`live-token ${res.status}`);
-  const json = (await res.json()) as { token?: string; model?: string };
-  if (!json.token) throw new Error('live-token 응답에 token 이 없어요.');
-  return { token: json.token, model: json.model ?? DEFAULT_MODEL };
+  /**
+   * 감독 화면의 원격 일시정지·종료(파일럿 M5). 오류가 아니다 — 이 알림 뒤의 연결 실패·끊김은
+   * onError 로 다시 알리지 않는다. 핸들러가 없으면 오류로 알리고 닫는다(조용히 멈추지 않게).
+   */
+  onRemoteControl?: (state: RelayControlState) => void;
 }
 
 export class LiveConversationEngine {
@@ -57,19 +45,12 @@ export class LiveConversationEngine {
   private draft = '';
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
   private endpoint: InputEndpoint | null = null;
-  // 재접속(resumption)용 캐시 — start() 때 채워진다.
-  private lastToken = '';
-  private model = '';
-  private systemInstruction = '';
-  private resumeHandle = '';
-  private resumedOnce = false;
   private closing = false;
   private closeWork: Promise<void> | null = null;
   private failedStopDraft: string | null = null;
-  private resumeTimer: ReturnType<typeof setTimeout> | null = null;
   private accessTimer: ReturnType<typeof setInterval> | null = null;
   private lastAccessCheck = 0;
-  private relay: VoiceRelayConnection | undefined;
+  private remoteControl: RelayControlState | null = null;
 
   private denyProcessing(): void {
     if (this.closing) return;
@@ -92,9 +73,6 @@ export class LiveConversationEngine {
   }
 
   constructor(
-    private readonly elder: ElderProfile,
-    private readonly chronicles: ChronicleEntry[],
-    private readonly design: SessionDesign | undefined,
     private callbacks: LiveEngineCallbacks,
     private readonly sessionId: string,
     private readonly resumeContext?: VoiceResumeContext,
@@ -106,45 +84,42 @@ export class LiveConversationEngine {
   }
 
   /**
-   * 접속 + 시스템 지시 주입. 실패(키 미설정·네트워크·네이티브 모듈 부재)하면
-   * false — 호출부는 기존 파이프라인으로 폴백한다.
+   * 중계 접속. 실패(중계 주소 미설정·네트워크·네이티브 모듈 부재·권한 상실)하면
+   * onError 로 알리고 false — 호출부는 세션을 멈춘다(폴백 경로 없음).
    */
   async start(): Promise<boolean> {
     if (!micStreamingSupported()) {
-      if (process.env.EXPO_PUBLIC_VOICE_RELAY_URL) this.callbacks.onError?.('마이크 네이티브 모듈이 필요해요. 개발 빌드에서 실행해 주세요.');
+      this.callbacks.onError?.('마이크 네이티브 모듈이 필요해요. 개발 빌드에서 실행해 주세요.');
+      return false;
+    }
+    const relayUrl = voiceRelayUrl();
+    if (!relayUrl) {
+      this.callbacks.onError?.(VOICE_RELAY_MISSING_MESSAGE);
       return false;
     }
     try {
       if (!await this.verifyProcessing()) return false;
-      const relayUrl = process.env.EXPO_PUBLIC_VOICE_RELAY_URL?.trim();
-      let token = '', model = DEFAULT_MODEL;
-      if (relayUrl) {
-        const session = await getSession();
-        if (!session?.access_token) throw new Error('AUTH_REQUIRED');
-        this.relay = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token, playbackReceipts: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
-      } else {
-        ({ token, model } = await fetchLiveToken(this.sessionId));
-      }
+      const session = await getSession();
+      if (!session?.access_token) throw new Error('AUTH_REQUIRED');
+      const relay: VoiceRelayConnection = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token,
+        playbackReceipts: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
       if (!await this.verifyProcessing()) return false;
-      this.lastToken = token;
-      this.model = model;
-      this.systemInstruction = buildSystemPrompt(this.elder, this.chronicles, this.design, 'speech');
-      this.client = this.makeClient();
-      await this.client.connect(token, this.systemInstruction);
+      this.client = this.makeClient(relay);
+      await this.client.connect();
       if (!this.closing) this.accessTimer = setInterval(() => { void this.verifyProcessing(); }, 2000);
       return !this.closing;
     } catch (e) {
-      if (process.env.EXPO_PUBLIC_VOICE_RELAY_URL) this.callbacks.onError?.('음성 중계 연결을 확인해 주세요.');
-      console.info('[giokon] live 미가용 — 기존 파이프라인으로 진행', e);
       this.client?.close();
       this.client = null;
+      if (this.remoteControl) return false; // 원격 제어로 거부된 연결 — 이미 onRemoteControl 로 알렸다.
+      this.callbacks.onError?.('음성 중계 연결을 확인해 주세요.');
+      console.info('[giokon] 음성 중계 연결 실패', e);
       return false;
     }
   }
 
-  /** 클라이언트 팩토리 — 최초 접속과 재접속(resume)이 같은 핸들러를 쓰도록 뽑아둔다. */
-  private makeClient(): GeminiLiveClient {
-    return new GeminiLiveClient(this.model, {
+  private makeClient(relay: VoiceRelayConnection): GeminiLiveClient {
+    return new GeminiLiveClient({
       onDraft: (text) => {
         if (this.closing || !this.micStop) return;
         // Live serverContent is incremental. Preserve segment spacing and repetition.
@@ -155,48 +130,26 @@ export class LiveConversationEngine {
           return;
         }
         this.draft += text;
-        if (this.endpoint) this.endpoint.transcript(performance.now());
-        else this.armSilenceTimer();
+        this.endpoint?.transcript(performance.now());
       },
       onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
-      onResumption: (handle) => {
-        // 세션 재개 핸들 보관 — 네트워크 끊김 시 같은 맥락으로 재접속한다.
-        this.resumeHandle = handle;
+      onRemoteControl: (state) => {
+        if (this.closing || this.remoteControl) return;
+        this.remoteControl = state;
+        const handler = this.callbacks.onRemoteControl;
+        if (handler) { handler(state); return; }
+        this.callbacks.onError?.(state === 'ended' ? '감독 화면에서 대화를 끝냈어요.' : '감독 화면에서 대화를 잠시 멈췄어요.');
+        void this.close();
       },
       onClose: () => {
-        if (this.closing) {
-          this.client = null;
-          return;
-        }
-        // 의도하지 않은 끊김 → **1회 한정** 같은 대화로 재접속을 시도한다.
         this.client = null;
-        if (this.relay) {
-          this.callbacks.onError?.('음성 중계가 종료됐어요. 기록을 저장한 뒤 다시 시작해 주세요.');
-          void this.close();
-          return;
-        }
-        if (this.resumeHandle && !this.resumedOnce && this.lastToken) {
-          this.resumedOnce = true;
-          this.resumeTimer = setTimeout(() => void this.tryResume(), 1200);
-        }
+        if (this.closing) return;
+        if (this.remoteControl) { void this.close(); return; }
+        // 의도하지 않은 끊김 — 중계 연결은 재사용하지 않는다(서버가 턴·재생 상태를 소유).
+        this.callbacks.onError?.('음성 중계가 종료됐어요. 기록을 저장한 뒤 다시 시작해 주세요.');
+        void this.close();
       },
-    }, this.relay);
-  }
-
-  /** 재개 핸들로 재접속. 실패하면 폴백 파이프라인으로 자연 강하한다. */
-  private async tryResume(): Promise<void> {
-    this.resumeTimer = null;
-    if (!await this.verifyProcessing()) return;
-    try {
-      const client = this.makeClient();
-      await client.connect(this.lastToken, this.systemInstruction, this.resumeHandle);
-      if (this.closing) { client.close(); return; }
-      this.client = client;
-      console.info('[giokon] live 세션 재개 성공');
-    } catch (e) {
-      console.warn('[giokon] live 재접속 실패 — 폴백으로 진행', e);
-      this.client = null;
-    }
+    }, relay);
   }
 
   get available(): boolean {
@@ -205,14 +158,14 @@ export class LiveConversationEngine {
 
   /**
    * 모델에게 오프너를 요청한다. 내부 지시문은 대화 기록에 남지 않는다(우리가 로그하지 않음).
-   * 실패 시 null — 호출부가 로컬 생성 오프너를 유지한다.
+   * 실패 시 null — 호출부가 세션을 멈춘다.
    */
   async requestOpener(): Promise<LiveTurnResult | null> {
     if (!await this.verifyProcessing() || !this.available) return null;
     try {
       const r = await this.client!.sendUserTurn(
-        '(내부 지시) 오늘의 첫 인사와 함께 회상 대화의 첫 질문을 건네주세요.',
-        this.relay ? 60000 : 20000,
+        '(내부 지시) 대화를 시작합니다. 지금 단계의 지시에 맞춰 첫 말씀을 건네주세요.',
+        RELAY_TURN_TIMEOUT_MS,
       );
       if (!r || r === 'timeout') return null;
       return r;
@@ -224,10 +177,10 @@ export class LiveConversationEngine {
 
   /** Fresh connection already received only the selected restored history. */
   async requestContinuation(): Promise<LiveTurnResult | null> {
-    if (!this.resumeContext || !this.relay || !await this.verifyProcessing() || !this.available) return null;
+    if (!this.resumeContext || !await this.verifyProcessing() || !this.available) return null;
     try {
       const result = await this.client!.sendUserTurn(
-        '(내부 지시) 잠시 멈췄던 회상 대화를 이어갑니다. 제공된 대화 이력만 참고하여 마지막 말씀에 이어 짧게 응답하고 질문 하나를 건네주세요. 이력이 없으면 첫 질문을 건네주세요. 중단 중의 말씀이나 개인 사실을 추측하지 마세요.', 60000);
+        '(내부 지시) 잠시 멈췄던 회상 대화를 이어갑니다. 제공된 대화 이력만 참고하여 마지막 말씀에 이어 짧게 응답하고 질문 하나를 건네주세요. 이력이 없으면 첫 질문을 건네주세요. 중단 중의 말씀이나 개인 사실을 추측하지 마세요.', RELAY_TURN_TIMEOUT_MS);
       return result && result !== 'timeout' ? result : null;
     } catch { return null; }
   }
@@ -248,17 +201,16 @@ export class LiveConversationEngine {
     if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
     if (this.client?.playbackTurnId != null) return;
     this.draft = '';
+    this.endpoint = new InputEndpoint(performance.now());
     this.micStop = startMicStream({
       onData: (chunkB64) => {
         if (this.closing || generation !== this.listeningGeneration) return;
         if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
-        if (this.endpoint) {
-          try { this.endpoint.audio(performance.now(), pcmLevel(chunkB64)); }
-          catch {
-            this.callbacks.onError?.('마이크 입력을 확인하지 못했어요. 대화를 회수해 주세요.');
-            void this.close();
-            return;
-          }
+        try { this.endpoint?.audio(performance.now(), pcmLevel(chunkB64)); }
+        catch {
+          this.callbacks.onError?.('마이크 입력을 확인하지 못했어요. 대화를 회수해 주세요.');
+          void this.close();
+          return;
         }
         this.client?.streamAudioChunk(chunkB64);
       },
@@ -267,10 +219,7 @@ export class LiveConversationEngine {
         this.callbacks.onError?.(e instanceof Error ? e.message : String(e));
       },
     });
-    if (this.relay) {
-      this.endpoint = new InputEndpoint(performance.now());
-      this.pollEndpoint(generation);
-    }
+    this.pollEndpoint(generation);
   }
 
   /** 청취 종료 — 확정 전사를 콜백으로 넘기고 반환한다(빈 문자열 = 미인식). */
@@ -296,14 +245,14 @@ export class LiveConversationEngine {
 
   /**
    * 확정 텍스트로 모델 턴을 진행한다. **재생은 하지 않고** 응답(텍스트+오디오 청크)을
-   * 돌려준다 — 호출부(talk 화면)가 네비게이션·speaking 상태와 재생을 조율한다.
-   * 응답 지연은 `{ status: 'timeout' }` 으로 구분한다(조용한 폴백 방지 — talk 에서 안내).
+   * 돌려준다 — 호출부(자동 대화 컨트롤러)가 speaking 상태와 재생을 조율한다.
+   * 응답 지연은 `{ status: 'timeout' }` 으로 구분한다.
    */
   async submitUserTurn(
     finalText: string,
   ): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null> {
     if (!await this.verifyProcessing() || !this.available) return null;
-    const turn = await this.client!.sendUserTurn(finalText, this.relay ? 60000 : 20000);
+    const turn = await this.client!.sendUserTurn(finalText, RELAY_TURN_TIMEOUT_MS);
     if (turn === 'timeout') return { status: 'timeout' };
     return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64 };
   }
@@ -316,22 +265,18 @@ export class LiveConversationEngine {
     try {
       const result = await playPcmTurn(chunksB64);
       if (this.closing || this.client !== client) return 'interrupted';
-      if (this.relay) {
-        if (result !== 'completed') {
-          this.callbacks.onError?.('음성 재생이 중단됐어요. 담당자가 대화를 회수해 주세요.');
-          await this.close();
-        } else if (receipt != null) {
-          client?.reportPlayback(receipt, result);
-          if (!client?.isConnected) return 'interrupted';
-        }
+      if (result !== 'completed') {
+        this.callbacks.onError?.('음성 재생이 중단됐어요. 담당자가 대화를 회수해 주세요.');
+        await this.close();
+      } else if (receipt != null) {
+        client?.reportPlayback(receipt, result);
+        if (!client?.isConnected) return 'interrupted';
       }
       return result;
     } catch (e) {
-      console.warn('[giokon] live 오디오 재생 실패 — 텍스트만 표시', e);
-      if (this.relay) {
-        this.callbacks.onError?.('CLOVA 음성을 재생하지 못했어요.');
-        await this.close();
-      }
+      console.warn('[giokon] 음성 재생 실패', e);
+      this.callbacks.onError?.('CLOVA 음성을 재생하지 못했어요.');
+      await this.close();
       return 'interrupted';
     }
   }
@@ -344,8 +289,6 @@ export class LiveConversationEngine {
     this.listeningGeneration++;
     if (this.accessTimer) clearInterval(this.accessTimer);
     this.accessTimer = null;
-    if (this.resumeTimer) clearTimeout(this.resumeTimer);
-    this.resumeTimer = null;
     this.clearSilenceTimer();
     const microphone = this.micStop;
     this.micStop = null;
@@ -369,16 +312,6 @@ export class LiveConversationEngine {
       finish();
     })();
     return this.closeWork;
-  }
-
-  /** 발화 끝 감지 — 전사가 잠깐 멈추면 청취를 자동으로 마친다(어르신 호흡 길이 배려). */
-  private armSilenceTimer(): void {
-    this.clearSilenceTimer();
-    if (!this.micStop) return;
-    this.silenceTimer = setTimeout(() => {
-      // 최소한의 말이 잡혔을 때만 자동 종료 — 무음 상태에서는 수동(두 번 누름) 대기.
-      if (this.draft.trim().length >= 2) this.stopListening();
-    }, 1600);
   }
 
   private clearSilenceTimer(): void {
@@ -405,19 +338,16 @@ export class LiveConversationEngine {
 }
 
 // ── 세션 스코프 싱글턴 ─────────────────────────────────────────────────────────
-// talk ↔ loading 화면 왕복(컴포넌트 재마운트) 사이에도 WebSocket 연결·마이크 상태를
-// 유지해야 한다. 세션 키(elderId+시작 시각)가 바뀌면 기존 연결을 닫고 새로 만든다.
+// 화면 재마운트 사이에도 WebSocket 연결·마이크 상태를 유지해야 한다.
+// 세션 키(elderId+시작 시각)가 바뀌면 기존 연결을 닫고 새로 만든다.
 
 let activeEngine: { key: string; engine: LiveConversationEngine } | null = null;
 const connectingEngines = new Set<LiveConversationEngine>();
 let engineGeneration = 0;
 
-/** 라이브 엔진을 확보한다(재사용 or 신규 접속). 미가용이면 null — 폴백 경로로 간다. */
+/** 음성 엔진을 확보한다(재사용 or 신규 접속). 미가용이면 null — 호출부가 세션을 멈춘다. */
 export async function acquireLiveEngine(
   key: string,
-  elder: ElderProfile,
-  chronicles: ChronicleEntry[],
-  design: SessionDesign | undefined,
   callbacks: LiveEngineCallbacks,
   sessionId: string | null,
   resumeContext?: VoiceResumeContext,
@@ -426,7 +356,6 @@ export async function acquireLiveEngine(
   if (!sessionId) return null;
   let context: VoiceResumeContext | undefined;
   if (resumeContext !== undefined) {
-    if (!process.env.EXPO_PUBLIC_VOICE_RELAY_URL?.trim()) return null;
     try { context = parseVoiceResumeContext(resumeContext); } catch { return null; }
   }
   // Restored history belongs to a fresh provider connection, even for the same key.
@@ -439,7 +368,7 @@ export async function acquireLiveEngine(
     activeEngine.engine.setCallbacks(callbacks);
     return activeEngine.engine.available ? activeEngine.engine : null;
   }
-  const engine = new LiveConversationEngine(elder, chronicles, design, callbacks, sessionId, context);
+  const engine = new LiveConversationEngine(callbacks, sessionId, context);
   const generation = engineGeneration;
   connectingEngines.add(engine);
   let ok: boolean;
@@ -450,7 +379,7 @@ export async function acquireLiveEngine(
     return null;
   }
   if (!ok) {
-    // 폴백 모드에서도 다음 세션 때 다시 시도할 수 있게 흔적을 남기지 않는다.
+    // 다음 세션 때 다시 시도할 수 있게 흔적을 남기지 않는다.
     await engine.close();
     return null;
   }

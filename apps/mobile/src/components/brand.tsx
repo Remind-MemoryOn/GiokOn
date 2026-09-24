@@ -7,7 +7,7 @@
 //
 // 예외: ToneBar 는 아이콘이 아니라 **데이터에 따라 폭이 바뀌는 시각화**라 코드로 그린다.
 
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import wordmarkAsset from '../../assets/brand/wordmark.png';
 import robotAsset from '../../assets/brand/robot-mascot.png';
 import robotInlineAsset from '../../assets/brand/robot-inline.png';
@@ -78,51 +78,19 @@ export function Waveform({ active = true, width = 228 }: { active?: boolean; wid
 // Figma 원본 125×114 **회색** 원형 버튼(주황이 아니다).
 
 /**
- * 마이크 상태 — 사용자 지적("TTS 끝나거나 응답할 때 마이크가 그대로다")을 반영해
- * 눌림 가능 여부를 시각적으로 구분한다. 형태는 Figma 에셋 그대로 두고 **투명도와
- * 얇은 링만** 더해 디자인을 해치지 않는다.
- *   speaking  : AI 발화 중 — 누를 수 없음(흐리게)
- *   ready     : 누를 수 있음 — 원본 그대로
- *   listening : 듣는 중 — 주황 링
- *   processing: 인식 처리 중 — 흐리게
+ * 마이크 상태 **표시**(누를 수 없음) — 어르신 표시 모드용(계획 M2).
+ * 중계 자동 대화에서는 어르신이 기기를 조작하지 않는다. Figma 마이크 2상태 에셋을 그대로 쓰되
+ * 버튼이 아니라 그림으로 둔다(누를 수 있는 것처럼 읽히지 않게 스크린리더에서도 숨긴다 —
+ * 상태는 옆 라벨이 말한다). 주황 = 말씀하실 차례, 회색 = 그 외.
  */
-export type MicState = 'speaking' | 'ready' | 'listening' | 'processing';
-
-export function MicButton({
-  onPress,
-  state = 'ready',
-  size = 125,
-}: {
-  onPress: () => void;
-  state?: MicState;
-  size?: number;
-}) {
-  // 어르신은 기기를 만지지 않는 것이 기본이므로(사용자 확정) 상태는 **말할 차례인지**로
-  // 나뉜다: AI 음성(TTS)이 나오는 동안은 회색, 끝나면 주황으로 바뀌어 말씀을 청한다.
-  // 인식 결과를 정리하는 동안도 누를 수 없으므로 회색이다.
-  const disabled = state === 'speaking' || state === 'processing';
-  const label =
-    state === 'speaking'
-      ? '안내 음성 재생 중'
-      : state === 'processing'
-        ? '인식 중'
-        : '말씀 입력';
-
+export function MicIndicator({ yourTurn, size = 123 }: { yourTurn: boolean; size?: number }) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      style={{ borderRadius: 999 }}
-    >
-      <Image
-        source={disabled ? micWait : micReady}
-        style={{ width: size, height: size }}
-        resizeMode="contain"
-      />
-    </Pressable>
+    <Image
+      source={yourTurn ? micReady : micWait}
+      style={{ width: size, height: size }}
+      resizeMode="contain"
+      accessible={false}
+    />
   );
 }
 
