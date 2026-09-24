@@ -907,7 +907,7 @@ export type Database = {
       session_status: 'planned' | 'active' | 'ended'
       session_log_role: 'ai' | 'user'
       elder_gender: 'female' | 'male'
-      org_role: 'org_admin' | 'caregiver' | 'guardian'
+      org_role: 'org_admin' | 'caregiver' | 'guardian' | 'social_worker' | 'center_director'
       consent_type:
         | 'privacy_required'
         | 'sensitive_health_voice'

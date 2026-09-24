@@ -136,7 +136,7 @@
 ## Supabase
 - **운영 프로젝트 = `MemoryOn`(ref `ufkbzpdjomtmxjipmwub`, 서울 ap-northeast-2)** — 앱·웹이 함께
   쓰는 실 DB다. 데이터 국내 보관 요건 충족. (구 도쿄 `GiokOn`/`xilmtqnotomuyjifenmo` 는 이전 완료로 사용하지 않는다.)
-- 마이그레이션 **53종**(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것. 2026-09-20 전사 출처 1종은 로컬 검증만 완료, 운영 미적용.
+- 마이그레이션 **53종 운영 적용분 + 파일럿 로컬 전용분**(2026-09-24~ `20260924*` — 운영 미적용, 아래 "현재 위치" B 표) (`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것. 2026-09-20 전사 출처 1종은 로컬 검증만 완료, 운영 미적용.
   16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·org RBAC·감사 로그 +
   2026-09 보안 하드닝 R002·R005·R007·R010~R012).
 - ✅ **마이그레이션 이력 정합 완료(2026-09-13, 사용자 승인 후 적용)**. 그전까지는 이력이
@@ -186,7 +186,7 @@
 
 | # | 계획·tasks | 내용 | 상태 |
 |---|---|---|---|
-| B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ⏳ |
+| B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ✅ 로컬 |
 | B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ⏳ |
 | B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ⏳ |
 | B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ⏳ |

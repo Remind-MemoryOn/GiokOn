@@ -46,3 +46,4 @@ done
 "${PSQL[@]}" -q -f "$HERE/_grants.sql"
 "${PSQL[@]}" -f "$HERE/rls_regression.sql"
 "${PSQL[@]}" -f "$HERE/transcript_provenance.sql"
+"${PSQL[@]}" -f "$HERE/pilot_access.sql"
