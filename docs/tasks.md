@@ -53,7 +53,7 @@
 ### M23 — core 정리 + 어르신 표시 모드 (머지 단위 ④, **반드시 한 PR**) → `PLAN.md` M22.1·M23
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T23.1 | `ai.ts`·`voice-flow.ts`·`buildJournalDraft` 삭제 · `respondToUserTurn` → `evaluateUserTurn` 축소 · **안전 계층 유지** | C1 | — | ⏳ |
+| T23.1 | `ai.ts`·`voice-flow.ts`·`buildJournalDraft` 삭제 · `respondToUserTurn` → `evaluateUserTurn` 축소 · **안전 계층 유지** | C1 | — | ✅ (2026-09-24 · `buildJournalDraft` 는 웹이 아직 써서 W1 때 삭제) |
 | T23.2 | 직접 모드 제거 — `RELAY_MODE` 분기 삭제, `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화 | M1 | T23.1 | ✅ (2026-09-24) |
 | T23.3 | 어르신 표시 모드 분리(`elder.tsx`) + 어르신 화면에서 요양보호사 UI 제거 | M2, M3 | T23.2 | ⏳ |
 | T23.4 | 복귀 게이트(숨김 제스처 또는 PIN) | M4 | T23.3 | ⏳ |

@@ -180,7 +180,7 @@
 |---|---|---|---|
 | A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴 → 분석 → 이벤트 → `ended` | ✅ |
 | A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ✅ |
-| A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ⏳ |
+| A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ✅ |
 | A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ⏳ |
 | A5 | M4 · T23.4 | 복귀 게이트 = **PIN**(`expo-secure-store`) | ⏳ |
 
@@ -205,8 +205,15 @@
   - T24.5 의 앱 쪽(`engine.ts` `DEFAULT_MODEL`·`client.ts` 3.1 설계 주석)은 함께 사라졌다. 남은 것은 `live-token/index.ts` 폴백(서버 파트).
   - ℹ️ `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 **네이버 로그인 함수 주소 파생**에만 쓰인다(`social.ts:105`). 앱 파트 범위 밖이라 그대로 두고
     `.env.example` 설명만 실제 동작으로 고쳤다.
-- 🔎 코드 대조로 확인: 첫 질문(오프너)은 `ai.ts` `generateOpener` 가 로컬에서 만들고 중계 인사가 오면 `overrideQuestion` 으로 교체된다.
-  `ai.ts` 를 지우면 오프너 도착 전 카드가 빈다 → **AI 발화로 기록하지 않는 대기 문구**로 대체한다(A3).
+- ✅ **A3 완료**(core 정리): `ai.ts`(779줄)·`voice-flow.ts`·테스트·`RESPONSE_JSON_SCHEMA` 삭제. `conversation.ts` 는 안전 평가 전용
+  `evaluateUserTurn(history, text)` 만 남겼다(평가·세션 권고·알림·이벤트 — `openConversation`·`respondToUserTurn` 삭제).
+  `safety.ts`·`buildJournalDraft`·`buildSystemPrompt`(시그니처 포함, 중계가 씀) 무변경. 웹 `lib/ai.ts` 는 `export *` 라 손대지 않아도 된다.
+  - **세션은 빈 기록으로 시작한다** — 예전에는 로컬 규칙 오프너(`generateOpener`)가 첫 AI 턴으로 저장되고 중계 인사가 오면 덮어썼다.
+    이제 중계 인사가 출력 가드를 통과하면 `acceptOpener` 가 첫 AI 턴으로 추가한다. 그전 카드에는 회색 안내 문구(기록 아님)·`currentTopic=null`.
+  - 회귀 방지: 인사 도착 전 "잠시 멈추기" → 재개 시 턴이 0개라 거절되던 경로를 **인사 재요청**으로 처리(테스트: 수정 전 실패 확인).
+  - 직접 모드 잔재 `playback.ts`(원음 캐시) 삭제 — 같은 불변식(막힌 출력은 채택·재생 안 함)을 `check:figma` 가 중계 컨트롤러에서 검사하도록 규칙 이동(171항목).
+  - core test 253→201(삭제된 생성기·voice-flow 테스트분). 세션 시뮬레이션은 **안전 불변식**(위기·중단·학대·혼란·오탐 없음)만 남겼다.
+    전 패키지 typecheck/lint/test · 웹 build · bom/copy/font/figma/design 통과. mobile 212.
 
 ## 이전 위치 (2026-09-24 — 결정 4건 반영 · docs 정리)
 
