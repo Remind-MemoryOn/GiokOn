@@ -1,38 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   computeSessionSafety,
-  openConversation,
+  evaluateUserTurn,
+  historyBeforeUtterance,
   resolveSessionRecommendation,
-  respondToUserTurn,
   SESSION_TURN_LIMIT,
 } from './conversation'
 import { assessUtterance } from './safety'
-import { DEFAULT_APPEARANCE } from './types'
-import type { ConversationTurn, ElderProfile, Session } from './types'
-
-const elder: ElderProfile = {
-  id: 'e1',
-  name: '이순자',
-  birthYear: 1945,
-  hometown: '전주',
-  family: '딸 둘',
-  job: '식당 운영',
-  hobbies: '텃밭 가꾸기',
-  avatarColor: '#fff',
-  appearance: DEFAULT_APPEARANCE,
-  createdAt: '',
-  updatedAt: '',
-}
-
-const session: Session = {
-  id: 's1',
-  title: '전주 시절 회상',
-  therapyType: 'reminiscence',
-  durationMinutes: 10,
-  elderId: 'e1',
-  createdAt: '',
-  updatedAt: '',
-}
+import type { ConversationTurn } from './types'
 
 let seq = 0
 const aiTurn = (topic: string): ConversationTurn => ({
@@ -42,12 +17,11 @@ const elderTurn = (text: string): ConversationTurn => ({
   id: 't' + ++seq, speaker: 'Elderly', text, timestamp: '',
 })
 
-describe('respondToUserTurn — 위기 에스컬레이션 파이프라인', () => {
-  it('자살 위기: 안전응답 + 에스컬레이션 + 알림 + 이벤트 + 세션 마무리 권고', () => {
-    const r = respondToUserTurn(elder, session, [aiTurn('가족')], '이제 그만 죽고 싶어')
+describe('evaluateUserTurn — 위기 에스컬레이션 파이프라인', () => {
+  it('자살 위기: 에스컬레이션 + 알림 + 이벤트 + 세션 마무리 권고', () => {
+    const r = evaluateUserTurn([aiTurn('가족')], '이제 그만 죽고 싶어')
     expect(r.escalate).toBe(true)
     expect(r.assessment.situation).toBe('crisis')
-    expect(r.response.topic).toBe('안전')
     expect(r.caregiverAlert).toContain('109')
     expect(r.event).not.toBeNull()
     expect(r.event!.level).toBe('crisis')
@@ -57,14 +31,14 @@ describe('respondToUserTurn — 위기 에스컬레이션 파이프라인', () =
   })
 
   it('응급: 즉시 에스컬레이션 + 마무리 권고', () => {
-    const r = respondToUserTurn(elder, session, [], '숨이 안 쉬어져요')
+    const r = evaluateUserTurn([], '숨이 안 쉬어져요')
     expect(r.escalate).toBe(true)
     expect(r.caregiverAlert).toContain('119')
     expect(r.session.recommendation).toBe('end_session')
   })
 
   it('고통(watch): 에스컬레이션은 아니지만 관찰 알림 + 이벤트 저장', () => {
-    const r = respondToUserTurn(elder, session, [aiTurn('가족')], '자식들한테 짐만 되는 것 같아')
+    const r = evaluateUserTurn([aiTurn('가족')], '자식들한테 짐만 되는 것 같아')
     expect(r.escalate).toBe(false)
     expect(r.caregiverAlert).toBeTruthy()
     expect(r.event).not.toBeNull()
@@ -73,28 +47,26 @@ describe('respondToUserTurn — 위기 에스컬레이션 파이프라인', () =
   })
 
   it('고통+중단 복합: 중단 존중(마무리) + 고통 알림 유지', () => {
-    const r = respondToUserTurn(elder, session, [aiTurn('가족')], '너무 힘들어서 그만하고 싶어')
+    const r = evaluateUserTurn([aiTurn('가족')], '너무 힘들어서 그만하고 싶어')
     expect(r.assessment.situation).toBe('rest_request')
     expect(r.session.recommendation).toBe('end_session')
     expect(r.caregiverAlert).toBeTruthy() // 존중과 관찰을 둘 다
     expect(r.event!.level).toBe('watch')
   })
 
-  it('애도: 공감 응답 + comfort 권고, 알림·이벤트 없음', () => {
-    const r = respondToUserTurn(elder, session, [aiTurn('가족')], '남편이 먼저 돌아가셨어요')
+  it('애도: comfort 권고, 알림·이벤트 없음', () => {
+    const r = evaluateUserTurn([aiTurn('가족')], '남편이 먼저 돌아가셨어요')
     expect(r.escalate).toBe(false)
     expect(r.caregiverAlert).toBeNull()
     expect(r.event).toBeNull()
     expect(r.session.recommendation).toBe('comfort')
-    expect(r.response.switchTopic).toBe(false) // 회피하지 않는다
   })
 
   it('안전한 일반 발화: 정상 진행', () => {
-    const r = respondToUserTurn(elder, session, [aiTurn('고향')], '그때 동네 사람들이 참 좋았었지')
+    const r = evaluateUserTurn([aiTurn('고향')], '그때 동네 사람들이 참 좋았었지')
     expect(r.escalate).toBe(false)
     expect(r.caregiverAlert).toBeNull()
     expect(r.event).toBeNull()
-    expect(r.screened).toBe(false)
     expect(r.session.recommendation).toBe('continue')
     expect(r.engagement).toBe('rich')
   })
@@ -133,13 +105,12 @@ describe('computeSessionSafety — 세션 권고', () => {
   })
 })
 
-describe('openConversation — 오프너', () => {
-  it('연대기 반영 + 평가 없음 + 정상 진행', () => {
-    const r = openConversation(elder, session, [])
-    expect(r.escalate).toBe(false)
-    expect(r.event).toBeNull()
-    expect(r.session.recommendation).toBe('continue')
-    expect(r.response.question).toContain('전주')
+describe('historyBeforeUtterance — 현재 발화 포함 여부와 무관한 평가', () => {
+  it('이력 끝의 같은 어르신 발화는 한 번만 빼고 평가한다', () => {
+    const history = [aiTurn('고향'), elderTurn('듣기 싫어'), aiTurn('고향'), elderTurn('그만 물어')]
+    expect(historyBeforeUtterance(history, '그만 물어')).toHaveLength(3)
+    expect(evaluateUserTurn(history, '그만 물어').session.refusalStreak)
+      .toBe(evaluateUserTurn(history.slice(0, -1), '그만 물어').session.refusalStreak)
   })
 })
 

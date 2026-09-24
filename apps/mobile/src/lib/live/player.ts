@@ -1,8 +1,8 @@
-// Live API 오디오 재생 — 턴 단위 WAV 파일 재생기(expo-av).
+// 중계 음성(Clova) 재생 — 턴 단위 WAV 파일 재생기(expo-av).
 //
 // 한 턴의 PCM 청크를 전부 받은 뒤 WAV 로 감싸 캐시 파일로 쓰고 Sound 로 재생한다.
 // 재생 완료까지의 Promise 를 돌려준다 — talk 화면의 speaking 파생 상태가 그 시점을
-// 기준으로 잠긴다(기존 expo-speech 흐름과 동일한 계약).
+// 기준으로 잠긴다.
 
 import { Audio, type AVPlaybackStatus } from 'expo-av';
 // SDK 54 의 expo-file-system 은 새 API(File/Paths)로 바뀌었고, cacheDirectory·

@@ -1,5 +1,18 @@
 # Session report — 시연용 LLM 분석·일지 초안
 
+> ## ⚠️ 2026-09-23 기획 변경 — 이 함수의 역할이 바뀐다
+>
+> 계획 SoT: [`docs/plans/pilot-development-plan.md`](../../../docs/plans/pilot-development-plan.md) §8 C4.
+> - **생성 로직 공유**: `handler.ts` 의 생성 로직을 `_shared/report-generation.ts` 로 추출해, 이 함수와 새 워커
+>   `program-journal-draft`(세션 종료 → 큐 → 프로그램 일지 초안 **자동** 생성)가 함께 쓴다. 워커는 초안을 **확인 대기까지만** 쓴다 —
+>   확정은 DB 트리거가 서비스 계정에게 막는다.
+> - ⚠️ **`REPORT_ALLOWED_USER_IDS` 시연 허용목록을 기관 게이트로 교체** — 그대로 두면 파일럿 참가자 전원이 403 이다
+>   (아래 "사용자 직접 검증 전 설정"은 시연 단계 절차다).
+> - 아래 검증 순서의 "웹 일지의 `회상 대화에서 일지 초안` → 미리보기·적용"은 **요양일지 경로**라 폐기된다
+>   (요양일지 → 프로그램 일지 전환, 기존 `care_journals` 데이터 삭제 확정). 수동 생성은 프로그램 일지의 "다시 생성"으로 남는다.
+> - 생성문 검증(어르신 발화 근거 인용 강제·진단/효능 표현 차단)은 **재사용·확장**한다 — 금지어에 `인지 저하`·`우울`·`정서 불안`·
+>   `병원 진료 권장` 을 더하고, 적중한 **필드만 비워** 확인 대기로 넘긴다.
+
 POST 본문은 `{ "session_id": "종료된 세션 UUID" }`만 받는다. Supabase JWT 검증을 유지하며 서버에서 현재 담당 권한·필수 동의·시연 허용 계정을 검사한다. 전사는 서버가 session_logs에서 조회한다.
 
 ## 운영 설정
@@ -34,4 +47,4 @@ supabase secrets set REPORT_ALLOWED_USER_IDS="담당자-USER-UUID" --project-ref
 
 `packages/data/src/session-report-{provider,handler,entrypoint}.test.ts`는 합성 인증·공급자·DB를 사용해 실제 소스의 실패 경로를 시험한다. `apps/web/scripts/report-flow-smoke.mjs`는 환경 파일 없이 브라우저에서 생성 요청·미리보기·명시적 적용·실패·재시도·취소 시 본문 보존을 시험한다. 둘 다 실제 Gemini 호출/실기기 성공을 대신하지 않는다.
 
-운영 배포·실 API·종단 리허설 상태는 `docs/plans/demo-llm-implementation.md`를 따른다.
+운영 배포 기록: 2026-09-14 서울 `session-report` v1 배포(verify_jwt=true), `GEMINI_REPORT_MODEL=gemini-2.5-flash`. 실제 공급자 호출·종단 리허설은 미검증이다(당시 구현 기록은 git 이력).

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canProcessProfile, canProcessSession } from './processing'
+import { canProcessProfile, canProcessSession, getSessionControl } from './processing'
 
 const rpc = vi.hoisted(() => vi.fn())
 vi.mock('./client', () => ({ getGiokonClient: () => ({ rpc }) }))
@@ -33,5 +33,28 @@ describe('server processing permission', () => {
     await vi.advanceTimersByTimeAsync(5000)
     await result
     expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
+describe('remote session control state', () => {
+  const tick = (data: unknown, error: unknown = null) => rpc.mockReturnValue({ abortSignal: async () => ({ data, error }) })
+  it('reads the same server tick the relay uses', async () => {
+    tick({ allowed: true, paused: false, end_requested: false })
+    expect(await getSessionControl('synthetic-id')).toBe('running')
+    expect(rpc).toHaveBeenCalledWith('session_tick', { p_session_id: 'synthetic-id' })
+  })
+  it.each([
+    [{ allowed: true, paused: true, end_requested: false }, 'paused'],
+    [{ allowed: true, paused: true, end_requested: true }, 'ended'],
+    [{ allowed: true, paused: false, end_requested: true }, 'ended'],
+    [{ allowed: false }, 'denied'],
+    [{ allowed: 'true', paused: false }, 'denied'],
+  ] as const)('maps %o to %s', async (data, expected) => {
+    tick(data)
+    expect(await getSessionControl('synthetic-id')).toBe(expected)
+  })
+  it.each([[null, null], ['yes', null], [{ allowed: true }, { message: 'server details' }]])('does not guess a state from %o', async (data, error) => {
+    tick(data, error)
+    await expect(getSessionControl('synthetic-id')).rejects.toThrow('대화 진행 상태를 확인하지 못했어요.')
   })
 })

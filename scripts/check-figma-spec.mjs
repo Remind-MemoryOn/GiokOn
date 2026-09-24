@@ -79,41 +79,33 @@ const SPECS = [
   // ── 대화 (Figma 17:108) ───────────────────────────────────────────────
   [`${APP}/app/session/talk.tsx`, '대화: X 닫기 17×17 에셋', [/icon-close\.png/, /width: 17, height: 17/]],
   [
-    `${APP}/app/session/talk.tsx`,
+    // 질문 카드는 요양보호사·어르신 화면 공용 컴포넌트로 옮겼다(계획 M2, 2026-09).
+    `${APP}/src/features/session/QuestionCard.tsx`,
     // 258 은 **최소** 높이 — 실제 AI 질문은 길이가 달라 카드가 늘어나야 한다(사용자 지적).
     // 로봇 (18,38) / 질문 (75.25,27) w251 은 padding·margin 합으로 동일하게 유지.
     '대화: 질문카드 336×min258 r10 #fdf3ea + 주황 테두리 · 로봇(18,38) 46.5 · 질문(75.25,27) w251',
     [/width: 336,\s*minHeight: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /paddingTop: 26/, /marginLeft: 17, marginTop: 11/, /RobotInline size=\{46\.5\}/, /marginLeft: 10\.75, width: 251/],
   ],
-  [`${APP}/app/session/talk.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
+  [`${APP}/src/features/session/QuestionCard.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
+  [`${APP}/app/session/talk.tsx`, '대화: 요양보호사·어르신 화면 모두 같은 질문 카드', [/<QuestionCard question=/]],
+  [`${APP}/src/features/session/ElderView.tsx`, '어르신 화면: 질문 카드·파형 226·마이크 123(표시 전용)·상태 Medium 23 lh42',
+    [/<QuestionCard question=/, /Waveform active=\{[^}]*\} width=\{226\}/, /MicIndicator yourTurn=\{[^}]*\} size=\{123\}/, /text-\[23px\] font-medium/, /lineHeight: 42/]],
+  [
+    `${APP}/src/features/session/ElderView.tsx`,
+    // 계획 M3: 위기 배너·전화번호·부분 전사 패널·중계 제어·X 는 어르신 화면에 두지 않는다.
+    '안전: 어르신 화면에 요양보호사 UI 가 없다',
+    [{ absent: /CrisisBanner|caregiverAlert|TextInput|icon-close|pendingStt|reason|automatic\.(pause|resume|stop)|\d{3}-\d{3,4}|109|119|1577/ }],
+  ],
   [`${APP}/app/session/talk.tsx`, '대화: 파형 226', [/Waveform active=\{[^}]*\} width=\{226\}/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 마이크 123 + 상태', [/MicButton onPress=\{onMic\} state=\{micState\} size=\{123\}/]],
-  [`${APP}/app/session/talk.tsx`, '대화: 라벨 Medium 23 lh42', [/text-\[23px\] font-medium/, /lineHeight: 42/]],
-  [
-    `${APP}/app/session/talk.tsx`,
-    '대화: 다시듣기 336×57 3상태(기본 #cccdce / 누름 rgba(233,130,43,0.10) / 재생 #e9822b)',
-    [/icon-speaker\.png/, /width: 20, height: 20/, /'rgba\(233,130,43,0\.10\)'/, /backgroundColor: replaying\s*\n\s*\? '#e9822b'/, /borderColor: replaying \|\| replayPressed \? '#e9822b' : '#cccdce'/],
-  ],
-  [
-    `${APP}/app/session/talk.tsx`,
-    '대화: 마이크 라벨 짝(회색=듣고 있어요… / 주황=말씀해 주세요.)',
-    [/\? '듣고 있어요\.\.\.'/, /: '말씀해 주세요\.'/],
-  ],
   [
     `${APP}/src/components/brand.tsx`,
-    '대화: 마이크 2상태 에셋 123(회색=TTS 중·인식 중 / 주황=말할 차례)',
-    [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{disabled \? micWait : micReady\}/, /width: size, height: size/],
+    '대화: 마이크 2상태 에셋 123(주황=말할 차례 / 회색=그 외) — 어르신 화면의 표시 전용',
+    [/btn-mic-wait\.png/, /btn-mic-ready\.png/, /source=\{yourTurn \? micReady : micWait\}/, /width: size, height: size/],
   ],
-  [`${APP}/app/session/talk.tsx`, '대화: 인식결과 인라인(페이지 이동 없음)', [/AI가 이렇게 이해했어요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
-
-  // ── 질문 로딩 (Figma 28:37) ───────────────────────────────────────────
-  [
-    `${APP}/app/session/loading.tsx`,
-    '로딩: 스피너 52 에셋 @ left 166(중앙 아님)',
-    [/loading-indicator\.png/, /left: 166/, /width: 52,\s*height: 52/],
-  ],
-  [`${APP}/app/session/loading.tsx`, '로딩: 문구 Medium 23 lh40 w289', [/text-\[23px\] font-medium/, /lineHeight: 40, width: 289/]],
-  [`${APP}/app/session/loading.tsx`, '로딩: X 닫기 17×17', [/icon-close\.png/, /width: 17, height: 17/]],
+  // 마이크 버튼·다시 듣기·"AI가 이렇게 이해했어요" 패널·질문 로딩(28:37)은 직접 Gemini Live 모드의
+  // 매 턴 수동 흐름이라 중계 단일화(계획 M1, 2026-09)와 함께 화면에서 삭제했다 — 규칙도 뺐다.
+  // 남은 하단 패널은 중단된 청취의 부분 전사 확인용이다(카운터 위치는 Figma 그대로).
+  [`${APP}/app/session/talk.tsx`, '대화: 부분 전사 인라인 확인(페이지 이동 없음)', [/중단 전 인식된 말씀을 확인해 주세요/, /\{draft\.length\}\/\{UTTERANCE_MAX\}/]],
 
   // ── 대화저장 (Figma 28:79) ────────────────────────────────────────────
   [
@@ -633,14 +625,21 @@ const SPECS = [
     [/if \(!isSupabaseConfigured\)/, /<ConfigError reason=/],
   ],
   [
-    `${APP}/src/lib/live/playback.ts`,
-    '안전: 출력 가드에 막힌 원음은 재생하지 않고 캐시에서 버린다',
-    [/if \(adopted !== raw\)/, /cache\.delete\(raw\)/],
+    // 직접 모드의 원음 캐시(playback.ts)는 2026-09 삭제. 중계 경로에서는 가드에 막힌 출력을
+    // 채택하지 않으면(false) 컨트롤러가 재생 전에 멈춘다(automatic.ts deliver → throw).
+    `${APP}/src/lib/live/useAutomaticConversation.ts`,
+    '안전: 출력 가드에 막힌 AI 발화는 채택·재생하지 않는다',
+    [/output: \(text,opener\) => \{\s*if \(!screenAiUtterance\(text\)\.allowed\) return false;/],
+  ],
+  [
+    `${APP}/src/lib/live/automatic.ts`,
+    '안전: 채택되지 않은 출력은 재생 전에 세션을 멈춘다',
+    [/if \(!text\.trim\(\) \|\| !chunks\.length \|\| !this\.ports\.output\(text, opener\)\) throw new Error\('output'\);/],
   ],
   [
     `${APP}/src/store/appStore.ts`,
-    '안전: Live 오프너도 출력 가드를 통과해야 채택된다',
-    [/overrideQuestion: \(text\) => \{[\s\S]{0,400}?screenAiUtterance\(text\)/],
+    '안전: 중계 첫 인사(오프너)도 출력 가드를 통과해야 채택된다',
+    [/acceptOpener: \(text\) => \{[\s\S]{0,400}?screenAiUtterance\(text\)\.allowed/],
   ],
   [
     `${APP}/src/auth/appAccess.ts`,

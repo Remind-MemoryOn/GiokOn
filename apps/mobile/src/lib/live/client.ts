@@ -1,15 +1,16 @@
-// Gemini Live API WebSocket 클라이언트(생 프로토콜).
+// 음성 중계(voice-relay) WebSocket 클라이언트 — Gemini Live 프로토콜 모양을 중계 경유로 쓴다.
 //
-// 설계 근거(gemini-3.1-flash-live-preview 제약 반영):
-//   - proactive audio/affective dialog 필드는 **아예 보내면 안 된다**(연결 오류).
-//   - 자동 VAD 를 끄고(activityHandling NO_INTERRUPTION), 턴 경계는 앱이 소유한다 —
-//     요양보호사 확인·교정 흐름과 정합(모델이 먼저 끼어들지 않는다).
-//   - 마이크 오디오와 확인·교정한 텍스트를 보낸다. 서버는 오디오도 처리하므로
-//     '교정 텍스트만 모델이 본다'고 가정하면 안 된다. activityEnd는 확인 후에만 보낸다.
-//   - 초기 맥락(persona+설계)은 system_instruction 로 주입한다(3.1 에서 항상 유지되는
-//     경로 — 캐싱 미지원 대비).
+// 앱은 **중계에만** 접속한다(계획 M1 — 직접 Gemini Live 경로 삭제). 그래서:
+//   - 모델·시스템 지시·생성 설정은 중계가 서버에서 정한다(`voice-relay/src/relay.ts`).
+//     앱의 setup 프레임은 구조 확인용으로만 받고 내용은 무시되므로 **빈 setup** 을 보낸다 —
+//     어르신 연대기로 만든 지시문을 앱이 네트워크로 보낼 이유가 없다.
+//   - 인증은 첫 프레임(relayAuth)의 Supabase JWT 다. URL 에 토큰을 싣지 않는다.
+//   - 턴 경계는 앱이 소유한다(activityStart/End). 서버는 오디오도 처리하므로
+//     '확인 텍스트만 모델이 본다'고 가정하면 안 된다.
+//   - 출력은 중계가 검증·Clova 합성한 것만 온다. v2 는 재생 영수증, v3 는 복구 맥락.
 
 import { voiceFailureMessage, parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
+import { parseVoiceRelayUrl } from './relay-config';
 
 export type LiveTurnResult = {
   /** 모델 응답 전문(output transcription). */
@@ -32,18 +33,19 @@ type Handlers = {
   onDraft?: (text: string) => void;
   onError?: (e: unknown) => void;
   onClose?: () => void;
-  /** 세션 재개 핸들 수신 — 엔진이 보관해 끊김 시 재접속에 쓴다. */
-  onResumption?: (handle: string) => void;
+  /** 감독 화면의 원격 일시정지·종료(파일럿 M5). 중계는 이 알림 뒤 곧 연결을 닫는다. */
+  onRemoteControl?: (state: RelayControlState) => void;
 };
+
+export type RelayControlState = 'paused' | 'ended';
 
 interface WsLike {
   send(data: string): void;
   close(): void;
 }
 
-// https://ai.google.dev/gemini-api/docs/live-api/ephemeral-tokens (v1beta)
-// Google JS SDK src/live.ts: 단기 토큰은 Constrained 메서드 + access_token을 사용.
-const LIVE_WS_URL = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained';
+/** 중계 준비(setupComplete) 대기 한도. */
+const SETUP_TIMEOUT_MS = 30000;
 
 async function frameText(data: unknown): Promise<string> {
   if (typeof data === 'string') return data;
@@ -72,39 +74,29 @@ export class GeminiLiveClient {
   private opened = false;
   private inputActivity = false;
   private cancelConnect: (() => void) | null = null;
-  /** 서버가 내려준 세션 재개 핸들(재연결 시 setup 에 되돌려 준다). */
-  private lastHandle = '';
   private awaitingPlayback: number | null = null;
   private lastOutputTurn = 0;
 
   constructor(
-    private readonly model: string,
     private readonly handlers: Handlers,
-    private readonly relay?: VoiceRelayConnection,
+    private readonly relay: VoiceRelayConnection,
   ) {}
 
-  /** ephemeral token 으로 접속해 setup 을 보낸다. setupComplete 수신 시 resolve.
-   *  resumeHandle 을 주면 **같은 대화 맥락으로 재접속**한다(세션 재개). */
-  connect(token: string, systemInstruction: string, resumeHandle?: string): Promise<void> {
-    if (this.ws) return Promise.reject(new Error('Live 연결이 이미 진행 중이에요.'));
-    if (this.relay) {
-      try {
-        const endpoint = new URL(this.relay.url);
-        if (endpoint.protocol !== 'wss:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash || endpoint.pathname !== '/voice') throw new Error();
-      } catch { return Promise.reject(new Error('음성 중계의 올바른 WSS 주소가 필요해요.')); }
-    }
+  /** 중계에 접속해 인증·setup 을 보낸다. setupComplete 수신 시 resolve. */
+  connect(): Promise<void> {
+    if (this.ws) return Promise.reject(new Error('음성 연결이 이미 진행 중이에요.'));
+    if (!parseVoiceRelayUrl(this.relay.url)) return Promise.reject(new Error('음성 중계의 올바른 WSS 주소가 필요해요.'));
     let resumeContext: VoiceResumeContext | undefined;
-    try { if (this.relay?.resumeContext) resumeContext = parseVoiceResumeContext(this.relay.resumeContext); }
+    try { if (this.relay.resumeContext) resumeContext = parseVoiceResumeContext(this.relay.resumeContext); }
     catch { return Promise.reject(new Error('대화 복구 이력을 확인하지 못했어요.')); }
-    const protocolVersion = resumeContext ? 3 : this.relay?.playbackReceipts ? 2 : 1;
-    const url = this.relay?.url ?? `${LIVE_WS_URL}?access_token=${encodeURIComponent(token)}`;
-    const ws = new WebSocket(url);
+    const protocolVersion = resumeContext ? 3 : this.relay.playbackReceipts ? 2 : 1;
+    const ws = new WebSocket(this.relay.url);
     this.ws = ws;
 
     return new Promise<void>((resolve, reject) => {
       let settled = false;
       let incoming = Promise.resolve();
-      const setupTimer = setTimeout(() => fail(new Error('Live 연결 준비 시간이 초과됐어요.')), this.relay ? 30000 : 10000);
+      const setupTimer = setTimeout(() => fail(new Error('음성 중계 연결 준비 시간이 초과됐어요.')), SETUP_TIMEOUT_MS);
       const fail = (e: unknown) => {
         if (!settled) {
           settled = true;
@@ -118,28 +110,12 @@ export class GeminiLiveClient {
 
       ws.onopen = () => {
         if (this.ws !== ws) return;
-        if (this.relay) {
-          try { ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken,
-            ...(protocolVersion >= 2 ? { protocolVersion } : {}), ...(resumeContext ? {resumeContext} : {}) } })); }
-          catch (e) { fail(e); return; }
-        }
-        // ⚠️ 3.1 미지원 필드(proactivity 등)는 절대 포함하지 않는다.
-        try { ws.send(
-          JSON.stringify({
-            setup: {
-              model: this.model.startsWith('models/') ? this.model : `models/${this.model}`,
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              generationConfig: { responseModalities: ['AUDIO'] },
-              inputAudioTranscription: {},
-              outputAudioTranscription: {},
-              realtimeInputConfig: {
-                automaticActivityDetection: { disabled: true },
-                activityHandling: 'NO_INTERRUPTION',
-              },
-              sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
-            },
-          }),
-        ); } catch (e) { fail(e); }
+        try {
+          ws.send(JSON.stringify({ relayAuth: { sessionId: this.relay.sessionId, accessToken: this.relay.accessToken,
+            ...(protocolVersion >= 2 ? { protocolVersion } : {}), ...(resumeContext ? {resumeContext} : {}) } }));
+          // 중계는 setup 의 존재만 확인하고 내용(모델·지시문)은 서버 값으로 대체한다.
+          ws.send(JSON.stringify({ setup: {} }));
+        } catch (e) { fail(e); }
       };
       ws.onmessage = (ev: WebSocketMessageEvent) => {
         if (this.ws !== ws) return;
@@ -158,6 +134,15 @@ export class GeminiLiveClient {
             this.handlers.onOpen?.();
             return;
           }
+          if ('relayControl' in msg) {
+            const state = (msg.relayControl as { state?: unknown } | null)?.state;
+            if (state !== 'paused' && state !== 'ended') throw new Error('음성 중계의 제어 신호를 확인하지 못했어요.');
+            // 준비 전(인증 시점에 이미 정지된 세션)에도 온다 — 연결 실패가 아니라 원격 제어로 알린다.
+            this.handlers.onRemoteControl?.(state);
+            if (!settled) fail(new Error('음성 중계가 원격 제어로 연결을 멈췄어요.'));
+            else this.close();
+            return;
+          }
           if ('serverContent' in msg) {
             if (protocolVersion >= 2 && (msg.serverContent as { turnComplete?: boolean })?.turnComplete) {
               const id = (msg as { relayOutput?: { turnId?: number } }).relayOutput?.turnId;
@@ -167,19 +152,8 @@ export class GeminiLiveClient {
             }
             this.handleServerContent(msg['serverContent'] as never);
           }
-          if (this.relay && 'relayError' in msg) throw new Error(voiceFailureMessage((msg.relayError as {code?:unknown} | null)?.code));
-          if ('error' in msg) throw new Error('Live API가 요청을 거부했어요.');
-          if ('sessionResumptionUpdate' in msg) {
-            const update = msg['sessionResumptionUpdate'] as { newHandle?: string; resumable?: boolean };
-            if (update?.newHandle && update.resumable !== false) {
-              this.lastHandle = update.newHandle;
-              this.handlers.onResumption?.(update.newHandle);
-            }
-          }
-          if ('goAway' in msg) {
-            // 서버가 곧 연결을 닫는다 — 재개 핸들은 이미 보관 중이므로 에러 아님.
-            console.info('[giokon] live: goAway 수신');
-          }
+          if ('relayError' in msg) throw new Error(voiceFailureMessage((msg.relayError as {code?:unknown} | null)?.code));
+          if ('error' in msg) throw new Error('음성 중계가 요청을 거부했어요.');
         }).catch((e: unknown) => {
           if (this.ws !== ws) return;
           this.handlers.onError?.(e);
@@ -189,13 +163,13 @@ export class GeminiLiveClient {
       };
       ws.onerror = () => {
         if (this.ws !== ws) return;
-        const error = new Error('Live API 연결에 실패했어요.');
+        const error = new Error('음성 중계 연결에 실패했어요.');
         this.handlers.onError?.(error);
         fail(error);
       };
       ws.onclose = () => {
         if (this.ws !== ws) return;
-        if (!settled) fail(new Error('Live API 연결이 일찍 닫혔어요.'));
+        if (!settled) fail(new Error('음성 중계 연결이 일찍 닫혔어요.'));
         else {
           this.close();
           this.handlers.onClose?.();
@@ -239,10 +213,6 @@ export class GeminiLiveClient {
       this.pendingTurn = null;
       resolver?.(result);
     }
-  }
-
-  get resumptionHandle(): string {
-    return this.lastHandle;
   }
 
   get isConnected(): boolean {

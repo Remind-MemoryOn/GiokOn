@@ -7,26 +7,32 @@ beforeEach(() => {
   useApp.getState().beginSession({ id: 'e1', name: '테스트', birthYear: 1945,
     avatarColor: '#fff', appearance: DEFAULT_APPEARANCE, createdAt: '', updatedAt: '' }, [],
   { title: '테스트', therapyType: 'reminiscence' });
+  expect(useApp.getState().acceptOpener('고향이 어디세요?')).toBe(true);
 });
 
-it.each(['고향 이야기', '수정한 이야기'])('records explicit confirmation and preserves the presented text: %s', text => {
-  useApp.getState().setPendingStt('고향 이야기', 'gemini_live');
-  useApp.getState().confirmUtterance(text);
-  const turn = useApp.getState().active!.turns[1];
-  expect(turn.provenance).toEqual({ kind: 'caregiver_confirmed', presentedText: '고향 이야기', inputSource: 'gemini_live' });
-  expect(turn.text).toBe(text);
+it('starts with no AI turn and no topic until the relay greeting is accepted — nothing is fabricated', () => {
+  useApp.setState({ active: null });
+  useApp.getState().beginSession({ id: 'e2', name: '테스트', birthYear: 1945,
+    avatarColor: '#fff', appearance: DEFAULT_APPEARANCE, createdAt: '', updatedAt: '' }, [],
+  { title: '테스트', therapyType: 'reminiscence' });
+  const a = useApp.getState().active!;
+  expect(a.turns).toEqual([]);
+  expect(a.currentQuestion).toBe('');
+  expect(a.currentTopic).toBeNull();
+  useApp.getState().finishSession();
+  expect(useApp.getState().lastFinished).toMatchObject({ turns: [], currentTopic: null });
 });
 
-it('does not invent a transcript for manual entry', () => {
-  useApp.getState().captureUtterance();
-  useApp.getState().confirmUtterance('직접 입력');
-  expect(useApp.getState().active!.turns[1].provenance).toEqual({ kind: 'caregiver_confirmed', presentedText: null, inputSource: 'manual' });
-});
-
-it('does not turn blank confirmation into an elder record', () => {
-  const before = useApp.getState().active;
-  useApp.getState().confirmUtterance('   ');
-  expect(useApp.getState().active).toBe(before);
+it('accepts the opener once, only when it passes the output guard', () => {
+  useApp.setState({ active: { ...useApp.getState().active!, turns: [], currentQuestion: '' } });
+  expect(useApp.getState().acceptOpener('   ')).toBe(false);
+  expect(useApp.getState().acceptOpener('치매 진단을 받으셨죠?')).toBe(false);
+  expect(useApp.getState().active!.turns).toEqual([]);
+  expect(useApp.getState().acceptOpener('어르신, 오늘 고향 이야기를 들려주시겠어요?')).toBe(true);
+  expect(useApp.getState().active!.turns).toHaveLength(1);
+  expect(useApp.getState().active!.currentQuestion).toBe('어르신, 오늘 고향 이야기를 들려주시겠어요?');
+  expect(useApp.getState().acceptOpener('두 번째 인사')).toBe(false);
+  expect(useApp.getState().active!.turns).toHaveLength(1);
 });
 
 it('automatically adopts input without inventing an AI response or human confirmation',()=>{

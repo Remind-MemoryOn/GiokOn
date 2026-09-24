@@ -31,6 +31,7 @@ import {
 } from '@giokon/data';
 import { AccessMonitor } from './accessMonitor';
 import { loadAccessSnapshot, resetAccessResources } from './accessResources';
+import { receivesCareAlerts, registerForPush, revokePushRegistration } from '../lib/push';
 
 interface MobileAuthState {
   accessRevision: number;
@@ -145,6 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async (): Promise<void> => {
+    // 토큰 회수는 로그인 상태(JWT)에서만 된다 — 세션을 지우기 전에, 최대 몇 초만 기다린다(M6).
+    await revokePushRegistration();
     monitor.identify(null);
     setSession(null);
     setFetched(null);
@@ -152,6 +155,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [monitor]);
 
   const userRow = uid && fetched?.uid === uid ? fetched.row : null;
+  const alerts = uid !== null && receivesCareAlerts(userRow);
+
+  // 돌봄팀이 확인되면 이 기기를 알림 수신처로 등록한다(M6). 거부·실패는 앱 사용을 막지 않는다.
+  useEffect(() => {
+    if (uid && alerts) void registerForPush(uid);
+  }, [uid, alerts]);
 
   const authed = Boolean(session);
   const caregiverName = userRow?.name ?? session?.user?.email ?? '요양 보호사';
