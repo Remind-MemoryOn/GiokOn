@@ -178,7 +178,7 @@
 
 | # | 계획·tasks | 내용 | 상태 |
 |---|---|---|---|
-| A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴·분석·이벤트 → `ended` | ⏳ |
+| A1 | M7 · T20.7 | 폴백 저장 `persistWholeSession` 순서: `active` 생성 → 턴 → 분석 → 이벤트 → `ended` | ✅ |
 | A2 | M1 · T23.2 | 직접 Gemini Live 모드 제거(`RELAY_MODE` 분기·`fetchLiveToken`·직접 재접속·기기 TTS 폴백·`/session/loading`) + `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화·`.env.example` | ⏳ |
 | A3 | C1 · T23.1 | core 정리 — `ai.ts`·`voice-flow.ts`·`RESPONSE_JSON_SCHEMA` 삭제, `respondToUserTurn`→`evaluateUserTurn`. 안전 계층 유지 | ⏳ |
 | A4 | M2+M3 · T23.3 | 어르신 표시 모드 `elder.tsx` 분리 + 어르신 화면에서 요양보호사 UI 제거(위기 안내는 요양보호사 화면으로 이동) | ⏳ |
@@ -187,6 +187,10 @@
 - **사용자 결정(2026-09-24)**: ① `buildJournalDraft` 는 **남긴다** — 웹 `JournalWritePage.tsx` 가 아직 쓴다. 웹 W1 이 그 화면을 대체할 때 지운다.
   앱 파트는 웹 파일을 건드리지 않는다 · ② **M5(원격 제어 수신)·M6(푸시 토큰)은 보류** — D6/C3·D7 이 끝난 뒤 착수한다(가정 계약으로 먼저 만들지 않는다) ·
   ③ 복귀 게이트 = **PIN** · ④ **T23.5 `live-token` 중계 전용화는 서버 파트**에 둔다(앱은 직접 호출 코드 삭제까지만).
+- ✅ **A1 완료**: 폴백 저장이 `active` 로 만들고 턴·분석·안전 이벤트를 쓴 뒤 종료 필드(status·ended_at·duration_seconds)만
+  update 한다 — 동의 가드의 종료 예외와 같은 모양이라 철회 직후에도 닫힌다. ⚠️ `safety_events.session_id` 는 `on delete set null` 이라
+  롤백으로 지워지지 않는다 → 이벤트는 쓰기 단계 **맨 뒤**(재시도 시 중복 방지). 회귀 2건 추가(옛 코드에서 순서 단언 실패 확인) ·
+  mobile 196 · typecheck/lint · bom/copy/font/figma 통과. 운영 DB·실기기 검증 없음.
 - 🔎 코드 대조로 확인: 첫 질문(오프너)은 `ai.ts` `generateOpener` 가 로컬에서 만들고 중계 인사가 오면 `overrideQuestion` 으로 교체된다.
   `ai.ts` 를 지우면 오프너 도착 전 카드가 빈다 → **AI 발화로 기록하지 않는 대기 문구**로 대체한다(A3).
 

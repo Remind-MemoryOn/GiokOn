@@ -149,8 +149,15 @@ function failure(message: string): SessionSaveResult {
 
 /**
  * 종료 시 일괄 저장(폴백) — 시작 시 세션 생성이 실패해 remoteId 가 없을 때만 쓴다.
- * 뒤 단계가 실패하면 세션 행을 지운다(logs·analyses 는 FK cascade 로 함께 사라지고,
- * safety_events 는 마지막 단계라 이 시점에 아직 없다).
+ *
+ * 순서: 세션(active) 생성 → 턴 → 분석 → 안전 이벤트 → `ended`(finalizeSession 처럼 종료가 마지막).
+ * 예전에는 처음부터 `ended` 로 넣어, 세션이 끝난 시점에 턴·분석 행이 아직 없었다 —
+ * 세션 종료를 계기로 도는 후속 처리(프로그램 일지 초안 생성 등)가 빈 기록을 보게 된다.
+ * 마지막 update 는 종료 필드(status·ended_at·duration_seconds)만 바꾼다 — 동의 가드
+ * (`app.require_processing_consent`)가 허용하는 종료 경로와 같은 모양이다.
+ * 뒤 단계가 실패하면 세션 행을 지운다(logs·analyses 는 FK cascade 로 함께 사라진다).
+ * ⚠️ safety_events 는 `on delete set null` 이라 지워지지 않는다 — 롤백 뒤 재시도에서
+ * 중복으로 남지 않도록 이벤트는 쓰기 단계의 **맨 뒤**에 둔다(finalizeSession 과 다른 이유).
  */
 async function persistWholeSession(b: FinishedSessionBundle, userId: string, lease: QueryLease): Promise<string> {
   const client = getGiokonClient();
@@ -160,12 +167,10 @@ async function persistWholeSession(b: FinishedSessionBundle, userId: string, lea
       .insert({
         profile_id: b.elder.id,
         user_id: userId,
-        status: 'ended',
+        status: 'active',
         turn_count: b.turns.length,
-        duration_seconds: b.durationSeconds,
         current_topic: b.currentTopic,
         started_at: b.startedAt,
-        ended_at: b.endedAt,
       })
       .select()
       .single();
@@ -178,6 +183,13 @@ async function persistWholeSession(b: FinishedSessionBundle, userId: string, lea
     await writeTurns(b.turns, 0, ids, lease);
     await writeAnalysis(b, ids, lease);
     await writeSafetyEvents(b.events, ids, lease);
+    await withRetry(lease, async () => {
+      const { error } = await client
+        .from('sessions')
+        .update({ status: 'ended', ended_at: b.endedAt, duration_seconds: b.durationSeconds })
+        .eq('id', session.id);
+      if (error) throw new Error(error.message);
+    });
   } catch (e) {
     await rollbackSession(session.id, lease);
     throw e;

@@ -31,7 +31,7 @@
 | T20.4 | `program-journal.ts` 신규 — `mapAnalysisToJournalFields`·`screenJournalDraft`(적중 필드만 비움)·`buildGuardianText` | C2 | T20.3 | ⏳ |
 | T20.5 | ⚠️ `session-report` 의 `REPORT_ALLOWED_USER_IDS` 데모 허용목록 → org 게이트(안 하면 파일럿 전원 403) | C4 | — | ⏳ |
 | T20.6 | 워커 `program-journal-draft`(큐 소비·지수 백오프·`attempts>5` 실패) — **`pending_review` 까지만** | C4 | T20.2, T20.5 | ⏳ |
-| T20.7 | 앱 폴백 저장 순서 정리(세션 생성 → 턴·분석 → `ended`) | M7 | — | ⏳ |
+| T20.7 | 앱 폴백 저장 순서 정리(세션 생성 → 턴·분석 → `ended`) | M7 | — | ✅ (2026-09-24) |
 | T20.8 | 웹 프로그램 일지 목록·상세·확정·이력·재시도 + 네비 이름 변경 | W1, W3 | T20.6 | ⏳ |
 | T20.9 | 보호자 표현 전환(판정형→기술형·고정 문구·`guardian_text` 만 렌더) + `session_summary` 미렌더 버그 | W4 | T20.8 | ⏳ |
 
