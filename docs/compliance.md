@@ -57,7 +57,8 @@
 ## 5. 구현 현황 (2026-07-03)
 - **`consents` 테이블(구현 완료)** — `supabase/migrations/20260703140000_consents.sql`:
   `id, org_id, user_id(수집자·삭제 시 SET NULL 익명화), profile_id(어르신),
-  consent_type(privacy_required|sensitive_health_voice|cross_border_transfer|ai_processing|marketing_optional),
+  consent_type(privacy_required|sensitive_health_voice|cross_border_transfer|ai_processing|marketing_optional
+    |terms_required|elder_privacy_required — 2026-09-24 법률 문서 확정본으로 추가·운영 적용),
   granted, version, subject_type(self|guardian|legal_representative), guardian_name/relation,
   capacity(capable|limited|incapable|unknown), basis, voice_record_url(녹취), granted_at, revoked_at`.
   RLS=본인+기관관리자, **삭제 불가(철회=revoked_at)**. 대리동의 시 대리인 필수 제약.

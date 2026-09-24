@@ -99,6 +99,7 @@
   `org_invites`(초대 코드 — `app.generate_invite_code()` 재사용, 합류 후 역할, 만료·회수) · `org_join_requests`(pending) ·
   `approve_org_join`(`org_admin`·`center_director` 만, 자기 요청 불가) 을 추가하고, **`users.org_id` 는 승인 전까지 NULL** 로 둔다 —
   "org_id 가 없으면 데이터 0건" 불변식을 그대로 쓴다. 기존 어르신 단위 배정은 접근 게이트가 아니라 "내 담당" 표시로 남는다.
+- ✅ **법률 문서 동의(2026-09-24, `20260924080000`·`090000` 운영 적용)** — `consent_type` 에 `terms_required`(계정 이용약관)·`elder_privacy_required`(어르신 개인정보) 추가. 세션 처리 판정(`app.has_processing_consent`)은 어르신 필수 동의 **4종**, 단 적용 시점에 있던 어르신은 `app.elder_privacy_grandfathered` 로 새 항목만 면제(증거 미생성, 사용자 쓰기 불가). `complete_onboarding` 은 `terms_required` 를 받되 아직 필수 아님.
 - ✅ **운영 적용 2026-09-24(`20260924070000`, 운영 일지 0건)** — 보호자는 `get_my_shared_journals()` 로 **보호자 문장만**(공단 칸 비노출) · 재시도 `retry_journal_generation` · 워커 전용 `journal_generation_jobs`(정책 없음 = service_role 만).
 - ⚠️ **`care_journals`·`journal_photos` DROP**(데이터 포함 — 사용자 확정). `program_journals`(공단 서식 필드를 **개별 컬럼**으로,
   상태 `generating|pending_review|final|failed`) · `program_journal_photos` · `program_journal_revisions`(확정 후 수정 이력) ·

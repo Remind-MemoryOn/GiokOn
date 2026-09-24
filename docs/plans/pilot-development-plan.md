@@ -142,6 +142,7 @@
 | **D7** | `..._push_tokens.sql` | `push_tokens`(본인 only RLS), `notifications.pushed_at` | ✅ 로컬 2026-09-24 — 쓰기 RPC 전용(기기 인계). ✅ 운영 적용(2026-09-24) |
 | **D8** | `..._product_events.sql` | `product_events(event_key, payload, ...)` + definer 삽입 함수 | ⏳ |
 | **D9** | D5·D6 말미 | realtime publication 에 `program_journals`·`session_interventions` 추가. ⚠️ `if exists (pg_publication)` 가드 필수(CI는 순정 PG16) | ✅ 2026-09-24 — `session_interventions`(D6) · `program_journals`·`program_journal_photos`(D5) 운영 publication 반영 · data `realtime.ts` 세 곳 등록(일지 2종) |
+| **D11** | `20260924080000_legal_consent_types.sql` · `20260924090000_legal_consent_requirements.sql` | (계획 외 · 법률 문서 확정본, 사용자 확정 2026-09-24) `consent_type` += `terms_required`·`elder_privacy_required`. 세션 처리에 어르신 개인정보 동의 필수 — **적용 시점 등록 어르신은 `app.elder_privacy_grandfathered` 로 이 항목만 면제**(증거는 만들지 않는다). 가입은 `terms_required` 를 받되 아직 필수 아님(배포 전환기 보호 — 웹 배포 뒤 필수화 후속) | ✅ 2026-09-24 **운영 적용** · 회귀 `supabase/tests/legal_consents.sql` · ⏳ `terms_required` DB 필수화 |
 | **D10** | 권고 | `app.current_consent_version()` 1개로 통일 — 지금 `'v1.0'` 이 SQL·TS 양쪽에 하드코딩돼 드리프트한다 | ⏳ |
 
 ### 직원 합류와 역할 부여 (D3 · W6 · W9)
@@ -246,7 +247,7 @@
 | **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` | ⏳ |
 | **W5** | 세션 설계의 기존 "예상 소요 시간"(`duration_minutes`)을 **목표 시간**으로 쓴다 — 초기값을 지금의 고정 15분 대신 `org_settings.target_minutes` 에서 가져온다. 단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` | ⏳ |
 | **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) + **구성원 역할 지정**(`set_member_role` — 지금 구성원 표는 역할을 보여주기만 한다) + **직원 초대 코드 발급·회수 · 합류 승인** | `pages/caregiver/OrgPage.tsx` | ⏳ **DB 준비됨**(2026-09-24): `set_member_role` · `create_org_invite`/`revoke_org_invite` · `approve_org_join`/`reject_org_join` · `org_settings`·`org_capabilities` 읽기/쓰기(RLS). 오류는 코드 식별자(`MEMBER_ROLE_*`·`ORG_INVITE_*`·`ORG_JOIN_*`). ⚠️ T22.4 웹 발견분: `OrgPage.tsx:107` `isAdmin = role === 'org_admin'` 은 **센터장을 뺀다**(관리 역할 = org_admin·center_director) · `OrgPage`·`SettingsPage` 의 `ROLE_LABEL` 에 사회복지사·센터장 없음 · `TopBar.tsx:63` 는 돌봄팀 전원을 "요양보호사님"으로 부른다 |
-| **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 | ⏳ |
+| **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 | ✅ 2026-09-24 — 코드 `jinwoo` 브랜치(PR #17, main 병합 대기) · DB `20260924080000`·`090000` 운영 적용. `ElderConsentsPage`(부여·철회·이력) + 등록 시 동의 단계. 계획과 다른 점: 법률 문서 확정본에 맞춰 **필수 동의 4종**(어르신 개인정보 추가)·계정 **이용약관 동의** 추가 — 아래 D11 |
 | **W8** | 어르신 `care_grade` 드롭다운(주간보호 필수) | 등록·수정 화면 | ⏳ |
 | **W9** | ⚠️ **온보딩 합류 경로** — 요양보호사 가입 시 "새 기관 만들기 / 초대 코드로 합류". 합류는 승인 전까지 "승인 대기" 화면만 보인다. **파일럿 블로커**(§3 ⑧) | `pages/public/OnboardingPage.tsx` | ⏳ **DB 준비됨**(2026-09-24): `complete_onboarding(..., p_invite_code)`(data `completeOnboarding({ inviteCode })`) · `request_org_join` · `cancel_org_join`. ⚠️ 합류 대기자는 `onboarded_at` 있음 + `org_id` NULL — 지금 `routeForUser`(`auth/routes.ts`)·`CaregiverGuard`(`App.tsx`)는 그를 /caregiver(빈 화면)로 보낸다 → 승인 대기 화면으로. 대기 요청은 `org_join_requests`(본인 행 읽기 가능). `OnboardingPage.tsx:133` 은 요양보호사에게 기관명을 필수로 요구한다 → "새 기관 / 초대 코드" 선택으로 |
 
