@@ -6,6 +6,7 @@
 //   - 노인 특화 대화 안전 엔진(상황 분류·관여도·가드레일·투명성) (safety)
 //   - 어르신 발화 안전 평가·세션 권고 (conversation) — 대화 생성은 음성 중계가 한다
 //   - 실 LLM 시스템 프롬프트 (prompt)
+//   - 대화 단계 정책(도입→회상→마무리, 전환 시점·내부 지시문) (session-phase)
 //   - 세션 자동 요약·분석(비의료 관찰 지표·주제 반응·추천) (analysis)
 //   - (AI 에이전트 agent.ts 는 신규 웹 디자인에서 기능이 제거돼 삭제됨)
 //   - 동의 카탈로그(필수/민감/국외이전·온보딩 게이팅) (consent)
@@ -20,6 +21,7 @@ export * from './profile'
 export * from './utils'
 export * from './safety'
 export * from './conversation'
+export * from './session-phase'
 export * from './prompt'
 export * from './analysis'
 export * from './observations'

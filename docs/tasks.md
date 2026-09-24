@@ -39,7 +39,7 @@
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
 | T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
-| T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ⏳ |
+| T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ✅ 2026-09-24 core `session-phase.ts` + `PROMPT_VERSION='v2.0'`(저장은 중계가 `advance_session_phase` 로 — T21.3) |
 | T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입(`resumeContext` 와 같은 경로) · 원격 제어 처리 | C3 | T21.1, T21.2 | ⏳ |
 | T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ⏳ |
 | T21.5 | 웹 감독 화면(반응형) + 원격 일시정지·재개·종료 | W2 | T21.3 | ⏳ |

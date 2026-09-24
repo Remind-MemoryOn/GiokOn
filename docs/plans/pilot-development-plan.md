@@ -279,6 +279,9 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 
 **C2. `packages/core` 신규·확장**
 - `session-phase.ts`(신규): `buildPhaseDirective(phase)`, `shouldAdvancePhase(...)` — 순수 함수, 중계와 공유
+  ✅ 2026-09-24 — 도입은 첫 대답 또는 60초 뒤 회상으로 · 회상은 목표 시간(10분 상한) − 90초에 마무리로(짧은 목표에서도 회상 최소 절반) ·
+  마무리 지시는 시간/휴식 요청 두 가지(T21.11 대비). `PROMPT_VERSION='v2.0'` + 시스템 프롬프트에 단계·"(내부 지시)" 규칙.
+  ⚠️ `buildSystemPrompt(..., phase?)` 인자는 만들지 않았다 — 현재 단계는 연결 직후 지시문 주입으로 전달된다(중복 방지).
 - `program-journal.ts`(신규): `mapAnalysisToJournalFields()`, `screenJournalDraft()`(진단표현 결정론
   차단 — 적중한 **필드만 비우고** `pending_review` 로 넘긴다. 전체 실패가 아니다), `buildGuardianText()`
 - `generated-session.ts` **확장**: 스키마에 공단 필드·보호자 문장 추가, `disallowedConclusion` 에
