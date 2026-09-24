@@ -162,11 +162,12 @@ export default function Talk() {
           <View style={{ marginLeft: 17, marginTop: 11 }}>
             <RobotInline size={46.5} />
           </View>
+          {/* 첫 인사 전에는 AI 질문이 없다 — 안내 문구는 화면 표시일 뿐 대화 기록이 아니다. */}
           <Text
             className="text-[28px] font-semibold text-black"
-            style={{ marginLeft: 10.75, width: 251, lineHeight: 50 }}
+            style={{ marginLeft: 10.75, width: 251, lineHeight: 50, color: question ? undefined : '#7b7c7c' }}
           >
-            {question}
+            {question || '대화를 시작하면 첫 질문이 여기에 나와요.'}
           </Text>
         </View>
       </View>

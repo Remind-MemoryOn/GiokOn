@@ -1,20 +1,18 @@
 // 앱 상태 스토어 (Zustand) — 요양보호사 세션 실행 런타임(UI 상태) 전용.
 //
 // 백엔드 로직은 전부 @giokon/core를 재사용한다(신규 도메인 로직 없음):
-//   - 대화 진행: openConversation / respondToUserTurn (안전 가드 통합)
+//   - 발화 안전 평가: evaluateUserTurn (위기·중단·거부 → 알림·이벤트·세션 권고)
+//   - AI 출력 채택 전 검열: screenAiUtterance
 //   - 종료 분석: analyzeSession (비의료 관찰 지표)
-//   - 동의 게이팅: canStartElderSession / requiredElderConsents
-//
-// Supabase 실연동 전에는 웹과 동일하게 목업 스토어로 동작한다(@giokon/data 훅은
-// 서울 리전 배선 후 활성화 — client.ts 참고). 화면은 이 스토어를 읽는다.
+// AI 질문은 앱이 만들지 않는다 — 음성 중계가 만들고 서버에서 검증한 것만 받아 기록한다
+// (2026-09 규칙 기반 생성기 ai.ts 삭제, 계획 C1).
 
 import { create } from 'zustand';
 import {
   analyzeSession,
   detectTurnTopic,
-  openConversation,
+  evaluateUserTurn,
   resolveSessionRecommendation,
-  respondToUserTurn,
   screenAiUtterance,
   snapshotVoicePlayback,
   VOICE_FAILURE_MESSAGES,
@@ -75,12 +73,15 @@ export interface ActiveSession {
    * 시작 시점의 연대기를 그대로 들고 있다가 분석에 쓴다.
    */
   chronicles: ChronicleEntry[];
+  /** 대화 기록. 중계의 첫 인사(acceptOpener)가 오기 전에는 비어 있다 — 가짜 첫 질문을 두지 않는다. */
   turns: ConversationTurn[];
   /** Runtime device observation only; absence is unknown, not completed delivery. */
   playbackByTurnId?: Record<string, VoicePlaybackObservation>;
   startedAt: string;
+  /** 화면에 보이는 현재 AI 질문. 첫 인사 전에는 ''. */
   currentQuestion: string;
-  currentTopic: string;
+  /** 근거(AI 질문 텍스트의 결정론 태깅)가 있을 때만 값이 있다 — 없으면 null. */
+  currentTopic: string | null;
   /** 중단된 청취의 부분 전사 — 요양보호사가 확인/수정하기 전의 원문. */
   pendingStt: string | null;
   pendingInputSource: 'gemini_live' | 'manual' | 'unknown';
@@ -114,7 +115,7 @@ export interface FinishedSessionBundle {
   startedAt: string;
   endedAt: string;
   durationSeconds: number;
-  currentTopic: string;
+  currentTopic: string | null;
   /** 진행 중에 만들어 둔 DB 세션 id(없으면 종료 시 새로 만든다). */
   remoteId: string | null;
   /** 이미 기록한 턴 수 — 나머지만 이어서 쓴다. */
@@ -154,11 +155,10 @@ interface AppState {
   markTurnPlayback: (turnId: string, text: string, result: 'completed' | 'interrupted' | 'empty') => boolean;
   confirmRecoveredInput: (text: string) => boolean;
   /**
-   * 오프너 교체(Live 모델 인사 도착 시) — 첫 AI 턴 텍스트만 바꾼다.
-   * 출력 가드를 통과한 텍스트만 채택한다. 채택 결과는 `active.currentQuestion` 으로
-   * 확인한다(호출부가 오디오 재생 여부를 그걸로 판단한다).
+   * 첫 AI 턴(중계 인사) 채택 — 아직 턴이 없을 때만, 출력 가드를 통과한 텍스트만.
+   * 채택하지 못하면 false(호출부가 재생하지 않고 세션을 멈춘다).
    */
-  overrideQuestion: (text: string) => void;
+  acceptOpener: (text: string) => boolean;
   acknowledgeSafety: () => void;
   requireRelayReview: () => void;
   cancelSession: () => void;
@@ -183,10 +183,21 @@ interface AppState {
 function makeTurn(
   speaker: ConversationTurn['speaker'],
   text: string,
-  topic?: string,
+  topic?: string | null,
   originalText?: string,
 ): ConversationTurn {
-  return { id: uid('turn_'), speaker, text, timestamp: nowIso(), topic, originalText };
+  return { id: uid('turn_'), speaker, text, timestamp: nowIso(), topic: topic ?? undefined, originalText };
+}
+
+/** 어르신 턴 평가 → 런타임 안전 상태·이벤트(자동 채택·사람 확인 경로 공용). */
+function evaluateElderTurn(a: ActiveSession, turns: ConversationTurn[], text: string) {
+  const evaluated = evaluateUserTurn(turns, text);
+  const recommendation = resolveSessionRecommendation(evaluated.session.recommendation, turns.filter(t => t.speaker === 'Elderly').length);
+  const safety: RuntimeSafety = { escalate: evaluated.escalate, caregiverAlert: evaluated.caregiverAlert,
+    level: evaluated.event?.level ?? (evaluated.caregiverAlert ? 'watch' : null), recommendation, acknowledged: false };
+  const events: SessionSafetyEvent[] = evaluated.event
+    ? [...a.events, { ...evaluated.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events;
+  return { safety, events, help: Boolean(evaluated.caregiverAlert) || recommendation !== 'continue' };
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -207,18 +218,16 @@ export const useApp = create<AppState>((set, get) => ({
       createdAt: ts,
       updatedAt: ts,
     };
-    const guarded = openConversation(elder, session, chronicles);
-    const aiTurn = makeTurn('AI', guarded.response.question, guarded.response.topic);
     set({
       active: {
         elder,
         session,
         design,
         chronicles,
-        turns: [aiTurn],
+        turns: [],
         startedAt: ts,
-        currentQuestion: guarded.response.question,
-        currentTopic: guarded.response.topic,
+        currentQuestion: '',
+        currentTopic: null,
         pendingStt: null,
         pendingInputSource: 'unknown',
         phase: 'ai_speaking',
@@ -247,13 +256,9 @@ export const useApp = create<AppState>((set, get) => ({
     const turn = makeTurn('Elderly', text, a.currentTopic);
     turn.provenance = { kind: 'automatic', presentedText: text, inputSource: 'gemini_live' };
     const turns = [...a.turns, turn];
-    const guarded = respondToUserTurn(a.elder, a.session, turns, text);
-    const recommendation = resolveSessionRecommendation(guarded.session.recommendation, turns.filter(t => t.speaker === 'Elderly').length);
-    const safety: RuntimeSafety = { escalate: guarded.escalate, caregiverAlert: guarded.caregiverAlert,
-      level: guarded.event?.level ?? (guarded.caregiverAlert ? 'watch' : null), recommendation, acknowledged: false };
-    set({ active: { ...a, turns, pendingStt: null, phase: 'processing', safety,
-      events: guarded.event ? [...a.events, { ...guarded.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events } });
-    return guarded.caregiverAlert || recommendation !== 'continue' ? 'help' : 'continue';
+    const { safety, events, help } = evaluateElderTurn(a, turns, text);
+    set({ active: { ...a, turns, pendingStt: null, phase: 'processing', safety, events } });
+    return help ? 'help' : 'continue';
   },
 
   acceptAutomaticResponse: (text) => {
@@ -293,33 +298,17 @@ export const useApp = create<AppState>((set, get) => ({
     turn.provenance = { kind: 'caregiver_confirmed', presentedText: a.pendingStt || null, inputSource: a.pendingInputSource };
     if (a.pendingStt && a.pendingStt !== text) turn.originalText = a.pendingStt;
     const turns = [...a.turns, turn];
-    const guarded = respondToUserTurn(a.elder, a.session, turns, text);
-    const recommendation = resolveSessionRecommendation(guarded.session.recommendation, turns.filter(t => t.speaker === 'Elderly').length);
-    set({ active: { ...a, turns, pendingStt: null, phase: 'processing',
-      safety: { escalate: guarded.escalate, caregiverAlert: guarded.caregiverAlert,
-        level: guarded.event?.level ?? (guarded.caregiverAlert ? 'watch' : null), recommendation, acknowledged: false },
-      events: guarded.event ? [...a.events, { ...guarded.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events } });
+    const { safety, events } = evaluateElderTurn(a, turns, text);
+    set({ active: { ...a, turns, pendingStt: null, phase: 'processing', safety, events } });
     return true;
   },
 
-  overrideQuestion: (text) => {
+  acceptOpener: (text) => {
     const a = get().active;
-    if (!a || !text.trim()) return;
-    // 출력 가드(screenAiUtterance)를 **오프너에도** 적용한다.
-    // 그전에는 첫 질문만 검열을 건너뛰어, 모델 인사가 화면과 음성으로 그대로 나갔다.
-    // 막히면 안전 대체문으로, 대체문조차 없으면 기존(로컬 생성) 질문을 유지한다.
-    const screen = screenAiUtterance(text);
-    const adopted = screen.allowed ? text : (screen.safeAlternative ?? a.currentQuestion);
-    if (!adopted) return;
-    // 첫 AI 턴(오프너)만 교체한다 — Live 모델의 인사가 도착했을 때 사용.
-    const turns = a.turns.slice();
-    for (let i = turns.length - 1; i >= 0; i--) {
-      if (turns[i].speaker === 'AI') {
-        turns[i] = { ...turns[i], text: adopted };
-        break;
-      }
-    }
-    set({ active: { ...a, turns, currentQuestion: adopted } });
+    if (!a || a.turns.length !== 0 || !text.trim() || !screenAiUtterance(text).allowed) return false;
+    const topic = detectTurnTopic(text) ?? null;
+    set({ active: { ...a, turns: [makeTurn('AI', text, topic)], currentQuestion: text, currentTopic: topic, phase: 'ai_speaking' } });
+    return true;
   },
 
   requireRelayReview: () => {

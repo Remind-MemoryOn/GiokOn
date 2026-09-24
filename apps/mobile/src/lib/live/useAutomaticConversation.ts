@@ -19,6 +19,8 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
     let outputTurn: {id:string; text:string} | undefined;
     let restoration: {context:VoiceResumeContext; lastId:string; listen:boolean} | undefined;
     let restoringOutput = false;
+    // Paused before the relay greeting arrived: resuming asks for the opener again.
+    let openerPending = false;
     let connectionGeneration = 0;
     const resumable = () => {
       const active=useApp.getState().active;
@@ -30,11 +32,14 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
       ready: async resuming => {
         restoringOutput=false;
         restoration=undefined;
+        openerPending=false;
         if (AppState.currentState !== 'active' || await getTranscriptStorageVersion() !== 1 || !await ensureMicPermission()) return false;
-        if (!resuming) return useApp.getState().active?.turns.length === 1;
+        // No local opener exists: the conversation starts empty until the relay greets.
+        if (!resuming) return useApp.getState().active?.turns.length === 0;
         if (!resumable() || !await save()) return false;
         const active=resumable(), last=active?.turns.at(-1);
-        if (!active || !last) return false;
+        if (!active) return false;
+        if (!last) { openerPending=true; return true; }
         try {
           const context=selectVoiceResumeContext(active.turns,active.playbackByTurnId ?? {});
           const observed=active.playbackByTurnId?.[last.id];
@@ -56,6 +61,7 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
           }},session.remoteId,resuming ? restoration?.context : undefined);
       },
       resume: async engine => {
+        if (openerPending) return resumable()?.turns.length === 0 ? await engine.requestOpener() : null;
         if (!restoration || resumable()?.turns.at(-1)?.id !== restoration.lastId) return null;
         if (restoration.listen) return 'listen';
         restoringOutput=true;
@@ -69,7 +75,10 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
           restoringOutput=false;
           if (!restoration || !useApp.getState().acceptResumedResponse(text,restoration.lastId)) return false;
         }
-        else if (opener) useApp.getState().overrideQuestion(text);
+        else if (opener || openerPending) {
+          openerPending=false;
+          if (!useApp.getState().acceptOpener(text)) return false;
+        }
         else if (!useApp.getState().acceptAutomaticResponse(text)) return false;
         const turn = useApp.getState().active?.turns.at(-1);
         if (turn?.speaker !== 'AI' || turn.text !== text) return false;

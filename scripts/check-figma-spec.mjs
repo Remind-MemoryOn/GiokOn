@@ -615,14 +615,21 @@ const SPECS = [
     [/if \(!isSupabaseConfigured\)/, /<ConfigError reason=/],
   ],
   [
-    `${APP}/src/lib/live/playback.ts`,
-    '안전: 출력 가드에 막힌 원음은 재생하지 않고 캐시에서 버린다',
-    [/if \(adopted !== raw\)/, /cache\.delete\(raw\)/],
+    // 직접 모드의 원음 캐시(playback.ts)는 2026-09 삭제. 중계 경로에서는 가드에 막힌 출력을
+    // 채택하지 않으면(false) 컨트롤러가 재생 전에 멈춘다(automatic.ts deliver → throw).
+    `${APP}/src/lib/live/useAutomaticConversation.ts`,
+    '안전: 출력 가드에 막힌 AI 발화는 채택·재생하지 않는다',
+    [/output: \(text,opener\) => \{\s*if \(!screenAiUtterance\(text\)\.allowed\) return false;/],
+  ],
+  [
+    `${APP}/src/lib/live/automatic.ts`,
+    '안전: 채택되지 않은 출력은 재생 전에 세션을 멈춘다',
+    [/if \(!text\.trim\(\) \|\| !chunks\.length \|\| !this\.ports\.output\(text, opener\)\) throw new Error\('output'\);/],
   ],
   [
     `${APP}/src/store/appStore.ts`,
-    '안전: Live 오프너도 출력 가드를 통과해야 채택된다',
-    [/overrideQuestion: \(text\) => \{[\s\S]{0,400}?screenAiUtterance\(text\)/],
+    '안전: 중계 첫 인사(오프너)도 출력 가드를 통과해야 채택된다',
+    [/acceptOpener: \(text\) => \{[\s\S]{0,400}?screenAiUtterance\(text\)\.allowed/],
   ],
   [
     `${APP}/src/auth/appAccess.ts`,

@@ -1,6 +1,6 @@
 // 컴플라이언스 UI — Figma엔 없지만 필수(런북 §4-5, docs/ai-safety §4·compliance).
 //   - AI 이용 사전 고지(대화 화면 상시)
-//   - 위기 감지 시 요양보호사 배너(core respondToUserTurn의 escalate/caregiverAlert)
+//   - 위기 감지 시 요양보호사 배너(core evaluateUserTurn의 escalate/caregiverAlert)
 //   - 비의료 면책 문구(상시 노출용)
 import { Pressable, Text, View, type StyleProp, type TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

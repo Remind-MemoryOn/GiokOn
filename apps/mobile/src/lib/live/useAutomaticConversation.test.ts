@@ -4,6 +4,7 @@ const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
   contexts: [] as unknown[], continuation: vi.fn(async()=>({text:'이어서 고향 이야기를 들려주시겠어요?',audioChunksB64:['pcm']})),
   status: [] as unknown[], change: null as null | ((state:string)=>void),
   input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
+  opener:vi.fn(async():Promise<unknown>=>({text:'고향은 어디세요?',audioChunksB64:['pcm']})),
   play:vi.fn(async()=> 'completed'), listen:vi.fn(async()=>{}), close:vi.fn(async()=>{}) }));
 vi.mock('react',async original=>({...await original<typeof import('react')>(),
   useEffect:(effect:()=>void|(()=>void))=>{native.effects.push(effect);},
@@ -21,7 +22,7 @@ vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
     native.contexts.push(context);
     native.input=callbacks.onDraftFinal; native.failure=callbacks.onError;
     native.partial=callbacks.onDraftInterrupted;
-    return {requestContinuation:native.continuation,requestOpener:async()=>({text:'고향은 어디세요?',audioChunksB64:['pcm']}),
+    return {requestContinuation:native.continuation,requestOpener:native.opener,
       submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
       playTurn:native.play,startListening:native.listen,isListening:true,close:native.close};
   }}));
@@ -92,6 +93,29 @@ it('preserves an interrupted input for review without adopting or saving it',asy
   expect(useApp.getState().active!.pendingStt).toBe('말씀 도중');
 });
 
+it('starts from an empty record and adopts the relay greeting as the first AI turn',async()=>{
+  expect(useApp.getState().active!.turns).toEqual([]);
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0](); await view.start();
+  expect(useApp.getState().active!.turns.map(t=>[t.speaker,t.text])).toEqual([['AI','고향은 어디세요?']]);
+  if(cleanup) cleanup();
+});
+it('resumes a pause taken before the greeting by requesting the opener again, discarding the late one',async()=>{
+  let greet!: (value:unknown)=>void;
+  native.opener.mockImplementationOnce(()=>new Promise(resolve=>{greet=resolve;}));
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0]();
+  const starting=view.start();
+  await vi.waitFor(()=>expect(native.opener).toHaveBeenCalledOnce());
+  await view.pause(); greet({text:'늦게 온 인사',audioChunksB64:['pcm']}); await starting;
+  expect(useApp.getState().active!.turns).toEqual([]);
+  await view.resume();
+  expect(native.opener).toHaveBeenCalledTimes(2);
+  expect(native.contexts[1]).toBeUndefined();
+  expect(useApp.getState().active!.turns.map(t=>t.text)).toEqual(['고향은 어디세요?']);
+  expect(native.listen).toHaveBeenCalledOnce();
+  if(cleanup) cleanup();
+});
 it('pauses and restores the completed question without repeating it',async()=>{
   const view=useAutomaticConversation(useApp.getState().active,async()=>true);
   const cleanup=native.effects[0](); await view.start();

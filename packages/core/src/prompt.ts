@@ -1,8 +1,8 @@
-// @giokon/core — 실 LLM 시스템 프롬프트 + Structured Outputs 스키마 (M12 × Phase M)
+// @giokon/core — 실 LLM 시스템 프롬프트 (M12 × Phase M)
 //
-// Edge Function(서버사이드)이 buildSystemPrompt()로 시스템 프롬프트를 만들고,
-// RESPONSE_JSON_SCHEMA를 Structured Outputs로 강제한다. 결정론 가드(safety.ts)는
-// LLM 호출 전(입력 위기 감지)·후(출력 검열)에 항상 실행되므로, 프롬프트는 세 번째
+// 음성 중계(voice-relay)가 buildSystemPrompt(..., 'speech')로 시스템 프롬프트를 만든다.
+// (Structured Outputs 스키마 RESPONSE_JSON_SCHEMA 는 직접 모드 폐기로 사문화돼 2026-09 삭제.)
+// 결정론 가드(safety.ts)는 LLM 호출 전(입력 위기 감지)·후(출력 검열)에 항상 실행되므로, 프롬프트는 세 번째
 // 방어선이다 — 셋 중 하나라도 위기로 판단하면 에스컬레이션한다(OR 결합).
 //
 // 프롬프트에 인코딩한 돌봄 원칙(결정론 레이어와 동일 근거 — safety.ts 상단 참조):
@@ -101,48 +101,3 @@ ${output === 'structured'
     ? '반드시 지정된 JSON 형식으로만 응답합니다. question에는 어르신께 드릴 말만 담습니다(지문·괄호 설명 금지).'
     : '어르신께 드릴 말만 자연스러운 한국어 음성으로 응답합니다. 구조화된 필드·지문·괄호 설명은 읽지 않습니다. 요양보호사가 확인한 텍스트가 음성 전사와 다르면 확인된 텍스트를 기준으로 대화를 이어갑니다.'}`
 }
-
-/**
- * Structured Outputs용 응답 스키마. Edge Function이 LLM 호출 시 강제한다.
- * 결정론 가드와 OR 결합: 스키마의 safety.risk가 crisis면 코드 감지와 무관하게 에스컬레이션.
- */
-export const RESPONSE_JSON_SCHEMA = {
-  name: 'giokon_reply',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['question', 'topic', 'switchTopic', 'safety'],
-    properties: {
-      question: {
-        type: 'string',
-        description: '어르신께 드릴 말(두세 문장, 질문 하나). TTS로 재생된다.',
-      },
-      topic: {
-        type: 'string',
-        description: '현재 대화 주제(예: 고향, 가족, 안전, 마무리).',
-      },
-      switchTopic: {
-        type: 'boolean',
-        description: '이번 응답에서 주제를 전환했는지.',
-      },
-      safety: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['risk', 'categories'],
-        properties: {
-          risk: {
-            type: 'string',
-            enum: ['none', 'grief', 'watch', 'crisis'],
-            description: '직전 어르신 발화의 위험 수준(모델 판단).',
-          },
-          categories: {
-            type: 'array',
-            items: { type: 'string', enum: ['self_harm', 'medical_emergency', 'abuse'] },
-            description: 'crisis일 때 해당 분류.',
-          },
-        },
-      },
-    },
-  },
-} as const
