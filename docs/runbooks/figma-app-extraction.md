@@ -2,7 +2,7 @@
 
 > ## ⚠️ 2026-09-23 기획 변경 — 대화 화면이 두 모드로 나뉜다
 >
-> 계획 SoT: [`pilot-development-plan.md`](../plans/pilot-development-plan.md) §6 M2·M3 · [`design.md`](../design.md) §0(SCR-08·09).
+> 계획 SoT: [`pilot-development-plan.md`](../plans/pilot-development-plan.md) §6 M2·M3 · [`design.md`](../design.md)(SCR-08·09).
 > - 대화 `17:108` 은 **요양보호사 모드**와 **어르신 표시 모드**(큰 사진·자막·"말하는 중"만, 조작 요소 0)로 나뉜다. 어르신 표시 모드는
 >   **시안이 없다** — 시안 선행 vs 기존 디자인 언어로 최소 구현 후 교체는 결정 대기다(파일럿 계획 §13).
 > - 대화 수정 `25:120`(STT 확인·수정)은 **어르신 화면에서 빠진다**(M3). 중계 경로에서는 전사를 고쳐도 AI 응답이 바뀌지 않는다.

@@ -7,9 +7,9 @@
 > 자동으로 남는 도구.** 요양보호사는 계획하고 감독하며 확인한다.
 >
 > **📋 "무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](docs/plans/pilot-development-plan.md)**
-> (DB·앱·웹·연동 4파트, 파일럿 범위). 이전 실행 목록 **N01~N35**
-> (`non-db-development-backlog.md`)와 **D1~D11**(`business-plan-development-delta.md`)은
-> **이전 제품 정의를 전제**하므로 그 문서가 대체한다 — 역사 기록으로만 참조할 것.
+> (DB·앱·웹·연동 4파트, 파일럿 범위). 이전 실행 목록 **N01~N35**·**D1~D11** 은 이 문서로 대체돼
+> 2026-09-24 삭제했다(git 이력). 출시 점검은 [`docs/plans/launch-checklist.md`](docs/plans/launch-checklist.md),
+> 새로 합류한 사람의 입문 문서는 [`docs/new-hire/`](docs/new-hire/README.md).
 >
 > **판단 기준 셋**: ① 기존 ERP(케어포·엔젤시스템·이지케어)가 하는 기능은 만들지 않는다
 > ② **AI 산출물이 사람 확인 없이 공식 기록이 되거나 보호자에게 가는 경로는 없어야 한다**(테스트로 검증)
@@ -75,7 +75,7 @@
 - **엔터프라이즈·정부심사 기준(2026-07-03 상향)**: 데이터 국내 보관(서울 리전)·「안전성 확보조치
   기준」·민감정보 별도동의·비의료 포지셔닝 락다운·AI 안전(위기 에스컬레이션·투명성/AI기본법)·KWCAG
   접근성·멀티테넌시(organizations/RBAC)·부하/백업/DR을 상시 준수. 상세는 PLAN §2′·§3 +
-  `docs/{compliance,security,infrastructure,ai-safety,accessibility}.md`.
+  `docs/{compliance,security,ai-safety,accessibility}.md`(인프라는 `security.md` 에 합쳤다).
 - **커밋은 `main` 브랜치에 직접** (사용자 승인). ※ 원격 세션이 작업 브랜치를 지정해 주면 그쪽을 따른다.
 - **테스크별 커밋(2026-09-19 사용자 확정)**: 각 테스크의 개발·검증·진행 기록을 마친 뒤 반드시 커밋하고 다음 테스크로 넘어간다.
 - **Supabase 배포 기본 방식(2026-09-09 사용자 확정)**: 특별한 호환성·운영 문제가 없으면 Supabase
@@ -159,8 +159,8 @@
 - 운영 DB 에 DDL 을 적용할 때는 CLI `db query --linked --file` 로 **한 건씩** 적용하고 같은
   트랜잭션에 이력을 기록한다(R005~R012 가 쓴 방식). `db push` 는 이제 쓸 수 있지만, 여러 건이
   한꺼번에 나가므로 **운영에서는 여전히 한 건씩을 기본으로** 한다.
-- 개별 마이그레이션의 라이브 반영 근거는 `docs/runbooks/p1-remediation-progress.md` ·
-  `p0-fixes-2026-09-09.md` 의 "운영" 문단에 있다. 적용 여부를 추측해 단정하지 않는다 —
+- 개별 마이그레이션의 라이브 반영 근거는 `docs/runbooks/security-fixes.md` 에 모았다(원래 p0·p1 런북의 "운영" 문단 —
+  원문은 git 이력). 적용 여부를 추측해 단정하지 않는다 —
   **확인할 수단이 있다**(바로 아래).
 - ✅ **라이브 DB 는 Supabase MCP 로 직접 조회할 수 있다**(2026-09-13 확인). 컨테이너 egress 가
   `*.supabase.co` 를 막는 것은 **HTTP 직결**이고, MCP 는 그 경로를 타지 않는다.
@@ -168,6 +168,23 @@
   연결이 간헐적일 수 있으니 **한 번의 쿼리에 검사를 모아 담는다**(union all 로 객체 존재 여부를
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
+
+## 현재 위치 (2026-09-24 — 결정 4건 반영 · docs 정리)
+
+- ✅ **사용자 결정(2026-09-24)**: ① 신규 화면은 **기존 디자인과 최대한 같게** 최소 구현, 시안이 오면 교체 ·
+  ② 종료 정책 **권장안** — 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 유지 ·
+  ③ **세션 1회 최대 10분**(어르신 1명 기준, 서버 고정) · **요양보호사 1명당 동시 최대 4대** ·
+  ④ **태블릿 지원** — `apps/mobile/app.json` `ios.supportsTablet: true` 로 변경(세로 고정 유지). 배포 직전 재확인 D 는 닫혔고 **C(주황 대비)만 남는다**.
+  구현 항목은 tasks T21.11~T21.14 · 계획 §2·§6·§9.
+- 📚 **docs 정리**: 합친 것 — `tech.md`→`structure.md` §5 · `infrastructure.md`→`security.md` "인프라" ·
+  `web-launch`·`app-release-remaining`·`app-release-plan`·`go-live-external-setup`→**`plans/launch-checklist.md`** ·
+  `p0-fixes`·`p1-remediation-progress`·`seoul-region-migration`→**`runbooks/security-fixes.md`** ·
+  `transcript-storage-rollout`·`playback-storage-contract`→`database.md` "대화 기록 저장 계약" · `interview-findings`→`product.md` §9.
+  삭제 — `business-plan-development-delta` · `non-db-development-backlog` · `mvp-roadmap` · `app-readiness-report` ·
+  `demo-recording-readiness` · `demo-llm-implementation` · `mobile-live-data-wiring` · `automatic-conversation-execution` ·
+  `voice-development-tasks`. `requirements`·`design`·`product`·`structure`·`tasks` 는 2026-06 MVP 본문을 걷어 내고 현재 기준만 남겼다.
+  ⚠️ **아래 "이전 위치" 기록에 나오는 문서 이름은 위 대응표로 찾는다**(원문은 git 이력).
+- 🆕 `docs/new-hire/` — 새로 합류한 사람용 쉬운 설명(프로젝트 소개 · 지금 진행 상황 · 파트별 남은 일).
 
 ## 현재 위치 (2026-09-23 — 기획 변경 반영, 문서 재작성)
 
@@ -201,7 +218,7 @@
   ⑤ 어르신 화면의 위기 안내(전화번호)는 **삭제가 아니라 이동**(요양보호사 모드·감독 화면 위기 카드).
   ⑥ D4 는 SELECT/UPDATE 만 기관 단위로 바꾸고 **DELETE 는 배정·관리자 기준 유지**.
   ⑦ 이름 변경 "분석 → 대화 관찰 리포트"는 **보호자 메뉴만**(기획 6-5). 요양보호사 `분석` 은 유지.
-  ⑧ 기획서는 "태블릿 N대"를 전제하는데 앱은 `ios.supportsTablet:false`·`portrait` — 값은 그대로, **파일럿 기기 확정 때 재확인**.
+  ⑧ (✅ 2026-09-24 해결 — 태블릿 지원 `true` 로 변경) 기획서는 "태블릿 N대"를 전제하는데 앱은 `ios.supportsTablet:false`·`portrait` — 값은 그대로, **파일럿 기기 확정 때 재확인**.
   ⑨ 파일럿 계획의 `D1~D10` 은 DB 파트 번호다. 대체된 사업 기획 델타의 `D1~D11` 과 **이름만 같다** — 인용 시 출처를 붙인다.
   ⑩ **중계는 위기뿐 아니라 급성 고통·휴식 요청("그만할래")·거부에도 즉시 연결을 끊는다**(`relay.ts:123-127`, `INPUT_REVIEW_REQUIRED`).
   기획의 종료 정책("그만할래" → 마무리 단계로 짧게)과 부딪힌다 → 권장: 휴식 요청·거부만 마무리 전환, **위기·급성 고통은 즉시 종료 유지**.
@@ -211,8 +228,8 @@
   ⑫ `live-token` 한도는 **사용자 기준**(분당 3·일 20). 요양보호사 1명이 기기 여러 대를 자기 계정으로 시작하면 먼저 닿는다 —
   기기·계정 운영 방식이 곧 일지 진행자 기록이 되므로 기획 결정(계획 §13).
   ⑬ `apps/web/src/lib/supabase.ts` 주석·콘솔의 "목업 데이터로 동작"은 낡은 문구다(웹 목업 스토어는 이미 없다 — 코드 미수정).
-- 📝 문서 진행: Tier 1(PLAN·tasks·백로그 2종·웹 AGENTS·루트 AGENTS) ✅ · Tier 2(requirements §0 `PF-01~47`·`PN-01~09` ·
-  design §0 `SCR-08·09`·`SCR-W12·W15~W21` · product §0 · database · structure §0 · web-launch §5 · app-release-remaining §7 ·
+- 📝 문서 진행: Tier 1(PLAN·tasks·백로그 2종·웹 AGENTS·루트 AGENTS) ✅ · Tier 2(requirements `PF-01~47`·`PN-01~09` ·
+  design `SCR-08·09`·`SCR-W12·W15~W21` · product · database · structure · web-launch §5 · app-release-remaining §7 ·
   음성 계획 2종) ✅ · Tier 3(README 5종·tech §0·security 역할→범위 표·compliance 처리목록·ai-safety §0-1·accessibility·
   infrastructure §10·런북 4종·데모 촬영 기록) ✅.
   기존 요구 ID·화면 ID 는 코드 주석·마이그레이션이 인용하므로 **재번호·재사용하지 않고** 폐기·대체 표시만 했다.

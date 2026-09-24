@@ -78,7 +78,7 @@ giokon/
   대화 정책(도입 → 회상 → 마무리·의견수렴) · 권한 재설계(기관 단위 + 역할) · 고령자 UI(어르신 표시 모드)
 - ⏭️ **범위 밖**: 카카오 알림톡 · ERP 연동/붙여넣기 복사 · 월간 계획표 · 현황판 · "평소와 다름" 플래그 ·
   보호자 연대기 소재 · 보호자 → 요양보호사 메시지(동결 — 제거 아님)
-- 상세: [`docs/requirements.md`](docs/requirements.md) §0 · [`docs/design.md`](docs/design.md) §0
+- 상세: [`docs/requirements.md`](docs/requirements.md) · [`docs/design.md`](docs/design.md)
 
 ---
 
@@ -109,8 +109,7 @@ Supabase secrets 와 중계 서버 환경에만 둔다. 실제 키는 커밋하�
 | 문서 | 내용 |
 |---|---|
 | [`docs/compliance.md`](./docs/compliance.md) | 개인정보(PIPA)·동의·대리동의·SaMD 비의료·PIA/CPO |
-| [`docs/security.md`](./docs/security.md) | 안전성확보조치·암호화·RBAC·감사로그·pentest·ISMS-P |
-| [`docs/infrastructure.md`](./docs/infrastructure.md) | 리전·풀링·부하·백업/DR·SLO·비용 |
+| [`docs/security.md`](./docs/security.md) | 안전성확보조치·암호화·RBAC·감사로그 + 인프라(리전·백업·SLO·비용) |
 | [`docs/ai-safety.md`](./docs/ai-safety.md) | 위기 에스컬레이션·가드레일·투명성(AI기본법) |
 | [`docs/accessibility.md`](./docs/accessibility.md) | KWCAG 2.2·인증·자동/수동 테스트 |
 
@@ -122,11 +121,12 @@ Supabase secrets 와 중계 서버 환경에만 둔다. 실제 키는 커밋하�
 |---|---|
 | [`docs/plans/pilot-development-plan.md`](./docs/plans/pilot-development-plan.md) | **파일럿 개발 계획 — "무엇을 만들지"의 SoT** (DB · 앱 · 웹 · 연동 파트) |
 | [`AGENTS.md`](./AGENTS.md) | 프로젝트 메모리 — 작업 방침 · 기술 결정 · 현재 위치 |
+| [`docs/plans/launch-checklist.md`](./docs/plans/launch-checklist.md) | 출시 점검표 — 파일럿 → 정식 출시 |
+| [`docs/new-hire/`](./docs/new-hire/README.md) | 새로 합류한 사람을 위한 쉬운 설명 |
 | [`PLAN.md`](./PLAN.md) | 전체 개발 계획 (모듈 설계 · 태스크 · 마일스톤) |
 | [`docs/product.md`](./docs/product.md) | 제품 개요 · 문제 정의 · 타깃 · 비즈니스 모델 |
-| [`docs/requirements.md`](./docs/requirements.md) | 기능/비기능 요구사항 — §0 파일럿 요구(`PF-`·`PN-`) |
-| [`docs/design.md`](./docs/design.md) | 화면 설계 — §0 파일럿 화면(`SCR-08·09`·`SCR-W12·W15~W21`) |
-| [`docs/structure.md`](./docs/structure.md) | 서비스 구조 · 폴더 구조 · 엔티티 관계 |
-| [`docs/tech.md`](./docs/tech.md) | 기술 스택 · 외부 API · 배포 |
+| [`docs/requirements.md`](./docs/requirements.md) | 파일럿 요구사항(`PF-`·`PN-`) |
+| [`docs/design.md`](./docs/design.md) | 파일럿 화면 설계(`SCR-08·09`·`SCR-W12·W15~W21`) + 지금 있는 웹 화면 |
+| [`docs/structure.md`](./docs/structure.md) | 구조 · 역할·권한 · 모듈 · 기술 기준 |
 | [`docs/database.md`](./docs/database.md) | Supabase 스키마 · 인증/접근 모델 |
-| [`docs/tasks.md`](./docs/tasks.md) | 모듈·Phase 기반 작업 분해 |
+| [`docs/tasks.md`](./docs/tasks.md) | 작업 목록 — 파일럿 트랙 + 완료 색인 |

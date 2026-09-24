@@ -47,4 +47,4 @@ supabase secrets set REPORT_ALLOWED_USER_IDS="담당자-USER-UUID" --project-ref
 
 `packages/data/src/session-report-{provider,handler,entrypoint}.test.ts`는 합성 인증·공급자·DB를 사용해 실제 소스의 실패 경로를 시험한다. `apps/web/scripts/report-flow-smoke.mjs`는 환경 파일 없이 브라우저에서 생성 요청·미리보기·명시적 적용·실패·재시도·취소 시 본문 보존을 시험한다. 둘 다 실제 Gemini 호출/실기기 성공을 대신하지 않는다.
 
-운영 배포·실 API·종단 리허설 상태는 `docs/plans/demo-llm-implementation.md`를 따른다.
+운영 배포 기록: 2026-09-14 서울 `session-report` v1 배포(verify_jwt=true), `GEMINI_REPORT_MODEL=gemini-2.5-flash`. 실제 공급자 호출·종단 리허설은 미검증이다(당시 구현 기록은 git 이력).

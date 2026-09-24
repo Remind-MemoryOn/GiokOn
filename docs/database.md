@@ -138,7 +138,26 @@ using (org_id = app.current_org_id() and app.is_care_team())
 1. 앱이 음성 중계에 인증된 연결을 요청한다. 중계가 세션·기관·배정·동의·상태·한도를 검사한다. ⚠️ 중계는 **사용자 JWT 로** `live-token` 을 불러 Gemini 토큰을 받는다 — 서버가 중계와 앱 직접 호출을 구분하지 못하므로 파일럿에서 `live-token` 을 중계 전용으로 잠근다(파일럿 계획 C4).
 2. 중계가 Gemini Live 입력과 연결 수명을 통제한다. ~~기존 앱 직접 연결 경로의 전환 정책도 필요하다.~~ → 직접 경로는 **폐기**(파일럿 계획 M1). 파일럿에서는 중계의 2초 권한 폴을 `session_tick` RPC 로 바꿔 단계·원격 제어를 함께 받는다(D6).
 3. Live 출력 전사 → 서버 검증·채택 → Clova 합성 → 앱 재생으로 연결한다. Live Structured Outputs를 전제하지 않는다.
-4. 생성·채택·실제 재생과 전사/교정 출처를 구분하는 기록 계약을 설계한다. 기존 컬럼과 신규 필요 항목은 DB 작업에서 대조하며 고정 `audio_url` 반환을 전제하지 않는다. 상세: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현).
+4. 생성·채택·실제 재생과 전사/교정 출처를 구분하는 기록 계약을 설계한다. 기존 컬럼과 신규 필요 항목은 DB 작업에서 대조하며 고정 `audio_url` 반환을 전제하지 않는다. 상세: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현) · 아래 "대화 기록 저장 계약".
+
+## 대화 기록 저장 계약 (음성 경로)
+
+> 📌 2026-09-24: `runbooks/transcript-storage-rollout.md` 와 `plans/playback-storage-contract.md` 를 이 절로 합쳤다.
+
+**전사 출처 저장 v1** — `20260919175923_transcript_provenance.sql`(⚠️ **운영 미적용**, 로컬 PG16 검증만).
+- `session_logs` 에 `transcript_provenance`·`transcript_revisions` 를 더한다. `kind = automatic | caregiver_confirmed`,
+  `inputSource = gemini_live | manual | unknown`. 입력 출처의 **보고**이지 음성과 일치한다는 검증이 아니다.
+- `caregiver_confirmed` 의 확인자·시각은 서버가 `auth.uid()`·`statement_timestamp()` 로 적는다. 수정하면 이전 내용·출처·수정자가 보존되고
+  클라이언트가 이력을 지울 수 없다(100회 상한). 과거 NULL 출처를 "확인됨"으로 추정하지 않는다.
+- 앱은 `transcript_storage_version()` 이 1 일 때만 새 필드를 보낸다. 자동 채택 턴은 구서버에 저장하지 않는다.
+- 적용 순서: 운영 이력 확인 → 사용자 승인 후 한 건 적용 → 카탈로그·왕복 검증 → 서버 → 앱 순 배포.
+  롤백은 자동 진행을 끄는 것이고 **출처 컬럼은 지우지 않는다**.
+
+**재생 관측 저장** — 제안 계약(⚠️ SQL·마이그레이션 **미구현**, TypeScript 어댑터와 가상 RPC 시험만).
+- `save_voice_playback_v1(p_session_id, p_observations jsonb) returns integer` — 최대 120개의
+  `{turnIndex, text, result: completed|interrupted|empty, observedAt}`. 저장된 AI 턴과 대조해 한 트랜잭션으로 기록하고,
+  하나라도 틀리면 전체 거절. 같은 요청 재시도는 같은 결과(멱등). `completed` 를 뒤늦게 낮추지 않는다.
+- `completed` 는 앱의 보고이지 실제로 들었다는 증명이 아니다. 기기 시각과 서버 수신 시각을 구분한다.
 
 ## Apply to Supabase
 

@@ -2,7 +2,7 @@
 
 > 📌 **2026-09-23 기획 변경 반영.** "무엇을 만들지"의 SoT =
 > [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §6(앱 파트 M1~M7).
-> 화면 요구는 [`docs/design.md`](../../docs/design.md) §0(SCR-08 어르신 표시 모드 · SCR-09 대화 시작 전).
+> 화면 요구는 [`docs/design.md`](../../docs/design.md)(SCR-08 어르신 표시 모드 · SCR-09 대화 시작 전).
 
 요양보호사가 조작하는 **세션 진행 도구**다. 요양보호사가 로그인 → 어르신 선택 → 설계 확인 → 시작 → 기기를
 어르신께 드리면 AI 가 회상 대화(인지활동 프로그램)를 진행한다. 종료되면 분석이 저장되고, 서버가 프로그램 일지
@@ -38,6 +38,7 @@
 | M5 | 원격 제어 수신 — 감독 화면의 일시정지 → "잠시 쉬어요" + 마이크 정지 | 1인 병렬 감독 |
 | M6 | 푸시 토큰 등록(`expo-notifications` → Expo Push) | 위기 발화 알림. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** |
 | M7 | 폴백 저장 순서를 `finalizeSession` 과 맞춤 | 일지 초안 자동 생성의 첫 시도 성공률 |
+| — | 세션 1회 최대 10분 · 요양보호사 1명당 동시 최대 4대(서버가 막고 앱은 이유를 보여 준다) | 2026-09-24 확정 |
 
 고령 사용자 기준(큰 글씨·고대비·큰 터치 영역·핵심 흐름 3단계·선택형 우선·첫 사용 튜토리얼)은 M2 에서 함께 적용한다.
 검증 기준은 "기술에 익숙하지 않은 50~60대가 설명 없이 세션 1회를 끝까지 진행하는가"다.
@@ -61,5 +62,4 @@ pnpm -F @giokon/mobile test
 파일럿에서 필수) · `EXPO_PUBLIC_WEB_URL`(선택 — 개인정보처리방침·약관을 여는 웹 주소) · `EXPO_PUBLIC_NAVER_CLIENT_ID`.
 ⚠️ `.env.example` 에 `EXPO_PUBLIC_VOICE_RELAY_URL` 이 아직 없다 — 추가 대상(루트 `AGENTS.md`).
 
-⚠️ `ios.supportsTablet:false` · `orientation: portrait` 이다. 기획서는 "태블릿 N대"를 전제하므로 **파일럿 기기가 정해지면
-다시 결정**한다(iPad 에서는 아이폰 호환 모드로 돈다).
+`ios.supportsTablet: true`(2026-09-24 — 기관에서 태블릿을 쓴다) · `orientation: portrait`(세로 고정). 태블릿 화면은 파일럿 전 실기기로 확인한다.
