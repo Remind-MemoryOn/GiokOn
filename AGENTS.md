@@ -173,7 +173,32 @@
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
-## 현재 위치 (2026-09-24 — 앱 파트 착수)
+## 현재 위치 (2026-09-24 — M5 선행 경로: 권한 재설계 → 대화 단계 → 중계 → 앱)
+
+> 앱 테스크 A1~A5 완료 후, 남은 앱 테스크(M5·M6)가 전부 DB·중계 선행을 요구해 **사용자가 범위를 넓혔다**(2026-09-24):
+> **"M5 까지 가는 길"** — 웹 화면은 건드리지 않는다. 마이그레이션은 **로컬 PG16 회귀로만 검증하고 운영 DB 에 적용하지 않는다**(적용은 한 건씩 별도 요청).
+
+- **사용자 결정(2026-09-24)**: ① **INSERT 권한** — 대화 기록(sessions·session_logs·session_analyses·safety_events)·연대기(chronicle_entries) INSERT 와
+  대화 처리 권한(`can_process_profile`·`reserve_live_token`)을 **같은 기관 돌봄팀 전원**으로 연다(교대 근무자도 대화 진행).
+  **동의(consents)·보호자 공개(guardian_shares) INSERT 는 배정·관리자 기준 유지**(민감). DELETE 는 계획대로 배정·관리자 유지.
+  계획 D4 는 SELECT/UPDATE 만 적었고 INSERT 는 비어 있었다 — "배정은 접근 게이트가 아니다"(계획 D3) 와 맞춘 결정이다.
+  ② **사회복지사·센터장도 세션을 진행**할 수 있다(돌봄팀 전원).
+
+| # | 계획·tasks | 내용 | 상태 |
+|---|---|---|---|
+| B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ⏳ |
+| B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ⏳ |
+| B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ⏳ |
+| B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ⏳ |
+| B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ⏳ |
+| B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ⏳ |
+| B7 | C2 · T21.2 | core `session-phase.ts` + `PROMPT_VERSION` 저장 | ⏳ |
+| B8 | C3 · T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 처리 | ⏳ |
+| B9 | M5 · T21.6 | 앱 원격 일시정지 수신("잠시 쉬어요" + 마이크 중단) | ⏳ |
+
+- 로컬 검증 도구: `bash supabase/tests/run-rls-regression.sh`(PG16 실기동, 전 마이그레이션 적용 → `rls_regression.sql`) — 이 컨테이너에서 4초.
+
+## 이전 위치 (2026-09-24 — 앱 파트 착수)
 
 > 이 세션은 **앱 파트만** 맡는다(사용자 지시). 작업 브랜치 `claude/app-development-session-4cvhm5`, 테스크별 커밋.
 > 기준선(착수 전 실행): typecheck 6패키지 · test **631**(core 253 + data 141 + voice-relay 43 + mobile 194).
