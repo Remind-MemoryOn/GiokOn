@@ -200,15 +200,18 @@
 
 ## 6. 앱 파트 (`apps/mobile`)
 
-| # | 내용 | 파일 |
-|---|---|---|
-| **M1** | **직접 모드 제거** — `RELAY_MODE` 분기·직접 UI 전체 삭제. `EXPO_PUBLIC_VOICE_RELAY_URL` 미설정 시 세션 시작 차단 | `app/session/talk.tsx`, `src/store/appStore.ts` |
-| **M2** | **어르신 표시 모드 분리** — `talk.tsx`(요양보호사) + `app/session/elder.tsx`(표시 전용) 신설, 공용 로직은 `src/features/session/` 으로 추출 | 신규 + 기존 |
-| **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` |
-| **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` |
-| **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` |
-| **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 |
-| **M7** | `persistWholeSession`(폴백) 저장 순서를 `finalizeSession` 과 맞춘다(세션 생성 → 턴·분석 → `ended`). 워커 첫 시도 성공률이 오른다 | `src/data/session-persistence.ts` |
+> **진행 현황(2026-09-24)** — ✅ M1·M2·M3·M4·M7 완료(PR `claude/app-development-session-4cvhm5`). ⏳ M5·M6 은 선행(D6·C3 / D7·C4 push) 대기.
+> 상세 기록은 루트 `AGENTS.md` "현재 위치 (2026-09-24 — 앱 파트 착수)".
+
+| # | 내용 | 파일 | 상태 |
+|---|---|---|---|
+| **M1** | **직접 모드 제거** — `RELAY_MODE` 분기·직접 UI 전체 삭제. `EXPO_PUBLIC_VOICE_RELAY_URL` 미설정 시 세션 시작 차단 | `app/session/talk.tsx`, `src/store/appStore.ts` | ✅ 2026-09-24 — 중계 전용 엔진·클라이언트, `/session/loading`·기기 TTS 삭제, 시작 화면에서 주소 검증. RN `URL` 이 `wss` 경로를 못 읽던 검사도 수정 |
+| **M2** | **어르신 표시 모드 분리** — `talk.tsx`(요양보호사) + `app/session/elder.tsx`(표시 전용) 신설, 공용 로직은 `src/features/session/` 으로 추출 | 신규 + 기존 | ✅ 2026-09-24 — ⚠️ 별도 라우트 대신 **`talk.tsx` 안의 표시 모드 전환**(컨트롤러 수명 분리 방지). 화면 `src/features/session/ElderView.tsx`. "시작"과 동시에 전환 |
+| **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` | ✅ 2026-09-24 — `check:figma` 부재 규칙으로 고정 |
+| **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` | ✅ 2026-09-24 — **PIN**(4자리, 요양보호사별, 서버 미전송, 5회 실패 30초 잠금). 진입은 어르신 화면의 작은 '선생님' 버튼. 설정 화면에서 변경 |
+| **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` | ⏳ 선행: D6·C3 |
+| **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 | ⏳ 선행: D7·C4(push) |
+| **M7** | `persistWholeSession`(폴백) 저장 순서를 `finalizeSession` 과 맞춘다(세션 생성 → 턴·분석 → `ended`). 워커 첫 시도 성공률이 오른다 | `src/data/session-persistence.ts` | ✅ 2026-09-24 — `active` → 턴 → 분석 → 이벤트 → `ended` |
 
 **기기 1대 = 세션 1개는 이미 보장된다** — 중계 `main.ts` 의 `inUse` Set 이 `SESSION_BUSY` 로
 막는다. 여러 기기 병렬은 각기 다른 `session_id` 라 그대로 동작한다.
@@ -262,7 +265,9 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 
 ## 8. 웹·앱 연동 파트
 
-**C1. `packages/core` 정리** — `ai.ts` + `ai.test.ts` **파일 삭제**, `voice-flow.ts`(호출처 0) 삭제,
+**C1. `packages/core` 정리** — ✅ **2026-09-24 완료**(단 `buildJournalDraft` 는 웹 `JournalWritePage` 가 아직 써서 W1 때 삭제 ·
+웹 `lib/ai.ts` 는 `export *` shim 이라 영향 없어 그대로). 세션은 빈 기록으로 시작하고 중계 첫 인사가 출력 가드를 통과해야 첫 AI 턴이 된다(`acceptOpener`).
+원래 내용: `ai.ts` + `ai.test.ts` **파일 삭제**, `voice-flow.ts`(호출처 0) 삭제,
 `journal.ts` 의 `buildJournalDraft`(명시적 mock) 삭제, 웹의 `apps/web/src/lib/ai.ts`(`@giokon/core` 재수출 shim, importer 0) 삭제. `conversation.ts` 의 `respondToUserTurn` →
 **`evaluateUserTurn()` 으로 축소**(안전 계산만, `generateReply` 호출 제거).
 **절대 유지**: `safety.ts` 전체(`assessUtterance`·`screenAiUtterance`·`buildCaregiverAlert`·
@@ -277,7 +282,7 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
   `인지 저하`·`우울`·`정서 불안`·`병원 진료 권장` 추가, 지시문 보강
 - `prompt.ts`: `buildSystemPrompt(..., phase?)`, **`PROMPT_VERSION='v2.0'` 을
   `sessions.prompt_version` 에 persist**(지금은 선언만 되고 아무도 읽지 않는다).
-  `RESPONSE_JSON_SCHEMA` 삭제(직접 모드 폐기로 사문화)
+  ~~`RESPONSE_JSON_SCHEMA` 삭제(직접 모드 폐기로 사문화)~~ ✅ 2026-09-24 삭제(C1 과 함께)
 - `analysis.ts`: `opinionSignals?`·`baselineDeltas?` 추가 — 파일럿 범위 밖이지만 **데이터는 지금부터**
 
 **C3. `apps/voice-relay`**

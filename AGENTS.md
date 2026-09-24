@@ -42,8 +42,8 @@
   **직접 Gemini Live 모드는 폐기한다** — 검열되지 않은 원본 오디오 경로가 코드에 살아 있으면
   "AI 산출물이 사람 확인 없이 나가지 않는다"가 코드 레벨에서 거짓이 되고, 단계·원격 제어·
   안전 일시정지가 전부 서버 권위인데 직접 모드에는 서버가 없다.
-  ⚠️ `EXPO_PUBLIC_VOICE_RELAY_URL` 은 **필수 변수로 승격**한다(미설정 시 세션 시작 차단).
-  현재 `apps/mobile/.env.example` 에 **없으므로 추가해야 한다.**
+  ✅ (2026-09-24) 앱에서 직접 모드 코드를 삭제했다. `EXPO_PUBLIC_VOICE_RELAY_URL` 은 **필수**(없거나 형식이 틀리면 시작 화면에서 차단),
+  `apps/mobile/.env.example` 필수 3/3. ⏳ 서버 쪽 `live-token` 중계 전용화(T23.5)는 남았다.
 - `apps/voice-relay` (@giokon/voice-relay): **음성 중계 서버**(Node + ws, Docker).
   `src/{main,server,relay,output}.ts` — 세션 권한·연결 통제·턴 식별·안전 규칙 검증을 거친
   응답만 Clova TTS 로 내보낸다. 검증 안 된 원문 재생·늦은 이전 응답 혼입을 서버가 막는다.
@@ -51,8 +51,8 @@
   새 세션에서 `pnpm install --filter @giokon/voice-relay` 를 먼저 실행할 것.
   안 하면 `pnpm -r typecheck` 가 TS2688 로, `pnpm -r test` 가 여기서 끊겨 모바일 테스트까지 안 돈다.
 - `packages/core`: 도메인 타입·**안전 규칙**·프롬프트·분석.
-  ⚠️ 기획 변경으로 **규칙 기반 대화 로직(`ai.ts` 779줄)은 삭제 대상**이다 — 중계 모드에서 이미
-  결과가 버려지는 폴백 전용 코드다. **안전 계층**(`assessUtterance`·`screenAiUtterance`·
+  ✅ (2026-09-24) **규칙 기반 대화 로직(`ai.ts` 779줄)·`voice-flow.ts` 는 삭제했다**(C1). 대화 생성은 중계만 한다.
+  `conversation.ts` 는 안전 평가 `evaluateUserTurn` 만 남았다. **안전 계층**(`assessUtterance`·`screenAiUtterance`·
   `buildCaregiverAlert`·`buildSafetyEventDraft`)은 **절대 유지**한다.
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
@@ -78,6 +78,10 @@
   `docs/{compliance,security,ai-safety,accessibility}.md`(인프라는 `security.md` 에 합쳤다).
 - **커밋은 `main` 브랜치에 직접** (사용자 승인). ※ 원격 세션이 작업 브랜치를 지정해 주면 그쪽을 따른다.
 - **테스크별 커밋(2026-09-19 사용자 확정)**: 각 테스크의 개발·검증·진행 기록을 마친 뒤 반드시 커밋하고 다음 테스크로 넘어간다.
+- **계획 문서 완료 표시 필수(2026-09-24 사용자 지시)**: 테스크를 끝내면 커밋 전에 **팀원이 보는 계획 문서 전부**에 완료(✅ 날짜)·남음(⏳ 선행 조건)을
+  표시한다 — 이 파일만이 아니라 `docs/plans/pilot-development-plan.md`(SoT, §5~§8 상태 열) · `docs/tasks.md` · `docs/plans/launch-checklist.md` ·
+  해당 앱의 `README.md` · `docs/structure.md` §4 · `docs/new-hire/02-status.md`·`03-remaining.md` · 관련 요구 ID(`docs/requirements.md`) · `PLAN.md`.
+  계획과 다르게 구현했으면 그 차이도 같은 자리에 적는다.
 - **Supabase 배포 기본 방식(2026-09-09 사용자 확정)**: 특별한 호환성·운영 문제가 없으면 Supabase
   CLI를 우선 사용한다. 대상 프로젝트와 함수명을 명시하고, 기존 JWT 검증 등 운영 설정을 확인·유지하며,
   배포 후 상태와 소스를 검증한다. SQL Editor로 이미 적용한 DB 변경은 이력·실제 스키마를 대조한 뒤
@@ -107,9 +111,9 @@
     (자격·동의·사용량 검사 포함) **모델 ID 를 응답에 담아 돌려준다.** 앱·중계는 그 값을 따른다.
     ⚠️ **모델 교체는 `GEMINI_LIVE_MODEL` 시크릿으로만 한다** — `.env.example` 은 템플릿이라
     런타임에 읽히지 않는다. `supabase secrets set` 을 해야 실제로 바뀐다.
-    ⚠️ 코드의 `DEFAULT_MODEL` 폴백 2곳(`live-token/index.ts`·`engine.ts`)과
-    `client.ts` 의 설계 근거 주석이 아직 3.1 기준이다 — **3.8 로 재검증 후 갱신 필요**
-    (3.1에서 도출한 제약: proactivity/affective 미포함, 자동 VAD off, NO_INTERRUPTION).
+    ⚠️ 코드의 `DEFAULT_MODEL` 폴백이 `live-token/index.ts` 에 아직 3.1 기준으로 남았다(앱 `engine.ts` 쪽은 2026-09-24 직접 모드와 함께 삭제).
+    3.1 에서 도출한 설정(proactivity/affective 미포함, 자동 VAD off, NO_INTERRUPTION)은 이제 **중계 `relay.ts` 의 setup** 에만 있다 —
+    **3.8 로 재검증 후 갱신 필요**(서버 파트).
   - **서버가 출력을 검증한다**: Gemini 의 `inlineData` 오디오는 **앱에 전달되지 않는다.**
     `screenAiUtterance` 를 통과한 텍스트만 Clova 로 합성해 내보낸다(`voice-relay/output.ts`).
     턴 식별·재생 영수증 게이팅(v2)·복구 맥락(v3)도 중계가 소유한다.

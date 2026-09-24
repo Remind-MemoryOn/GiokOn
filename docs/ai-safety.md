@@ -18,6 +18,7 @@
 > · 웹 대화 화면 배선). 단위 106 + 세션 시뮬레이션 8 = **테스트 114** · RLS 회귀 통과.
 >
 > ⚠️ **2026-09-23**: `ai.ts`(규칙 기반 대화)는 **삭제 대상**이다. 분류·안전 응답·가드레일(`safety.ts`)은 남는다. 현재 동작은 §0-1.
+> ✅ **2026-09-24 삭제 완료**(파일럿 계획 C1) — 발화 평가는 `conversation.ts` 의 `evaluateUserTurn` 이 한다. 아래 §1 의 "대응 문장"은 기록용이다.
 
 ## 0. 설계 원칙 (근거)
 
@@ -90,7 +91,7 @@
 - **3중 방어**: ① LLM 호출 **전** 결정론 위기 감지(비용·지연 없이 확실한 처리) → ② 시스템 프롬프트(돌봄 원칙·위기 프로토콜 인코딩) → ③ 호출 **후** 출력 가드레일. 모델의 safety.risk 출력과 결정론 감지는 **OR 결합**(하나라도 위기면 에스컬레이션).
 - `buildSystemPrompt(elder, chronicle)`: 존댓말·짧은 문장(TTS)·질문 1개·교정 금지·반복 수용·비의료·위기 프로토콜·AI 정체성 고지 + 연대기 개인화. `PROMPT_VERSION`으로 회귀 추적.
 - ~~`RESPONSE_JSON_SCHEMA`(Structured Outputs): question/topic/switchTopic/safety{risk,categories} 강제 — 파싱 실패 제거, 분류 enum은 결정론 레이어와 일치(테스트로 고정).~~
-  → 2026-09-23 **삭제 대상**(직접 모드 전용 — Live 는 Structured Outputs 를 보장하지 않는다). 중계 경로에는 모델의 `safety.risk` 출력이 없으므로
+  → 2026-09-23 **삭제 대상** → ✅ 2026-09-24 삭제(직접 모드 전용 — Live 는 Structured Outputs 를 보장하지 않는다). 중계 경로에는 모델의 `safety.risk` 출력이 없으므로
   위 "OR 결합"은 **결정론 감지 단독**이 된다. `PROMPT_VERSION` 은 파일럿에서 `sessions.prompt_version` 에 저장한다(지금은 선언만).
 
 ## 4. 투명성 (M12.3) — AI 기본법(2026.1 시행)
