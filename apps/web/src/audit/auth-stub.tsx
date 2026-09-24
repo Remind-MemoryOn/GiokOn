@@ -309,24 +309,51 @@ function seedAnalyses(q: typeof queryClient) {
   q.setQueryData(queryKeys.sessionAnalyses(E1), rows.filter((r) => r.profile_id === E1));
 }
 
-/** 요양일지 목록(207:1147) 감사용 — 시안과 같은 4건. */
+/** 요양일지 목록(207:1147) 감사용 — 시안과 같은 4건. (D5: 저장소 program_journals 모양) */
 function seedJournals(q: typeof queryClient) {
   const p2 = window.location.pathname;
   if (!/\/caregiver\/journal\//.test(p2) && !/\/caregiver\/shares\//.test(p2)) return;
+  // 공개 관리는 확정 + 보호자 문장 승인 일지만 다룬다(서버 공개 게이트) → 그 화면에서는 확정본으로 심는다.
+  // 일지 목록은 확정 전 수기 일지(휴지통이 보이는 상태 — 시안)로 심는다.
+  const shares = /\/caregiver\/shares\//.test(p2);
   const j = (id: string, date: string, content: string) => ({
     id,
     org_id: ORG.id,
     profile_id: E1,
-    author_id: USER.id,
+    session_id: null,
+    status: shares ? ('final' as const) : ('pending_review' as const),
     journal_date: date,
-    content,
-    source: 'typed' as const,
-    photo_path: null,
-    status: 'draft' as const,
+    operated_from: null,
+    operated_to: null,
+    program_type: '인지활동 - 회상훈련',
+    location: null,
+    facilitator_user_id: USER.id,
+    participants: null,
+    goal: null,
+    activity_content: content,
+    participant_response: null,
+    opinion_collected: null,
+    overall_evaluation: null,
+    next_plan: null,
+    tool_used: null,
+    delivered: true,
+    non_delivery_reason: null,
+    guardian_text: shares ? content : null,
+    guardian_text_approved_by: shares ? USER.id : null,
+    guardian_text_approved_at: shares ? `${date}T03:00:00Z` : null,
+    finalized_by: shares ? USER.id : null,
+    finalized_at: shares ? `${date}T03:00:00Z` : null,
+    draft_generated_at: null,
+    generation_attempts: 0,
+    last_error: null,
+    edit_reason: null,
+    created_by: USER.id,
     created_at: `${date}T02:00:00Z`,
     updated_at: `${date}T02:00:00Z`,
   });
-  q.setQueryData(queryKeys.careJournals(E1), [
+  // 작성 화면이 확정 권한을 묻는다(심지 않으면 조회 실패 배너가 레이아웃을 민다). 요양보호사 기본값 = 권한 없음.
+  q.setQueryData([...queryKeys.orgCapabilities, 'journal_finalize', USER.id, USER.role], false);
+  q.setQueryData(queryKeys.programJournals(E1), [
     j('j1', '2026-07-30', '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.'),
     j('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.'),
     j('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
@@ -334,7 +361,7 @@ function seedJournals(q: typeof queryClient) {
   ]);
   // 공개 관리가 일지↔사진 지도를 만든다(W-2c: "비공개 전환" 이 사진 공개까지 함께 내린다).
   // 심어 두지 않으면 이 쿼리가 실패하고 셸의 오류 배너가 떠 레이아웃이 밀린다.
-  q.setQueryData([...queryKeys.orgJournalPhotos, ['j1', 'j2', 'j3', 'j4']], []);
+  q.setQueryData([...queryKeys.orgProgramJournalPhotos, ['j1', 'j2', 'j3', 'j4']], []);
   // 공개 설정 모달이 연결된 보호자 이름을 읽는다. **빈 배열**로 둔다 —
   // 이름을 심으면 라벨이 "연결된 보호자가 없어요"(실측 197)에서 길어져 프로브가 깨진다.
   q.setQueryData(queryKeys.guardianLinks(E1), []);
@@ -413,10 +440,10 @@ function seedGuardian(q: typeof queryClient) {
     id, org_id: ORG.id, profile_id: E1, item_type: type, item_id: itemId,
     note: null, shared_by: USER.id, shared_at: at, revoked_at: null, revoked_by: null,
   });
+  // D5: 보호자는 공개된 확정 일지의 **보호자 문장만** 받는다(get_my_shared_journals 모양).
   const journal = (id: string, date: string, content: string) => ({
-    id, org_id: ORG.id, profile_id: E1, author_id: USER.id,
-    journal_date: date, source: 'typed', photo_path: null, status: 'final', content,
-    created_at: `${date}T10:00:00Z`, updated_at: `${date}T10:00:00Z`,
+    id, profile_id: E1, journal_date: date, operated_from: null, operated_to: null,
+    guardian_text: content, finalized_at: `${date}T10:00:00Z`,
   });
   const analysis = (id: string, at: string, topic: string, summary: string) => ({
     id, org_id: ORG.id, session_id: 's1', profile_id: E1, user_id: USER.id,

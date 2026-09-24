@@ -131,7 +131,8 @@ export function FeedPage() {
         out.push({
           key: s.id, kind: 'journal', at: s.shared_at, on: j.journal_date,
           title: Number.isNaN(d.getTime()) ? '요양일지' : `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`,
-          body: j.content, to: `/guardian/feed/journal/${j.id}`,
+          // D5: 보호자에게는 승인된 **보호자 문장**만 온다(공단 서식은 서버가 보내지 않는다).
+          body: j.guardian_text ?? '', to: `/guardian/feed/journal/${j.id}`,
         });
       } else if (s.item_type === 'analysis') {
         const row = analyses.get(s.item_id);

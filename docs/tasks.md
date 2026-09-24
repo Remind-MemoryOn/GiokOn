@@ -25,10 +25,10 @@
 ### M20 — 프로그램 일지 자동 생성 (머지 단위 ②) → `PLAN.md` M20
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T20.1 | `care_journals`·`journal_photos` DROP → `program_journals`(공단 12필드 개별 컬럼)·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` + `care_grade` | D5 | T22.3 | ⏳ |
-| T20.2 | 트리거 4종: **확정 가드(`auth.uid() is null` 이면 `final` 불가)** · 확정 후 수정 이력 · 세션 종료 enqueue · 공개 게이트 | D5 | T20.1 | ⏳ |
-| T20.3 | `generated-session.ts` 확장 — 공단 필드·보호자 문장 스키마, 금지어 `인지 저하`·`우울`·`정서 불안`·`병원 진료 권장` 추가 | C2 | — | ⏳ |
-| T20.4 | `program-journal.ts` 신규 — `mapAnalysisToJournalFields`·`screenJournalDraft`(적중 필드만 비움)·`buildGuardianText` | C2 | T20.3 | ⏳ |
+| T20.1 | `care_journals`·`journal_photos` DROP → `program_journals`(공단 12필드 개별 컬럼)·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` + `care_grade` | D5 | T22.3 | ✅ 2026-09-24 운영 적용 — `20260924070000_program_journals.sql`: DROP(운영 행 0) · 4표 · `care_grade` · 보호자는 `get_my_shared_journals`(보호자 문장만) |
+| T20.2 | 트리거 4종: **확정 가드(`auth.uid() is null` 이면 `final` 불가)** · 확정 후 수정 이력 · 세션 종료 enqueue · 공개 게이트 | D5 | T20.1 | ✅ 2026-09-24 운영 적용 — 확정 가드(사람+`journal_finalize`+진행자) · 확정 불가역 · 확정 후 수정 사유·이력 · 세션 종료 enqueue(+`journal_generation_jobs`) · 공개 게이트(확정+보호자 문장 승인) · 재시도 RPC. 회귀 변형 13종 실패 확인 |
+| T20.3 | `generated-session.ts` 확장 — 공단 필드·보호자 문장 스키마, 금지어 `인지 저하`·`우울`·`정서 불안`·`병원 진료 권장` 추가 | C2 | — | ✅ 2026-09-24 — 선택 섹션(participantResponse·opinion·guardianText, 옛 캐시 호환) + 금지어 4종(`DIAGNOSTIC_EXPRESSION`) |
+| T20.4 | `program-journal.ts` 신규 — `mapAnalysisToJournalFields`·`screenJournalDraft`(적중 필드만 비움)·`buildGuardianText` | C2 | T20.3 | ✅ 2026-09-24 — `program-journal.ts`(종합평가·다음 계획은 비움 · 넘치면 자르지 않고 비움 · 초안은 항상 pending_review) |
 | T20.5 | ⚠️ `session-report` 의 `REPORT_ALLOWED_USER_IDS` 데모 허용목록 → org 게이트(안 하면 파일럿 전원 403) | C4 | — | ⏳ |
 | T20.6 | 워커 `program-journal-draft`(큐 소비·지수 백오프·`attempts>5` 실패) — **`pending_review` 까지만** | C4 | T20.2, T20.5 | ⏳ |
 | T20.7 | 앱 폴백 저장 순서 정리(세션 생성 → 턴·분석 → `ended`) | M7 | — | ✅ (2026-09-24) |

@@ -707,7 +707,7 @@ const SCREENS = [
     /tone="journal"[\s\S]{0,20}tag/,
   ]],
   [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
-    /<ConfirmDialog$/m, /useDeleteCareJournal/, { absent: /window\.confirm\(/ },
+    /<ConfirmDialog$/m, /useDeleteProgramJournal/, { absent: /window\.confirm\(/ },
     /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
   ]],
 
@@ -729,7 +729,8 @@ const SCREENS = [
     /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
     /await removeJournalPhotoFiles\(uploaded\)/,           // 첨부 실패 시 파일 되돌리기
     /URL\.revokeObjectURL/,                                 // 미리보기 URL 해제
-    /activity_from: from \|\| null/, /activity_to: to \|\| null/,
+    // D5(2026-09-24): 저장소가 program_journals 로 바뀌어 칸 이름만 operated_from/to — 규칙(적은 것만, 기본값 없음)은 같다.
+    /operated_from: from \|\| null/, /operated_to: to \|\| null/,
     /const \[from, setFrom\] = useState\(''\);/,          // 시각 기본값을 지어내지 않는다
     { absent: /AI 초안은 실 연동 후 제공됩니다/ },
     { absent: /음성 인식 연동 전이라 아래 원문은 직접 적어 주세요/ },
@@ -866,7 +867,7 @@ const SCREENS = [
   [`${WEB}/src/pages/guardian/JournalDetailPage.tsx`, '요양일지 상세: 섹션 간격 35.35 · 사진 281×177 3열(0/300/601)', [
     /const SEC_GAP = 35\.35;/, /w: 281, h: 177, xs: \[0, 300, 601\]/,
     /<SectionBody fx="50:1089" under pre width=\{690\}>/,
-    /journal\?\.activity_from \|\| journal\?\.activity_to/,   // 활동 시간이 붙었다(W-4)
+    /journal\?\.operated_from \|\| journal\?\.operated_to/,   // 활동 시간이 붙었다(W-4 · D5 칸 이름)
     { absent: /활동 요약은 아직 care_journals 에 칸이 없다/ },
     /공개된 활동 사진이 아직 없어요/,
   ]],

@@ -136,7 +136,7 @@
 ## Supabase
 - **운영 프로젝트 = `MemoryOn`(ref `ufkbzpdjomtmxjipmwub`, 서울 ap-northeast-2)** — 앱·웹이 함께
   쓰는 실 DB다. 데이터 국내 보관 요건 충족. (구 도쿄 `GiokOn`/`xilmtqnotomuyjifenmo` 는 이전 완료로 사용하지 않는다.)
-- 마이그레이션 **60종 전부 운영 적용**(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것). ✅ **2026-09-24 사용자 지시로 미적용 8건 적용**: 전사 출처(`20260919175923`) + 파일럿 `20260924000000`~`060000`(060000 은 적용 직후 보안 advisor 가 잡은 `app.default_capability_roles` search_path 고정). MCP 적용 후 이력 버전을 **파일명으로 정정** — 저장소에만 있는 버전 0건. 라이브에만 있는 이력 2건: `20260903002002`(아래 ℹ️) · `20260921000000_backfill_orphan_auth_users`(누군가 SQL 로 직접 넣은 데이터 보정 — 저장소 파일 없음, 그대로 둔다). 적용 전 점검: `chronicle_entries` 기관 불일치 0 · 활성 세션 0 · ALTER POLICY 대상 29개 존재. advisor 잔여 경고는 기존 유형(authenticated 가 부르는 definer RPC = 설계, `find_login_email` = 의도, `list_inquiries`·`rls_auto_enable` anon 실행 = 적용 전부터 — 후자는 저장소에 없는 대시보드 생성 함수).
+- 마이그레이션 **61종 전부 운영 적용**(2026-09-24 D5 `20260924070000` 포함)(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것). ✅ **2026-09-24 사용자 지시로 미적용 8건 적용**: 전사 출처(`20260919175923`) + 파일럿 `20260924000000`~`060000`(060000 은 적용 직후 보안 advisor 가 잡은 `app.default_capability_roles` search_path 고정). MCP 적용 후 이력 버전을 **파일명으로 정정** — 저장소에만 있는 버전 0건. 라이브에만 있는 이력 2건: `20260903002002`(아래 ℹ️) · `20260921000000_backfill_orphan_auth_users`(누군가 SQL 로 직접 넣은 데이터 보정 — 저장소 파일 없음, 그대로 둔다). 적용 전 점검: `chronicle_entries` 기관 불일치 0 · 활성 세션 0 · ALTER POLICY 대상 29개 존재. advisor 잔여 경고는 기존 유형(authenticated 가 부르는 definer RPC = 설계, `find_login_email` = 의도, `list_inquiries`·`rls_auto_enable` anon 실행 = 적용 전부터 — 후자는 저장소에 없는 대시보드 생성 함수).
   16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·org RBAC·감사 로그 +
   2026-09 보안 하드닝 R002·R005·R007·R010~R012).
 - ✅ **마이그레이션 이력 정합 완료(2026-09-13, 사용자 승인 후 적용)**. 그전까지는 이력이
@@ -217,8 +217,8 @@
 | WT4 | W5 · T21.7 | 세션 설계 목표 시간(≤10분, 초기값 `org_settings.target_minutes`) · 기관 기본 피할 주제 · 단계 미리보기 | D3·D6(✅ 운영 적용) | ⏳ |
 | WT5 | W2 · T21.5 | 감독 화면(반응형) + 원격 일시정지·재개·종료 + data `supervision.ts` + realtime `session_interventions` | D6(✅ 운영 적용) | ⏳ |
 | WT6 | W3·W4 일부 · T20.9 | 보호자 `분석`→`대화 관찰 리포트` · 리포트 하단 고정 문구 · `session_summary` 미렌더 버그 · 죽은 `'report'` | 없음 | ⏳ |
-| WT7 | W1·W3 · T20.8 | 프로그램 일지 목록·상세·확정·이력·재시도 + 요양보호사 네비 이름 · `buildJournalDraft`·`SessionJournalDialog` 삭제 | **D5·C4 미착수** | ⛔ 대기 |
-| WT8 | W8 · T24.3 | 어르신 `care_grade` | **D5 미착수** | ⛔ 대기 |
+| WT7 | W1·W3 · T20.8 | 프로그램 일지 목록·상세·확정·이력·재시도 + 요양보호사 네비 이름 · `buildJournalDraft`·`SessionJournalDialog` 삭제 | ✅ D5 운영 적용(2026-09-24) · ⏳ C4 워커 | ⛔ 대기 |
+| WT8 | W8 · T24.3 | 어르신 `care_grade` | ✅ D5 운영 적용(2026-09-24) | ⏳ |
 
 ✅ **2026-09-24 해소**: WT2~WT5 가 쓰는 RPC·테이블(`20260924*`)이 **운영에 적용됐다**(위 Supabase 절). 웹은 이제 운영 DB 기준으로 붙여도 된다.
 
@@ -236,6 +236,20 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
 - 검증: 이력 ↔ 저장소 "저장소에만 있는 버전" 0건 · RPC 9종·`complete_onboarding` 오버로드 1개(새 시그니처) · FK validated · realtime 에 `session_interventions` · `push_tokens` 직접 INSERT 권한 없음 · anon 이 `session_tick` 불가 · 기관 2곳 설정·권한표 시드(2·6행).
 - ⚠️ **이제 운영 순서의 다음은 중계 배포**다(DB 가 먼저 들어갔으므로 새 중계를 올려도 된다). 구 중계는 `can_process_session` 을 계속 쓰므로 그대로 둬도 동작한다 — 단계·원격 제어만 없다.
 - 전사 출처 v1 이 운영에 들어가 **앱 자동 대화의 저장 계약 전제(`getTranscriptStorageVersion() === 1`)가 운영에서 참**이 됐다.
+
+### 이어서 — D5 프로그램 일지(사용자 지시 "나머지 개발", 결정: **계획대로 DROP + 웹이 깨지지 않게 웹 파일까지 수정 + 검증 통과 시 바로 운영 적용**)
+
+- ✅ `20260924070000_program_journals.sql` **운영 적용**(운영 일지·사진·공개·파일 0건 확인 후). T20.1·T20.2 + T20.3·T20.4(core).
+  · 확정 가드: 사람(auth.uid) + `journal_finalize` 위임 + 진행자(같은 기관 돌봄팀) + 활동 내용 · 확정 불가역 · 확정자 서버 스탬프.
+  · 확정 후 공단 칸 수정 = 위임 + **사유(edit_reason) 필수** → `program_journal_revisions`(누가·왜·무엇 from/to). 사유는 행에 남지 않는다.
+  · 워커 칸(generating/failed·시도·오류)은 클라이언트 불가 · 보호자 문장 승인자·시각 서버 스탬프, 문장이 바뀌면 승인 해제.
+  · 세션 ended → `generating` 일지 + `journal_generation_jobs`(진행자 = 세션 시작자, tool_used "AI 대화 프로그램 보조"). 세션 일지는 삭제 불가.
+  · 공개 게이트: 일지 = 확정 + 보호자 문장 승인 · 사진 = 확정 일지. 보호자는 표를 못 읽고 **RPC 로 보호자 문장만**(계획 W4 를 DB 로 집행).
+  · 회귀: `pilot_access.sql` D5 블록 + `rls_regression.sql` 5.9·5.10 이관(보호자 문장 승인 해제 시 보호자에게서 사라짐 포함). 가드 제거 변형 **13종 모두 실패** 확인.
+- 웹(앱 세션이 사용자 지시로 수정): 기존 요양일지 화면을 **같은 시안 그대로** 새 표에 연결(상세는 `apps/web/AGENTS.md` §3). Figma 게이트 전부 기준선 유지.
+  `check-web-design.mjs` 는 **칸 이름 정규식 3개만** 새 이름으로(Figma 실측 규칙은 그대로). ⚠️ **운영 웹은 이 PR 머지·재배포 전까지 일지 화면이 실패한다**(옛 표를 부른다).
+- core: `generated-session` 선택 섹션(participantResponse·opinion·guardianText — 배포된 `session-report` 캐시와 호환) + 금지어(인지 저하·우울·정서 불안·진료 권유). `program-journal.ts`(매핑·칸 단위 차단·보호자 문장).
+- ⏳ 남은 것(서버 파트): C4 `program-journal-draft` 워커(큐 소비 → 이 core 함수로 칸 채움 → pending_review) · `session-report` 허용목록 → 기관 게이트(T20.5).
 
 ## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
 

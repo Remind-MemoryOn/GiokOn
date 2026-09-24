@@ -25,8 +25,8 @@ export type RealtimeTable =
   | 'safety_events'
   | 'notifications'
   | 'messages'
-  | 'journal_photos'
-  | 'care_journals'
+  | 'program_journal_photos'
+  | 'program_journals'
   | 'consents'
   | 'elder_codes'
   | 'inquiries'
@@ -73,8 +73,8 @@ const DEFAULT_TABLES: RealtimeTable[] = [
   'safety_events',
   'notifications',
   'messages',
-  'journal_photos',
-  'care_journals',
+  'program_journal_photos',
+  'program_journals',
   'consents',
   'elder_codes',
   'inquiries',
@@ -89,8 +89,9 @@ function invalidateFor(
   const profileId =
     typeof event.row?.profile_id === 'string' ? (event.row.profile_id as string) : undefined
   switch (event.table) {
-    case 'care_journals':
-      void qc.invalidateQueries({ queryKey: ['care_journals'] })
+    case 'program_journals':
+      // 생성 중 → 확인 대기 전환(워커)·확정이 목록에 바로 보이게. 보호자 문장 공개 여부도 바뀔 수 있다.
+      void qc.invalidateQueries({ queryKey: ['program_journals'] })
       void qc.invalidateQueries({ queryKey: queryKeys.myShares })
       break
     case 'consents':
@@ -156,12 +157,12 @@ function invalidateFor(
       void qc.invalidateQueries({ queryKey: queryKeys.myMessages })
       if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.messages(profileId) })
       break
-    case 'journal_photos': {
+    case 'program_journal_photos': {
       // 사진 행은 일지에 매달린다 — profile_id 가 아니라 journal_id 를 본다.
       const journalId =
         typeof event.row?.journal_id === 'string' ? (event.row.journal_id as string) : undefined
-      void qc.invalidateQueries({ queryKey: queryKeys.orgJournalPhotos })
-      if (journalId) void qc.invalidateQueries({ queryKey: queryKeys.journalPhotos(journalId) })
+      void qc.invalidateQueries({ queryKey: queryKeys.orgProgramJournalPhotos })
+      if (journalId) void qc.invalidateQueries({ queryKey: queryKeys.programJournalPhotos(journalId) })
       break
     }
   }

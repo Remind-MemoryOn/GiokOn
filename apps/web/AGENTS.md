@@ -163,6 +163,11 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
   (URL `?elder=` → localStorage → 첫 연결). **승인 목록에 있는 id 만 받아들인다** —
   없는 id 로 화면이 뜨면 "이 어르신은 기록이 없다"는 오해가 된다.
   화면마다 `links.find(approved)` 로 되돌아가지 말 것(둘째 어르신을 못 고르게 된다).
+- ⚠️ **2026-09-24 D5 운영 적용 — `care_journals`·`journal_photos` 는 없다.** 기존 요양일지 화면(목록·작성·공개·보호자 상세)은
+  W1 전까지 **같은 시안 그대로 `program_journals` 에** 쓴다(본문=`activity_content`, 활동 시간=`operated_from/to`, 진행자=본인).
+  "저장"은 확정 권한(`useHasCapability('journal_finalize')`)이 있을 때만 확정, 없으면 확인 대기로 저장하고 알린다.
+  확정 일지는 수정 사유 칸이 없어 이 화면에서 고치지 않는다. 공개는 **확정 + 보호자 문장 승인** 일지만(서버 게이트),
+  보호자 화면은 `get_my_shared_journals` 의 **보호자 문장만** 렌더한다. 서버 오류 코드는 `lib/journalErrors.ts` 가 문구로 바꾼다.
 - **요양일지 초안은 지금 두 경로다**(`JournalWritePage` — W1 이 프로그램 일지로 대체하기 전까지의 현재 코드).
   둘 다 **자동 저장·자동 공개하지 않는다** — 본문에 넣을 뿐이고, 저장·공개는 담당자 동작이다.
   · **규칙 기반** `AI 초안 만들기` → core `buildJournalDraft`(W1 때 삭제 — 루트 AGENTS C1 결정).
@@ -236,6 +241,8 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
 **현재 통과 수치(2026-09-24, `main` `6e8c1b9` 에서 실제 실행)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
 잉크 810 + 이미지 564 + 사이드바 137** · `route-smoke` **65/65**(콘솔 오류 0) · `check:a11y` **57화면**(차단 0 · 대비 미달 26종·283곳은
 비차단 보고) · 테스트 **678**(core 212 + data 155 + mobile 261 + voice-relay 50) · 마이그레이션 파일 59.
+  ↳ **2026-09-24 D5 뒤 재실행**: `check:design` 186 · `check:figma-web` 1511 + 잉크 810 + 이미지 564 + 사이드바 137 · `route-smoke` 65/65 ·
+  `check:a11y` 57화면(대비 미달 26종·283곳 그대로) · 테스트 **693**(core 224 + data 158 + mobile 261 + voice-relay 50) · 마이그레이션 파일 61.
 숫자가 줄면 무언가를 지운 것이다 — 늘리는 방향으로만 움직인다.
 ⚠️ **이미지 581 → 564 는 삭제가 아니다**(2026-09-11 PR #10): 휴지통 아이콘 17곳을 `object-contain` 으로 바꿔
 **판정 대상에서 빠졌다**(아래 규칙). 실측으로 564 + 17 = 581 을 확인했다.
