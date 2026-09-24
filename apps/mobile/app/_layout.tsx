@@ -14,6 +14,7 @@ import { ProtectedNavigator } from '../src/auth/ProtectedNavigator';
 import { useProcessingGuard } from '../src/auth/useProcessingGuard';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import { ConfigError } from '../src/components/ConfigError';
+import { QueryFailureBanner } from '../src/components/QueryFailureBanner';
 import { FONT_MAP } from '../src/lib/fonts';
 
 // fetch 폴리필의 status 0 크래시 방어망을 먼저 건다(요청이 나가기 전에).
@@ -67,7 +68,10 @@ export default function RootLayout() {
             <RealtimeBridge />
             <StatusBar style="dark" />
             <ErrorBoundary>
-              <ProtectedNavigator />
+              <View style={{ flex: 1 }}>
+                <QueryFailureBanner />
+                <ProtectedNavigator />
+              </View>
             </ErrorBoundary>
           </AuthProvider>
       </SafeAreaProvider>
