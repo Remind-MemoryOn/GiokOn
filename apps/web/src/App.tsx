@@ -18,6 +18,7 @@ import {
 import { DashboardPage } from './pages/caregiver/DashboardPage';
 import { EldersPage } from './pages/caregiver/EldersPage';
 import { ElderDetailPage } from './pages/caregiver/ElderDetailPage';
+import { ElderConsentsPage } from './pages/caregiver/ElderConsentsPage';
 import { ElderEditPage } from './pages/caregiver/ElderEditPage';
 import { ElderChroniclesPage } from './pages/caregiver/ElderChroniclesPage';
 import { ChronicleDialog } from './pages/caregiver/ChronicleDialog';
@@ -26,6 +27,7 @@ import { SessionsPage } from './pages/caregiver/SessionsPage';
 import { SessionListPage } from './pages/caregiver/SessionListPage';
 import { SessionPlanDialog } from './pages/caregiver/SessionPlanDialog';
 import { ConversationLogPage } from './pages/caregiver/ConversationLogPage';
+import { ConversationMonitoringPage } from './pages/caregiver/ConversationMonitoringPage';
 import { AnalysisPage } from './pages/caregiver/AnalysisPage';
 import { AnalysisEldersPage } from './pages/caregiver/AnalysisEldersPage';
 import { AnalysisElderPage } from './pages/caregiver/AnalysisElderPage';
@@ -112,6 +114,7 @@ function App() {
             <Route path="new" element={<ElderRegisterDialog />} />
           </Route>
           <Route path="elders/:elderId" element={<ElderDetailPage />} />
+          <Route path="elders/:elderId/consents" element={<ElderConsentsPage />} />
           <Route path="elders/:elderId/edit" element={<ElderEditPage />} />
           {/* 연대기 추가·상세는 목록 위에 뜨는 **모달**이다(Figma 196:271 · 198:991) */}
           <Route path="elders/:elderId/chronicles" element={<ElderChroniclesPage />}>
@@ -125,6 +128,7 @@ function App() {
             <Route path="plan/:sessionId" element={<SessionPlanDialog />} />
           </Route>
           <Route path="sessions/:elderId/:sessionId" element={<ConversationLogPage />} />
+          <Route path="monitoring" element={<ConversationMonitoringPage />} />
           <Route path="analysis" element={<AnalysisPage />} />
           <Route path="analysis/elders" element={<AnalysisEldersPage />} />
           <Route path="analysis/:elderId" element={<AnalysisElderPage />} />

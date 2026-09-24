@@ -61,6 +61,7 @@ export const queryKeys = {
   sessions: (profileId: string) => ['sessions', profileId] as const,
   session: (id: string) => ['sessions', 'detail', id] as const,
   sessionLogs: (sessionId: string) => ['session_logs', sessionId] as const,
+  activeConversationMonitor: ['sessions', 'active-monitor'] as const,
   chronicleCounts: ['chronicle_counts'] as const,
   sessionCounts: ['session_counts'] as const,
   currentUser: ['users', 'me'] as const,

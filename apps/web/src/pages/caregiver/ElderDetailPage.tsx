@@ -9,7 +9,7 @@
 // ⚠️ 동의 문구는 Figma 라벨이 아니라 `@giokon/core` 동의 카탈로그가 SoT 다(법무 문구가
 //    바뀌면 화면이 따라와야 한다). 어르신 필수 동의 3종이라 행 수는 디자인과 같다.
 // ⚠️ 특이사항(profiles.note)은 없을 수 있다 → 값을 만들지 않고 `—`(Figma 도 "-").
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   toElderProfile,
@@ -29,6 +29,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { cn, relativeDay } from '../../lib/utils';
+import { Dialog } from '../../components/ui/Dialog';
 
 const Y = (v: number) => v - 122;
 /** 값이 없으면 만들어내지 않는다 — 화면은 `—`. */
@@ -184,8 +185,9 @@ function InfoRow({ fx, top, label, value }: { fx: string; top: number; label: st
       </span>
       <span
         data-fx={fx}
-        className="absolute left-[485px] text-w-body font-medium leading-[28px] text-ink-900"
+        className="absolute left-[485px] w-[260px] truncate text-w-body font-medium leading-[28px] text-ink-900"
         style={{ top: Y(top) }}
+        title={value}
       >
         {value}
       </span>
@@ -195,6 +197,7 @@ function InfoRow({ fx, top, label, value }: { fx: string; top: number; label: st
 
 export function ElderDetailPage() {
   const { elderId } = useParams<{ elderId: string }>();
+  const [infoOpen, setInfoOpen] = useState(false);
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
   const profileQuery = useProfile(elderId);
@@ -403,6 +406,14 @@ export function ElderDetailPage() {
       <Title fx="161:689" left={374} top={738}>
         기본 정보
       </Title>
+      <button
+        type="button"
+        onClick={() => setInfoOpen(true)}
+        className="absolute left-[660px] text-w-label font-semibold text-accent underline"
+        style={{ top: Y(767) }}
+      >
+        전체 보기
+      </button>
       <InfoRow fx="161:690" top={804} label="출신지" value={val(elder.hometown)} />
       <InfoRow fx="161:692" top={856.5} label="가족 구성" value={val(elder.family)} />
       <InfoRow
@@ -418,6 +429,25 @@ export function ElderDetailPage() {
       <InfoRow fx="161:694" top={963} label="직업 이력" value={val(elder.job)} />
       <InfoRow fx="161:696" top={1015.6} label="취미" value={val(elder.hobbies)} />
       <InfoRow fx="161:702" top={1069} label="특이사항" value={val(elder.note)} />
+      <Dialog open={infoOpen} onClose={() => setInfoOpen(false)} title={`${elder.name} 어르신 기본 정보`} size="md">
+        <dl className="space-y-5 pb-8 text-w-body">
+          {[
+            ['출신지', val(elder.hometown)],
+            ['가족 구성', val(elder.family)],
+            ['보호자', elder.guardian?.name
+              ? `${elder.guardian.name}${elder.guardian.relation ? ` (${elder.guardian.relation})` : ''}`
+              : '—'],
+            ['직업 이력', val(elder.job)],
+            ['취미', val(elder.hobbies)],
+            ['특이사항', val(elder.note)],
+          ].map(([label, value]) => (
+            <div key={label} className="border-b border-line pb-4">
+              <dt className="mb-1 font-semibold text-ink-700">{label}</dt>
+              <dd className="whitespace-pre-wrap break-words text-ink-900">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Dialog>
 
       {/* ── 동의 관리 ──────────────────────────────────────────────────── */}
       <Card fx="167:876" left={804} top={718.42} width={575} height={419.25} />

@@ -26,6 +26,46 @@ export interface SessionCounts {
   byProfile: Record<string, number>
 }
 
+export interface ActiveConversation {
+  session: SessionRow
+  logs: SessionLogRow[]
+}
+
+/** 현재 진행 중인 담당 어르신 대화. RLS가 기관·배정 범위를 제한한다. */
+export function useActiveConversations(options?: { enabled?: boolean }): UseQueryResult<ActiveConversation[]> {
+  return useQuery({
+    queryKey: queryKeys.activeConversationMonitor,
+    enabled: options?.enabled ?? true,
+    // Realtime 단절 시에도 진행 상황을 따라잡는다.
+    refetchInterval: 5000,
+    queryFn: async () => {
+      const client = getGiokonClient()
+      const { data: sessions, error: sessionsError } = await client
+        .from('sessions')
+        .select('*')
+        .eq('status', 'active')
+        .order('started_at', { ascending: false })
+      if (sessionsError) throw new Error(sessionsError.message)
+      if (!sessions.length) return []
+
+      const { data: logs, error: logsError } = await client
+        .from('session_logs')
+        .select('*')
+        .in('session_id', sessions.map((session) => session.id))
+        .order('turn_index', { ascending: true })
+        .order('spoken_at', { ascending: true })
+      if (logsError) throw new Error(logsError.message)
+      const logsBySession = new Map<string, SessionLogRow[]>()
+      for (const log of logs) {
+        const group = logsBySession.get(log.session_id) ?? []
+        group.push(log)
+        logsBySession.set(log.session_id, group)
+      }
+      return sessions.map((session) => ({ session, logs: logsBySession.get(session.id) ?? [] }))
+    },
+  })
+}
+
 /** 사용자 전체 세션 카운트(대시보드·목록 카드용, RLS로 본인 것만). */
 export function useSessionCounts(): UseQueryResult<SessionCounts> {
   return useQuery({
