@@ -50,6 +50,16 @@ begin
      and not has_function_privilege('authenticated', 'app.decide_org_join(uuid, boolean)', 'EXECUTE')
      and not has_function_privilege('authenticated', 'app.enqueue_org_join(uuid, text, text)', 'EXECUTE'),
     '역할·합류 내부 함수는 직접 호출할 수 없어야 함';
+  -- 파일럿 D6: 개입 기록은 RPC 전용 · 감독 RPC 는 anon 불가
+  assert not has_table_privilege('authenticated', 'public.session_interventions', 'INSERT,UPDATE,DELETE')
+     and not has_table_privilege('anon', 'public.session_interventions', 'SELECT'),
+    'session_interventions 쓰기는 RPC 전용, anon 은 읽을 수 없어야 함';
+  assert not has_function_privilege('anon', 'public.session_tick(uuid)', 'EXECUTE')
+     and not has_function_privilege('anon', 'public.request_session_control(uuid, text, text)', 'EXECUTE')
+     and not has_function_privilege('anon', 'public.advance_session_phase(uuid, public.session_phase, text)', 'EXECUTE'),
+    '감독 RPC 는 anon 이 부를 수 없어야 함';
+  assert not (select prosecdef from pg_proc where oid = 'app.protect_session_supervision()'::regprocedure),
+    '감독 컬럼 보호 트리거는 SECURITY INVOKER 여야 함(current_user 판별)';
 end $$;
 
 grant usage on schema public, app to authenticated;

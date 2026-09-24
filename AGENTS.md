@@ -191,7 +191,7 @@
 | B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ✅ 로컬 — 합류 대기자 = `onboarded_at` 있음·`org_id` NULL. 웹 라우팅 인계는 계획 §7 W9 상태 열 |
 | B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ✅ 로컬 — ⚠️ `chronicle_entries` 복합 FK 부재로 타 기관 기록이 가능했던 구멍을 회귀가 잡아 FK 추가. 기존 `rls_regression.sql` 은 단언 2건만 새 모델로 바꿨다(요양보호사 = 같은 기관 전체 열람 · 미배정도 live-token 허용) |
 | B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ✅ — SQL 에 남은 `'caregiver'`·배정 술어는 의도(역할 목록·DELETE·동의·공개·어르신 코드·메시지). 앱 접근 감시(R008)가 **배정 소실을 권한 상실로 보고 대화를 끊던 것**을 제거(DB 판정은 유지). data `completeOnboarding({ inviteCode })`. 웹 발견분은 계획 §7 W6·W9 |
-| B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ⏳ |
+| B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ✅ 로컬 — 새 컬럼 RPC 전용(트리거) · 4대 제한은 **최근 30분 시작분만** 셈(좀비 방지) · 앱은 `SESSION_SUPERVISOR_LIMIT` 이면 이유 안내(재시도 안 함). 회귀가 `end_requested` 가 NULL 로 나가던 것을 잡음 |
 | B7 | C2 · T21.2 | core `session-phase.ts` + `PROMPT_VERSION` 저장 | ⏳ |
 | B8 | C3 · T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 처리 | ⏳ |
 | B9 | M5 · T21.6 | 앱 원격 일시정지 수신("잠시 쉬어요" + 마이크 중단) | ⏳ |

@@ -482,4 +482,123 @@ begin
   reset role;
 end $$;
 
+-- ── D6: 대화 단계 · 원격 제어 · 개입 기록 · 동시 4대 (T21.1·T21.13) ─────────────────
+create temp table pilot_s as
+  select id as sid from public.sessions
+   where profile_id = (select p1 from pilot_p) and user_id = 'a0000000-0000-0000-0000-000000000002' and status = 'active';
+grant select on pilot_s to authenticated;
+
+do $$
+declare
+  sid uuid := (select sid from pilot_s);
+  t jsonb;
+  n int;
+  blocked boolean;
+begin
+  assert sid is not null and (select count(*) from pilot_s) = 1, '픽스처: 요양보호사 a02 의 진행 중 세션 1건';
+  set role authenticated;
+
+  -- 시작자(중계 JWT 의 주인): 첫 tick 은 단계 없음, 목표 시간은 기관 설정(8분)
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  t := public.session_tick(sid);
+  assert (t->>'allowed')::boolean and t->'phase' = 'null'::jsonb and (t->>'target_minutes')::int = 8
+     and not (t->>'paused')::boolean and not (t->>'end_requested')::boolean,
+    format('첫 tick 이 기대와 다름: %s', t);
+  assert public.advance_session_phase(sid, 'intro', 'v2.0') = 'intro', '시작자는 도입 단계로 올릴 수 있어야 함';
+  assert public.advance_session_phase(sid, 'reminiscence') = 'reminiscence', '도입 → 회상';
+  blocked := false;
+  begin perform public.advance_session_phase(sid, 'intro');
+  exception when others then blocked := sqlerrm = 'SESSION_PHASE_ORDER'; end;
+  assert blocked, '단계는 뒤로 갈 수 없어야 함';
+  t := public.session_tick(sid);
+  assert t->>'phase' = 'reminiscence' and (t->>'phase_elapsed_seconds')::int >= 0, format('tick 에 단계가 보여야 함: %s', t);
+
+  -- 목표 시간은 세션 설계가 있어도 10분을 넘지 않는다
+  update public.sessions set duration_minutes = 40 where id = sid;
+  assert (public.session_tick(sid)->>'target_minutes')::int = 10, '목표 시간은 서버 상한 10분';
+
+  -- 직접 UPDATE 로 단계·일시정지를 고칠 수 없다(RPC 전용)
+  blocked := false;
+  begin update public.sessions set phase = 'closing' where id = sid;
+  exception when insufficient_privilege then blocked := sqlerrm = 'SESSION_SUPERVISION_RPC_ONLY'; end;
+  assert blocked, '단계는 직접 UPDATE 로 바꿀 수 없어야 함';
+  blocked := false;
+  begin update public.sessions set paused_at = now(), paused_by = auth.uid() where id = sid;
+  exception when insufficient_privilege then blocked := sqlerrm = 'SESSION_SUPERVISION_RPC_ONLY'; end;
+  assert blocked, '일시정지 상태는 직접 UPDATE 로 바꿀 수 없어야 함';
+
+  -- 시작자가 아닌 직원은 단계를 못 바꾸지만(중계만), 원격 일시정지는 할 수 있다(감독)
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
+  blocked := false;
+  begin perform public.advance_session_phase(sid, 'closing');
+  exception when others then blocked := sqlerrm = 'SESSION_PHASE_FORBIDDEN'; end;
+  assert blocked, '시작자가 아니면 단계를 바꿀 수 없어야 함';
+  perform public.request_session_control(sid, 'pause', '어르신이 화장실에 가셨어요');
+
+  -- 보호자·다른 기관은 제어할 수 없다(존재도 모른다)
+  foreach n in array array[4, 5] loop
+    perform set_config('test.uid', format('a0000000-0000-0000-0000-00000000000%s', n), true);
+    blocked := false;
+    begin perform public.request_session_control(sid, 'end');
+    exception when others then blocked := sqlerrm = 'SESSION_CONTROL_NOT_FOUND'; end;
+    assert blocked, format('a..0%s 는 원격 제어를 할 수 없어야 함', n);
+    assert not (public.session_tick(sid)->>'allowed')::boolean, '보호자·타 기관 tick 은 거부(값 없음)';
+    assert (select count(*) from public.session_interventions) = 0, '보호자·타 기관은 개입 기록을 볼 수 없어야 함';
+  end loop;
+
+  -- 중계(시작자)는 다음 tick 에서 일시정지를 본다 → 재개 → 종료 요청
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  assert (public.session_tick(sid)->>'paused')::boolean, '원격 일시정지가 tick 에 보여야 함';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000006', true);
+  perform public.request_session_control(sid, 'resume');
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  assert not (public.session_tick(sid)->>'paused')::boolean, '재개가 tick 에 보여야 함';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000011', true);
+  perform public.request_session_control(sid, 'end');
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  assert (public.session_tick(sid)->>'end_requested')::boolean, '종료 요청이 tick 에 보여야 함';
+  -- 개입 기록: 단계 2 + 일시정지·재개·종료 3, 누가 했는지 남는다
+  assert (select count(*) from public.session_interventions where session_id = sid) = 5, '개입 5건이 기록돼야 함';
+  assert (select actor_id from public.session_interventions where session_id = sid and action = 'pause')
+         = 'a0000000-0000-0000-0000-000000000003', '일시정지한 사람이 기록돼야 함';
+  reset role;
+end $$;
+
+-- 감독자(시작자)당 동시 active 4대 — 5번째는 거부, 30분이 지난 좀비는 세지 않는다
+do $$
+declare p1 uuid := (select p1 from pilot_p); blocked boolean := false; n int;
+begin
+  set role authenticated;
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  select count(*) into n from public.sessions where user_id = auth.uid() and status = 'active';
+  assert n = 1, '픽스처: 진행 중 1대';
+  insert into public.sessions (profile_id, user_id, status) values
+    (p1, auth.uid(), 'active'), (p1, auth.uid(), 'active'), (p1, auth.uid(), 'active');
+  begin
+    insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'active');
+  exception when program_limit_exceeded then blocked := sqlerrm = 'SESSION_SUPERVISOR_LIMIT';
+  end;
+  assert blocked, '같은 감독자의 5번째 동시 세션은 거부돼야 함';
+  -- planned → active 전환도 같은 규칙
+  insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'planned');
+  blocked := false;
+  begin
+    update public.sessions set status = 'active' where user_id = auth.uid() and status = 'planned';
+  exception when program_limit_exceeded then blocked := true;
+  end;
+  assert blocked, '설계된 세션을 5번째로 시작하는 것도 거부돼야 함';
+  -- 다른 직원은 따로 센다
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
+  insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'active');
+  reset role;
+  -- 좀비: 한 대를 1시간 전에 시작한 것으로 만들면(슈퍼유저) 다시 시작할 수 있다
+  update public.sessions set started_at = now() - interval '1 hour'
+   where id = (select id from public.sessions where user_id = 'a0000000-0000-0000-0000-000000000002' and status = 'active'
+               and id <> (select sid from pilot_s) limit 1);
+  set role authenticated;
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'active');
+  reset role;
+end $$;
+
 select 'pilot access assertions passed' as result;

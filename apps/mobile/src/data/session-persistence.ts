@@ -41,6 +41,18 @@ export type SessionSaveResult =
   /** 라이브 저장 실패 — 대화가 온전히 남지 않았다(재시도 가능). */
   | { status: 'failed'; logId: null; message: string };
 
+/** 대화 시작 실패 사유 — 화면이 안내를 고르는 근거. */
+export type SessionStartFailure = 'supervisor_limit' | 'failed';
+
+/**
+ * 서버가 **정책으로** 거절한 경우(재시도해도 같다) — 재시도하지 않고 사유를 돌려준다.
+ * SESSION_SUPERVISOR_LIMIT: 요양보호사 1명당 동시 진행 4대(파일럿 D6·T21.13, DB 트리거가 판정).
+ */
+class PolicyRejection extends Error {}
+function policyRejection(message: string): PolicyRejection | null {
+  return message.includes('SESSION_SUPERVISOR_LIMIT') ? new PolicyRejection('SESSION_SUPERVISOR_LIMIT') : null;
+}
+
 /**
  * 네트워크 일시 오류에 견디는 소규모 재시도(지수 백오프).
  * 아래 쓰기는 모두 단일 문장(다중행 insert 포함)이거나 upsert 라 재시도가 안전하다.
@@ -55,6 +67,7 @@ async function withRetry<T>(lease: QueryLease, fn: () => Promise<T>, attempts = 
       return result;
     } catch (e) {
       lease.assertCurrent();
+      if (e instanceof PolicyRejection) throw e;
       lastErr = e;
       if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i));
     }
@@ -253,12 +266,12 @@ const syncing = new Set<string>();
  *  - `discardUnsaved`    : 사용자가 재시도를 포기했을 때 묶음을 버린다.
  */
 export function useSessionPersistence(): {
-  openRemoteSession: () => Promise<void>;
+  openRemoteSession: () => Promise<SessionStartFailure | null>;
   /**
    * 웹 설계 세션(planned)을 **채택**해 active 로 전환한다(B1-c).
    * 새 행을 만들지 않고 같은 행을 이어 쓰므로 '설계됨' 좀비가 남지 않는다.
    */
-  adoptPlannedSession: (sessionId: string, startedAt: string) => Promise<void>;
+  adoptPlannedSession: (sessionId: string, startedAt: string) => Promise<SessionStartFailure | null>;
   syncProgress: () => Promise<boolean>;
   finishAndPersist: () => Promise<SessionSaveResult>;
   retrySave: () => Promise<SessionSaveResult>;
@@ -267,10 +280,10 @@ export function useSessionPersistence(): {
   const { user } = useAuth();
   const lease = queryScope.capture();
 
-  const openRemoteSession = useCallback(async (): Promise<void> => {
-    if (!user || !lease.current()) return;
+  const openRemoteSession = useCallback(async (): Promise<SessionStartFailure | null> => {
+    if (!user || !lease.current()) return 'failed';
     const a = useApp.getState().active;
-    if (!a || a.remoteId) return;
+    if (!a || a.remoteId) return a?.remoteId ? null : 'failed';
     try {
       const row = await withRetry(lease, async () => {
         const { data, error } = await getGiokonClient()
@@ -285,15 +298,17 @@ export function useSessionPersistence(): {
           })
           .select('id')
           .single();
-        if (error) throw new Error(error.message);
+        if (error) throw policyRejection(error.message) ?? new Error(error.message);
         return data;
       });
-      if (useApp.getState().active?.session.id !== a.session.id) return;
+      if (useApp.getState().active?.session.id !== a.session.id) return 'failed';
       useApp.getState().attachRemoteSession(row.id);
       invalidateFor(a.elder.id, lease);
+      return null;
     } catch (e) {
       // 시작 화면은 remoteId가 없으면 음성/AI 처리에 진입하지 않는다.
       console.warn('[giokon] 진행 중 세션 생성 실패 — 시작을 중단합니다.', e);
+      return e instanceof PolicyRejection ? 'supervisor_limit' : 'failed';
     }
   }, [user, lease]);
 
@@ -303,10 +318,10 @@ export function useSessionPersistence(): {
    * 런타임에 붙이지 않고 시작 화면에서 중단한다.
    */
   const adoptPlannedSession = useCallback(
-    async (sessionId: string, startedAt: string): Promise<void> => {
-      if (!user || !lease.current()) return;
+    async (sessionId: string, startedAt: string): Promise<SessionStartFailure | null> => {
+      if (!user || !lease.current()) return 'failed';
       const original = useApp.getState().active;
-      if (!original) return;
+      if (!original) return 'failed';
       try {
         await withRetry(lease, async () => {
           const { data, error } = await getGiokonClient()
@@ -315,17 +330,18 @@ export function useSessionPersistence(): {
             .eq('id', sessionId)
             .eq('status', 'planned')
             .select('id').maybeSingle();
-          if (error) throw new Error(error.message);
+          if (error) throw policyRejection(error.message) ?? new Error(error.message);
           if (!data) throw new Error('설계 세션의 시작 승인을 받지 못했어요.');
         });
       } catch (e) {
         console.warn('[giokon] 설계 세션 active 전환 실패', e);
-        return;
+        return e instanceof PolicyRejection ? 'supervisor_limit' : 'failed';
       }
-      if (!lease.current() || useApp.getState().active?.session.id !== original.session.id) return;
+      if (!lease.current() || useApp.getState().active?.session.id !== original.session.id) return 'failed';
       useApp.getState().attachRemoteSession(sessionId);
       const a = useApp.getState().active;
       if (a) invalidateFor(a.elder.id, lease);
+      return null;
     },
     [user, lease],
   );

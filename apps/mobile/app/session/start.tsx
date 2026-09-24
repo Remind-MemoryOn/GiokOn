@@ -87,19 +87,22 @@ export default function SessionStart() {
     }
     begin(elder, chronicles, { title, therapyType: 'reminiscence' }, design);
     const localSessionId = useApp.getState().active?.session.id;
-    if (duePlanned) {
-      // 같은 행을 active 로 전환해 이어 쓴다(B1-c — 새 행을 만들지 않아 좀비 없음).
-      await adoptPlannedSession(duePlanned.id, new Date().toISOString());
-    } else {
-      // 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
-      // DB가 동의·권한을 승인해야 대화 화면과 음성을 시작한다.
-      await openRemoteSession();
-    }
+    // 같은 행을 active 로 전환해 이어 쓴다(B1-c — 새 행을 만들지 않아 좀비 없음).
+    // 즉석 시작이면 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
+    // DB가 동의·권한·동시 진행 수를 승인해야 대화 화면과 음성을 시작한다.
+    const failure = duePlanned
+      ? await adoptPlannedSession(duePlanned.id, new Date().toISOString())
+      : await openRemoteSession();
     if (!lease.current()) return;
     if (useApp.getState().active?.session.id !== localSessionId) return;
     if (!useApp.getState().active?.remoteId) {
       useApp.getState().cancelSession();
-      Alert.alert('대화를 시작하지 못했어요', '동의·이용 권한 또는 서버 연결을 확인한 뒤 다시 시도해 주세요.');
+      if (failure === 'supervisor_limit') {
+        // 요양보호사 1명당 동시 진행 4대(사용자 확정 2026-09-24) — DB 가 판정하고 앱은 이유만 보여 준다.
+        Alert.alert('진행 중인 대화가 이미 4개예요', '한 분이 동시에 진행할 수 있는 대화는 4개까지예요.\n끝난 대화를 저장한 뒤 다시 시작해 주세요.');
+      } else {
+        Alert.alert('대화를 시작하지 못했어요', '동의·이용 권한 또는 서버 연결을 확인한 뒤 다시 시도해 주세요.');
+      }
       return;
     }
     router.replace('/session/talk');

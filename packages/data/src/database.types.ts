@@ -214,6 +214,15 @@ export type Database = {
           started_at: string
           ended_at: string | null
           updated_at: string
+          // 파일럿 D6(20260924040000) — **RPC 전용**(advance_session_phase·request_session_control).
+          // 직접 INSERT/UPDATE 는 트리거가 거절하므로 Insert/Update 타입에는 넣지 않는다.
+          phase: Database['public']['Enums']['session_phase'] | null
+          phase_started_at: string | null
+          paused_at: string | null
+          paused_by: string | null
+          pause_reason: string | null
+          control_request: 'pause' | 'resume' | 'end' | null
+          prompt_version: string | null
         }
         Insert: {
           id?: string
@@ -856,6 +865,13 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      // 파일럿 D6 — 감독 개입 기록(읽기: 같은 기관 돌봄팀, 쓰기: RPC 전용)
+      session_interventions: {
+        Row: { id: string; session_id: string; profile_id: string; org_id: string; actor_id: string | null; action: 'pause' | 'resume' | 'end' | 'phase_advance'; detail: Json | null; created_at: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -941,6 +957,19 @@ export type Database = {
       cancel_org_join: { Args: Record<string, never>; Returns: undefined }
       approve_org_join: { Args: { p_request_id: string }; Returns: undefined }
       reject_org_join: { Args: { p_request_id: string }; Returns: undefined }
+      // 파일럿 D6 — 중계가 2초마다(사용자 JWT). allowed=false 면 다른 값은 없다.
+      session_tick: {
+        Args: { p_session_id: string }
+        Returns: { allowed: false } | { allowed: true; phase: Database['public']['Enums']['session_phase'] | null; phase_elapsed_seconds: number | null; elapsed_seconds: number; target_minutes: number; paused: boolean; end_requested: boolean }
+      }
+      advance_session_phase: {
+        Args: { p_session_id: string; p_phase: Database['public']['Enums']['session_phase']; p_prompt_version?: string | null }
+        Returns: Database['public']['Enums']['session_phase']
+      }
+      request_session_control: {
+        Args: { p_session_id: string; p_action: 'pause' | 'resume' | 'end'; p_reason?: string | null }
+        Returns: undefined
+      }
       list_inquiries: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean; total: number }>
@@ -971,6 +1000,7 @@ export type Database = {
       notification_kind: 'safety' | 'share_viewed' | 'message'
       org_capability: 'journal_finalize' | 'share_revoke' | 'guardian_link_approve'
       org_join_status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+      session_phase: 'intro' | 'reminiscence' | 'closing'
     }
     CompositeTypes: { [_ in never]: never }
   }

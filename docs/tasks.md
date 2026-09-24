@@ -38,7 +38,7 @@
 ### M21 — 감독 화면 + 대화 단계 (머지 단위 ③) → `PLAN.md` M21·M22.1
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ⏳ |
+| T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
 | T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ⏳ |
 | T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입(`resumeContext` 와 같은 경로) · 원격 제어 처리 | C3 | T21.1, T21.2 | ⏳ |
 | T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ⏳ |
@@ -47,7 +47,7 @@
 | T21.7 | 세션 설계: 목표 시간(기존 `duration_minutes`, 초기값을 고정 15분 대신 기관 설정에서) · 단계 미리보기 · 기관 기본 피할 주제 | W5 | T21.1 | ⏳ |
 | T21.11 | 종료 정책(✅ 권장안 확정 2026-09-24) — 휴식 요청·거부는 즉시 종료 → 마무리 단계 전환 + 감독 화면 알림. 위기·급성 고통은 즉시 종료 **유지** | §9-5 | T21.3 | ⏳ |
 | T21.12 | **세션 최대 10분** — 중계 연결 수명 25분 → 10분(서버 고정값), 마무리 단계 진입 시점을 10분 안에서, 세션 설계 선택지 10분 이하 | §9-6 | T21.3 | ⏳ |
-| T21.13 | **요양보호사 1명당 동시 최대 4대** — `active` 전환 시 DB 가 같은 감독자의 `active` 수를 세어 5번째를 거절 · 앱은 이유 표시 | §6 | T21.1 | ⏳ |
+| T21.13 | **요양보호사 1명당 동시 최대 4대** — `active` 전환 시 DB 가 같은 감독자의 `active` 수를 세어 5번째를 거절 · 앱은 이유 표시 | §6 | T21.1 | ✅ 2026-09-24 DB 트리거(최근 30분 시작분만 셈) + 앱 안내 `start.tsx` — 로컬 검증 · 운영 미적용 |
 | T21.14 | `live-token` 한도 조정 — 사용자 분당 3 → 4 이상, 일 한도는 운영 시간 기준 재계산 | §6 | — | ⏳ |
 
 ### M23 — core 정리 + 어르신 표시 모드 (머지 단위 ④, **반드시 한 PR**) → `PLAN.md` M22.1·M23

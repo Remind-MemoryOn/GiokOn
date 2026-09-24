@@ -26,7 +26,7 @@ function fixture() {
     eq: () => builder, select: () => builder, single, maybeSingle };
   const from = vi.fn((name: string) => { table = name; return builder; });
   const persistTurns = vi.fn(async () => { writes.push('session_logs:upsert'); });
-  const exports: { useSessionPersistence?: () => { syncProgress: () => Promise<boolean>; adoptPlannedSession: (id: string, at: string) => Promise<void>; openRemoteSession: () => Promise<void>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
+  const exports: { useSessionPersistence?: () => { syncProgress: () => Promise<boolean>; adoptPlannedSession: (id: string, at: string) => Promise<unknown>; openRemoteSession: () => Promise<unknown>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
   runInNewContext(ts.transpileModule(readFileSync(new URL('./session-persistence.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, { exports, console: { warn: vi.fn() }, setTimeout: (fn: () => void) => setTimeout(fn, 0),
@@ -123,5 +123,28 @@ describe('fallback save without a remote session (M7)', () => {
     expect(f.writes).not.toContain('sessions:update:ended');
     expect(f.writes.at(-1)).toBe('sessions:delete');
     expect(f.clear).not.toHaveBeenCalled();
+  });
+});
+
+describe('start rejection reasons (pilot D6 · T21.13)', () => {
+  it('reports the per-supervisor limit without retrying a policy rejection', async () => {
+    const f = fixture();
+    f.single.mockResolvedValue({ data: null, error: { message: 'SESSION_SUPERVISOR_LIMIT' } } as never);
+    expect(await f.api().openRemoteSession()).toBe('supervisor_limit');
+    expect(f.single).toHaveBeenCalledOnce();
+    expect(f.attach).not.toHaveBeenCalled();
+  });
+  it('reports the limit when starting a planned session too', async () => {
+    const f = fixture();
+    f.maybeSingle.mockResolvedValue({ data: null, error: { message: 'SESSION_SUPERVISOR_LIMIT' } });
+    expect(await f.api().adoptPlannedSession('planned', 'synthetic-date')).toBe('supervisor_limit');
+    expect(f.maybeSingle).toHaveBeenCalledOnce();
+  });
+  it('keeps other failures generic and successes empty', async () => {
+    const f = fixture();
+    expect(await f.api().openRemoteSession()).toBeNull();
+    const g = fixture();
+    g.single.mockResolvedValue({ data: null, error: { message: 'PROCESSING_CONSENT_REQUIRED' } } as never);
+    expect(await g.api().openRemoteSession()).toBe('failed');
   });
 });
