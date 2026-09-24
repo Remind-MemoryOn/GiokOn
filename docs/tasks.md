@@ -62,9 +62,9 @@
 ### 푸시 (머지 단위 ⑤)
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T21.8 | `push_tokens` + `notifications.pushed_at` + `notification_kind` 확장(단독 파일) | D2, D7 | — | ⏳ |
+| T21.8 | `push_tokens` + `notifications.pushed_at` + `notification_kind` 확장(단독 파일) | D2, D7 | — | ✅ 2026-09-24 로컬 — `20260924050000_push_tokens.sql`: `push_tokens`(본인 조회만, 쓰기는 `register_push_token`·`revoke_push_token` RPC — 돌봄팀만 등록, 기기 인계 시 주인 이동) + `notifications.pushed_at`(사용자 변경 불가). `notification_kind` 확장(D2)은 미포함 — 발송 워커와 함께 |
 | T21.9 | 워커 `push-dispatch`(Expo Push) — ⚠️ 본문에 어르신 성함·발화 금지 | C4 | T21.8, T21.4 | ⏳ |
-| T21.10 | 앱 푸시 토큰 등록 — ⚠️ EAS 재빌드 필요 | M6 | T21.8 | ⏳ |
+| T21.10 | 앱 푸시 토큰 등록 — ⚠️ EAS 재빌드 필요 | M6 | T21.8 | ✅ 2026-09-24 `expo-notifications` — 돌봄팀 로그인 시 권한→토큰→등록, 로그아웃 전 회수(최대 3초). ⚠️ EAS 재빌드 필요 · 알림 탭 딥링크는 C4 발송 문구 확정 후 |
 
 ### 공통·선결
 | ID | 작업 | 계획 | 의존 | 상태 |

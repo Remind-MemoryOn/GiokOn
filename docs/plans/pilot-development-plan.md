@@ -139,7 +139,7 @@
 | **D4** | `..._org_scoped_rls.sql` | `app.is_care_team()`·`app.has_capability()` 신설. 9테이블 SELECT/UPDATE 술어를 `org_id = current_org_id() and is_care_team()` 로 교체. **보호자 브랜치는 복사해 무변경 유지**. DELETE 정책은 **교체하지 않는다**(배정·관리자 기준 유지 — 교대근무가 요구하는 것은 열람·기록이지 삭제가 아니다) | ✅ 2026-09-24 로컬 — `20260924030000_org_scoped_rls.sql`. 결정 ①: 대화 기록·연대기 INSERT 와 `can_process_profile`·`reserve_live_token` 도 돌봄팀(동의·보호자 공개 INSERT 는 배정 유지) · 결정 ②: 새 역할도 세션 진행 · restrictive UPDATE 4개 포함 · users 조회는 관리 역할까지. ⚠️ 발견·수정: `chronicle_entries` 에 (profile_id, org_id) 복합 FK 가 없어 배정 검사를 빼면 **타 기관 어르신에 기록**이 가능했다 → FK 추가 · 운영 미적용 |
 | **D5** | `..._program_journals.sql` | `care_journals`·`journal_photos` DROP. `program_journals`·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` 신설 + 트리거 4종(확정 가드·이력·enqueue·공개 게이트). `care_grade` enum + `profiles.care_grade` 포함 | ⏳ |
 | **D6** | `..._session_phase_supervision.sql` | `session_phase` enum, `sessions` 컬럼 7개(phase·phase_started_at·paused_at/by·pause_reason·control_request·prompt_version), `session_interventions`, RPC `session_tick`/`advance_session_phase`/`request_session_control`. ⚠️ **목표 시간 컬럼은 새로 만들지 않는다** — `sessions.duration_minutes`(`20260822020000`, 5~120분, 웹 세션 설계의 "예상 소요 시간")가 이미 그 값이다. 비어 있으면 `org_settings.target_minutes` 로 폴백 | ✅ 2026-09-24 로컬 — `20260924040000_session_phase_supervision.sql`: 단계 intro→reminiscence→closing(뒤로 불가·마무리는 어디서든) · 새 컬럼은 **RPC 전용**(직접 쓰기 트리거 차단) · `session_tick`(허용·단계·경과·목표 시간 10분 상한·일시정지·종료 요청) · `advance_session_phase`(시작자만, prompt_version 저장) · `request_session_control`(돌봄팀) · 개입 기록 · 감독자당 동시 4대(최근 30분 시작분만 셈 — 좀비 방지) · 운영 미적용 |
-| **D7** | `..._push_tokens.sql` | `push_tokens`(본인 only RLS), `notifications.pushed_at` | ⏳ |
+| **D7** | `..._push_tokens.sql` | `push_tokens`(본인 only RLS), `notifications.pushed_at` | ✅ 로컬 2026-09-24 — 쓰기 RPC 전용(기기 인계). 운영 미적용 |
 | **D8** | `..._product_events.sql` | `product_events(event_key, payload, ...)` + definer 삽입 함수 | ⏳ |
 | **D9** | D5·D6 말미 | realtime publication 에 `program_journals`·`session_interventions` 추가. ⚠️ `if exists (pg_publication)` 가드 필수(CI는 순정 PG16) | 🔶 `session_interventions` 추가(D6, 가드 포함) · ⏳ `program_journals`(D5) |
 | **D10** | 권고 | `app.current_consent_version()` 1개로 통일 — 지금 `'v1.0'` 이 SQL·TS 양쪽에 하드코딩돼 드리프트한다 | ⏳ |
@@ -203,7 +203,7 @@
 
 ## 6. 앱 파트 (`apps/mobile`)
 
-> **진행 현황(2026-09-24)** — ✅ M1·M2·M3·M4·M5·M7 완료(PR `claude/app-development-session-4cvhm5`. M5 는 선행 D1~D6·C2·C3 과 함께 — 마이그레이션은 로컬 검증만, 운영 미적용). ⏳ M6 은 선행(D7·C4 push) 대기.
+> **진행 현황(2026-09-24)** — ✅ **앱 M1~M7 전부 완료**(M5 는 선행 D1~D6·C2·C3, M6 은 선행 D7 과 함께 — 마이그레이션은 로컬 검증만, 운영 미적용). 푸시 **발송**(C4 `push-dispatch`)·중계 T21.4 는 서버 파트.
 > 상세 기록은 루트 `AGENTS.md` "현재 위치 (2026-09-24 — 앱 파트 착수)".
 
 | # | 내용 | 파일 | 상태 |
@@ -213,7 +213,7 @@
 | **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` | ✅ 2026-09-24 — `check:figma` 부재 규칙으로 고정 |
 | **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` | ✅ 2026-09-24 — **PIN**(4자리, 요양보호사별, 서버 미전송, 5회 실패 30초 잠금). 진입은 어르신 화면의 작은 '선생님' 버튼. 설정 화면에서 변경 |
 | **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` | ✅ 2026-09-24 — 원격 정지 중 현장 재개 불가(사용자 확정), 서버 재개는 2초 폴로 자동 반영 |
-| **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 | ⏳ 선행: D7·C4(push) |
+| **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 | ✅ 2026-09-24 — ⚠️ EAS 재빌드 전에는 실기기에 없음. 발송(C4 push-dispatch)은 서버 파트 |
 | **M7** | `persistWholeSession`(폴백) 저장 순서를 `finalizeSession` 과 맞춘다(세션 생성 → 턴·분석 → `ended`). 워커 첫 시도 성공률이 오른다 | `src/data/session-persistence.ts` | ✅ 2026-09-24 — `active` → 턴 → 분석 → 이벤트 → `ended` |
 
 **기기 1대 = 세션 1개는 이미 보장된다** — 중계 `main.ts` 의 `inUse` Set 이 `SESSION_BUSY` 로

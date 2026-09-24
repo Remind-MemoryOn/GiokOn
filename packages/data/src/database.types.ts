@@ -798,6 +798,8 @@ export type Database = {
           body: string | null
           read_at: string | null
           created_at: string
+          // 파일럿 D7(20260924050000) — 발송 워커 전용. 사용자는 바꿀 수 없어(트리거) Insert/Update 에 넣지 않는다.
+          pushed_at: string | null
         }
         Insert: {
           id?: string
@@ -849,6 +851,13 @@ export type Database = {
         Row: { org_id: string; capability: Database['public']['Enums']['org_capability']; allowed_roles: Database['public']['Enums']['org_role'][]; updated_at: string; updated_by: string | null }
         Insert: { org_id: string; capability: Database['public']['Enums']['org_capability']; allowed_roles?: Database['public']['Enums']['org_role'][] }
         Update: { allowed_roles?: Database['public']['Enums']['org_role'][] }
+        Relationships: []
+      }
+      // 파일럿 D7(20260924050000) — 본인 행 조회만. 쓰기는 register_push_token·revoke_push_token RPC.
+      push_tokens: {
+        Row: { id: string; user_id: string; token: string; platform: 'ios' | 'android'; created_at: string; updated_at: string; last_seen_at: string; revoked_at: string | null }
+        Insert: never
+        Update: never
         Relationships: []
       }
       // 파일럿 D3 후반(20260924020000) — 직원 합류. 쓰기는 전부 RPC(create_org_invite·revoke_org_invite·request_org_join·
@@ -965,6 +974,14 @@ export type Database = {
       advance_session_phase: {
         Args: { p_session_id: string; p_phase: Database['public']['Enums']['session_phase']; p_prompt_version?: string | null }
         Returns: Database['public']['Enums']['session_phase']
+      }
+      register_push_token: {
+        Args: { p_token: string; p_platform: 'ios' | 'android' }
+        Returns: undefined
+      }
+      revoke_push_token: {
+        Args: { p_token: string }
+        Returns: undefined
       }
       request_session_control: {
         Args: { p_session_id: string; p_action: 'pause' | 'resume' | 'end'; p_reason?: string | null }

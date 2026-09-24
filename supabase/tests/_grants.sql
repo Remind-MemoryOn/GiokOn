@@ -58,6 +58,13 @@ begin
      and not has_function_privilege('anon', 'public.request_session_control(uuid, text, text)', 'EXECUTE')
      and not has_function_privilege('anon', 'public.advance_session_phase(uuid, public.session_phase, text)', 'EXECUTE'),
     '감독 RPC 는 anon 이 부를 수 없어야 함';
+  -- 파일럿 D7: 푸시 토큰 쓰기는 RPC 전용 · anon 불가
+  assert not has_table_privilege('authenticated', 'public.push_tokens', 'INSERT,UPDATE,DELETE')
+     and not has_table_privilege('anon', 'public.push_tokens', 'SELECT'),
+    'push_tokens 쓰기는 RPC 전용, anon 은 읽을 수 없어야 함';
+  assert not has_function_privilege('anon', 'public.register_push_token(text, text)', 'EXECUTE')
+     and not has_function_privilege('anon', 'public.revoke_push_token(text)', 'EXECUTE'),
+    '푸시 토큰 RPC 는 anon 이 부를 수 없어야 함';
   assert not (select prosecdef from pg_proc where oid = 'app.protect_session_supervision()'::regprocedure),
     '감독 컬럼 보호 트리거는 SECURITY INVOKER 여야 함(current_user 판별)';
 end $$;

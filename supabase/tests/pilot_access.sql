@@ -601,4 +601,82 @@ begin
   reset role;
 end $$;
 
+-- ── D7: 푸시 토큰 — 본인만 조회 · 돌봄팀만 등록 · 기기 인계 시 주인 이동 · pushed_at 사용자 변경 불가 ─────────
+-- 아래 블록은 _grants.sql 의 광범위 테스트 권한 아래서 돈다 — RLS·RPC·트리거 판정을 본다(권한 회수는 _grants 사전 검사).
+set role authenticated;
+do $$
+declare blocked boolean;
+begin
+  -- 요양보호사 02 가 등록
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  perform public.register_push_token('ExponentPushToken[pilotDeviceA1]', 'android');
+  perform public.register_push_token('ExponentPushToken[pilotDeviceA1]', 'android'); -- 멱등
+  assert (select count(*) from public.push_tokens) = 1, '본인 토큰 1건만 보여야 함(재등록은 멱등)';
+  -- 형식·플랫폼 검사
+  blocked := false;
+  begin perform public.register_push_token('not-a-token', 'android');
+  exception when invalid_parameter_value then blocked := sqlerrm = 'PUSH_TOKEN_INVALID'; end;
+  assert blocked, '형식이 틀린 토큰은 거부돼야 함';
+  blocked := false;
+  begin perform public.register_push_token('ExponentPushToken[pilotDeviceA2]', 'web');
+  exception when invalid_parameter_value then blocked := sqlerrm = 'PUSH_TOKEN_PLATFORM'; end;
+  assert blocked, '모르는 플랫폼은 거부돼야 함';
+  -- 보호자(04)는 등록 불가
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000004', true);
+  blocked := false;
+  begin perform public.register_push_token('ExponentPushToken[pilotGuardian1]', 'ios');
+  exception when insufficient_privilege then blocked := sqlerrm = 'PUSH_TOKEN_ROLE'; end;
+  assert blocked, '보호자는 푸시 토큰을 등록할 수 없어야 함(돌봄팀 알림 전용)';
+  -- 다른 사용자(03)는 02 의 토큰을 볼 수도, 회수할 수도 없다
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
+  assert (select count(*) from public.push_tokens) = 0, '남의 푸시 토큰은 보이지 않아야 함';
+  perform public.revoke_push_token('ExponentPushToken[pilotDeviceA1]');
+end $$;
+reset role;
+do $$
+begin
+  assert (select revoked_at from public.push_tokens where token = 'ExponentPushToken[pilotDeviceA1]') is null,
+    '남이 회수를 시도해도 토큰은 살아 있어야 함';
+end $$;
+set role authenticated;
+do $$
+begin
+  -- 같은 기기를 03 이 이어 쓰면 토큰 주인이 03 으로 옮겨 간다(02 에게 가야 할 알림이 03 기기로 가지 않게)
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
+  perform public.register_push_token('ExponentPushToken[pilotDeviceA1]', 'android');
+  assert (select count(*) from public.push_tokens) = 1, '기기 인계 후 새 사용자에게 토큰이 보여야 함';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  assert (select count(*) from public.push_tokens) = 0, '기기 인계 후 앞사람에게서 토큰이 빠져야 함';
+  -- 03 이 로그아웃하며 회수
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
+  perform public.revoke_push_token('ExponentPushToken[pilotDeviceA1]');
+  assert (select revoked_at from public.push_tokens) is not null, '본인은 토큰을 회수할 수 있어야 함';
+  -- 다시 등록하면 되살아난다
+  perform public.register_push_token('ExponentPushToken[pilotDeviceA1]', 'android');
+  assert (select revoked_at from public.push_tokens) is null, '재등록은 회수를 되돌려야 함';
+end $$;
+reset role;
+
+-- pushed_at: 워커만 채운다. 사용자는 자기 알림이라도 바꿀 수 없다(재발송 유도·억제 불가). 읽음 처리는 그대로.
+insert into public.notifications (org_id, user_id, kind, title, body)
+select org_id, id, 'message', '테스트 알림', '본문' from public.users where id = 'a0000000-0000-0000-0000-000000000002';
+set role authenticated;
+do $$
+declare blocked boolean := false;
+begin
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  update public.notifications set read_at = now() where user_id = auth.uid() and title = '테스트 알림';
+  begin
+    update public.notifications set pushed_at = now() where user_id = auth.uid() and title = '테스트 알림';
+  exception when insufficient_privilege then blocked := sqlerrm = 'RECORD_IDENTITY_IMMUTABLE';
+  end;
+  assert blocked, '사용자는 pushed_at 을 바꿀 수 없어야 함';
+end $$;
+reset role;
+do $$
+begin
+  assert (select read_at from public.notifications where title = '테스트 알림') is not null, '읽음 처리는 계속 가능해야 함';
+  assert (select pushed_at from public.notifications where title = '테스트 알림') is null, 'pushed_at 은 비어 있어야 함';
+end $$;
+
 select 'pilot access assertions passed' as result;

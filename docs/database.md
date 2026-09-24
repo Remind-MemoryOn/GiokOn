@@ -108,7 +108,7 @@
 - `session_phase` enum + `sessions` 컬럼 7개(phase·phase_started_at·paused_at·paused_by·pause_reason·control_request·prompt_version) ·
   `session_interventions`(감독 개입 기록) · RPC `session_tick`·`advance_session_phase`·`request_session_control`(D6).
   목표 시간은 **기존 `sessions.duration_minutes`** 를 쓴다 — 새 컬럼을 만들지 않는다.
-- `push_tokens`(본인 행만) · `notifications.pushed_at`(D7) · `product_events` + definer 삽입 함수(D8 — 시간 절감·열람 이력의 유일한 증거).
+- ✅(로컬 2026-09-24) `push_tokens`(본인 행 조회만 · 쓰기는 `register_push_token`·`revoke_push_token` RPC — 기기 인계 시 주인 이동) · `notifications.pushed_at`(D7, 사용자 변경 불가) · `product_events` + definer 삽입 함수(D8 — 시간 절감·열람 이력의 유일한 증거).
 - realtime publication 에 `program_journals`·`session_interventions` 추가(D9, `if exists (pg_publication)` 가드) ·
   동의 버전 단일화 `app.current_consent_version()`(D10).
 - ⚠️ **출석 테이블은 만들지 않는다**(ERP 영역). 주간보호 제공 여부는 `program_journals` 행 유무 + `delivered`/`non_delivery_reason` 로만 표현한다.
