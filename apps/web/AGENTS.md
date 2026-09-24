@@ -163,6 +163,21 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
   (URL `?elder=` → localStorage → 첫 연결). **승인 목록에 있는 id 만 받아들인다** —
   없는 id 로 화면이 뜨면 "이 어르신은 기록이 없다"는 오해가 된다.
   화면마다 `links.find(approved)` 로 되돌아가지 말 것(둘째 어르신을 못 고르게 된다).
+- **요양일지 초안은 지금 두 경로다**(`JournalWritePage` — W1 이 프로그램 일지로 대체하기 전까지의 현재 코드).
+  둘 다 **자동 저장·자동 공개하지 않는다** — 본문에 넣을 뿐이고, 저장·공개는 담당자 동작이다.
+  · **규칙 기반** `AI 초안 만들기` → core `buildJournalDraft`(W1 때 삭제 — 루트 AGENTS C1 결정).
+  · **실 LLM** `회상 대화에서 일지 초안`(2026-09-14, `components/SessionJournalDialog.tsx`) → `ended` 세션 선택 →
+    Edge Function **`session-report`** → 미리보기 → **명시적 적용**(`source='ai_draft'`). 서버가 종료·담당·현재 동의·
+    **시연 허용 계정(`REPORT_ALLOWED_USER_IDS`)** 을 검사한다. W1 은 이 다이얼로그를 "다시 생성" 버튼으로 흡수한다.
+  · 본문 한도 **5000자** — DB `care_journals_content_check`(1~5000)와 같다.
+- 🔒 **보안 수정이 세운 웹 불변식**(판정 SoT = `docs/runbooks/security-fixes.md`):
+  · **R009 계정 격리** — 인증 경계마다 **`QueryClient` 를 새로 만든다**(`@giokon/data` `AuthQueryScope`: 이전 클라이언트는
+    취소·폐기, 늦게 끝난 작업은 lease 의 `assertCurrent()` 가 막는다). ⛔ 전역 `queryClient` 하나로 되돌리지 말 것 —
+    이전 계정의 캐시가 새 계정 화면에 보인다. 스토어도 `resetForAuth()` + **세대 번호**로 늦은 토스트를 버린다.
+    회귀 = `pnpm -F @giokon/web test:auth`(§7 실행 주의).
+  · **R010 대상 동의 STT** — `transcribeAudio(file, profileId)` 가 `x-profile-id` 를 보내고 `stt-transcribe` 가 **그 어르신의
+    필수 동의 + 담당 권한**을 확인한다. **403 은 "동의·담당 확인" 으로 안내**한다(401 과 구분).
+  · **R011 동의 증거 보존** — 온보딩은 **현행** 동의를 요구하고, 철회·재동의가 과거 증거를 덮지 않는다.
 
 ## 4. 카피 · 컴플라이언스 (CI 강제)
 
@@ -218,9 +233,15 @@ pnpm check:audit         # ★ 의존성 취약점 — **배포본(apps/web)에 
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
 ```
 
-**현재 통과 수치(2026-09-11)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
-잉크 810 + 이미지 581 + 사이드바 137** · `route-smoke` **65/65** · `check:a11y` **57화면**(차단 0) · 테스트 **390**(core 207 + data 99 + mobile 84).
+**현재 통과 수치(2026-09-24, `main` `6e8c1b9` 에서 실제 실행)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
+잉크 810 + 이미지 564 + 사이드바 137** · `route-smoke` **65/65**(콘솔 오류 0) · `check:a11y` **57화면**(차단 0 · 대비 미달 26종·283곳은
+비차단 보고) · 테스트 **678**(core 212 + data 155 + mobile 261 + voice-relay 50) · 마이그레이션 파일 59.
 숫자가 줄면 무언가를 지운 것이다 — 늘리는 방향으로만 움직인다.
+⚠️ **이미지 581 → 564 는 삭제가 아니다**(2026-09-11 PR #10): 휴지통 아이콘 17곳을 `object-contain` 으로 바꿔
+**판정 대상에서 빠졌다**(아래 규칙). 실측으로 564 + 17 = 581 을 확인했다.
+⚠️ **게이트를 새 코드에 맞춰 고쳐서 통과시키지 않는다.** `check:design` 의 Figma 실측 정규식을 지우거나 바꾸면
+"통과"가 아무 뜻도 없어진다 — 2026-09-24 `jinwoo` 브랜치 검토에서 `check:design` 은 통과했지만 `check:figma-web` 은
+**편차 192건**이었다(루트 AGENTS 웹 절). 시안이 바뀐 게 아니면 코드를 시안에 맞춘다.
 
 - **이미지 비율 검사(`scripts/img-aspect-audit.mjs`)** — 좌표 프로브가 **못 보는 종류의 결함**을
   잡는다. Tailwind preflight 의 `img { height: auto }` 가 HTML `height="19"` 속성을 **덮으므로**,
@@ -259,12 +280,39 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
   그 쿼리가 실패하고 `QueryErrorBanner` 가 떠 **레이아웃이 밀려 프로브가 깨진다**(오탐이
   아니라 진짜 신호다 — 실제로 이 방식으로 숨은 실패를 하나 잡았다).
 
+### 6.1 사용자 신고에서 나온 규칙 (2026-09-07 ~ 09-13, PR #7·#9·#10)
+
+**렌더는 멀쩡해 보이는데 틀린** 종류라 좌표 대조가 통과시켰던 결함들이다. 다시 어기지 않을 규칙만 적는다.
+
+- **한 글리프 = 에셋 하나.** 같은 모양의 "여백 포함판"과 "타이트 크롭판"이 공존하면 반드시 틀린 쪽이 쓰인다
+  (chevron 82% 로 작고 9% 눌림 · 휴지통 두 판 모두 잘림). `check:design` 이 `{ absent: /iconTrashLg/ }` 로 막는다.
+  **에셋을 새로 받으면 잉크 bbox 가 테두리에 닿는지부터 본다**(닿으면 잘린 것이다).
+- **아이콘 세로 중앙은 손으로 박은 `top` 대신 `top-1/2 -translate-y-1/2`.** 드롭다운 화살표가 바닥에 붙어 있었다(15곳).
+- **같은 부품은 같은 값.** 날짜 칸 화살표 x 144 통일 · 드롭다운 라벨 `text-[16px] leading-[23px] text-ink-500`.
+- **24시간제는 네이티브 `<input type="time">` 으로 못 한다**(한국어 로캘이 오전/오후로 쪼갬) → `components/ui/TimeField.tsx`.
+  날짜는 네이티브를 쓰되 기본 달력 아이콘을 `.date-native-hidden`(`index.css`)으로 투명하게 칸 전체로 늘린다.
+- **문구 길이는 코드가 정할 수 없다** → 칸 폭을 주고 접는다(동의 라벨이 상태 pill 을 뚫었다. 문구 SoT 는 core 동의 카탈로그).
+- **표시 전용 컨트롤을 두지 않는다.** 누를 수 있어 보이면 동작해야 한다(정렬 드롭다운).
+- **돌아가기는 그 화면의 부모 섹션으로.** · **로그인 상태의 로고는 역할별 메인**(`TopBar` 의 `home`).
+- **겹침은 좌표 상수로 드러난다** — 절대좌표 요소를 추가하면 같은 카드 안의 y 범위를 대조한다(`PHOTO_DRAFT_TOP`).
+
 ## 7. 환경 주의점
 
 - **Pretendard 는 자체 호스팅**한다(`assets/fonts/Pretendard-1.3.9`, `index.css` 의 `@font-face`).
   jsdelivr CDN 은 컨테이너에서 막혀 있어 쓰지 않는다.
 - `*.supabase.co` 도 막혀 있다 → 컨테이너에서는 목업 모드로 뜬다.
 - `.env` 는 커밋 금지. 원격 세션은 `.claude/hooks/session-start.sh` 가 환경변수로 생성한다.
+- **원격 컨테이너에서 게이트를 돌릴 때**(2026-09-23·24 확인):
+  · 잉크 대조(`figma-ink.py`)는 **`numpy`·`Pillow`** 가 필요하다 → `pip install numpy Pillow`(없으면 `ModuleNotFoundError`).
+  · 브라우저는 **`/opt/pw-browsers/chromium`**(`playwright install` 금지). figma·img·nav·a11y 검사는 `executablePath` 를 준다.
+    ⚠️ **`test:auth`(`scripts/auth-isolation.mjs`)는 안 준다** — 원격에서는 실패한다(코드 결함 아님, 미수정).
+  · ⚠️ **`scripts/report-flow-smoke.mjs`(`session-report` 흐름 UI 시험)는 `channel:'msedge'`** — MS Edge 기기에서만 돌고
+    package.json·CI 에 연결돼 있지 않아 **게이트가 아니다**. 이 흐름의 회귀는 자동으로 지켜지지 않는다.
+  · `smoke` 는 `dist` 가 있어야 한다 — 새 컨테이너에선 `pnpm web:smoke`(빌드 포함).
+  · `check:figma-web` 은 `figma-audit.mjs` 에서 실패하면 **뒤의 잉크·이미지·사이드바 검사를 돌리지 않는다** — 첫 단계 통과가 전부가 아니다.
+- ⚠️ **`apps/web/supabase/config.toml`(`project_id = "web"`) 이 있다**(커밋 `20250e5`) — `apps/web` 에서 `supabase init` 을 돌린 흔적.
+  마이그레이션도 함수도 없는 빈 프로젝트 폴더이고 루트 `supabase/` 엔 `config.toml` 이 없다. CLI(`db push`·`functions deploy`)는
+  **루트에서** 한다. 지울지 사용자 확인 필요(미처리).
 
 ## 2026-09-12 사업 기획 반영 사항 (당시 기록)
 
