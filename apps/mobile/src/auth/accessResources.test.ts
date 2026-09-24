@@ -16,7 +16,7 @@ function api() {
   const setState = vi.fn();
   const cancelQueries = vi.fn(async () => {});
   const clear = vi.fn();
-  const exports: { loadAccessSnapshot?: (uid: string) => Promise<{ assignments: string[]; activeProfileDenied: boolean }>; resetAccessResources?: () => void } = {};
+  const exports: { loadAccessSnapshot?: (uid: string) => Promise<{ activeProfileDenied: boolean }>; resetAccessResources?: () => void } = {};
   runInNewContext(ts.transpileModule(readFileSync(new URL('./accessResources.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, { exports, require: (name: string) => {
@@ -36,24 +36,27 @@ describe('access checks and resource disposal', () => {
     expect((await a.exports.loadAccessSnapshot!('user')).activeProfileDenied).toBe(true);
     expect(a.canProcess).toHaveBeenCalledWith('session');
   });
-  it('pages all own active assignments and checks the current profile under RLS', async () => {
+  it('checks the current profile under RLS without consulting assignments (pilot D4: assignment is not access)', async () => {
     const a = api();
-    a.range.mockResolvedValueOnce({ data: Array.from({ length: 500 }, (_, i) => ({ profile_id: `elder-${i}` })), error: null });
     const result = await a.exports.loadAccessSnapshot!('user');
-    expect(result.assignments).toHaveLength(501);
-    expect(a.range).toHaveBeenNthCalledWith(2, 500, 999);
-    expect(a.query.eq).toHaveBeenCalledWith('caregiver_user_id', 'user');
-    expect(a.query.eq).toHaveBeenCalledWith('status', 'active');
+    expect(result.activeProfileDenied).toBe(false);
     expect(a.from).toHaveBeenCalledWith('profiles');
+    expect(a.from).not.toHaveBeenCalledWith('profile_caregivers');
+  });
+  it.each(['social_worker', 'center_director'])('checks a %s like any care-team member', async role => {
+    const a = api();
+    a.getRow.mockResolvedValue({ id: 'user', role, org_id: 'org', onboarded_at: 'date' });
+    a.maybeSingle.mockResolvedValue({ data: null, error: null });
+    expect((await a.exports.loadAccessSnapshot!('user')).activeProfileDenied).toBe(true);
   });
   it('a now-invisible active profile is denied', async () => {
     const a = api();
     a.maybeSingle.mockResolvedValue({ data: null, error: null });
     expect((await a.exports.loadAccessSnapshot!('user')).activeProfileDenied).toBe(true);
   });
-  it('a failed assignment query is not treated as a successful empty list', async () => {
+  it('a failed profile query is not treated as permission', async () => {
     const a = api();
-    a.range.mockResolvedValue({ data: [], error: new Error('offline') });
+    a.maybeSingle.mockResolvedValue({ data: null, error: new Error('offline') } as never);
     await expect(a.exports.loadAccessSnapshot!('user')).rejects.toThrow('offline');
   });
   it('disposes the voice connection, session state and query state', () => {

@@ -58,6 +58,8 @@ const ROLE_LABEL: Record<string, string> = {
   caregiver: '요양보호사',
   org_admin: '관리자',
   guardian: '보호자',
+  social_worker: '사회복지사',
+  center_director: '센터장',
 };
 
 /** Figma 소셜 아이콘 — 네이버·카카오는 41.4 정사각, 구글은 41×42. */

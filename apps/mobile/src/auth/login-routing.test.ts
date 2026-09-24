@@ -45,10 +45,10 @@ describe('login follows committed access state', () => {
     monitor.identify(row.id);
     const login = monitor.refresh();
     const event = monitor.refresh();
-    pending[0]({ row, assignments: [], activeProfileDenied: false });
+    pending[0]({ row, activeProfileDenied: false });
     expect(await login).toBeNull();
     expect(renderLogin(state).type).not.toBe('Redirect');
-    pending[1]({ row, assignments: [], activeProfileDenied: false });
+    pending[1]({ row, activeProfileDenied: false });
     await event;
     expect(renderLogin(state)).toEqual({ type: 'Redirect', props: { href: '/main' } });
   });

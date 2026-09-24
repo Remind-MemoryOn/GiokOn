@@ -4,7 +4,7 @@ import { AccessMonitor, type AccessSnapshot } from './accessMonitor';
 
 const row = { id: 'a', role: 'caregiver', org_id: 'org', onboarded_at: 'date' } as UserRow;
 const snapshot = (overrides: Partial<AccessSnapshot> = {}): AccessSnapshot => ({
-  row, assignments: ['elder'], activeProfileDenied: false, ...overrides,
+  row, activeProfileDenied: false, ...overrides,
 });
 function setup() {
   const load = vi.fn(async () => snapshot());
@@ -18,19 +18,25 @@ function setup() {
 afterEach(() => vi.useRealTimers());
 
 describe('mobile permission revalidation', () => {
-  it('unchanged permissions and additional assignments preserve a conversation', async () => {
+  it('unchanged permissions preserve a conversation', async () => {
     const api = setup();
     await api.monitor.refresh();
-    api.load.mockResolvedValue(snapshot({ assignments: ['elder', 'new'] }));
     await api.monitor.refresh();
     expect(api.reset).not.toHaveBeenCalled();
+  });
+  it.each(['social_worker', 'center_director', 'org_admin'] as const)('a %s care-team member keeps an active conversation', async role => {
+    const api = setup();
+    api.load.mockResolvedValue(snapshot({ row: { ...row, role } }));
+    await api.monitor.refresh();
+    await api.monitor.refresh();
+    expect(api.reset).not.toHaveBeenCalled();
+    expect(api.publish).toHaveBeenLastCalledWith('a', { ...row, role });
   });
   it.each([
     snapshot({ row: { ...row, role: 'guardian' } }),
     snapshot({ row: { ...row, org_id: 'other' } }),
     snapshot({ row: { ...row, onboarded_at: null } }),
     snapshot({ row: null }),
-    snapshot({ assignments: [] }),
     snapshot({ activeProfileDenied: true }),
   ])('discards resources before publishing revoked access %j', async next => {
     const api = setup();

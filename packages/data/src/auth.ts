@@ -187,8 +187,13 @@ export interface OnboardingParams {
   name: string
   phone: string
   role: 'caregiver' | 'guardian'
-  /** 요양보호사(신규 기관 생성) 필수. */
+  /** 요양보호사: 신규 기관 생성 시 기관명. `inviteCode` 와 둘 중 하나. */
   orgName?: string
+  /**
+   * 요양보호사: 기관 초대 코드로 합류(파일럿 D3). 가입은 끝나되 **승인 전까지 org_id 가 NULL** —
+   * 기관 데이터는 0건이고, 관리자·센터장이 approve_org_join 하면 초대 코드의 역할로 합류한다.
+   */
+  inviteCode?: string
   /** 보호자 선택: 있으면 어르신 영속 코드로 연결(pending)까지 처리. */
   elderCode?: string
   /**
@@ -215,6 +220,7 @@ export async function completeOnboarding(params: OnboardingParams): Promise<User
     p_consents: params.consents?.length ? params.consents : null,
     p_consent_version: params.consentVersion,
     p_social_acknowledged: params.socialAcknowledged,
+    p_invite_code: params.inviteCode?.trim() || null,
   })
   if (error) throw error
   return data as UserRow
