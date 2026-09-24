@@ -14,7 +14,7 @@
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
 | T22.1 | `org_role` 에 `social_worker`·`center_director` 추가 — ⚠️ **단독 마이그레이션**(같은 트랜잭션에서 신규 enum 값 사용 불가) | D1 | — | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
-| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) + ⚠️ **역할 부여 RPC `set_member_role`**(`org_admin`·`center_director` 만 · 자기 자신 불가 · 보호자↔돌봄팀 전환 불가 · 마지막 `org_admin` 강등 불가). 없으면 새 역할은 0명이다 | D3 | T22.1 | ⏳ |
+| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) + ⚠️ **역할 부여 RPC `set_member_role`**(`org_admin`·`center_director` 만 · 자기 자신 불가 · 보호자↔돌봄팀 전환 불가 · 마지막 `org_admin` 강등 불가). 없으면 새 역할은 0명이다 | D3 | T22.1 | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
 | T22.3 | `app.is_care_team()`·`app.has_capability()` + **9테이블 RLS 기관 단위 전환**(보호자 브랜치 무변경) | D4 | T22.2 | ⏳ |
 | T22.4 | `= 'caregiver'` 비교 전면 grep → `is_care_team()` 치환(새 역할이 조용히 빠지는 것 방지) | §11-8 | T22.3 | ⏳ |
 | T22.5 | 권한 매트릭스 UI(3종 × 역할) + 기관 설정 + 구성원 역할 지정 | W6 | T22.3 | ⏳ |

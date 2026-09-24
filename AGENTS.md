@@ -187,7 +187,7 @@
 | # | 계획·tasks | 내용 | 상태 |
 |---|---|---|---|
 | B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ✅ 로컬 |
-| B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ⏳ |
+| B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ✅ 로컬 — `is_care_team`·`is_org_manager` 헬퍼도 여기서(새 정책이 씀). 회귀는 변형 2종(자기 자신·마지막 관리자 가드 제거)이 실패하는 것 확인 |
 | B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ⏳ |
 | B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ⏳ |
 | B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ⏳ |

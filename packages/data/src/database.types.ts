@@ -828,6 +828,20 @@ export type Database = {
         Update: { id?: string; inquiry_id?: string; author_id?: string; content?: string; created_at?: string; updated_at?: string }
         Relationships: []
       }
+      // 파일럿 D3(20260924010000) — 기관 설정 1행. 쓰기는 org_admin·center_director, 읽기는 돌봄팀.
+      org_settings: {
+        Row: { org_id: string; facility_type: 'nursing_home' | 'day_care' | null; target_minutes: number; default_avoid_topics: string[]; default_program_type: string; default_location: string | null; updated_at: string; updated_by: string | null }
+        Insert: { org_id: string; facility_type?: 'nursing_home' | 'day_care' | null; target_minutes?: number; default_avoid_topics?: string[]; default_program_type?: string; default_location?: string | null }
+        Update: { facility_type?: 'nursing_home' | 'day_care' | null; target_minutes?: number; default_avoid_topics?: string[]; default_program_type?: string; default_location?: string | null }
+        Relationships: []
+      }
+      // 파일럿 D3 — 위임 3종 × 허용 역할. 행이 없으면 서버가 기본 집합으로 폴백한다.
+      org_capabilities: {
+        Row: { org_id: string; capability: Database['public']['Enums']['org_capability']; allowed_roles: Database['public']['Enums']['org_role'][]; updated_at: string; updated_by: string | null }
+        Insert: { org_id: string; capability: Database['public']['Enums']['org_capability']; allowed_roles?: Database['public']['Enums']['org_role'][] }
+        Update: { allowed_roles?: Database['public']['Enums']['org_role'][] }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -897,6 +911,11 @@ export type Database = {
         Returns: string | null
       }
       // 구 1회성 초대(폐기·감사 이력용). 신규 코드는 elder_codes 로 대체.
+      // 파일럿 D3 — 역할 부여(org_admin·center_director 만, 자기 자신·보호자↔돌봄팀·마지막 관리자 강등 불가).
+      set_member_role: {
+        Args: { p_target: string; p_role: Database['public']['Enums']['org_role'] }
+        Returns: undefined
+      }
       list_inquiries: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean; total: number }>
@@ -925,6 +944,7 @@ export type Database = {
       inquiry_visibility: 'public' | 'private'
       inquiry_status: 'waiting' | 'answered'
       notification_kind: 'safety' | 'share_viewed' | 'message'
+      org_capability: 'journal_finalize' | 'share_revoke' | 'guardian_link_approve'
     }
     CompositeTypes: { [_ in never]: never }
   }
