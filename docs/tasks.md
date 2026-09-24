@@ -325,9 +325,11 @@
 | T22.1 | `org_role` 에 `social_worker`·`center_director` 추가 — ⚠️ **단독 마이그레이션**(같은 트랜잭션에서 신규 enum 값 사용 불가) | D1 | — | ⏳ |
 | T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) + ⚠️ **역할 부여 RPC `set_member_role`**(`org_admin`·`center_director` 만 · 자기 자신 불가 · 보호자↔돌봄팀 전환 불가 · 마지막 `org_admin` 강등 불가). 없으면 새 역할은 0명이다 | D3 | T22.1 | ⏳ |
 | T22.3 | `app.is_care_team()`·`app.has_capability()` + **9테이블 RLS 기관 단위 전환**(보호자 브랜치 무변경) | D4 | T22.2 | ⏳ |
-| T22.4 | `= 'caregiver'` 비교 전면 grep → `is_care_team()` 치환(새 역할이 조용히 빠지는 것 방지) | §11-6 | T22.3 | ⏳ |
+| T22.4 | `= 'caregiver'` 비교 전면 grep → `is_care_team()` 치환(새 역할이 조용히 빠지는 것 방지) | §11-8 | T22.3 | ⏳ |
 | T22.5 | 권한 매트릭스 UI(3종 × 역할) + 기관 설정 + 구성원 역할 지정 | W6 | T22.3 | ⏳ |
-| T22.6 | RLS 회귀 단언: 같은 기관 다른 담당자 열람 성공 · 타 기관·guardian 0건 · 신규 역할 동작 · 위임 on/off · `set_member_role` 거부 4종 | §12 | T22.3 | ⏳ |
+| T22.6 | RLS 회귀 단언: 같은 기관 다른 담당자 열람 성공 · 타 기관·guardian 0건 · 신규 역할 동작 · 위임 on/off · `set_member_role` 거부 4종 · 합류 승인 전 0건 | §12 | T22.3 | ⏳ |
+| T22.7 | ⚠️ **직원 합류(파일럿 블로커)** — `org_invites`(초대 코드·합류 후 역할·만료·회수) · `org_join_requests`(pending) · `approve_org_join`(`org_admin`·`center_director` 만, 자기 요청 불가). **`users.org_id` 는 승인 전까지 NULL** — 지금은 가입하는 요양보호사마다 새 기관이 생긴다 | D3 | T22.1 | ⏳ |
+| T22.8 | 온보딩 "새 기관 만들기 / 초대 코드로 합류" + 승인 대기 화면 · 기관 관리의 초대 코드 발급·회수·합류 승인("승인하면 기관 전체 기록 열람" 명시) | W9, W6 | T22.7 | ⏳ |
 
 ### M20 — 프로그램 일지 자동 생성 (머지 단위 ②) → `PLAN.md` M20
 | ID | 작업 | 계획 | 의존 | 상태 |
@@ -360,6 +362,7 @@
 | T23.2 | 직접 모드 제거 — `RELAY_MODE` 분기 삭제, `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화 | M1 | T23.1 | ⏳ |
 | T23.3 | 어르신 표시 모드 분리(`elder.tsx`) + 어르신 화면에서 요양보호사 UI 제거 | M2, M3 | T23.2 | ⏳ |
 | T23.4 | 복귀 게이트(숨김 제스처 또는 PIN) | M4 | T23.3 | ⏳ |
+| T23.5 | ⚠️ **`live-token` 중계 전용화** — 지금은 요양보호사 JWT 만으로 Gemini 단기 토큰이 나가 구버전 앱·JWT 소지자가 중계(출력 검열)를 건너뛸 수 있다. 중계만 가진 자격을 추가로 요구, 없으면 403 | C4 | T23.2 | ⏳ |
 
 ### 푸시 (머지 단위 ⑤)
 | ID | 작업 | 계획 | 의존 | 상태 |

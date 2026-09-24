@@ -95,6 +95,10 @@
 - `org_settings`(시설 유형·목표 시간·기본 피할 주제·기본 프로그램 유형·기본 장소) · `org_capabilities`(일지 확정·공개 철회·보호자 연결 승인
   **3종만** 역할별 위임) · **`set_member_role(target, role)`** RPC — `users.role` 이 3중으로 잠겨 있어(`20260908000000`) 이 RPC 가 없으면
   새 역할을 가질 방법이 없다(D3).
+- ⚠️ **직원 합류(D3 — 파일럿 블로커)**: 2026-07-25 이후 `complete_onboarding` 은 요양보호사마다 **새 기관 + `org_admin`** 을 만든다.
+  `org_invites`(초대 코드 — `app.generate_invite_code()` 재사용, 합류 후 역할, 만료·회수) · `org_join_requests`(pending) ·
+  `approve_org_join`(`org_admin`·`center_director` 만, 자기 요청 불가) 을 추가하고, **`users.org_id` 는 승인 전까지 NULL** 로 둔다 —
+  "org_id 가 없으면 데이터 0건" 불변식을 그대로 쓴다. 기존 어르신 단위 배정은 접근 게이트가 아니라 "내 담당" 표시로 남는다.
 - ⚠️ **`care_journals`·`journal_photos` DROP**(데이터 포함 — 사용자 확정). `program_journals`(공단 서식 필드를 **개별 컬럼**으로,
   상태 `generating|pending_review|final|failed`) · `program_journal_photos` · `program_journal_revisions`(확정 후 수정 이력) ·
   `journal_generation_jobs`(초안 생성 큐) + 트리거 4종 — **확정 가드(`auth.uid() is null` 이면 `final` 불가 — 서비스 계정 워커는 확정을 못 쓴다)** ·
@@ -131,7 +135,7 @@ using (org_id = app.current_org_id() and app.is_care_team())
 
 음성 중계 흐름(2026-09-13 승인 → **코드 구현·로컬 검증 완료, 운영 배포·실기기 미검증**. 2026-09-23 **유일한 음성 경로로 확정** — 앱 직접 연결은 폐기):
 
-1. 앱이 음성 중계에 인증된 연결을 요청한다. 중계가 세션·기관·배정·동의·상태·한도를 검사한다.
+1. 앱이 음성 중계에 인증된 연결을 요청한다. 중계가 세션·기관·배정·동의·상태·한도를 검사한다. ⚠️ 중계는 **사용자 JWT 로** `live-token` 을 불러 Gemini 토큰을 받는다 — 서버가 중계와 앱 직접 호출을 구분하지 못하므로 파일럿에서 `live-token` 을 중계 전용으로 잠근다(파일럿 계획 C4).
 2. 중계가 Gemini Live 입력과 연결 수명을 통제한다. ~~기존 앱 직접 연결 경로의 전환 정책도 필요하다.~~ → 직접 경로는 **폐기**(파일럿 계획 M1). 파일럿에서는 중계의 2초 권한 폴을 `session_tick` RPC 로 바꿔 단계·원격 제어를 함께 받는다(D6).
 3. Live 출력 전사 → 서버 검증·채택 → Clova 합성 → 앱 재생으로 연결한다. Live Structured Outputs를 전제하지 않는다.
 4. 생성·채택·실제 재생과 전사/교정 출처를 구분하는 기록 계약을 설계한다. 기존 컬럼과 신규 필요 항목은 DB 작업에서 대조하며 고정 `audio_url` 반환을 전제하지 않는다. 상세: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현).

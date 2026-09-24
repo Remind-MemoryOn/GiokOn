@@ -9,8 +9,105 @@
 > **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../docs/plans/pilot-development-plan.md)**.
 > 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
 > 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
+>
+> **이 문서 안에서는 §0(현재·파일럿 구조)이 새 기준이다.** §1~§12 는 MVP 당시 구조로 남겨 두었다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 멀티테넌시 — `organizations` + `users.org_id` + 역할(RBAC: org_admin/caregiver/(guardian)), 전 테이블 조직 단위 격리. 상세: PLAN §2′ M14 · `docs/security.md`.
+
+## 0. 현재·파일럿 구조 (2026-09-23 기획 변경 — 이 절이 §1~§12 보다 우선한다)
+
+> §1~§12 는 2026-06 MVP 당시 구조다(`session-respond` Edge Function·`session/active.tsx`·RLS `auth.uid()` 등은
+> 실제 코드와 이미 다르다). 무엇을 만들지는 [`pilot-development-plan.md`](plans/pilot-development-plan.md),
+> 화면은 [`design.md`](design.md) §0, 요구는 [`requirements.md`](requirements.md) §0.
+
+### 0-1. 전체 구조
+
+```
+┌───────────────────────────────┬──────────────────────────────────────┐
+│ 웹 (apps/web · React + Vite)   │ 모바일 앱 (apps/mobile · Expo SDK 54) │
+│ · 요양보호사 웹: 연대기·세션 설계 │ · 요양보호사 모드: 어르신 선택 →       │
+│   ·프로그램 일지·감독 화면(반응형) │   설계 확인 → 시작                    │
+│   ·공개 관리·기관 설정·권한       │ · 어르신 표시 모드: 사진·자막·         │
+│ · 보호자 웹: 오늘의 이야기·      │   "말하는 중" (조작 요소 0)           │
+│   대화 관찰 리포트              │                                      │
+└──────────────┬────────────────┴─────────────┬────────────────────────┘
+               │ 공유: packages/core · data · theme │ 음성(WSS)
+               ▼                                   ▼
+┌────────────────────────────────┐   ┌────────────────────────────────────┐
+│ Supabase (서울)                 │   │ apps/voice-relay (Node + ws, Docker)│
+│ PostgreSQL · RLS(기관 + 역할)    │◀──│ session_tick RPC(2초) — 권한·단계·   │
+│ Auth · Storage · Realtime       │   │   원격 제어 · 위기 이벤트 즉시 기록   │
+│ Edge Functions: live-token ·    │   │ Gemini Live(gemini-3.8-live)        │
+│   session-report · naver-auth · │   │   → 출력 검증(screenAiUtterance)    │
+│   [신규] 일지 초안 워커 ·         │   │   → Clova TTS → 앱                  │
+│   [신규] 푸시 발송 워커           │   │ (Gemini 오디오 원본은 전달 안 함)    │
+└──────────────┬─────────────────┘   └────────────────────────────────────┘
+               │ Expo Push (FCM/APNs 자격증명은 EAS 가 관리)
+               ▼
+        요양보호사 휴대폰 — 위기 발화·세션 이상 종료 알림
+```
+
+⚠️ 음성 경로는 **중계 하나뿐**이다. 앱이 Gemini Live 에 직접 붙는 경로(직접 모드)는 폐기한다(파일럿 계획 M1·G).
+
+### 0-2. 사용자 유형과 역할
+
+| 사용자 | `org_role` | 접근 환경 | 인증 |
+|---|---|---|---|
+| 요양보호사 | `caregiver` | 모바일 앱(요양보호사 모드) + 요양보호사 웹 | 이메일·소셜 로그인 |
+| 사회복지사 (신규) | `social_worker` | 요양보호사 웹 | 〃 |
+| 센터장 (신규) | `center_director` | 요양보호사 웹 | 〃 |
+| 기관 관리자 | `org_admin` | 요양보호사 웹 | 〃 (기관을 만든 계정) |
+| 보호자 | `guardian` | 보호자 웹 | 〃 + 어르신 코드 연결·승인 |
+| 어르신 | — | 모바일 앱(어르신 표시 모드) | 없음 — 기기에 로그인된 요양보호사 세션으로 인가 |
+
+역할은 `set_member_role` RPC 로만 바뀐다(`users.role` 직접 쓰기는 3중 차단 — `20260908000000`).
+
+### 0-3. 권한 구조 (파일럿 목표)
+
+```
+[기관(tenant) 단위 격리] — 다른 기관 데이터는 0건
+  │
+  ├── 돌봄팀 = caregiver · social_worker · center_director · org_admin   (app.is_care_team())
+  │     ├── 같은 기관 어르신의 연대기·세션·분석·일지 열람·기록 — 담당 여부와 무관(교대근무)
+  │     ├── 삭제는 배정·관리자 기준 유지
+  │     └── 위임 권한 3종 (org_capabilities · app.has_capability())
+  │           ├── 프로그램 일지 확정
+  │           ├── 공개 / 철회
+  │           └── 보호자 연결 승인
+  │         기본 허용 = social_worker · center_director · org_admin → 기관 설정으로 caregiver 에 위임
+  │
+  ├── 고정 권한 (위임 불가) — org_admin · center_director
+  │     ├── 권한 매트릭스 편집
+  │     ├── 구성원 역할 지정 (자기 자신 불가 · 보호자↔돌봄팀 전환 불가)
+  │     └── 직원 초대 코드 발급·회수 · 합류 승인 (자기 요청 불가)
+  │           합류 승인 전 = users.org_id NULL = 데이터 0건
+  │
+  ├── 설정으로 끌 수 없는 것 — 위기 대응 · 출력 검열 · 진단 표현 금지 · Clova 경유
+  │
+  └── 보호자 (guardian) — 지금과 같다
+        └── 연결 승인된 어르신의 **공개된 항목**만 (guardian_shares 경유)
+
+[서버 워커 (service_role)]
+  └── 일지 초안은 확인 대기까지만 쓴다 — 확정은 DB 트리거가 물리적으로 막는다(auth.uid() is null)
+```
+
+현재(전환 전)는 기관 + **담당 배정** 격리다(`app.is_assigned_caregiver` — `20260722100000`). 전환 후에도 그 함수는
+"내 담당" 필터·알림 대상 용도로 남는다.
+
+### 0-4. 모듈 변경 지도
+
+| 위치 | 삭제 | 신규·확장 | 유지(절대) |
+|---|---|---|---|
+| `packages/core/src` | `ai.ts`·`ai.test.ts`(규칙 기반 대화) · `voice-flow.ts`(호출처 0) · `journal.ts` 의 `buildJournalDraft`(목업) · `prompt.ts` 의 `RESPONSE_JSON_SCHEMA` | `session-phase.ts` · `program-journal.ts` · `generated-session.ts` 확장(공단 필드·보호자 문장·금지어) · `conversation.ts` `respondToUserTurn` → `evaluateUserTurn` 축소 · `prompt.ts` 단계 지시·`PROMPT_VERSION` 저장 | `safety.ts` 전체 · `analysis.ts` 의 `detectTurnTopic`·`recommendNextTopics` |
+| `packages/data/src/hooks` | `journals.ts`·`journalPhotos.ts`(→ 프로그램 일지 훅) · `analyses.ts` 의 `useUpsertSessionAnalysis`(dead code) | `programJournals.ts` · `supervision.ts` · `orgSettings.ts`(`useHasCapability` = UI 활성화의 단일 근거) · `pushTokens.ts` · `events.ts` · `realtime.ts` 등록 3곳 | 나머지 |
+| `apps/mobile` | 직접 모드 분기(`RELAY_MODE`)와 직접 UI | `app/session/elder.tsx`(어르신 표시 모드) · `src/features/session/`(공용 로직 추출) · 복귀 게이트 · 원격 제어 수신 · 푸시 토큰 등록 | `SESSION_BUSY`(기기 1대 = 세션 1개) |
+| `apps/web/src/pages` | `caregiver/Journal{List,Write,}Page.tsx`(요양일지) | `ProgramJournal{List,Detail}Page` · `SupervisionPage`(반응형) · 동의 부여·철회 라우트 · `OrgPage` 권한 매트릭스·역할 지정 · 보호자 페이지 표현 전환 | — |
+| `apps/voice-relay/src` | — | `relay.ts` 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 · 위기 이벤트 즉시 기록 | 타이머·턴 상한·수명·재생 영수증 게이팅 |
+| `supabase/functions` | — | 일지 초안 워커 · 푸시 발송 워커 · `session-report` 생성 로직 `_shared/` 추출 · 데모 허용목록 → 기관 게이트 · ⚠️ **`live-token` 중계 전용화**(지금은 JWT 만으로 토큰이 나가 중계를 건너뛸 수 있다) | `live-token` 의 DB 판정(`reserve_live_token`)·한도 |
+
+⚠️ `packages/core` 삭제와 앱의 직접 모드 제거는 **반드시 같은 PR** 이다 — core 만 먼저 머지하면 앱이 깨진다.
+
+---
 
 ## 1. 전체 서비스 구조 개요
 
@@ -40,6 +137,8 @@
 
 ## 2. 사용자 유형 정의
 
+> ⚠️ MVP 당시 표. 현재 역할(사회복지사·센터장·기관 관리자·보호자 포함)은 §0-2.
+
 | 사용자 유형 | 설명 | 접근 환경 | 인증 여부 |
 |---|---|---|---|
 | **요양보호사** | 연대기 입력, 세션 시작·종료, 로그 확인 | 관리자 웹 + 모바일(세션 시작·전달) | 필요 (이메일+비밀번호) |
@@ -49,6 +148,8 @@
 ---
 
 ## 3. 권한 구조
+
+> ⚠️ MVP 당시 트리. 파일럿 권한(기관 단위 + 역할 + 위임 3종)은 §0-3.
 
 ```
 [모바일 기기 = 요양보호사 세션 보유]
@@ -69,6 +170,8 @@
 ---
 
 ## 4. 화면 목록
+
+> ⚠️ MVP 당시 목록. 현재 웹 라우트는 `apps/web/src/App.tsx`, 파일럿 화면 변경분은 [`design.md`](design.md) §0-1.
 
 ### 모바일 앱 (apps/mobile — 어르신)
 
@@ -118,6 +221,8 @@
 ---
 
 ## 6. 어르신 대화 흐름
+
+> ⚠️ MVP 직접 모드 흐름. 파일럿은 중계 단일 + 단계형(도입 → 회상 → 마무리·의견수렴) — [`design.md`](design.md) §0-3.
 
 1. 요양보호사가 모바일(로그인된 기기)에서 어르신 선택·세션 시작 → "기기 전달" 안내 → 어르신 대화 화면
 2. AI 첫 질문 TTS 자동 재생 (버튼 조작 불필요)
@@ -201,6 +306,8 @@ users (요양보호사)
 
 ## 9. 프로젝트 폴더 구조
 
+> ⚠️ MVP 당시 트리(`session/active.tsx`·`repositories/` 등은 실제와 다르다). 현재 워크스페이스는 7개 — `apps/{web,mobile,voice-relay}` · `packages/{core,data,theme}` · `supabase`. 파일럿 변경은 §0-4.
+
 기억온은 pnpm 모노레포로 구성한다. 웹·모바일은 UI를 공유하지 않고, 도메인 로직·데이터·디자인 토큰만 `packages/*`로 공유한다.
 
 ```
@@ -234,6 +341,8 @@ giokon/
 
 ## 10. 주요 컴포넌트·모듈 구조
 
+> ⚠️ `session-respond` 는 지금 저장소에 없다. 음성은 `apps/voice-relay`, 모듈 변경은 §0-4.
+
 ### AI 파이프라인 모듈 (Edge Function)
 
 ```
@@ -259,6 +368,8 @@ session/active.tsx
 
 ## 11. 클라이언트–데이터 연결 포인트
 
+> ⚠️ `session-start`·`session-respond`·`session-end` Edge Function 은 MVP 설계이며 지금 저장소에 없다. 현재 Edge Functions 는 `live-token`·`session-report`·`naver-auth`·`stt-transcribe`.
+
 CRUD는 supabase-js로 직접, 세션 AI 단계는 Edge Function으로 처리한다.
 
 | 기능 | 방식 | 대상 | 응답 |
@@ -275,6 +386,8 @@ CRUD는 supabase-js로 직접, 세션 AI 단계는 Edge Function으로 처리한
 ---
 
 ## 12. 향후 구조 확장 방향
+
+> ⚠️ 당시 로드맵. 보호자 연동·세션 자동 요약·기관 어드민은 이미 구현됐거나 파일럿에서 재정의됐고, "음성 전환"은 중계 단일로 확정됐다(§0-1).
 
 | 항목 | 현재 구조 | 확장 시 |
 |---|---|---|

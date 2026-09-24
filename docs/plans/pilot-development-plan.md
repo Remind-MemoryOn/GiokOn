@@ -78,6 +78,12 @@
 `app.stop_unconsented_sessions()` 도 있는데, `ElderDetailPage.tsx:434` 가 존재하지 않는 라우트를
 가리켜 `/` 로 튕긴다. **파일럿 블로커.**
 
+**⑧ 두 번째 직원이 같은 기관에 들어올 길이 없다.** 요양보호사 온보딩은 2026-07-25 이후 **항상 새 기관을
+만들고 그 사람을 `org_admin` 으로** 만든다(`complete_onboarding` 의 어르신 코드 합류 경로 제거 — 코드는 보호자용).
+당시 "여러 요양보호사의 같은 기관 합류는 추후 기관 초대 메커니즘으로"라고 미뤄 둔 것이 아직 없다.
+**1기관·여러 직원 파일럿이 성립하지 않는다** — 진행자·감독자·확정자를 사람 단위로 남기려면 직원마다 계정이
+같은 기관에 있어야 한다. **파일럿 블로커**(아래 D3·W9).
+
 ## 4. 설계 결정과 근거
 
 **A. 역할은 enum 확장, 권한은 별도 테이블.** `org_role` 에 `social_worker`·`center_director` 를
@@ -109,6 +115,9 @@
 
 **G. 직접(비중계) 모드 폐기.** 검열되지 않은 Gemini 오디오 경로가 코드에 살아있는 한 기준 2가
 코드 레벨에서 거짓이다. 단계·원격 제어·안전 일시정지가 전부 서버 권위인데 직접 모드에는 서버가 없다.
+⚠️ **앱 코드 삭제만으로는 닫히지 않는다.** `live-token` 은 요양보호사 JWT 와 활성 세션만 보고 Gemini 단기 토큰을
+내준다. 중계도 **사용자 JWT 로** 같은 함수를 부르므로(`apps/voice-relay/src/main.ts:41`) 서버가 둘을 구분하지 못한다 —
+구버전 앱이나 JWT 를 가진 누구든 토큰을 받아 중계를 건너뛸 수 있다. 그래서 `live-token` 을 **중계 전용**으로 잠근다(C4).
 
 ---
 
@@ -120,7 +129,7 @@
 |---|---|---|
 | **D1** | `..._org_role_add_values.sql` | `alter type org_role add value 'social_worker'/'center_director'` — ⚠️ **이 파일에 다른 DDL 금지**. 같은 트랜잭션에서 신규 enum 값을 쓸 수 없다 |
 | **D2** | `..._notification_kind_add_values.sql` | `session_paused`·`journal_ready`·`journal_failed`. D1과 같은 제약 |
-| **D3** | `..._org_settings_capabilities.sql` | `org_settings`(facility_type·target_minutes·default_avoid_topics·default_program_type·default_location), `org_capability` enum, `org_capabilities`, 조직 생성 시드 트리거. 행이 없으면 기본집합으로 폴백(기존 조직 안전). **역할 부여 RPC `public.set_member_role(target, role)`** — 아래 "역할을 부여하는 경로" 참조 |
+| **D3** | `..._org_settings_capabilities.sql` | `org_settings`(facility_type·target_minutes·default_avoid_topics·default_program_type·default_location), `org_capability` enum, `org_capabilities`, 조직 생성 시드 트리거. 행이 없으면 기본집합으로 폴백(기존 조직 안전). **직원 합류(기관 초대 코드 + 승인)** 와 **역할 부여 RPC `public.set_member_role(target, role)`** — 아래 "직원 합류와 역할 부여" 참조 |
 | **D4** | `..._org_scoped_rls.sql` | `app.is_care_team()`·`app.has_capability()` 신설. 9테이블 SELECT/UPDATE 술어를 `org_id = current_org_id() and is_care_team()` 로 교체. **보호자 브랜치는 복사해 무변경 유지**. DELETE 정책은 **교체하지 않는다**(배정·관리자 기준 유지 — 교대근무가 요구하는 것은 열람·기록이지 삭제가 아니다) |
 | **D5** | `..._program_journals.sql` | `care_journals`·`journal_photos` DROP. `program_journals`·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` 신설 + 트리거 4종(확정 가드·이력·enqueue·공개 게이트). `care_grade` enum + `profiles.care_grade` 포함 |
 | **D6** | `..._session_phase_supervision.sql` | `session_phase` enum, `sessions` 컬럼 7개(phase·phase_started_at·paused_at/by·pause_reason·control_request·prompt_version), `session_interventions`, RPC `session_tick`/`advance_session_phase`/`request_session_control`. ⚠️ **목표 시간 컬럼은 새로 만들지 않는다** — `sessions.duration_minutes`(`20260822020000`, 5~120분, 웹 세션 설계의 "예상 소요 시간")가 이미 그 값이다. 비어 있으면 `org_settings.target_minutes` 로 폴백 |
@@ -129,9 +138,22 @@
 | **D9** | D5·D6 말미 | realtime publication 에 `program_journals`·`session_interventions` 추가. ⚠️ `if exists (pg_publication)` 가드 필수(CI는 순정 PG16) |
 | **D10** | 권고 | `app.current_consent_version()` 1개로 통일 — 지금 `'v1.0'` 이 SQL·TS 양쪽에 하드코딩돼 드리프트한다 |
 
-### 역할을 부여하는 경로 (D3 · W6)
+### 직원 합류와 역할 부여 (D3 · W6 · W9)
 
-지금 역할을 바꾸는 길은 **온보딩 RPC 하나뿐**이다 — `20260908000000_users_privilege_hardening.sql`
+**직원 합류** — 기관 단위 열람으로 바꾸면 **합류 승인 = 기관 전체 기록 열람 권한**이 된다. 그래서 합류는
+코드 소지만으로 열리면 안 되고(기존 F-36 원칙), 승인자도 좁혀야 한다.
+
+- `org_invites`(org_id · code · 합류 후 역할 · 발급자 · 만료 시각 · 회수 시각) — 코드는 기존 `app.generate_invite_code()`
+  (CSPRNG 10자) 재사용. 발급·회수는 `org_admin`·`center_director` 만. 합류 후 역할에 `guardian`·`org_admin` 은 넣지 않는다.
+- 온보딩에서 요양보호사는 **새 기관 만들기(기관명) / 초대 코드로 합류** 중 하나를 고른다(W9). 합류를 고르면
+  `org_join_requests`(pending)만 생기고 **`users.org_id` 는 승인 전까지 NULL** 로 둔다 — "org_id 가 없으면 데이터 0건"이라는
+  기존 불변식을 그대로 쓰므로 `is_care_team()` 에 멤버십 상태를 따로 넣지 않아도 된다.
+- `approve_org_join(request_id)` — `org_admin`·`center_director` 만, **자기 요청 승인 불가**. 승인 시 `users.org_id`·역할을 설정한다.
+  승인 화면에는 "승인하면 이 기관의 모든 어르신 기록을 볼 수 있습니다"를 명시한다.
+- 기존 어르신 단위 배정(`claim_elder_by_code`·`approve_caregiver_assignment`)은 접근 게이트가 아니라
+  "내 담당" 표시·알림 대상으로 의미가 줄어든다. 지우지 않는다.
+
+**역할 부여** — 지금 역할을 바꾸는 길은 **온보딩 RPC 하나뿐**이다 — `20260908000000_users_privilege_hardening.sql`
 이 `users.role` 직접 쓰기를 컬럼 권한·트리거·정책 3중으로 막았고, 온보딩은 요양보호사·보호자만
 고를 수 있다. enum 에 `social_worker`·`center_director` 를 추가해도 **그 역할을 가질 방법이 없다.**
 그대로 두면 기본 위임(사회복지사·센터장)만 켜진 기관에서 일지를 확정할 사람이 0명이 된다.
@@ -145,6 +167,8 @@
 - 3개 위임 항목의 기본 허용 = 사회복지사·센터장(기획서 예시) + `org_admin`.
   매트릭스를 고칠 수 있는 역할을 기본값에서 빼 봐야 스스로 켜면 그만이라 의미가 없다.
 - RLS 회귀: 요양보호사가 호출 = 실패 · 자기 자신 대상 = 실패 · 타 기관 대상 = 실패 · 보호자 → 돌봄팀 = 실패.
+  합류: 승인 전(pending) 열람 = 0건 · 자기 요청 승인 = 실패 · 만료·회수된 코드 = 거부 · 요양보호사의 초대 발급 = 실패 ·
+  승인 후 같은 기관 전체 열람 = 성공.
 
 ### 자동 확정 차단을 DB 가 집행한다
 
@@ -201,9 +225,10 @@
 | **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` |
 | **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` |
 | **W5** | 세션 설계의 기존 "예상 소요 시간"(`duration_minutes`)을 **목표 시간**으로 쓴다 — 초기값을 지금의 고정 15분 대신 `org_settings.target_minutes` 에서 가져온다. 단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` |
-| **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) + **구성원 역할 지정**(`set_member_role` — 지금 구성원 표는 역할을 보여주기만 한다) | `pages/caregiver/OrgPage.tsx` |
+| **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) + **구성원 역할 지정**(`set_member_role` — 지금 구성원 표는 역할을 보여주기만 한다) + **직원 초대 코드 발급·회수 · 합류 승인** | `pages/caregiver/OrgPage.tsx` |
 | **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 |
 | **W8** | 어르신 `care_grade` 드롭다운(주간보호 필수) | 등록·수정 화면 |
+| **W9** | ⚠️ **온보딩 합류 경로** — 요양보호사 가입 시 "새 기관 만들기 / 초대 코드로 합류". 합류는 승인 전까지 "승인 대기" 화면만 보인다. **파일럿 블로커**(§3 ⑧) | `pages/public/OnboardingPage.tsx` |
 
 ### 보호자 표현 규칙 (W4)
 
@@ -248,6 +273,9 @@
 **C4. Edge Functions**
 - `session-report/handler.ts` 의 생성 로직을 `_shared/report-generation.ts` 로 추출(양쪽 공유)
 - ⚠️ **`REPORT_ALLOWED_USER_IDS` 데모 허용목록을 org 게이트로 교체** — 안 하면 파일럿 전원 403
+- ⚠️ **`live-token` 중계 전용화** — 중계만 가진 자격(서버 시크릿 공유 비밀 헤더 등)을 사용자 JWT 에 **더해** 요구하고,
+  없으면 403. 앱의 직접 호출 코드는 M1 에서 지운다. 배포 순서: 중계에 비밀 설정 → `live-token` 배포 → 비중계 호출 403 확인.
+  이것이 들어가야 "검열되지 않은 AI 음성이 어르신에게 가는 경로가 없다"가 서버에서 참이 된다
 - `program-journal-draft/`(신규): 큐 소비 → 지수 백오프(30s→5m) → `attempts>5` 면 `failed`.
   **`pending_review` 까지만 쓴다**
 - `push-dispatch/`(신규): `pushed_at is null` 소비 → Expo Push.
@@ -301,10 +329,11 @@ D1·D2(enum 단독) → D3 → D4(RLS) ──→ W2 감독목록 · W6 권한UI
 C1(core 삭제) ⟷ M1·M2   ← 반드시 같은 PR. core 만 먼저 머지하면 앱이 깨진다
 M7(저장 순서) → C4 워커 첫 시도 성공률
 W7(동의 UI) → 파일럿 개시 전 블로커
+D3(직원 합류) → W9 온보딩 · W6 합류 승인 → 파일럿 개시 전 블로커
 ```
 
-**권장 머지 단위 5개**: ① D1~D4 + RLS 회귀 ② D5 + C4(draft) + W1 ③ D6 + C3 + W2 + M5
-④ C1 + M1~M4 ⑤ D7 + C4(push) + M6. **①이 나머지 전부의 선행.**
+**권장 머지 단위 5개**: ① D1~D4 + RLS 회귀 + 직원 합류(W9·W6 일부) ② D5 + C4(draft) + W1 ③ D6 + C3 + W2 + M5
+④ C1 + M1~M4 + `live-token` 중계 전용화(C4) ⑤ D7 + C4(push) + M6. **①이 나머지 전부의 선행.**
 
 ---
 
@@ -317,24 +346,27 @@ W7(동의 UI) → 파일럿 개시 전 블로커
 3. **`safety_events` 가 세션 종료 시 일괄 기록된다** — 실시간 안전 푸시가 구조적으로 불가능하다.
    중계 즉시 기록(C3)이 선결.
 4. **어르신 동의 철회 UI 부재**(W7) — AI 진행 프로그램이 제품 본체가 되는데 철회 경로가 화면에 없다.
+5. **직원이 같은 기관에 합류할 경로 부재**(§3 ⑧ · D3 · W9) — 가입하는 요양보호사마다 새 기관이 생긴다.
+6. **`live-token` 이 중계가 아닌 호출자에게도 Gemini 토큰을 준다**(§4 G · C4) — 앱 코드를 지워도 구버전 앱·JWT 소지자는
+   중계를 건너뛴다. 중계 전용화 전에는 기준 2가 서버에서 거짓이다.
 
 ### 주의
-5. 기관 전체 열람 ↔ 개인정보 최소수집 충돌 — `product_events.profile_viewed` 로 열람 이력을 남겨 보완.
-6. **`= 'caregiver'` 비교 잔존** — `<> 'guardian'` 은 새 역할을 자동 포함하지만 `= 'caregiver'` 는
+7. 기관 전체 열람 ↔ 개인정보 최소수집 충돌 — `product_events.profile_viewed` 로 열람 이력을 남겨 보완.
+8. **`= 'caregiver'` 비교 잔존** — `<> 'guardian'` 은 새 역할을 자동 포함하지만 `= 'caregiver'` 는
    자동 제외한다. SQL·TS 전면 grep 후 `is_care_team()` 으로 치환.
-7. `check:copy` 비의료 린트 ↔ 공단 서식 문구 충돌 가능 — W1 착수 전 사전 검증.
-8. `pnpm install --prefer-offline` 이 `apps/voice-relay/node_modules` 를 만들지 않는다 —
+9. `check:copy` 비의료 린트 ↔ 공단 서식 문구 충돌 가능 — W1 착수 전 사전 검증.
+10. `pnpm install --prefer-offline` 이 `apps/voice-relay/node_modules` 를 만들지 않는다 —
    `pnpm install --filter @giokon/voice-relay` 선행.
-9. **새 역할을 부여할 경로가 없다** — `users.role` 은 3중으로 잠겨 있고 온보딩은 요양보호사·보호자만 고른다.
+11. **새 역할을 부여할 경로가 없다** — `users.role` 은 3중으로 잠겨 있고 온보딩은 요양보호사·보호자만 고른다.
    `set_member_role` RPC(D3)·역할 지정 UI(W6) 없이 D1 만 넣으면 사회복지사·센터장은 영원히 0명이다.
 
 ### 안전 아키텍처를 약화시키지 말 것
-10. **공단 일지의 진행자 칸에 AI 를 쓸 수 없다.** `facilitator_user_id` 를 확정 시 NOT NULL 로
+12. **공단 일지의 진행자 칸에 AI 를 쓸 수 없다.** `facilitator_user_id` 를 확정 시 NOT NULL 로
    강제하고 `tool_used`("AI 대화 프로그램 보조")를 별도 필드로 둔다.
-11. **위기 시 즉시 `close` 를 `paused` 로 약화시키지 말 것**(§9-4).
-12. **위임 대상은 3개뿐**(일지 확정·공개 철회·보호자 연결 승인). 위기 대응·출력 검열·진단표현 금지·
+13. **위기 시 즉시 `close` 를 `paused` 로 약화시키지 말 것**(§9-4).
+14. **위임 대상은 3개뿐**(일지 확정·공개 철회·보호자 연결 승인). 위기 대응·출력 검열·진단표현 금지·
     Clova 경유를 `org_capabilities` 에 넣는 순간 안전 구조가 설정 한 줄로 무력화된다.
-13. 주간보호 출석 테이블을 만들지 말 것(기준 1).
+15. 주간보호 출석 테이블을 만들지 말 것(기준 1).
 
 ---
 
@@ -356,10 +388,12 @@ bash supabase/tests/run-rls-regression.sh   # PG16 실기동, 마이그레이션
 - `guardian_text_approved_at` 없이 공개 시도 = 실패
 - 확정 후 수정 시 revision 행 자동 생성
 - `set_member_role`: 요양보호사 호출·자기 자신 대상·타 기관 대상·보호자↔돌봄팀 전환 = 전부 실패
+- 직원 합류: 승인 전 0건 · 자기 요청 승인 실패 · 만료·회수 코드 거부 · 승인 후 기관 전체 열람
 
 ### 기준 2 전용 테스트
 "AI 산출물이 사람 확인 없이 공식 기록이 되거나 보호자에게 가는 경로가 없다"를
 **DB·워커·UI 세 층에서 각각** 단언한다.
+같은 원칙의 음성 쪽: **요양보호사 JWT 만으로 `live-token` 호출 = 403**(중계 자격이 있어야만 발급).
 
 ### 수동 E2E (파일럿 개시 전)
 두 브라우저에서 한쪽 일시정지 → 다른 쪽 2초 내 반영 · 세션 종료 → 초안 자동 생성 → 확인 대기 ·
@@ -375,3 +409,5 @@ bash supabase/tests/run-rls-regression.sh   # PG16 실기동, 마이그레이션
 - 고령자 발화 인식률 Gemini vs Clova 비교 (영향: 전사 출처 구조)
 - Gemini Live 동시 세션 한도·요금 (영향: 기기 수 확장)
 - 카카오 알림톡 템플릿 심사 — **리드타임이 기니 일찍 착수** (영향: 파일럿 이후 보호자 알림)
+- **파일럿 기기 종류**(iPad · Android 태블릿 · 휴대폰) — 기획서는 "태블릿 N대"를 전제하는데 앱은 `ios.supportsTablet:false`·
+  `portrait` 고정이다(2026-09-04 결정, 배포 직전 재확인 대상). iPad 면 아이폰 호환 모드로 돈다 (영향: 어르신 표시 모드 M2 레이아웃)
