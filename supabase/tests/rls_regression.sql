@@ -471,7 +471,7 @@ end $$;
 insert into public.consents(user_id, profile_id, org_id, consent_type, granted, version, capacity)
   select p.user_id, p.id, p.org_id, t::public.consent_type, true, 'v1.0', 'capable'
   from public.profiles p cross join
-    unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t
+    unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) t
   where p.name in ('A어르신','B어르신','C어르신');
 -- 요양보호사 C 가 세션 + 분석 기록 → 같은 기관 A 조회 가능 / 보호자 H 는
 -- 연결 승인된 어르신이라도 직접 조회 불가(공개 커밋 경유만) / 기관 B 0건.
@@ -1523,7 +1523,7 @@ begin
     on conflict (profile_id, caregiver_user_id) do update set status = 'active', removed_at = null;
   insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
     select pid, oid, uid, t::public.consent_type, true, 'v1.0', 'capable'
-    from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+    from unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) t;
   insert into public.sessions (profile_id, org_id, user_id, status)
     values (pid, oid, uid, 'active') returning id into sid;
   assert not has_function_privilege('anon', 'public.reserve_live_token(uuid)', 'EXECUTE');
@@ -1639,7 +1639,7 @@ begin
     delete from public.consents where profile_id=pid;
     insert into public.consents(user_id,profile_id,org_id,consent_type,granted,version,capacity)
       select actor,pid,oid,t::public.consent_type,true,'v1.0','capable'
-      from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+      from unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) t;
     set role authenticated;
     assert public.can_process_profile(pid), 'Valid current self consent must allow processing';
     insert into public.sessions(profile_id,user_id,status) values(pid,actor,'active') returning id into sid;

@@ -37,6 +37,14 @@ sleep 1
 # Supabase 심(auth.users·auth.uid()·authenticated 롤).
 "${PSQL[@]}" -q -f "$HERE/_supabase_shims.sql"
 
+# 마이그레이션 버전 중복 금지 — Supabase 는 파일명 앞 숫자를 이력 ID 로 쓴다. 같은 번호가 둘이면
+# 이력 기록·db push 가 깨진다(2026-09-24 jinwoo 브랜치에서 실제로 겹쳤다).
+DUP=$(ls "$MIG"/*.sql | xargs -n1 basename | cut -d_ -f1 | sort | uniq -d)
+if [ -n "$DUP" ]; then
+  echo "마이그레이션 버전 중복: $DUP" >&2
+  exit 1
+fi
+
 # 마이그레이션 순차 적용.
 for f in "$MIG"/*.sql; do
   "${PSQL[@]}" -q -f "$f"
@@ -47,3 +55,4 @@ done
 "${PSQL[@]}" -f "$HERE/rls_regression.sql"
 "${PSQL[@]}" -f "$HERE/transcript_provenance.sql"
 "${PSQL[@]}" -f "$HERE/pilot_access.sql"
+"${PSQL[@]}" -f "$HERE/legal_consents.sql"

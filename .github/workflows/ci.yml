@@ -67,6 +67,10 @@ jobs:
         run: docker exec "${{ job.services.postgres.id }}" psql --version
       - name: Supabase 심 적용
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/_supabase_shims.sql
+      - name: 마이그레이션 버전 중복 검사
+        run: |
+          dup=$(ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1 | sort | uniq -d)
+          if [ -n "$dup" ]; then echo "마이그레이션 버전 중복: $dup"; exit 1; fi
       - name: 마이그레이션 순차 적용
         run: |
           for f in supabase/migrations/*.sql; do
@@ -79,6 +83,10 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/rls_regression.sql
       - name: 전사 출처 저장 계약 회귀 테스트
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/transcript_provenance.sql
+      - name: 파일럿 권한 재설계 회귀 테스트
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/pilot_access.sql
+      - name: 법률 문서 동의 회귀 테스트
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/legal_consents.sql
 
   security-audit:
     runs-on: ubuntu-latest

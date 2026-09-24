@@ -17,7 +17,7 @@ begin
   insert into public.profiles(user_id,name,birth_year) values(auth.uid(),'Synthetic',1940) returning id into pid;
   insert into public.consents(user_id,profile_id,consent_type,granted,version,capacity)
     select auth.uid(),pid,k::public.consent_type,true,'v1.0','capable'
-    from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) k;
+    from unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) k;
   insert into public.sessions(user_id,profile_id,status) values(auth.uid(),pid,'active') returning id into sid;
   -- Existing clients stay unknown.
   insert into public.session_logs(user_id,profile_id,session_id,turn_index,role,content)

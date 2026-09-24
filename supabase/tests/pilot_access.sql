@@ -391,7 +391,7 @@ set role authenticated;
 set test.uid = 'a0000000-0000-0000-0000-000000000001';
 insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
   select (select p1 from pilot_p), (select pa from pilot_p), 'a0000000-0000-0000-0000-000000000001', t::public.consent_type, true, 'v1.0', 'capable'
-  from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+  from unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) t;
 reset role;
 set test.uid = '';
 
