@@ -189,7 +189,7 @@
 | B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ✅ 로컬 |
 | B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ✅ 로컬 — `is_care_team`·`is_org_manager` 헬퍼도 여기서(새 정책이 씀). 회귀는 변형 2종(자기 자신·마지막 관리자 가드 제거)이 실패하는 것 확인 |
 | B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ✅ 로컬 — 합류 대기자 = `onboarded_at` 있음·`org_id` NULL. 웹 라우팅 인계는 계획 §7 W9 상태 열 |
-| B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ⏳ |
+| B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ✅ 로컬 — ⚠️ `chronicle_entries` 복합 FK 부재로 타 기관 기록이 가능했던 구멍을 회귀가 잡아 FK 추가. 기존 `rls_regression.sql` 은 단언 2건만 새 모델로 바꿨다(요양보호사 = 같은 기관 전체 열람 · 미배정도 live-token 허용) |
 | B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ⏳ |
 | B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ⏳ |
 | B7 | C2 · T21.2 | core `session-phase.ts` + `PROMPT_VERSION` 저장 | ⏳ |

@@ -84,7 +84,7 @@
 - `complete_onboarding` 개정: **요양보호사 = 소속 기관명 입력**(새 기관+org_admin)으로 되돌림(어르신 코드 합류 토글 제거 — 코드는 보호자용). 보호자 브랜치(어르신 코드 연결) 유지. 여러 요양보호사 같은 기관 합류(연속성)는 추후 기관 초대 메커니즘으로(런북).
 - Edge Function **`stt-transcribe`**(신규 — ⚠️ 요양일지 음성 입력용이라 기획 변경 후 재검토 대상): 요양일지 음성 파일 → CLOVA CSR 인식 → `{text}`. CLOVA 키는 서버 시크릿(`NCP_CLOVA_CLIENT_ID/SECRET`). 데이터층 `transcribeAudio(file)`. 미배포 시 UI 안내.
 
-파일럿 신규·변경(2026-09-23 기획 변경 — **2026-09-24 부터 마이그레이션 작성 중: D1 ✅ · D3 설정·권한표·역할 부여·직원 합류 ✅ — 로컬 PG16 검증만, 운영 미적용**. 상세·순서: [`pilot-development-plan.md`](plans/pilot-development-plan.md) §5 D1~D10):
+파일럿 신규·변경(2026-09-23 기획 변경 — **2026-09-24 부터 마이그레이션 작성 중: D1 ✅ · D3 설정·권한표·역할 부여·직원 합류 ✅ · D4 기관 단위 RLS ✅ — 로컬 PG16 검증만, 운영 미적용**. 상세·순서: [`pilot-development-plan.md`](plans/pilot-development-plan.md) §5 D1~D10):
 
 - **접근 모델 전환**: 요양보호사별 배정 격리 → **기관 단위 + 역할 기반**. 교대근무라 같은 기관의 돌봄팀은 담당과 관계없이 기록을 본다.
   `app.is_care_team()`(비 guardian 돌봄팀) · `app.has_capability(capability)`(기관별 위임) 신설, 9테이블 SELECT/UPDATE 술어를
@@ -123,8 +123,8 @@ create policy profiles_select_own on profiles
   for select using (user_id = auth.uid());
 ```
 
-> ⚠️ 위 예시는 v1 패턴이다. 현재는 `org_id = app.current_org_id() and <비 guardian> and (app.is_assigned_caregiver(profile_id) or app.is_org_admin())`,
-> 파일럿 목표(D4)는 아래와 같다 — 위임 권한이 필요한 쓰기(일지 확정 등)는 정책이 아니라 트리거·RPC 에서 `app.has_capability()` 로 검사한다.
+> ⚠️ 위 예시는 v1 패턴이다. 운영 DB 는 아직 `org_id = app.current_org_id() and <비 guardian> and (app.is_assigned_caregiver(profile_id) or app.is_org_admin())`,
+> 저장소(파일럿 D4 `20260924030000`, 로컬 검증·운영 미적용)는 아래와 같다 — 위임 권한이 필요한 쓰기(일지 확정 등)는 정책이 아니라 트리거·RPC 에서 `app.has_capability()` 로 검사한다.
 
 ```sql
 -- 파일럿 목표 술어(D4) — 같은 기관 돌봄팀 읽기

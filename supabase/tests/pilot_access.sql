@@ -372,4 +372,114 @@ begin
     '발급·회수·요청·승인·거절이 감사 로그에 남아야 함';
 end $$;
 
+-- ── D4: 기관 단위 열람·기록 (T22.3·T22.6) ────────────────────────────────────
+-- 파일럿어르신 P1 은 관리자(a01)가 만들고, 요양보호사(a02)·사회복지사(a03)·센터장(a06)·합류자(a11)는 **배정되지 않았다**.
+set role authenticated;
+set test.uid = 'a0000000-0000-0000-0000-000000000001';
+insert into public.profiles (user_id, name, birth_year) values ('a0000000-0000-0000-0000-000000000001', '파일럿어르신', 1941);
+set test.uid = 'a0000000-0000-0000-0000-000000000005';
+insert into public.profiles (user_id, name, birth_year) values ('a0000000-0000-0000-0000-000000000005', 'PB어르신', 1943);
+reset role;
+set test.uid = '';
+create temp table pilot_p as
+  select (select id from public.profiles where name = '파일럿어르신') as p1,
+         (select id from public.profiles where name = 'PB어르신') as pb,
+         (select org_id from public.users where id = 'a0000000-0000-0000-0000-000000000001') as pa;
+grant select on pilot_p to authenticated;
+-- 처리 동의(관리자가 기록) — 대화 처리 가드 통과용
+set role authenticated;
+set test.uid = 'a0000000-0000-0000-0000-000000000001';
+insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+  select (select p1 from pilot_p), (select pa from pilot_p), 'a0000000-0000-0000-0000-000000000001', t::public.consent_type, true, 'v1.0', 'capable'
+  from unnest(array['sensitive_health_voice','cross_border_transfer','ai_processing']) t;
+reset role;
+set test.uid = '';
+
+do $$
+declare
+  p1 uuid := (select p1 from pilot_p);
+  sid uuid;
+  n int;
+  blocked boolean;
+begin
+  assert (select pb from pilot_p) is not null, '픽스처: 다른 기관 어르신 id 는 슈퍼유저로 미리 뽑는다(RLS 아래 조회 = NULL 함정)';
+  assert not exists (select 1 from public.profile_caregivers where profile_id = p1 and caregiver_user_id <> 'a0000000-0000-0000-0000-000000000001'),
+    '픽스처: P1 은 관리자 외 누구에게도 배정되지 않았다';
+  set role authenticated;
+
+  -- 담당이 아닌 요양보호사: 열람 + 대화 진행(세션·대화 기록·연대기 INSERT) = 성공
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  assert (select count(*) from public.profiles where id = p1) = 1, '같은 기관 돌봄팀은 담당이 아닌 어르신도 봐야 함';
+  assert public.can_process_profile(p1), '담당이 아닌 같은 기관 요양보호사도 대화를 진행할 수 있어야 함(결정 ①)';
+  insert into public.sessions (profile_id, user_id, status) values (p1, 'a0000000-0000-0000-0000-000000000002', 'active') returning id into sid;
+  insert into public.session_logs (session_id, profile_id, user_id, turn_index, role, content)
+    values (sid, p1, 'a0000000-0000-0000-0000-000000000002', 1, 'ai', '고향 이야기를 들려주시겠어요?');
+  insert into public.chronicle_entries (profile_id, user_id, topic, content)
+    values (p1, 'a0000000-0000-0000-0000-000000000002', '고향', '전주에서 자랐다');
+  -- 동의·보호자 공개 INSERT 는 배정·관리자 기준 유지(결정 ①)
+  blocked := false;
+  begin
+    insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+      values (p1, (select pa from pilot_p), 'a0000000-0000-0000-0000-000000000002', 'ai_processing', true, 'v1.0', 'capable');
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked, '담당이 아닌 요양보호사는 어르신 동의를 새로 기록할 수 없어야 함';
+  -- 공개 대상이 실재해야 트리거를 지나 RLS 에 닿는다 → 담당이 아닌 요양보호사가 분석을 먼저 남긴다(INSERT 허용).
+  insert into public.session_analyses (session_id, profile_id, user_id, analysis, version)
+    values (sid, p1, 'a0000000-0000-0000-0000-000000000002', '{}'::jsonb, 1);
+  blocked := false;
+  begin
+    insert into public.guardian_shares (profile_id, item_type, item_id, shared_by)
+      values (p1, 'analysis', (select id from public.session_analyses where session_id = sid), 'a0000000-0000-0000-0000-000000000002');
+  exception when insufficient_privilege then blocked := true;
+  end;
+  assert blocked, '담당이 아닌 요양보호사는 보호자에게 공개할 수 없어야 함';
+  -- DELETE 는 배정·관리자 기준 유지
+  delete from public.chronicle_entries where profile_id = p1 and user_id = 'a0000000-0000-0000-0000-000000000002';
+  get diagnostics n = row_count;
+  assert n = 0, '담당이 아닌 요양보호사는 기록을 지울 수 없어야 함(DELETE 는 배정 기준 유지)';
+
+  -- 교대 근무: 다른 직원(사회복지사·센터장·승인된 합류자)이 그 세션 기록을 본다
+  foreach n in array array[3, 6, 11] loop
+    perform set_config('test.uid', format('a0000000-0000-0000-0000-0000000000%s', lpad(n::text, 2, '0')), true);
+    assert (select count(*) from public.session_logs where session_id = sid) = 1,
+      format('같은 기관 직원(a..%s)은 다른 담당자의 세션 기록을 봐야 함', n);
+    assert (select count(*) from public.chronicle_entries where profile_id = p1) = 1, '연대기도 같은 기관 전체 열람';
+  end loop;
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
+  assert public.can_process_profile(p1), '사회복지사도 대화를 진행할 수 있어야 함(결정 ②)';
+  update public.sessions set current_topic = '고향' where id = sid;
+  get diagnostics n = row_count;
+  assert n = 1, '같은 기관 돌봄팀은 다른 담당자의 세션을 갱신할 수 있어야 함(restrictive 정책 포함)';
+
+  -- 격리: 보호자·다른 기관·합류 대기(취소)자 = 0건
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000004', true);
+  assert (select count(*) from public.profiles where id = p1) = 0, '보호자는 연결되지 않은 어르신을 볼 수 없어야 함';
+  assert (select count(*) from public.session_logs where session_id = sid) = 0, '보호자는 공개되지 않은 대화 기록을 볼 수 없어야 함';
+  assert not public.can_process_profile(p1), '보호자는 대화를 진행할 수 없어야 함';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000005', true);
+  assert (select count(*) from public.profiles where id = p1) = 0, '다른 기관 관리자는 0건';
+  assert (select count(*) from public.session_logs where session_id = sid) = 0, '다른 기관 관리자는 대화 기록 0건';
+  assert not public.can_process_profile(p1), '다른 기관은 대화를 진행할 수 없어야 함';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000012', true);
+  assert (select count(*) from public.profiles) = 0, '기관이 없는 합류 대기·취소자는 0건';
+  -- 다른 기관 어르신에 대해 기록을 만들 수 없다
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  blocked := false;
+  begin
+    insert into public.chronicle_entries (profile_id, user_id, topic, content)
+      values ((select pb from pilot_p), 'a0000000-0000-0000-0000-000000000002', '고향', '타 기관');
+  exception when insufficient_privilege or foreign_key_violation or check_violation then blocked := true;
+  end;
+  assert blocked, '다른 기관 어르신에 대한 기록은 만들 수 없어야 함';
+
+  -- 구성원 목록: 센터장은 같은 기관 구성원을 보고, 요양보호사는 자기만
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000006', true);
+  assert (select count(*) from public.users where org_id = (select pa from pilot_p)) >= 5, '센터장은 같은 기관 구성원을 봐야 함';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  -- (기존 users_select_org_guardians 가 돌봄팀에게 같은 기관 보호자 행을 보여 준다 — 그건 그대로)
+  assert (select count(*) from public.users where role <> 'guardian') = 1, '요양보호사는 동료 직원 목록을 보지 않는다(자기 행만)';
+  reset role;
+end $$;
+
 select 'pilot access assertions passed' as result;

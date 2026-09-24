@@ -125,11 +125,13 @@ end $$;
 -- ── 3) 테넌트 격리 + 역할 범위(핵심 보안 불변식) ───────────────────────────
 set role authenticated;
 
--- caregiver C: 본인 것만(1)
+-- caregiver C: 같은 기관 전체(2) — 파일럿 D4(20260924030000)로 배정 격리 → 기관 단위 돌봄팀 열람.
+-- (2026-07 기준 단언은 "본인 것만 1" 이었다. 교대근무 요구로 바뀐 것이지 격리 약화가 아니다 —
+--  타 기관·보호자 격리는 아래 단언이 그대로 지킨다.)
 set test.uid = '33333333-3333-3333-3333-333333333333';
 do $$ begin
-  assert (select count(*) from public.profiles) = 1,
-    'caregiver 는 본인 어르신만 조회해야 함(기대 1)';
+  assert (select count(*) from public.profiles) = 2,
+    'caregiver 는 같은 기관 어르신 전체를 조회해야 함(기대 2 — 파일럿 D4)';
 end $$;
 
 -- org_admin A: 소속 기관 전체(2 = 본인 + 요양보호사 C)
@@ -1504,12 +1506,13 @@ begin
   assert not has_table_privilege('authenticated', 'app.live_token_usage', 'UPDATE');
   assert not has_table_privilege('authenticated', 'app.live_token_limits', 'UPDATE');
 
-  foreach test_case in array array['guardian','unassigned','foreign_org','ended','planned','revoked','version','missing_consent'] loop
+  -- 파일럿 D4(20260924030000, 사용자 결정 2026-09-24): 배정은 더 이상 접근 게이트가 아니다 — 같은 기관 돌봄팀은
+  -- 담당이 아니어도 대화를 진행한다. 그래서 'unassigned' 는 거부 목록에서 빠지고 아래에서 **허용**을 단언한다.
+  foreach test_case in array array['guardian','foreign_org','ended','planned','revoked','version','missing_consent'] loop
     -- Use a subtransaction so each rejected scenario restores the same valid baseline.
     begin
       case test_case
         when 'guardian' then update public.users set role = 'guardian' where id = uid;
-        when 'unassigned' then update public.profile_caregivers set status = 'removed', removed_at = now() where profile_id = pid and caregiver_user_id = uid;
         when 'foreign_org' then update public.users set org_id = (select org_id from public.users where id = '22222222-2222-2222-2222-222222222222') where id = uid;
         when 'ended' then update public.sessions set status = 'ended', ended_at = now() where id = sid;
         when 'planned' then update public.sessions set status = 'planned' where id = sid;
@@ -1532,6 +1535,14 @@ begin
     end;
   end loop;
   assert (select count(*) from app.live_token_usage) = 0, 'Denied requests must not consume quota';
+
+  -- 배정 해제(담당 아님)여도 같은 기관 돌봄팀은 발급된다(파일럿 D4). 쿼터를 쓰므로 확인 뒤 비운다.
+  update public.profile_caregivers set status = 'removed', removed_at = now() where profile_id = pid and caregiver_user_id = uid;
+  set local role authenticated;
+  assert public.reserve_live_token(sid), '담당이 아닌 같은 기관 돌봄팀도 대화 토큰을 받아야 함(파일럿 D4)';
+  reset role;
+  update public.profile_caregivers set status = 'active', removed_at = null where profile_id = pid and caregiver_user_id = uid;
+  delete from app.live_token_usage;
 
   -- Exercise every cap independently; a later cap rejection must roll back earlier counters.
   foreach test_case in array array['user_minute','user_day','org_day','project_day'] loop
