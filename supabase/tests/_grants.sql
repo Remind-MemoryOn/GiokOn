@@ -33,6 +33,23 @@ begin
   assert not (select prosecdef from pg_proc
     where oid = 'app.protect_user_privileges()'::regprocedure),
     '권한 보호 트리거는 SECURITY INVOKER여야 함';
+  -- 파일럿 D3: 초대·합류 요청·권한표 쓰기는 RPC 전용 / 설정·권한표 삭제 경로 없음 / anon 접근 없음
+  assert not has_table_privilege('authenticated', 'public.org_invites', 'INSERT,UPDATE,DELETE'),
+    'org_invites 쓰기는 RPC 전용이어야 함';
+  assert not has_table_privilege('authenticated', 'public.org_join_requests', 'INSERT,UPDATE,DELETE'),
+    'org_join_requests 쓰기는 RPC 전용이어야 함';
+  assert not has_table_privilege('authenticated', 'public.org_settings', 'DELETE')
+     and not has_table_privilege('authenticated', 'public.org_capabilities', 'DELETE'),
+    '기관 설정·권한표는 클라이언트가 지울 수 없어야 함';
+  assert not has_table_privilege('anon', 'public.org_settings', 'SELECT')
+     and not has_table_privilege('anon', 'public.org_capabilities', 'SELECT')
+     and not has_table_privilege('anon', 'public.org_invites', 'SELECT')
+     and not has_table_privilege('anon', 'public.org_join_requests', 'SELECT'),
+    '파일럿 신규 테이블은 anon 이 읽을 수 없어야 함';
+  assert not has_function_privilege('anon', 'public.set_member_role(uuid, public.org_role)', 'EXECUTE')
+     and not has_function_privilege('authenticated', 'app.decide_org_join(uuid, boolean)', 'EXECUTE')
+     and not has_function_privilege('authenticated', 'app.enqueue_org_join(uuid, text, text)', 'EXECUTE'),
+    '역할·합류 내부 함수는 직접 호출할 수 없어야 함';
 end $$;
 
 grant usage on schema public, app to authenticated;

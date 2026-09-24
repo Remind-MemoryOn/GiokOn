@@ -188,7 +188,7 @@
 |---|---|---|---|
 | B1 | D1 · T22.1 | `org_role` += `social_worker`·`center_director`(단독 파일) | ✅ 로컬 |
 | B2 | D3 · T22.2 | `org_settings`·`org_capabilities`·시드·`app.has_capability`·`set_member_role` | ✅ 로컬 — `is_care_team`·`is_org_manager` 헬퍼도 여기서(새 정책이 씀). 회귀는 변형 2종(자기 자신·마지막 관리자 가드 제거)이 실패하는 것 확인 |
-| B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ⏳ |
+| B3 | D3 · T22.7 | 직원 합류: `org_invites`·`org_join_requests`·온보딩 합류 경로·`approve_org_join`(UI 는 웹 W9·W6 — 범위 밖) | ✅ 로컬 — 합류 대기자 = `onboarded_at` 있음·`org_id` NULL. 웹 라우팅 인계는 계획 §7 W9 상태 열 |
 | B4 | D4 · T22.3·T22.6 | `app.is_care_team` + RLS 기관 단위 전환(위 결정 ① 포함) + 회귀 단언 | ⏳ |
 | B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ⏳ |
 | B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ⏳ |
@@ -196,6 +196,9 @@
 | B8 | C3 · T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 처리 | ⏳ |
 | B9 | M5 · T21.6 | 앱 원격 일시정지 수신("잠시 쉬어요" + 마이크 중단) | ⏳ |
 
+- ⚠️ **회귀 작성 함정(2026-09-24 발견)**: RPC 인자 안에서 `(select id from <RLS 테이블> ...)` 로 조회하면 그 시점 `test.uid` 가 비어 있어
+  **NULL 이 들어가고, 구현과 무관하게 "없음" 오류로 단언이 통과한다.** 대상 id 는 슈퍼유저로 임시 테이블에 먼저 뽑아 쓴다.
+  새 단언은 **가드를 지운 변형이 실패하는지** 확인한다(B2·B3 에서 변형 4종 확인 — 1건은 이 함정 때문에 처음엔 통과했다).
 - 로컬 검증 도구: `bash supabase/tests/run-rls-regression.sh`(PG16 실기동, 전 마이그레이션 적용 → `rls_regression.sql`) — 이 컨테이너에서 4초.
 
 ## 이전 위치 (2026-09-24 — 앱 파트 착수)

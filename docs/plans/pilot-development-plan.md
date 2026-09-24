@@ -135,7 +135,7 @@
 |---|---|---|---|
 | **D1** | `..._org_role_add_values.sql` | `alter type org_role add value 'social_worker'/'center_director'` — ⚠️ **이 파일에 다른 DDL 금지**. 같은 트랜잭션에서 신규 enum 값을 쓸 수 없다 | ✅ 2026-09-24 로컬 — `20260924000000_org_role_add_values.sql` · 운영 미적용 |
 | **D2** | `..._notification_kind_add_values.sql` | `session_paused`·`journal_ready`·`journal_failed`. D1과 같은 제약 | ⏳ |
-| **D3** | `..._org_settings_capabilities.sql` | `org_settings`(facility_type·target_minutes·default_avoid_topics·default_program_type·default_location), `org_capability` enum, `org_capabilities`, 조직 생성 시드 트리거. 행이 없으면 기본집합으로 폴백(기존 조직 안전). **직원 합류(기관 초대 코드 + 승인)** 와 **역할 부여 RPC `public.set_member_role(target, role)`** — 아래 "직원 합류와 역할 부여" 참조 | 🔶 부분 2026-09-24 로컬 — ✅ 설정·권한표·시드·`has_capability`·`set_member_role`(`20260924010000`) · ⏳ 직원 합류(T22.7) · 운영 미적용. ⚠️ `is_care_team`·`has_capability` 헬퍼는 계획의 D4 가 아니라 여기서 만들었다(새 테이블 정책이 바로 씀) |
+| **D3** | `..._org_settings_capabilities.sql` | `org_settings`(facility_type·target_minutes·default_avoid_topics·default_program_type·default_location), `org_capability` enum, `org_capabilities`, 조직 생성 시드 트리거. 행이 없으면 기본집합으로 폴백(기존 조직 안전). **직원 합류(기관 초대 코드 + 승인)** 와 **역할 부여 RPC `public.set_member_role(target, role)`** — 아래 "직원 합류와 역할 부여" 참조 | ✅ 2026-09-24 로컬 — 설정·권한표·시드·`has_capability`·`set_member_role`(`20260924010000`) · 직원 합류 `org_invites`·`org_join_requests`·온보딩 `p_invite_code`·승인/거절/재요청/취소 RPC(`20260924020000`) · 운영 미적용. ⚠️ `is_care_team`·`has_capability` 헬퍼는 계획의 D4 가 아니라 여기서 만들었다 |
 | **D4** | `..._org_scoped_rls.sql` | `app.is_care_team()`·`app.has_capability()` 신설. 9테이블 SELECT/UPDATE 술어를 `org_id = current_org_id() and is_care_team()` 로 교체. **보호자 브랜치는 복사해 무변경 유지**. DELETE 정책은 **교체하지 않는다**(배정·관리자 기준 유지 — 교대근무가 요구하는 것은 열람·기록이지 삭제가 아니다) | ⏳ |
 | **D5** | `..._program_journals.sql` | `care_journals`·`journal_photos` DROP. `program_journals`·`program_journal_photos`·`program_journal_revisions`·`journal_generation_jobs` 신설 + 트리거 4종(확정 가드·이력·enqueue·공개 게이트). `care_grade` enum + `profiles.care_grade` 포함 | ⏳ |
 | **D6** | `..._session_phase_supervision.sql` | `session_phase` enum, `sessions` 컬럼 7개(phase·phase_started_at·paused_at/by·pause_reason·control_request·prompt_version), `session_interventions`, RPC `session_tick`/`advance_session_phase`/`request_session_control`. ⚠️ **목표 시간 컬럼은 새로 만들지 않는다** — `sessions.duration_minutes`(`20260822020000`, 5~120분, 웹 세션 설계의 "예상 소요 시간")가 이미 그 값이다. 비어 있으면 `org_settings.target_minutes` 로 폴백 | ⏳ |
@@ -238,17 +238,17 @@
 > ✅ **결정(2026-09-24)**: 기존 선례("시안에 없는 화면 — 끊긴 흐름을 잇는 최소 구현", 런북 `figma-web-extraction.md`)처럼
 > **기존 디자인과 최대한 같은** 카드·모달·폰트·색·간격으로 만들고, 시안이 오면 그 화면만 교체한다. 새 시각 요소를 지어내지 않는다.
 
-| # | 내용 | 파일 |
-|---|---|---|
-| **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 · 기존 수동 경로 `components/SessionJournalDialog.tsx`(세션 선택 → `session-report` → `renderSessionJournal`)는 기획 6-1 의 "현재"다 — **"다시 생성" 버튼으로 흡수하고 다이얼로그는 지운다** | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) |
-| **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 |
-| **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` |
-| **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` |
-| **W5** | 세션 설계의 기존 "예상 소요 시간"(`duration_minutes`)을 **목표 시간**으로 쓴다 — 초기값을 지금의 고정 15분 대신 `org_settings.target_minutes` 에서 가져온다. 단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` |
-| **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) + **구성원 역할 지정**(`set_member_role` — 지금 구성원 표는 역할을 보여주기만 한다) + **직원 초대 코드 발급·회수 · 합류 승인** | `pages/caregiver/OrgPage.tsx` |
-| **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 |
-| **W8** | 어르신 `care_grade` 드롭다운(주간보호 필수) | 등록·수정 화면 |
-| **W9** | ⚠️ **온보딩 합류 경로** — 요양보호사 가입 시 "새 기관 만들기 / 초대 코드로 합류". 합류는 승인 전까지 "승인 대기" 화면만 보인다. **파일럿 블로커**(§3 ⑧) | `pages/public/OnboardingPage.tsx` |
+| # | 내용 | 파일 | 상태 |
+|---|---|---|---|
+| **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 · 기존 수동 경로 `components/SessionJournalDialog.tsx`(세션 선택 → `session-report` → `renderSessionJournal`)는 기획 6-1 의 "현재"다 — **"다시 생성" 버튼으로 흡수하고 다이얼로그는 지운다** | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) | ⏳ |
+| **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 | ⏳ |
+| **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` | ⏳ |
+| **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` | ⏳ |
+| **W5** | 세션 설계의 기존 "예상 소요 시간"(`duration_minutes`)을 **목표 시간**으로 쓴다 — 초기값을 지금의 고정 15분 대신 `org_settings.target_minutes` 에서 가져온다. 단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` | ⏳ |
+| **W6** | 기관 설정 + **권한 매트릭스 UI**(일지 확정·공개 철회·보호자 연결 승인 × 역할 체크박스) + **구성원 역할 지정**(`set_member_role` — 지금 구성원 표는 역할을 보여주기만 한다) + **직원 초대 코드 발급·회수 · 합류 승인** | `pages/caregiver/OrgPage.tsx` | ⏳ **DB 준비됨**(2026-09-24): `set_member_role` · `create_org_invite`/`revoke_org_invite` · `approve_org_join`/`reject_org_join` · `org_settings`·`org_capabilities` 읽기/쓰기(RLS). 오류는 코드 식별자(`MEMBER_ROLE_*`·`ORG_INVITE_*`·`ORG_JOIN_*`) |
+| **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 | ⏳ |
+| **W8** | 어르신 `care_grade` 드롭다운(주간보호 필수) | 등록·수정 화면 | ⏳ |
+| **W9** | ⚠️ **온보딩 합류 경로** — 요양보호사 가입 시 "새 기관 만들기 / 초대 코드로 합류". 합류는 승인 전까지 "승인 대기" 화면만 보인다. **파일럿 블로커**(§3 ⑧) | `pages/public/OnboardingPage.tsx` | ⏳ **DB 준비됨**(2026-09-24): `complete_onboarding(..., p_invite_code)` · `request_org_join` · `cancel_org_join`. ⚠️ 합류 대기자는 `onboarded_at` 있음 + `org_id` NULL — 지금 `routeForUser` 는 그를 /caregiver(빈 화면)로 보낸다 → 승인 대기 화면으로. 대기 요청은 `org_join_requests`(본인 행 읽기 가능) |
 
 **카피 동반 개정** — 처리방침(`pages/public/LegalPages.tsx`) 1항의 "세션·요양일지·보호자 공개 관리"·"기관과 담당 어르신 연결"은
 W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 열람). Expo Push 는 새 국외 처리자라 위탁·국외이전 고지에 넣는다

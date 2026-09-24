@@ -842,6 +842,20 @@ export type Database = {
         Update: { allowed_roles?: Database['public']['Enums']['org_role'][] }
         Relationships: []
       }
+      // 파일럿 D3 후반(20260924020000) — 직원 합류. 쓰기는 전부 RPC(create_org_invite·revoke_org_invite·request_org_join·
+      // cancel_org_join·approve_org_join·reject_org_join, complete_onboarding 의 p_invite_code). 읽기: 관리 역할 / 요청자 본인.
+      org_invites: {
+        Row: { id: string; org_id: string; code: string; role: Database['public']['Enums']['org_role']; created_by: string; created_at: string; expires_at: string; revoked_at: string | null; revoked_by: string | null }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      org_join_requests: {
+        Row: { id: string; org_id: string; user_id: string; invite_id: string; requested_role: Database['public']['Enums']['org_role']; requester_name: string; status: Database['public']['Enums']['org_join_status']; created_at: string; decided_at: string | null; decided_by: string | null }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -887,6 +901,8 @@ export type Database = {
           p_consents?: string[] | null
           p_consent_version?: string | null
           p_social_acknowledged?: boolean | null
+          /** 파일럿 D3: 요양보호사가 기관 초대 코드로 합류 — 가입은 끝나되 승인 전까지 org_id NULL. p_org_name 과 동시 불가. */
+          p_invite_code?: string | null
         }
         Returns: Database['public']['Tables']['users']['Row']
       }
@@ -916,6 +932,15 @@ export type Database = {
         Args: { p_target: string; p_role: Database['public']['Enums']['org_role'] }
         Returns: undefined
       }
+      create_org_invite: {
+        Args: { p_role: Database['public']['Enums']['org_role']; p_valid_days?: number }
+        Returns: Database['public']['Tables']['org_invites']['Row']
+      }
+      revoke_org_invite: { Args: { p_invite_id: string }; Returns: undefined }
+      request_org_join: { Args: { p_code: string }; Returns: Database['public']['Tables']['org_join_requests']['Row'] }
+      cancel_org_join: { Args: Record<string, never>; Returns: undefined }
+      approve_org_join: { Args: { p_request_id: string }; Returns: undefined }
+      reject_org_join: { Args: { p_request_id: string }; Returns: undefined }
       list_inquiries: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean; total: number }>
@@ -945,6 +970,7 @@ export type Database = {
       inquiry_status: 'waiting' | 'answered'
       notification_kind: 'safety' | 'share_viewed' | 'message'
       org_capability: 'journal_finalize' | 'share_revoke' | 'guardian_link_approve'
+      org_join_status: 'pending' | 'approved' | 'rejected' | 'cancelled'
     }
     CompositeTypes: { [_ in never]: never }
   }
