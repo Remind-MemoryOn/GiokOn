@@ -42,8 +42,8 @@ function dayKey(iso: string): string {
 /** `7월 30일 요양일지` — 값이 없으면 만들지 않는다. */
 function rowTitle(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '요양일지';
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`;
+  if (Number.isNaN(d.getTime())) return '프로그램일지';
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 프로그램일지`;
 }
 
 export function JournalListPage() {
@@ -90,24 +90,24 @@ export function JournalListPage() {
         className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[40px] text-ink-900"
         style={{ top: Y(243) }}
       >
-        {elder ? `${elder.name} 어르신의 요양일지 목록` : '요양일지 목록'}
+        {elder ? `${elder.name} 어르신의 프로그램일지 목록` : '프로그램일지 목록'}
       </h1>
       <p
         data-fx="210:1529"
         className="absolute left-[322px] w-[519px] text-w-body leading-[30px] text-ink-700"
         style={{ top: Y(293.19), wordBreak: 'keep-all' }}
       >
-        어르신의 요양일지를 기록하고 보호자에게 공유하세요. 연필 모양을 클릭하시면 상세기록을
+        어르신의 프로그램일지를 기록하고 보호자에게 공유하세요. 연필 모양을 클릭하시면 상세기록을
         확인하고 수정할 수 있습니다.
       </p>
 
       <Link
         to={`/caregiver/journal/${elderId ?? ''}/new`}
         data-fx="210:1525"
-        className="absolute flex h-[57px] w-[185px] items-center justify-center gap-[8px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white"
-        style={{ left: 1194, top: Y(188) }}
+        className="absolute flex h-[57px] w-[220px] items-center justify-center gap-[8px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white"
+        style={{ left: 1159, top: Y(188) }}
       >
-        <span className="text-w-section leading-[30px]">+</span>새 요양일지 작성
+        <span className="text-w-section leading-[30px]">+</span>새 프로그램일지 작성
       </Link>
 
       {/* 날짜 선택 — 여는 화면이 디자인에 없어 네이티브 날짜 선택기를 투명하게 덮는다 */}
@@ -158,7 +158,7 @@ export function JournalListPage() {
           style={{ top: Y(ROW_TOP + 80) }}
         >
           <p className="text-w-body leading-[30px] text-ink-500">
-            {day ? '선택한 날짜에 쓴 요양일지가 없습니다.' : '아직 쓴 요양일지가 없습니다.'}
+            {day ? '선택한 날짜에 쓴 프로그램일지가 없습니다.' : '아직 쓴 프로그램일지가 없습니다.'}
           </p>
           {day ? (
             <button
@@ -187,7 +187,7 @@ export function JournalListPage() {
                 className="absolute left-[459px]"
                 style={{ top: Y(top + 41.73) }}
               >
-                요양일지
+                프로그램일지
               </Badge>
               <span
                 data-fx={i === 0 ? '210:1653' : undefined}
@@ -245,7 +245,7 @@ export function JournalListPage() {
 
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="요양일지를 삭제할까요?"
+        title="프로그램일지를 삭제할까요?"
         description={deleting ? `${deleting.label}를 삭제합니다. 되돌릴 수 없어요.` : ''}
         confirmLabel="삭제"
         onConfirm={() => {
@@ -253,7 +253,7 @@ export function JournalListPage() {
           remove.mutate(
             { id: deleting.id, profileId: elderId },
             {
-              onSuccess: () => toast('success', '요양일지를 삭제했어요.'),
+              onSuccess: () => toast('success', '프로그램일지를 삭제했어요.'),
               onError: (e) => toast('error', e.message),
             },
           );

@@ -159,13 +159,19 @@ const SCREENS = [
   [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 아이콘 26 · 라벨 SemiBold 22 · 활성 accent', [
     /width=\{26\}/, /height=\{26\}/, /text-w-nav font-semibold/,
     /isActive \? 'text-accent' : 'text-ink-500'/,
+    { absent: /text-\[16px\]/ },
   ]],
-  [`${WEB}/src/components/shell/nav.ts`, '사이드바: 요양보호사 8항목 · 보호자 4항목(디자인 순서)', [
+  [`${WEB}/src/components/shell/nav.ts`, '사이드바: 요양보호사 9항목(모니터링 포함) · 보호자 4항목', [
     /'\/caregiver', label: '대시보드'/, /'\/caregiver\/elders', label: '어르신 관리'/,
-    /'\/caregiver\/sessions', label: '세션 기록'/, /'\/caregiver\/analysis', label: '분석'/,
-    /'\/caregiver\/journal', label: '요양일지'/, /'\/caregiver\/shares', label: '공개 관리'/,
+    /'\/caregiver\/sessions', label: '세션 기록'/, /'\/caregiver\/analysis', label: '대화관찰리포트'/,
+    /'\/caregiver\/monitoring', label: '모니터링'/,
+    /'\/caregiver\/journal', label: '프로그램일지'/, /'\/caregiver\/shares', label: '공개 관리'/,
     /'\/caregiver\/org', label: '기관 관리'/, /'\/caregiver\/settings', label: '설정'/,
     /'\/guardian', label: '어르신 연결'/, /'\/guardian\/feed', label: '공개된 소식'/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ConversationMonitoringPage.tsx`, '모니터링: 담당 세션 실제 기록·5명 한 줄·실패 구분', [
+    /useActiveConversations/, /xl:grid-cols-5/, /logs\.slice\(-6\)/,
+    /대화 기록을 불러오지 못했습니다/, /저장이 끝난 발화/,
   ]],
   [`${WEB}/src/components/shell/PublicHeader.tsx`, '공개 헤더: 워드마크 @130 · 내비 4항목 좌표 · 활성 밑줄 3px', [
     /left-\[130px\] top-\[71px\]/, /left: 720/, /left: 898/, /left: 1052/, /left: 1168/,
@@ -317,9 +323,9 @@ const SCREENS = [
   [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 하단 회색 섹션 #f8f8f8 @1539 h992 + 노치', [
     /top: Y\(1542\), height: 989/, /bg-\[#f8f8f8\]/, /landingNotch/,
   ]],
-  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 카피(Figma 문구 그대로)', [
-    /AI 회상 대화와/, /요양일지를 더 쉽게 관리하는,/, /을 이용해보세요!/,
-    /AI 회상 기록부터 요양일지,/, /어르신 관리/, /AI 회상 기록/, /AI 분석/, /보호자 공유/,
+  [`${WEB}/src/pages/public/LandingPage.tsx`, '랜딩: 명칭 갱신 카피', [
+    /AI 회상 대화와/, /프로그램일지를 더 쉽게 관리하는,/, /을 이용해보세요!/,
+    /AI 회상 기록부터 프로그램일지,/, /어르신 관리/, /AI 회상 기록/, /AI 분석/, /보호자 공유/,
   ], 'copy'],
 
   // ── 어르신 관리 161:207 ────────────────────────────────────────────────
@@ -343,8 +349,8 @@ const SCREENS = [
 
   // ── 정밀 대조(figma-audit)로 확정한 실측 규칙 ─────────────────────────
   // 이 값들은 `pnpm -F @giokon/web figma:audit` 이 Figma 좌표와 1:1로 재서 확정했다.
-  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 라벨 x=118(아이콘 28+26+20) · 로그아웃 하단 86 · nav shrink-0(겹침 방지)', [
-    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /mb-\[86px\]/, /flex shrink-0 flex-col gap-\[22px\]/,
+  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 고정 메뉴 · 내부 스크롤 · 로그아웃 항상 노출', [
+    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /top-\[122px\]/, /overflow-y-auto/, /shrink-0 items-center/,
   ]],
   [`${WEB}/src/components/Layout.tsx`, '셸: 본문 세로 flex(하단 고정) · 하단 여백 88', [
     /flex min-w-0 flex-1 flex-col pb-\[88px\]/,
@@ -698,37 +704,25 @@ const SCREENS = [
     /org\.data\?\.name \?\? '—'/,
   ]],
 
-  // ── 요양일지 목록 207:1147 ────────────────────────────────────────────
-  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 카드 1057 @376 · 행 879×235.15 피치 259.164 · 배지 107×35 · 작성 버튼 185×57', [
+  // ── 프로그램일지 목록: 사용자 명칭 변경 ────────────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '프로그램일지 목록: 카드·행 간격 유지 · 작성 버튼 220×57', [
     /const CARD_TOP = 376;/, /const ROW_TOP = 427\.27;/,
     /const ROW_H = 235\.15;/, /const ROW_PITCH = 259\.164;/,
     /left-\[410px\] w-\[879px\] rounded-\[10px\] border border-line bg-white/,
-    /h-\[57px\] w-\[185px\][^"]*rounded-\[10px\] bg-accent/,
+    /h-\[57px\] w-\[220px\][^"]*rounded-\[10px\] bg-accent/,
     /tone="journal"[\s\S]{0,20}tag/,
   ]],
-  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
+  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '프로그램일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
     /<ConfirmDialog$/m, /useDeleteCareJournal/, { absent: /window\.confirm\(/ },
-    /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
+    /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '프로그램일지';/,
   ]],
 
-  // ── 요양일지 작성 221:283 · 221:1060 · 221:1196 ────────────────────────
-  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 카드 1057×928 @295 · 방식 탭 262/261/262×57 @583.45 · 저장 140×57', [
-    /h-\[928px\] w-\[1057px\] rounded-\[10px\] bg-white shadow-card/,
-    /top: 288\.45, width: m\.w/,
-    /key: 'typed'[\s\S]{0,140}left: 87/, /key: 'voice'[\s\S]{0,140}left: 396/, /key: 'photo'[\s\S]{0,140}left: 704/,
-    /h-\[57px\] w-\[140px\] rounded-\[10px\] border border-accent bg-white/,
-    /h-\[57px\] w-\[140px\] rounded-\[10px\] bg-accent/,
-    /const SLOT = \{ w: 187, h: 193, top: 363, xs: \[87, 318, 549, 780\] \}/,
-  ]],
-  // W-4: 음성 인식·AI 초안이 실제로 붙었다. 결과를 **만들어 내지 않는 것**은 그대로다 —
-  // 실패하면 이유를 말하고(조용한 실패 금지), 시각은 적은 만큼만 저장한다.
-  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: STT·AI 초안 배선 · 조용한 실패 금지 · 저장→업로드→첨부 순서', [
-    /transcribeAudio\(file, elderId\)/, /SttUnavailableError/,
+  // 사용자 요청: 일지의 음성·사진 입력을 제거하고 직접 입력·실제 대화 기반 초안을 유지.
+  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '프로그램일지 작성: 직접 입력·기록 기반 초안·최종 확인', [
+    /프로그램 활동 내용/, /회상 대화에서 일지 초안/,
     /buildJournalDraft\(\{/,
-    /disabled=\{!content\.trim\(\) \|\| saving\}/,
-    /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
-    /await removeJournalPhotoFiles\(uploaded\)/,           // 첨부 실패 시 파일 되돌리기
-    /URL\.revokeObjectURL/,                                 // 미리보기 URL 해제
+    /disabled=\{!content\.trim\(\) \|\| saving \|\| originalContent !== null\}/,
+    { absent: /transcribeAudio\(/ }, { absent: /uploadJournalPhoto\(/ },
     /activity_from: from \|\| null/, /activity_to: to \|\| null/,
     /const \[from, setFrom\] = useState\(''\);/,          // 시각 기본값을 지어내지 않는다
     { absent: /AI 초안은 실 연동 후 제공됩니다/ },
@@ -843,13 +837,13 @@ const SCREENS = [
     /h-\[50\.03px\] w-\[213px\]/,
   ]],
   [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 유형 매핑 · 원본이 없으면 그리지 않는다 · 메시지는 단방향', [
-    /journal: \{ label: '요양일지'/, /analysis: \{ label: 'AI 회상 대화 요약'/,
+    /journal: \{ label: '프로그램일지'/, /analysis: \{ label: 'AI 회상 대화 요약'/,
     /photo: \{ label: '공유 사진'/, /report: \{ label: '관찰 포인트'/,
     /if \(!j\) continue;/, /메시지는 보호자 → 요양보호사 단방향이다/,
     /아직 공개된 소식이 없어요/,
   ]],
   [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식 탭: 부제·담당 카드는 탭마다 다르고 공유 사진은 2열 격자(394×486 · x 407/890 · 피치 536)', [
-    /오늘도 어르신의 요양일지를 확인해보세요\./,
+    /오늘도 어르신의 프로그램일지를 확인해보세요\./,
     /오늘도 어르신의 AI 회상 대화 요약을 확인해보세요\./,
     /오늘도 어르신의 활동 사진을 확인해보세요\./,
     /cols: \[407, 890\]/, /w: 394,\n  h: 486,/, /rowPitch: 536/, /photoH: 246/,

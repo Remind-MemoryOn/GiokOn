@@ -11,6 +11,8 @@ const SKIP_DIRS = new Set([
   'build',
   '.expo',
   '.vercel',
+  'tmp',
+  '.tmp',
 ]);
 
 const TEXT_EXTS = new Set([

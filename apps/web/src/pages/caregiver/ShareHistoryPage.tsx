@@ -94,7 +94,7 @@ export function ShareHistoryPage() {
       const d = new Date(j.journal_date);
       map.set(
         j.id,
-        Number.isNaN(d.getTime()) ? '요양일지' : `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`,
+        Number.isNaN(d.getTime()) ? '프로그램일지' : `${d.getMonth() + 1}월 ${d.getDate()}일 프로그램일지`,
       );
     }
     for (const row of analyses.data ?? []) {
@@ -131,7 +131,7 @@ export function ShareHistoryPage() {
       : '—';
     return {
       share,
-      badge: isJournal ? { label: '요양일지', w: 107 } : { label: 'AI 회상 대화 요약', w: 175 },
+      badge: isJournal ? { label: '프로그램일지', w: 125 } : { label: 'AI 회상 대화 요약', w: 175 },
       title: titles.get(share.item_id) ?? '—',
       elderLine,
       guardianName,
@@ -184,7 +184,7 @@ export function ShareHistoryPage() {
       {/* 탭 — 앞 세 개는 항목 목록으로 돌아간다 */}
       {[
         { label: '전체', left: 426, to: '', fx: '146:1144' },
-        { label: '요양일지', left: 589, to: '?tab=journal', fx: '146:1145' },
+        { label: '프로그램일지', left: 589, to: '?tab=journal', fx: '146:1145' },
         { label: 'AI 회상 대화 요약', left: 769, to: '?tab=analysis', fx: '146:1146' },
       ].map((t) => (
         <Link
@@ -273,7 +273,7 @@ export function ShareHistoryPage() {
                 className={cn('absolute -translate-x-1/2 -translate-y-1/2', isJournal ? 'w-[107px]' : 'w-[137px]')}
                 style={{ left: COLS.typeCenter, top: Y(mid) }}
               >
-                {isJournal ? '요양일지' : 'AI 회상 대화'}
+                {isJournal ? '프로그램일지' : 'AI 회상 대화'}
               </Badge>
               <span
                 data-fx={i === 0 ? '146:1296' : undefined}

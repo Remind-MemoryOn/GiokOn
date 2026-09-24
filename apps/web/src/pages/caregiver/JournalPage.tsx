@@ -34,9 +34,9 @@ export function JournalPage() {
   return (
     <>
       <PageHeader
-        title="요양일지"
+        title="프로그램일지"
         descMax={918}
-        description="보호자에게 공개할 요양일지를 기록하고 관리합니다. 어르신을 선택하면 해당 어르신의 요양일지를 확인할 수 있습니다."
+        description="어르신별 프로그램 활동을 기록하고 관리합니다. 어르신을 선택하면 해당 일지를 확인할 수 있습니다."
       />
 
       {/* 이름 검색 */}

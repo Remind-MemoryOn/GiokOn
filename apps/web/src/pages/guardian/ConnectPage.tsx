@@ -112,7 +112,7 @@ function ConnectForm() {
         className="absolute left-[322px] w-[562px] text-w-body leading-[30px] text-ink-700"
         style={{ top: Y(236.16), wordBreak: 'keep-all' }}
       >
-        요양보호사에게 받은 연결 코드를 입력하시면 공개된 요양일지와 AI 회상 대화 요약을 확인할 수
+        요양보호사에게 받은 연결 코드를 입력하시면 공개된 프로그램일지와 AI 회상 대화 요약을 확인할 수
         있어요.
       </p>
 
@@ -328,7 +328,7 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
         className="absolute left-[322px] w-[562px] text-w-body leading-[30px] text-ink-700"
         style={{ top: Y(236.17), wordBreak: 'keep-all' }}
       >
-        현재 연결된 어르신 정보를 확인하고 공개된 요양일지와 AI 회상 대화 요약을 확인할 수 있어요.
+        현재 연결된 어르신 정보를 확인하고 공개된 프로그램일지와 AI 회상 대화 요약을 확인할 수 있어요.
       </p>
       <Link
         to={feedHref(link.profile_id)}

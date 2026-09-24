@@ -1,9 +1,9 @@
-// @giokon/core — 요양일지 AI 초안 (M19.2 — mock, 실 LLM 은 Edge Function 대체)
+// @giokon/core — 프로그램일지 규칙 기반 초안. 생성형 AI 호출이 아니다.
 //
 // 원문(구어 전사·사진 메모·타이핑)을 받아 구조화된 일지 초안을 만든다.
 // ⚠️ 초안은 반드시 요양보호사 확인·수정 후 저장한다(자동 저장 금지 — F-25).
 // ⚠️ 비의료: 관찰 기록 보조일 뿐 진단·의학적 판정을 만들지 않는다.
-// 실 AI 연동 시 같은 시그니처의 Edge Function 호출로 무변경 교체한다.
+// 대화 분석의 생성형 AI 초안은 별도 서버 함수가 만든다.
 
 export type JournalDraftSource = 'photo' | 'voice' | 'typed'
 
@@ -68,7 +68,7 @@ export function buildJournalDraft(input: JournalDraftInput): string {
   }
 
   const lines: string[] = []
-  lines.push(`[${input.elderName} 어르신 요양일지${input.date ? ` · ${input.date}` : ''}]`)
+  lines.push(`[${input.elderName} 어르신 프로그램일지${input.date ? ` · ${input.date}` : ''}]`)
   lines.push(`입력 방식: ${SOURCE_LABEL[input.source]}`)
   lines.push('')
 
@@ -87,6 +87,6 @@ export function buildJournalDraft(input: JournalDraftInput): string {
     lines.push('')
   }
 
-  lines.push('※ AI가 정리한 초안입니다. 내용을 확인·수정한 뒤 저장해 주세요.')
+  lines.push('※ 입력한 문장을 규칙에 따라 분류한 초안입니다. 내용을 확인·수정한 뒤 저장해 주세요.')
   return lines.join('\n')
 }

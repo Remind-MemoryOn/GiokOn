@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildJournalDraft } from './journal'
 
-describe('buildJournalDraft (요양일지 AI 초안 — mock)', () => {
+describe('buildJournalDraft (프로그램일지 규칙 기반 초안)', () => {
   it('문장을 관찰 카테고리로 묶어 구조화한다', () => {
     const draft = buildJournalDraft({
       elderName: '이순자',
@@ -9,7 +9,7 @@ describe('buildJournalDraft (요양일지 AI 초안 — mock)', () => {
       rawText: '점심 식사를 남김없이 드셨어요. 오후에 산책을 20분 하셨습니다. 따님이 방문해서 기분이 밝으셨어요.',
       date: '2026-07-18',
     })
-    expect(draft).toContain('[이순자 어르신 요양일지 · 2026-07-18]')
+    expect(draft).toContain('[이순자 어르신 프로그램일지 · 2026-07-18]')
     expect(draft).toContain('입력 방식: 음성 입력')
     expect(draft).toContain('■ 식사')
     expect(draft).toContain('- 점심 식사를 남김없이 드셨어요.')
@@ -19,6 +19,8 @@ describe('buildJournalDraft (요양일지 AI 초안 — mock)', () => {
     expect(draft).toContain('- 따님이 방문해서 기분이 밝으셨어요.')
     // 사람 확인 게이트 고지(F-25).
     expect(draft).toContain('확인·수정한 뒤 저장')
+    expect(draft).toContain('규칙에 따라 분류한 초안')
+    expect(draft).not.toContain('AI가 정리한 초안')
   })
 
   it('분류되지 않는 문장은 기타 관찰로 정리한다', () => {
