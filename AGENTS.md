@@ -193,7 +193,7 @@
 | B5 | §11-8 · T22.4 | `= 'caregiver'` 비교 전수 치환(SQL·앱·data·중계. 웹 발견분은 목록만 남김) | ✅ — SQL 에 남은 `'caregiver'`·배정 술어는 의도(역할 목록·DELETE·동의·공개·어르신 코드·메시지). 앱 접근 감시(R008)가 **배정 소실을 권한 상실로 보고 대화를 끊던 것**을 제거(DB 판정은 유지). data `completeOnboarding({ inviteCode })`. 웹 발견분은 계획 §7 W6·W9 |
 | B6 | D6 · T21.1·T21.13 | `session_phase`·`sessions` 7컬럼·`session_interventions`·`session_tick`·`advance_session_phase`·`request_session_control` + 감독자당 동시 4대 | ✅ 로컬 — 새 컬럼 RPC 전용(트리거) · 4대 제한은 **최근 30분 시작분만** 셈(좀비 방지) · 앱은 `SESSION_SUPERVISOR_LIMIT` 이면 이유 안내(재시도 안 함). 회귀가 `end_requested` 가 NULL 로 나가던 것을 잡음 |
 | B7 | C2 · T21.2 | core `session-phase.ts` + `PROMPT_VERSION` 저장 | ✅ — `PROMPT_VERSION` v2.0(단계·내부 지시 규칙). `buildSystemPrompt` 의 phase 인자는 두지 않음(지시문 주입과 중복) |
-| B8 | C3 · T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 처리 | ⏳ |
+| B8 | C3 · T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 처리 | ✅ — 지시는 모델 생성·재생 대기·발화 중이면 미루고 **턴 사이에만** 넣는다. 단계 턴 수는 음성이 실제 전달된 발화만 셈. 원격 제어 알림 뒤 입력·출력 전달 중단 → 2초 유예 뒤 닫기. 앱 오프너 지시문은 단계 중립으로(도입 지시와 충돌하던 것). ⚠️ **배포 순서: DB 마이그레이션(`20260924040000`) → 중계** — 역순이면 `session_tick` 부재로 전 세션 차단. 범위 밖(별도): T21.4 안전 이벤트 즉시 기록 · T21.11 휴식 요청 → 마무리 전환 · T21.12 중계 수명 25→10분 |
 | B9 | M5 · T21.6 | 앱 원격 일시정지 수신("잠시 쉬어요" + 마이크 중단) | ⏳ |
 
 - ⚠️ **회귀 작성 함정(2026-09-24 발견)**: RPC 인자 안에서 `(select id from <RLS 테이블> ...)` 로 조회하면 그 시점 `test.uid` 가 비어 있어

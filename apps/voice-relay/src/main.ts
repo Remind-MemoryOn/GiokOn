@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
-import { buildSystemPrompt } from '@giokon/core'
+import { buildSystemPrompt, PROMPT_VERSION, type SessionPhase } from '@giokon/core'
 import { toElderProfile, toChronicleEntry, toSession, type Database } from '@giokon/data'
 import { WebSocket } from 'ws'
 import { createRelayServer } from './server'
+import type { SessionTick } from './relay'
 
 // Process/secret-manager environment only. This entrypoint never loads .env files.
 function required(name: string) {
@@ -27,11 +28,27 @@ const service = createRelayServer({
       const db = createClient<Database>(supabaseUrl, publishableKey, { global: { headers: { Authorization: `Bearer ${accessToken}` }, fetch: timedFetch }, auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
       const user = await db.auth.getUser(accessToken)
       if (user.error || !user.data.user) throw new Error('AUTH_FAILED')
-      const allowed = async () => {
-        const result = await db.rpc('can_process_session', { p_session_id: sessionId })
-        return !result.error && result.data === true
+      // 파일럿 D6·C3: 2초 폴 = session_tick 하나(허용·단계·서버 경과·목표 시간·원격 제어).
+      // ⚠️ 배포 순서: DB 마이그레이션 20260924040000 이 먼저다 — RPC 가 없으면 모든 세션이 거부된다(fail closed).
+      const tick = async (): Promise<SessionTick> => {
+        const result = await db.rpc('session_tick', { p_session_id: sessionId })
+        const t = result.data as Record<string, unknown> | null
+        if (result.error || !t || t.allowed !== true) return { allowed: false }
+        return {
+          allowed: true,
+          phase: (t.phase ?? null) as SessionPhase | null,
+          elapsedSeconds: typeof t.elapsed_seconds === 'number' ? t.elapsed_seconds : undefined,
+          phaseElapsedSeconds: typeof t.phase_elapsed_seconds === 'number' ? t.phase_elapsed_seconds : null,
+          targetMinutes: typeof t.target_minutes === 'number' ? t.target_minutes : undefined,
+          paused: t.paused === true,
+          endRequested: t.end_requested === true,
+        }
       }
-      if (!await allowed()) throw new Error('DENIED')
+      const advancePhase = async (phase: SessionPhase) => {
+        const result = await db.rpc('advance_session_phase', { p_session_id: sessionId, p_phase: phase, p_prompt_version: PROMPT_VERSION })
+        return !result.error && result.data === phase
+      }
+      if (!(await tick()).allowed) throw new Error('DENIED')
       const session = await db.from('sessions').select('*').eq('id', sessionId).single()
       if (session.error || session.data.user_id !== user.data.user.id) throw new Error('SESSION_NOT_OWNED')
       const profile = await db.from('profiles').select('*').eq('id', session.data.profile_id).single()
@@ -42,7 +59,7 @@ const service = createRelayServer({
       if (!tokenResponse.ok) throw new Error('TOKEN_FAILED')
       const token = await tokenResponse.json() as { token?: unknown; model?: unknown }
       if (typeof token.token !== 'string' || typeof token.model !== 'string') throw new Error('INVALID_TOKEN')
-      return { token: token.token, model: token.model, systemInstruction: buildSystemPrompt(toElderProfile(profile.data), chronicles.data.map(toChronicleEntry), toSession(session.data).design, 'speech'), allowed, release }
+      return { token: token.token, model: token.model, systemInstruction: buildSystemPrompt(toElderProfile(profile.data), chronicles.data.map(toChronicleEntry), toSession(session.data).design, 'speech'), tick, advancePhase, release }
     } catch (e) { release(); throw e }
   },
 })

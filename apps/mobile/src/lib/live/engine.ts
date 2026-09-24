@@ -148,7 +148,7 @@ export class LiveConversationEngine {
     if (!await this.verifyProcessing() || !this.available) return null;
     try {
       const r = await this.client!.sendUserTurn(
-        '(내부 지시) 오늘의 첫 인사와 함께 회상 대화의 첫 질문을 건네주세요.',
+        '(내부 지시) 대화를 시작합니다. 지금 단계의 지시에 맞춰 첫 말씀을 건네주세요.',
         RELAY_TURN_TIMEOUT_MS,
       );
       if (!r || r === 'timeout') return null;
