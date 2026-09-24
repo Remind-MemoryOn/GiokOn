@@ -15,7 +15,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
   toElderProfile,
-  useCareJournals,
+  useProgramJournals,
   useCurrentUser,
   useGuardianLinks,
   useGuardianShares,
@@ -65,7 +65,7 @@ export function ShareHistoryPage() {
 
   const profileQuery = useProfile(elderId);
   const shares = useGuardianShares(elderId);
-  const journals = useCareJournals(elderId);
+  const journals = useProgramJournals(elderId);
   const analyses = useSessionAnalyses(elderId);
   const me = useCurrentUser();
   const revoke = useRevokeGuardianShare();

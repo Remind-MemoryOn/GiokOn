@@ -530,29 +530,35 @@ do $$ begin
     '세션 분석은 임의 삭제할 수 없어야 함';
 end $$;
 
--- ── 5.9) 요양일지: 기관 공유·guardian 배제·final 삭제 불가(T19.1) ──────────
+-- ── 5.9) 프로그램 일지(D5 — 요양일지 대체): 기관 공유·guardian 배제·확정 삭제 불가 ──────────
+-- 요양보호사 C 가 수기 일지 2건(하나는 보호자 문장 승인), 확정은 위임 권한이 있는 관리자 A 가 한다
+-- (요양보호사는 기본 권한표에 journal_finalize 가 없다 — 확정 가드 상세는 pilot_access.sql D5).
 set role authenticated;
 set test.uid = '33333333-3333-3333-3333-333333333333';  -- 요양보호사 C
 do $$
 declare
   pid uuid := (select id from public.profiles where name = 'C어르신');
 begin
-  insert into public.care_journals (author_id, profile_id, content, source, status)
-    values ('33333333-3333-3333-3333-333333333333', pid, '점심 잘 드시고 산책도 하셨어요.', 'typed', 'final');
-  insert into public.care_journals (author_id, profile_id, content, source, status)
-    values ('33333333-3333-3333-3333-333333333333', pid, '초안 메모', 'ai_draft', 'draft');
+  insert into public.program_journals (profile_id, activity_content, facilitator_user_id, guardian_text, guardian_text_approved_at)
+    values (pid, '점심 잘 드시고 산책도 하셨어요.', '33333333-3333-3333-3333-333333333333',
+            '오늘 산책하며 옛 동네 이야기를 들려주셨어요.', now());
+  insert into public.program_journals (profile_id, activity_content)
+    values (pid, '초안 메모');
 end $$;
 
-set test.uid = '11111111-1111-1111-1111-111111111111';  -- 같은 기관 관리자 A
+set test.uid = '11111111-1111-1111-1111-111111111111';  -- 같은 기관 관리자 A — 확정
+update public.program_journals set status = 'final' where activity_content like '점심%';
 do $$ begin
-  assert (select count(*) from public.care_journals) = 2,
-    '같은 기관 돌봄 구성원은 요양일지를 조회할 수 있어야 함';
+  assert (select count(*) from public.program_journals where session_id is null) = 2,
+    '같은 기관 돌봄 구성원은 프로그램 일지를 조회할 수 있어야 함';
+  assert (select finalized_by from public.program_journals where status = 'final' and session_id is null)
+    = '11111111-1111-1111-1111-111111111111'::uuid, '확정자는 서버가 호출자로 채워야 함';
 end $$;
 
 set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인됨)
 do $$ begin
-  assert (select count(*) from public.care_journals) = 0,
-    'guardian 은 요양일지를 직접 볼 수 없어야 함(공개 커밋 경유만)';
+  assert (select count(*) from public.program_journals) = 0,
+    'guardian 은 프로그램 일지 행을 직접 볼 수 없어야 함(공개 + 보호자 문장 RPC 경유만)';
 end $$;
 
 -- guardian 의 일지 작성 시도: 차단.
@@ -563,79 +569,78 @@ declare
 begin
   select id into pid from public.profiles where name = 'C어르신';
   begin
-    insert into public.care_journals (author_id, profile_id, content)
-      values ('55555555-5555-5555-5555-555555555555', pid, '보호자 작성 시도');
-  exception when insufficient_privilege or check_violation or not_null_violation then
+    insert into public.program_journals (profile_id, activity_content) values (pid, '보호자 작성 시도');
+  exception when insufficient_privilege or check_violation or not_null_violation or foreign_key_violation then
     blocked := true;
   end;
-  assert blocked, 'guardian 의 요양일지 작성은 차단되어야 함';
+  assert blocked, 'guardian 의 프로그램 일지 작성은 차단되어야 함';
 end $$;
 
 set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
 do $$ begin
-  assert (select count(*) from public.care_journals) = 0,
-    '다른 기관의 요양일지는 보이면 안 됨';
+  assert (select count(*) from public.program_journals) = 0,
+    '다른 기관의 프로그램 일지는 보이면 안 됨';
 end $$;
 
--- 확정(final) 일지는 삭제 불가, 초안(draft)은 작성자만 삭제 가능.
+-- 확정 일지는 삭제 불가, 확정 전 수기 일지는 만든 사람이 삭제할 수 있다.
 set test.uid = '33333333-3333-3333-3333-333333333333';
-delete from public.care_journals where status = 'final';
-delete from public.care_journals where status = 'draft';
+delete from public.program_journals where status = 'final';
+delete from public.program_journals where status = 'pending_review' and session_id is null;
 reset role;
 do $$ begin
-  assert (select count(*) from public.care_journals where status = 'final') = 1,
+  assert (select count(*) from public.program_journals where status = 'final' and session_id is null) = 1,
     '확정(final) 일지는 삭제할 수 없어야 함';
-  assert (select count(*) from public.care_journals where status = 'draft') = 0,
-    '작성자는 본인 초안을 삭제할 수 있어야 함';
+  assert (select count(*) from public.program_journals where status = 'pending_review' and session_id is null) = 0,
+    '만든 사람은 확정 전 수기 일지를 삭제할 수 있어야 함';
 end $$;
 
 -- ── 5.9b) 일지 사진: 일지와 같은 격리 · guardian 배제 · 확정 일지 첨부는 못 뺀다 ──
 set role authenticated;
-set test.uid = '33333333-3333-3333-3333-333333333333';  -- 작성자 C
+set test.uid = '33333333-3333-3333-3333-333333333333';  -- C
 do $$
 declare
-  fid uuid := (select id from public.care_journals where status = 'final' limit 1);
+  fid uuid := (select id from public.program_journals where status = 'final' and session_id is null limit 1);
   pid uuid := (select id from public.profiles where name = 'C어르신');
 begin
-  insert into public.journal_photos (journal_id, path, sort)
+  insert into public.program_journal_photos (journal_id, path, sort)
     values (fid, pid::text || '/p1.jpg', 0);
 end $$;
 
 set test.uid = '11111111-1111-1111-1111-111111111111';  -- 같은 기관 관리자 A
 do $$ begin
-  assert (select count(*) from public.journal_photos) = 1,
+  assert (select count(*) from public.program_journal_photos) = 1,
     '같은 기관 돌봄 구성원은 일지 사진을 조회할 수 있어야 함';
 end $$;
 
 set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인됨)
 do $$ begin
-  assert (select count(*) from public.journal_photos) = 0,
-    'guardian 은 일지 사진을 직접 볼 수 없어야 함(공개 커밋 경유만)';
+  assert (select count(*) from public.program_journal_photos) = 0,
+    'guardian 은 공개되지 않은 일지 사진을 볼 수 없어야 함';
 end $$;
 
 set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
 do $$ begin
-  assert (select count(*) from public.journal_photos) = 0,
+  assert (select count(*) from public.program_journal_photos) = 0,
     '다른 기관의 일지 사진은 보이면 안 됨';
 end $$;
 
 -- 확정(final) 일지의 사진은 삭제 불가.
 set test.uid = '33333333-3333-3333-3333-333333333333';
-delete from public.journal_photos;
+delete from public.program_journal_photos;
 reset role;
 do $$ begin
-  assert (select count(*) from public.journal_photos) = 1,
+  assert (select count(*) from public.program_journal_photos) = 1,
     '확정 일지의 사진은 삭제할 수 없어야 함';
 end $$;
 
 -- ── 5.10) 공개 커밋: 보호자는 승인된 연결 + 미철회 커밋만(T17.2) ───────────
--- C 가 final 일지·분석을 공개 → 연결 승인된 H 만 열람. 철회 시 즉시 차단.
+-- C 가 확정 일지·분석을 공개 → 연결 승인된 H 만 열람(일지는 보호자 문장만). 철회 시 즉시 차단.
 -- 연결 없는 보호자 G(같은 기관)·타 기관 B 는 0건.
 set role authenticated;
 set test.uid = '33333333-3333-3333-3333-333333333333';
 do $$
 declare
-  jid uuid := (select id from public.care_journals where status = 'final' limit 1);
+  jid uuid := (select id from public.program_journals where status = 'final' and session_id is null limit 1);
   aid uuid := (select id from public.session_analyses limit 1);
   pid uuid := (select id from public.profiles where name = 'C어르신');
 begin
@@ -645,13 +650,17 @@ begin
     values ('33333333-3333-3333-3333-333333333333', pid, 'analysis', aid);
 end $$;
 
--- 보호자 H(연결 승인): 공개 커밋 + 공개된 원본을 볼 수 있다.
+-- 보호자 H(연결 승인): 공개 커밋 + 공개된 원본을 볼 수 있다(일지는 보호자 문장 RPC 로만).
 set test.uid = '55555555-5555-5555-5555-555555555555';
 do $$ begin
   assert (select count(*) from public.guardian_shares) = 2,
     '보호자는 승인된 연결의 공개 커밋을 볼 수 있어야 함(기대 2)';
-  assert (select count(*) from public.care_journals) = 1,
-    '보호자는 공개된 일지 원본을 볼 수 있어야 함(기대 1)';
+  assert (select count(*) from public.get_my_shared_journals()) = 1,
+    '보호자는 공개된 일지의 보호자 문장을 볼 수 있어야 함(기대 1)';
+  assert (select guardian_text from public.get_my_shared_journals() limit 1) like '오늘 산책%',
+    '보호자에게는 승인된 보호자 문장이 가야 함';
+  assert (select count(*) from public.program_journals) = 0,
+    '공개돼도 공단 서식 행은 보호자에게 직접 열리지 않아야 함';
   assert (select count(*) from public.session_analyses) = 1,
     '보호자는 공개된 분석 원본을 볼 수 있어야 함(기대 1)';
   -- W-2a: 분석이 공개되면 그 세션의 원본(세션 행·대화 원문)도 함께 열린다.
@@ -662,12 +671,28 @@ do $$ begin
     '분석이 공개된 세션의 대화 원문을 보호자가 볼 수 있어야 함(기대 2)';
 end $$;
 
+-- 공개 뒤 보호자 문장이 바뀌면(승인 해제) 다시 승인할 때까지 보호자에게서 사라진다.
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.program_journals set guardian_text = '다듬은 보호자 문장' where status = 'final' and session_id is null;
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$ begin
+  assert (select count(*) from public.get_my_shared_journals()) = 0,
+    '승인이 풀린 보호자 문장은 공개 중이어도 보호자에게 가면 안 됨';
+end $$;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.program_journals set guardian_text_approved_at = now() where status = 'final' and session_id is null;
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$ begin
+  assert (select guardian_text from public.get_my_shared_journals() limit 1) = '다듬은 보호자 문장',
+    '다시 승인하면 새 문장이 보호자에게 가야 함';
+end $$;
+
 -- 연결 없는 보호자 G(같은 기관): 0건.
 set test.uid = '44444444-4444-4444-4444-444444444444';
 do $$ begin
   assert (select count(*) from public.guardian_shares) = 0,
     '연결되지 않은 보호자는 공개 커밋을 볼 수 없어야 함';
-  assert (select count(*) from public.care_journals) = 0,
+  assert (select count(*) from public.get_my_shared_journals()) = 0,
     '연결되지 않은 보호자는 일지를 볼 수 없어야 함';
 end $$;
 
@@ -679,7 +704,6 @@ do $$ begin
 end $$;
 
 -- W-2d: 다른 어르신의 기록을 이 어르신 이름으로 공개하려는 시도는 차단된다.
--- (RLS 는 profile_id 만 보므로 A 담당 요양보호사가 B 의 일지를 A 로 붙일 수 있었다.)
 -- ⚠️ 실제 id 를 집으려면 **RLS 밖에서** 읽어야 한다 — 직전 블록이 남긴 역할을 먼저 푼다.
 reset role;
 do $$
@@ -689,7 +713,7 @@ declare
   blocked boolean := false;
 begin
   select id into other_pid from public.profiles where name = 'A어르신';
-  select id into jid from public.care_journals where status = 'final' limit 1;
+  select id into jid from public.program_journals where status = 'final' and session_id is null limit 1;
   assert other_pid is not null and jid is not null, '테스트 준비: 어르신·일지 id 를 찾지 못함';
   set role authenticated;
   perform set_config('test.uid', '11111111-1111-1111-1111-111111111111', true); -- 관리자 A
@@ -733,7 +757,7 @@ declare
   blocked boolean := false;
 begin
   select id into pid from public.profiles where name = 'C어르신';
-  select id into jid from public.care_journals where status = 'final' limit 1;
+  select id into jid from public.program_journals where status = 'final' and session_id is null limit 1;
   set role authenticated;
   perform set_config('test.uid', '55555555-5555-5555-5555-555555555555', true);
   begin
@@ -757,8 +781,8 @@ set test.uid = '55555555-5555-5555-5555-555555555555';
 do $$ begin
   assert (select count(*) from public.guardian_shares where item_type = 'journal') = 0,
     '철회된 공개는 보호자에게 보이면 안 됨';
-  assert (select count(*) from public.care_journals) = 0,
-    '철회 즉시 일지 원본 접근도 차단되어야 함';
+  assert (select count(*) from public.get_my_shared_journals()) = 0,
+    '철회 즉시 일지 보호자 문장 접근도 차단되어야 함';
   assert (select count(*) from public.session_analyses) = 1,
     '철회되지 않은 분석 공개는 유지되어야 함';
 end $$;
@@ -902,7 +926,7 @@ end $$;
 do $$
 declare
   pid uuid := (select id from public.profiles where name = 'C어르신');
-  jid uuid := (select id from public.care_journals where status = 'final' limit 1);
+  jid uuid := (select id from public.program_journals where status = 'final' and session_id is null limit 1);
 begin
   insert into public.guardian_shares
     (shared_by, profile_id, item_type, item_id, notify_on_view)
@@ -1759,7 +1783,7 @@ declare t text; field record; original jsonb; target uuid; own_org uuid;
 begin
   select org_id into own_org from public.users where id='11111111-1111-1111-1111-111111111111';
   foreach t in array array['profiles','chronicle_entries','sessions','session_logs','session_analyses',
-    'safety_events','care_journals','journal_photos','guardian_shares','profile_caregivers',
+    'safety_events','program_journals','program_journal_photos','guardian_shares','profile_caregivers',
     'profile_guardians','elder_codes','notifications','inquiries','inquiry_replies'] loop
     execute format('create policy r012_test_update on public.%I for update to authenticated using(true) with check(true)',t);
     execute format('create policy r012_test_select on public.%I for select to authenticated using(true)',t);
@@ -1779,7 +1803,7 @@ begin
       where a.attrelid=to_regclass('public.'||t) and a.attnum>0 and not a.attisdropped
       and a.attname=any(array['id','org_id','profile_id','session_id','user_id','author_id','journal_id',
         'item_id','item_type','shared_by','caregiver_user_id','guardian_user_id','inquiry_id','kind','source_id'])
-      or (a.attrelid=to_regclass('public.'||t) and t='journal_photos' and a.attname='path') loop
+      or (a.attrelid=to_regclass('public.'||t) and t='program_journal_photos' and a.attname='path') loop
       replacement := case field.typname
         when 'uuid' then 'ffffffff-ffff-4fff-8fff-ffffffffffff'
         when 'share_item_type' then case when original->>field.attname='journal' then 'analysis' else 'journal' end

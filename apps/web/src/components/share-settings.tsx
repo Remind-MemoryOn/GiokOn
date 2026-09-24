@@ -10,7 +10,7 @@
 //    + 대화 AI 분석(analysis). 고르지 않은 것은 공개하지 않는다.
 // ⚠️ `Frame 12` 는 노드 id 를 모른다(export 만 있다) → 정밀 대조는 `Frame 11` 만 건다.
 import { useState } from 'react';
-import type { JournalPhotoRow, ShareItemType } from '@giokon/data';
+import type { ProgramJournalPhotoRow, ShareItemType } from '@giokon/data';
 import { dateDotTime } from '@giokon/core';
 import { asset } from '../assets/ui';
 import { Badge } from './ui/Badge';
@@ -66,7 +66,7 @@ interface Props {
   onClose: () => void;
   item: ShareTarget | null;
   guardianName: string | null;
-  photos: JournalPhotoRow[];
+  photos: ProgramJournalPhotoRow[];
   photoUrls?: Record<string, string>;
   pending?: boolean;
   /** 이미 공개된 상태 — 모달을 열 때 그대로 체크해 둔다(없는 상태를 만들지 않는다). */

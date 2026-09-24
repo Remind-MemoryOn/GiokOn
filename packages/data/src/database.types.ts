@@ -109,6 +109,8 @@ export type Database = {
           gender: Database['public']['Enums']['elder_gender'] | null
           /** 돌봄에서 참고할 메모(특이사항). 최대 500자 — 건강 상태를 적는 칸이 아니다. */
           note: string | null
+          /** 장기요양등급(D5). 미입력이면 null. */
+          care_grade: Database['public']['Enums']['care_grade'] | null
           created_at: string
           updated_at: string
         }
@@ -128,6 +130,7 @@ export type Database = {
           photo_path?: string | null
           gender?: Database['public']['Enums']['elder_gender'] | null
           note?: string | null
+          care_grade?: Database['public']['Enums']['care_grade'] | null
           created_at?: string
           updated_at?: string
         }
@@ -147,6 +150,7 @@ export type Database = {
           photo_path?: string | null
           gender?: Database['public']['Enums']['elder_gender'] | null
           note?: string | null
+          care_grade?: Database['public']['Enums']['care_grade'] | null
           created_at?: string
           updated_at?: string
         }
@@ -623,20 +627,42 @@ export type Database = {
         }
         Relationships: []
       }
-      care_journals: {
+      // 파일럿 D5(20260924070000) — 공단 서식 프로그램 일지. care_journals·journal_photos 는 삭제됐다.
+      // finalized_*·guardian_text_approved_by·generation_* 는 서버가 채운다(클라이언트 값은 무시·거부) — Insert/Update 에서 뺐다.
+      // 확정(status='final')은 사람 + 위임 권한(journal_finalize)만, 확정 뒤 수정은 edit_reason 필수(트리거).
+      program_journals: {
         Row: {
           id: string
           org_id: string
           profile_id: string
-          author_id: string | null
+          session_id: string | null
+          status: Database['public']['Enums']['program_journal_status']
           journal_date: string
-          content: string
-          source: Database['public']['Enums']['journal_source']
-          photo_path: string | null
-          status: Database['public']['Enums']['journal_status']
-          /** 활동 시작·종료 시각(HH:MM:SS). 미입력이면 null — 0시가 아니다. */
-          activity_from: string | null
-          activity_to: string | null
+          operated_from: string | null
+          operated_to: string | null
+          program_type: string
+          location: string | null
+          facilitator_user_id: string | null
+          participants: string | null
+          goal: string | null
+          activity_content: string | null
+          participant_response: string | null
+          opinion_collected: string | null
+          overall_evaluation: string | null
+          next_plan: string | null
+          tool_used: string | null
+          delivered: boolean
+          non_delivery_reason: Database['public']['Enums']['journal_non_delivery_reason'] | null
+          guardian_text: string | null
+          guardian_text_approved_by: string | null
+          guardian_text_approved_at: string | null
+          finalized_by: string | null
+          finalized_at: string | null
+          draft_generated_at: string | null
+          generation_attempts: number
+          last_error: string | null
+          edit_reason: string | null
+          created_by: string | null
           created_at: string
           updated_at: string
         }
@@ -644,35 +670,55 @@ export type Database = {
           id?: string
           org_id?: string
           profile_id: string
-          author_id?: string | null
+          status?: 'pending_review' | 'final'
           journal_date?: string
-          content: string
-          source?: Database['public']['Enums']['journal_source']
-          photo_path?: string | null
-          status?: Database['public']['Enums']['journal_status']
-          activity_from?: string | null
-          activity_to?: string | null
-          created_at?: string
-          updated_at?: string
+          operated_from?: string | null
+          operated_to?: string | null
+          program_type?: string
+          location?: string | null
+          facilitator_user_id?: string | null
+          participants?: string | null
+          goal?: string | null
+          activity_content?: string | null
+          participant_response?: string | null
+          opinion_collected?: string | null
+          overall_evaluation?: string | null
+          next_plan?: string | null
+          tool_used?: string | null
+          delivered?: boolean
+          non_delivery_reason?: Database['public']['Enums']['journal_non_delivery_reason'] | null
+          guardian_text?: string | null
+          /** 값을 보내면 서버가 호출자·지금으로 승인한다(보낸 시각은 쓰지 않는다). */
+          guardian_text_approved_at?: string | null
+          draft_generated_at?: string | null
         }
         Update: {
-          id?: string
-          org_id?: string
-          profile_id?: string
-          author_id?: string | null
+          status?: 'pending_review' | 'final'
           journal_date?: string
-          content?: string
-          source?: Database['public']['Enums']['journal_source']
-          photo_path?: string | null
-          status?: Database['public']['Enums']['journal_status']
-          activity_from?: string | null
-          activity_to?: string | null
-          created_at?: string
-          updated_at?: string
+          operated_from?: string | null
+          operated_to?: string | null
+          program_type?: string
+          location?: string | null
+          facilitator_user_id?: string | null
+          participants?: string | null
+          goal?: string | null
+          activity_content?: string | null
+          participant_response?: string | null
+          opinion_collected?: string | null
+          overall_evaluation?: string | null
+          next_plan?: string | null
+          tool_used?: string | null
+          delivered?: boolean
+          non_delivery_reason?: Database['public']['Enums']['journal_non_delivery_reason'] | null
+          guardian_text?: string | null
+          guardian_text_approved_at?: string | null
+          draft_generated_at?: string | null
+          /** 확정 뒤 수정 사유 — 트리거가 이력으로 옮기고 비운다. */
+          edit_reason?: string | null
         }
         Relationships: []
       }
-      journal_photos: {
+      program_journal_photos: {
         Row: {
           id: string
           org_id: string
@@ -680,6 +726,7 @@ export type Database = {
           path: string
           caption: string | null
           sort: number
+          uploaded_by: string | null
           created_at: string
           updated_at: string
         }
@@ -690,19 +737,27 @@ export type Database = {
           path: string
           caption?: string | null
           sort?: number
-          created_at?: string
-          updated_at?: string
         }
         Update: {
-          id?: string
-          org_id?: string
-          journal_id?: string
-          path?: string
           caption?: string | null
           sort?: number
-          created_at?: string
-          updated_at?: string
         }
+        Relationships: []
+      }
+      // 확정 후 수정 이력 — 읽기 전용(트리거가 쓴다).
+      program_journal_revisions: {
+        Row: {
+          id: string
+          journal_id: string
+          org_id: string
+          profile_id: string
+          changed_by: string | null
+          changed_at: string
+          reason: string
+          changes: Json
+        }
+        Insert: never
+        Update: never
         Relationships: []
       }
       guardian_shares: {
@@ -975,6 +1030,23 @@ export type Database = {
         Args: { p_session_id: string; p_phase: Database['public']['Enums']['session_phase']; p_prompt_version?: string | null }
         Returns: Database['public']['Enums']['session_phase']
       }
+      retry_journal_generation: {
+        Args: { p_journal_id: string }
+        Returns: undefined
+      }
+      /** 보호자 — 내게 공개된 확정 일지의 **보호자 문장만**(공단 서식 칸은 오지 않는다). */
+      get_my_shared_journals: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          profile_id: string
+          journal_date: string
+          operated_from: string | null
+          operated_to: string | null
+          guardian_text: string | null
+          finalized_at: string | null
+        }[]
+      }
       register_push_token: {
         Args: { p_token: string; p_platform: 'ios' | 'android' }
         Returns: undefined
@@ -1009,8 +1081,9 @@ export type Database = {
       safety_event_level: 'watch' | 'crisis'
       guardian_link_status: 'pending' | 'approved' | 'revoked'
       caregiver_assignment_status: 'active' | 'removed' | 'pending'
-      journal_source: 'photo' | 'voice' | 'typed' | 'ai_draft'
-      journal_status: 'draft' | 'final'
+      program_journal_status: 'generating' | 'pending_review' | 'final' | 'failed'
+      journal_non_delivery_reason: 'absent' | 'unwell' | 'refused' | 'other'
+      care_grade: 'grade_1' | 'grade_2' | 'grade_3' | 'grade_4' | 'grade_5' | 'cognitive_support'
       share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report' | 'photo'
       inquiry_visibility: 'public' | 'private'
       inquiry_status: 'waiting' | 'answered'
@@ -1055,10 +1128,13 @@ export type ElderCodeRow = Tables<'elder_codes'>
 export type ProfileCaregiverRow = Tables<'profile_caregivers'>
 export type CaregiverAssignmentStatus = Enums<'caregiver_assignment_status'>
 export type SessionAnalysisRow = Tables<'session_analyses'>
-export type CareJournalRow = Tables<'care_journals'>
-export type JournalPhotoRow = Tables<'journal_photos'>
-export type JournalSource = Enums<'journal_source'>
-export type JournalStatus = Enums<'journal_status'>
+export type OrgCapability = Enums<'org_capability'>
+export type ProgramJournalRow = Tables<'program_journals'>
+export type ProgramJournalPhotoRow = Tables<'program_journal_photos'>
+export type ProgramJournalRevisionRow = Tables<'program_journal_revisions'>
+export type ProgramJournalStatus = Enums<'program_journal_status'>
+export type JournalNonDeliveryReason = Enums<'journal_non_delivery_reason'>
+export type CareGrade = Enums<'care_grade'>
 export type GuardianShareRow = Tables<'guardian_shares'>
 export type ShareItemType = Enums<'share_item_type'>
 export type NotificationRow = Tables<'notifications'>

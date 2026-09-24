@@ -30,6 +30,7 @@ const profileRow: ProfileRow = {
   photo_path: null,
   gender: 'female',
   note: '오후에 산책을 좋아하신다',
+  care_grade: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-02T00:00:00Z',
 }

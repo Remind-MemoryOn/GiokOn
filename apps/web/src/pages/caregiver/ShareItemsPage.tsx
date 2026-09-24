@@ -16,11 +16,11 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
   toElderProfile,
-  useCareJournals,
+  useProgramJournals,
   useCreateGuardianShare,
   useGuardianLinks,
-  useJournalPhotos,
-  useJournalPhotosByJournals,
+  useProgramJournalPhotos,
+  useProgramJournalPhotosByJournals,
   useCurrentUser,
   useGuardianShares,
   useProfile,
@@ -28,7 +28,7 @@ import {
   useSessionAnalyses,
   useSetShareNotifyOnView,
   type GuardianShareRow,
-  type JournalPhotoRow,
+  type ProgramJournalPhotoRow,
   type ShareItemType,
 } from '@giokon/data';
 import { dateDot } from '@giokon/core';
@@ -38,6 +38,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ShareSettingsDialog, type ShareTarget } from '../../components/share-settings';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { useStore } from '../../store/store';
+import { journalErrorMessage } from '../../lib/journalErrors';
 import { cn } from '../../lib/utils';
 
 const Y = (v: number) => v - 122;
@@ -86,7 +87,12 @@ export function ShareItemsPage() {
   const setTab = (t: Tab) => setSearch(t === 'all' ? {} : { tab: t }, { replace: true });
 
   const profileQuery = useProfile(elderId);
-  const journals = useCareJournals(elderId);
+  // D5: 보호자에게 가는 것은 **확정된 일지의 보호자 문장**뿐이다(서버 공개 게이트) → 확정 일지만 목록에 둔다.
+  const programJournals = useProgramJournals(elderId);
+  const journals = useMemo(
+    () => ({ ...programJournals, data: (programJournals.data ?? []).filter((j) => j.status === 'final') }),
+    [programJournals],
+  );
   const analyses = useSessionAnalyses(elderId);
   const shares = useGuardianShares(elderId);
   const me = useCurrentUser();
@@ -129,9 +135,9 @@ export function ShareItemsPage() {
 
   // 행마다 "비공개 전환"이 그 일지의 사진 공개까지 함께 내려야 한다 → 일지↔사진 지도.
   const journalIds = useMemo(() => (journals.data ?? []).map((j) => j.id), [journals.data]);
-  const allPhotos = useJournalPhotosByJournals(journalIds);
+  const allPhotos = useProgramJournalPhotosByJournals(journalIds);
   const photosByJournal = useMemo(() => {
-    const map = new Map<string, JournalPhotoRow[]>();
+    const map = new Map<string, ProgramJournalPhotoRow[]>();
     for (const ph of allPhotos.data ?? []) {
       const list = map.get(ph.journal_id) ?? [];
       list.push(ph);
@@ -151,7 +157,9 @@ export function ShareItemsPage() {
         out.push({
           key: `j-${j.id}`, type: 'journal', id: j.id,
           badge: { label: '요양일지', w: 107 },
-          at: j.journal_date, title, body: j.content,
+          // 보호자에게 보이는 글 = 승인된 보호자 문장. 아직 없으면 무엇이 비었는지 그대로 적는다.
+          at: j.journal_date, title,
+          body: j.guardian_text_approved_at && j.guardian_text ? j.guardian_text : '보호자 문장이 아직 승인되지 않았어요.',
         });
       }
     }
@@ -176,7 +184,7 @@ export function ShareItemsPage() {
 
   const settingsParam = search.get('settings');
   const open = setting ?? (settingsParam ? (items.find((i) => i.id === settingsParam) ?? null) : null);
-  const openPhotos = useJournalPhotos(open?.type === 'journal' ? open.id : undefined);
+  const openPhotos = useProgramJournalPhotos(open?.type === 'journal' ? open.id : undefined);
   const openPhotoUrls = useJournalPhotoUrls((openPhotos.data ?? []).map((p) => p.path), true);
   /** 모달의 처음 체크 상태 = 지금 공개돼 있는 것 그대로. */
   const openInitial = useMemo(() => {
@@ -226,7 +234,7 @@ export function ShareItemsPage() {
       setSetting(null);
       toast('success', '공개 설정을 저장했어요.');
     } catch (e) {
-      toast('error', e instanceof Error ? e.message : '저장하지 못했어요.');
+      toast('error', journalErrorMessage(e));
     }
   }
   /**
