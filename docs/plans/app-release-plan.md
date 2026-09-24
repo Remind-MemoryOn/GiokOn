@@ -1,5 +1,8 @@
 # 기억온 앱(apps/mobile) 배포 계획
 
+> ⚠️ **아래 배너는 2026-09-12 당시 기준이다.** 2026-09-23 기획 변경 이후의 기준은
+> `docs/plans/pilot-development-plan.md` 를 본다. 이 문서는 당시 기록으로 보존한다.
+>
 > **2026-09-12 현재 계획**: [음성 상세](voice-ai-personalization.md)와 [개발 실행안](business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
 
 - 작성일: 2026-09-04 (2026-09-04 재검토 반영)

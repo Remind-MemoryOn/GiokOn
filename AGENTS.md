@@ -1,8 +1,22 @@
 # 기억온 (GiokOn) — 프로젝트 메모리
 
-> **2026-09-13 개발 방향 확정**: 사용자 승인으로 앱→음성 중계 서버→Gemini Live→서버 검증→Clova→앱 구조를 개발 기준으로 채택했다. 서버의 연결 통제·자동 턴·기록 출처·계측 계약을 먼저 정하고 공통 보안 보강과 한 세션의 시작·회수 흐름을 구현한다. 호스팅은 미정이며 기능 구현·배포 완료가 아니다. **DB 제외 개발 목록은 [N01~N35](docs/plans/non-db-development-backlog.md)**. DB 작업은 제외하되 서버/API 작업과 DB 의존성을 구분한다. R013 이후 감사 과제와 R010 부분 해결 판정은 유지한다.
-
-> **2026-09-12 현재 개발 기준**: 팀은 임성훈(기획·개발), 박진우(개발·영업), 고서연(UI/UX·프론트엔드 디자인) 3인이다. 최신 사업 기획의 개발 반영은 [실행안](docs/plans/business-plan-development-delta.md)에 정리했다. 시설 3곳 접점·현장 테스트 미실시·발표 1주 후 예정이며 신규 개발 완료를 의미하지 않는다. 아래 날짜별 완료 이력은 당시 사실로 보존한다.
+> ## ⚠️ 2026-09-23 기획 변경 — 제품 정의가 바뀌었다
+>
+> **변경 전**: 요양보호사 업무를 전반적으로 돕는 도구(회상 대화 + 요양일지 + 보호자 소통)
+> **변경 후**: **인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로
+> 자동으로 남는 도구.** 요양보호사는 계획하고 감독하며 확인한다.
+>
+> **📋 "무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](docs/plans/pilot-development-plan.md)**
+> (DB·앱·웹·연동 4파트, 파일럿 범위). 이전 실행 목록 **N01~N35**
+> (`non-db-development-backlog.md`)와 **D1~D11**(`business-plan-development-delta.md`)은
+> **이전 제품 정의를 전제**하므로 그 문서가 대체한다 — 역사 기록으로만 참조할 것.
+>
+> **판단 기준 셋**: ① 기존 ERP(케어포·엔젤시스템·이지케어)가 하는 기능은 만들지 않는다
+> ② **AI 산출물이 사람 확인 없이 공식 기록이 되거나 보호자에게 가는 경로는 없어야 한다**(테스트로 검증)
+> ③ "제공 횟수·기록 품질·시간 절감"을 측정 가능하게 하는 이벤트 로그를 1주차부터 남긴다.
+>
+> 팀은 임성훈(기획·개발), 박진우(개발·영업), 고서연(UI/UX·프론트엔드 디자인) 3인이다.
+> 시설 3곳 접점·현장 테스트 미실시. 아래 날짜별 완료 이력은 당시 사실로 보존한다.
 
 > 📌 **이 파일이 프로젝트 메모리의 단일 소스(SoT)다(2026-09-11 사용자 확정).**
 > 어떤 AI 에이전트로 작업하든(Claude Code·Codex·Cursor 등) **여기를 읽고, 여기에 기록한다.**
@@ -14,8 +28,9 @@
 > SoT·기능 델타·상태 규칙·카피 규약). 루트와 충돌하면 더 구체적인 그 문서를 따른다.
 > 같은 자리의 `apps/web/CLAUDE.md` 도 포인터 스텁이다 — 두 계열 모두 규칙에 걸리게 한 구조다.
 
-요양보호사가 어르신 연대기를 입력하면 AI가 1:1 음성 회상 대화를 진행·기록하는
-인지활동 보조 플랫폼. 상세 계획은 `PLAN.md`, 스펙은 `docs/`.
+요양보호사가 어르신 연대기를 입력하면 AI가 1:1 음성 회상 대화를 진행하고, 그 결과가
+**공단 형식 프로그램 일지 초안**으로 남는 인지활동 프로그램 도구.
+실행 계획은 `docs/plans/pilot-development-plan.md`, 스펙은 `docs/`.
 
 ## 구조 (pnpm 모노레포)
 - `apps/web` (@giokon/web): **요양보호사·보호자 전용** 관리 웹 (React 19 + Vite + Tailwind).
@@ -23,17 +38,22 @@
 - `apps/mobile` (@giokon/mobile): **어르신 대화 앱 (Expo SDK 54 + expo-router 6 + NativeWind 4.2)**.
   Figma 19화면 + 설정·동의 확인 = 전 화면 구현. 요양보호사가 조작하는 세션 실행 도구.
   백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규.
-  음성 경로는 **런타임에 두 갈래**다(`EXPO_PUBLIC_VOICE_RELAY_URL` 하나로 갈린다 —
-  2026-09-23 확인): 설정하면 **중계 경로**(앱→voice-relay→Gemini Live→서버 검증→Clova→앱),
-  비우면 **직접 Gemini Live**(2026-08-23 구현). 둘 다 미가용이면 expo-speech+타자 폴백.
-  ⚠️ 그 변수는 `apps/mobile/.env.example` 에 **없다** — 빠뜨리면 중계·검증·Clova 가 통째로
-  우회된다. 출시 목표 구조는 중계 경로다(2026-09-13 확정) — `기술 결정` 참조.
+  음성 경로는 **중계 단일**이다(2026-09-23 확정): 앱→voice-relay→Gemini Live→서버 검증→Clova→앱.
+  **직접 Gemini Live 모드는 폐기한다** — 검열되지 않은 원본 오디오 경로가 코드에 살아 있으면
+  "AI 산출물이 사람 확인 없이 나가지 않는다"가 코드 레벨에서 거짓이 되고, 단계·원격 제어·
+  안전 일시정지가 전부 서버 권위인데 직접 모드에는 서버가 없다.
+  ⚠️ `EXPO_PUBLIC_VOICE_RELAY_URL` 은 **필수 변수로 승격**한다(미설정 시 세션 시작 차단).
+  현재 `apps/mobile/.env.example` 에 **없으므로 추가해야 한다.**
 - `apps/voice-relay` (@giokon/voice-relay): **음성 중계 서버**(Node + ws, Docker).
   `src/{main,server,relay,output}.ts` — 세션 권한·연결 통제·턴 식별·안전 규칙 검증을 거친
   응답만 Clova TTS 로 내보낸다. 검증 안 된 원문 재생·늦은 이전 응답 혼입을 서버가 막는다.
   ⚠️ `pnpm install --prefer-offline` 이 이 프로젝트의 node_modules 를 만들지 않는다 —
-  새 세션에서 `pnpm install --filter @giokon/voice-relay` 를 먼저 실행할 것(위 `현재 위치`).
-- `packages/core`: 도메인 타입·규칙·AIProvider(mock)·SpeechProvider
+  새 세션에서 `pnpm install --filter @giokon/voice-relay` 를 먼저 실행할 것.
+  안 하면 `pnpm -r typecheck` 가 TS2688 로, `pnpm -r test` 가 여기서 끊겨 모바일 테스트까지 안 돈다.
+- `packages/core`: 도메인 타입·**안전 규칙**·프롬프트·분석.
+  ⚠️ 기획 변경으로 **규칙 기반 대화 로직(`ai.ts` 779줄)은 삭제 대상**이다 — 중계 모드에서 이미
+  결과가 버려지는 폴백 전용 코드다. **안전 계층**(`assessUtterance`·`screenAiUtterance`·
+  `buildCaregiverAlert`·`buildSafetyEventDraft`)은 **절대 유지**한다.
 - `packages/data`: supabase-js + TanStack Query 훅 + Supabase Auth + DB↔도메인 매퍼
 - `packages/theme`: 디자인 토큰(단일 소스)
 - `supabase/migrations`: DB 스키마·RLS
@@ -78,22 +98,29 @@
 
 ## 기술 결정
 - 서버상태 = **TanStack Query**, UI상태 = **Zustand**.
-- AI 스택 — **계획과 구현을 구분해서 읽을 것**:
-  - **지금 코드에 있는 것(앱 대화)** = **Gemini Live API**(`gemini-3.1-flash-live-preview`,
-    음성 입력·출력·LLM 한 세션). 키는 앱에 두지 않고 Edge Function **`live-token`** 이
-    Supabase JWT 를 검증해 ephemeral token 을 발급한다(모델 잠금 + 자격·동의·사용량 검사,
-    R005/R010). 구현 위치는 `apps/mobile/src/lib/live/`.
-  - **출시 목표 구조(2026-09-12 사용자 확정, 변경분 미구현)** = `docs/plans/voice-ai-personalization.md`.
-    **Gemini Live 직접 음성 입력·프롬프트 대화 → 서버 검증 텍스트 → Clova TTS**.
-    일반 오디오 API 우선·Live 비교용이라는 9월 11일 설계를 대체한다. Live의 Structured Outputs는 전제하지 않는다.
-    담당자는 세션 설계·시작·회수·사후 확인을 지원하며 매 턴 승인 없는 자동 진행을 목표로 한다.
-    현재 전사 확인 패널·Live 원본 재생과 다르므로 상태 전이·중단·예외 대응·출력 배선이 필요하다.
-    장기에는 독립 수집·사람 전사·검수 자료로 Whisper와 **Qwen3.5-9B** 특화를 각각 평가한다.
-    Clova 유지, Ollama는 추론 후보. Gemini 참여 세션의 출력·파생 자료는 계약 확인 전 학습 제외.
-    세부 개발 차이·인수 조건은 `docs/plans/business-plan-development-delta.md` D1~D11을 따른다.
-
-  - 분석·프롬프트는 계속 core. 서버 키 보호·모델 버전 검증은 어느 구조에서도 유지한다.
-  - 웹 요양일지 STT 는 별개 기능이다 — Edge Function `stt-transcribe`(NCP CLOVA), 배포됨.
+- AI 스택 — **중계 단일 경로**(2026-09-23 확정):
+  ```
+  앱 ──▶ voice-relay ──▶ Gemini Live ──▶ 서버 검증 ──▶ Clova TTS ──▶ 앱
+  ```
+  - **모델 = `gemini-3.8-live`**(2026-09-22 사용자 확정). 키는 앱에 두지 않는다 —
+    Edge Function **`live-token`** 이 Supabase JWT 를 검증해 ephemeral token 을 발급하고
+    (자격·동의·사용량 검사 포함) **모델 ID 를 응답에 담아 돌려준다.** 앱·중계는 그 값을 따른다.
+    ⚠️ **모델 교체는 `GEMINI_LIVE_MODEL` 시크릿으로만 한다** — `.env.example` 은 템플릿이라
+    런타임에 읽히지 않는다. `supabase secrets set` 을 해야 실제로 바뀐다.
+    ⚠️ 코드의 `DEFAULT_MODEL` 폴백 2곳(`live-token/index.ts`·`engine.ts`)과
+    `client.ts` 의 설계 근거 주석이 아직 3.1 기준이다 — **3.8 로 재검증 후 갱신 필요**
+    (3.1에서 도출한 제약: proactivity/affective 미포함, 자동 VAD off, NO_INTERRUPTION).
+  - **서버가 출력을 검증한다**: Gemini 의 `inlineData` 오디오는 **앱에 전달되지 않는다.**
+    `screenAiUtterance` 를 통과한 텍스트만 Clova 로 합성해 내보낸다(`voice-relay/output.ts`).
+    턴 식별·재생 영수증 게이팅(v2)·복구 맥락(v3)도 중계가 소유한다.
+  - **직접 Gemini Live 모드는 폐기**(2026-09-23). 구조 절 참조.
+  - 분석·프롬프트·**안전 규칙**은 계속 core. 서버 키 보호·모델 버전 검증은 유지한다.
+  - **생성문 검증은 이미 강하다 — 재사용 자산.** `packages/core/src/generated-session.ts` 가
+    모든 문장에 어르신 발화의 `turnId`+원문 인용을 강제하고(`GroundedClaim`) 진단·효능 표현을
+    정규식으로 막는다. 프로그램 일지도 **이 계약을 확장해서** 쓴다(새로 만들지 말 것).
+  - 장기에는 독립 수집·사람 전사·검수 자료로 Whisper·**Qwen3.5-9B** 특화를 평가한다.
+    Gemini 참여 세션의 출력·파생 자료는 계약 확인 전 학습 제외.
+  - ⚠️ 웹 요양일지 STT(`stt-transcribe`, NCP CLOVA)는 **요양일지 폐기와 함께 용도를 재검토**한다.
 - 인증 = Supabase Auth, 정체성 = `auth.uid()`, 전 테이블 RLS(`user_id = auth.uid()`).
   **로그인 = 소셜 3종(구글·카카오·네이버) + 이메일(아이디)·비밀번호 병행(2026-07-23 재도입 — 이전 "이메일 제거" 결정 사용자 요청으로 철회), 아이디/비밀번호 찾기·회원가입 포함, 회원가입 = 이메일 또는 OAuth 후 온보딩(기본정보 입력). 소셜은 provider 본인인증(이름·전화) 정보를 온보딩에 프리필**
   (구글·카카오=네이티브, 네이버=커스텀 Edge Function `naver-auth`). 계획: PLAN §2′ M17.4~17.7·Phase W1.
@@ -142,7 +169,34 @@
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
 
-## 현재 위치 (2026-09-23 — 앱 현황 점검·모델 교체 미완)
+## 현재 위치 (2026-09-23 — 기획 변경 반영, 문서 재작성)
+
+- 📋 **기획 변경 설명서를 받아 전체 계획을 다시 세웠다** → `docs/plans/pilot-development-plan.md`.
+  DB·앱·웹·연동 4파트 + 파일럿 범위. 이 문서가 "무엇을 만들지"의 SoT 다.
+- **파일럿 범위 확정**: 프로그램 일지 자동생성 · 분석→일지 매핑 · 감독 화면 · 안전 이벤트 푸시 ·
+  대화 정책 체계화 · 권한 재설계 · 고령자 UI. 시설은 **요양원 + 주간보호** 둘 다, 1기관 동시 2~4대.
+- **탐색에서 드러난 결정적 사실 넷**(계획 §3 상세):
+  ① **권한 모델이 기획서와 정반대다** — 기획서는 기관 단위를 요구하는데 현재는 9테이블이
+  요양보호사별 배정 격리다(`20260722100000`). 사회복지사·센터장 역할도 없다. **모든 것의 선행.**
+  ② **규칙 기반 대화(`ai.ts` 779줄)는 이미 죽어 있다** — 중계 모드에서 `generateReply` 결과가
+  계산되고 버려진다. 중계 단일화로 폴백 용도까지 없어져 파일 전체 삭제 가능.
+  ③ **어르신이 든 화면에 요양보호사 UI 가 그대로 있다** — 위기 배너 전화번호·STT 수정 패널·
+  확인 없이 종료하는 X 버튼. 표시 모드 분리는 신규 기능이기 전에 **현 상태 결함 수정**이다.
+  ④ **생성문 검증은 이미 강하다** — `generated-session.ts` 의 근거 강제·진단표현 차단을
+  **확장**해서 쓴다. 못 막는 것만 추가: `인지 저하`·`우울`·`정서 불안`·`병원 진료 권장`.
+- ⚠️ **파일럿 블로커 4건**(계획 §11): `alter type ... add value` 트랜잭션 제약 ·
+  `REPORT_ALLOWED_USER_IDS` 데모 허용목록(교체 없으면 전원 403) ·
+  **`safety_events` 가 세션 종료 시 일괄 기록돼 실시간 안전 푸시가 구조적으로 불가능** ·
+  **어르신 동의 철회 UI 부재**(`ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다).
+- ⚠️ **안전 아키텍처를 약화시키지 말 것**(계획 §11): 공단 일지 진행자 칸에 AI 를 쓸 수 없다
+  (`facilitator_user_id` NOT NULL + `tool_used` 별도) · **위기 시 즉시 `close` 를 `paused` 로
+  낮추지 말 것**(기록만 확장) · 위임 대상은 3개뿐(일지확정·공개철회·보호자연결승인)이며
+  위기 대응·출력 검열·진단표현 금지를 `org_capabilities` 에 넣으면 설정 한 줄로 무력화된다.
+- ✅ 이번 세션 검증(설치 보정 후 실행): typecheck 6패키지 · lint 0 · test **631**
+  (core 253 + data 141 + voice-relay 43 + mobile 194) · `check:figma` 177 · `check:font` 39 ·
+  `check:bom` · `check:copy` 통과. 마이그레이션 53종.
+
+## 이전 위치 (2026-09-23 — 앱 현황 점검·모델 교체 미완)
 
 > 이번 세션은 **코드 변경 없이 앱 현황을 전수 점검**하고 메모리를 맞춘 것이다.
 > 기록 범위: `83ba6af`(메모리 마지막 반영) 이후 유일한 커밋 `8233b16` + 검증 결과.

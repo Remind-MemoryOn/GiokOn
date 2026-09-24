@@ -2,7 +2,15 @@
 
 > **2026-09-13 현재 실행 기준**: [DB 제외 개발 목록 N01~N35](non-db-development-backlog.md)를 따른다. 아래 날짜별 조사·완료 기록은 역사 자료이며 당시 미완료 표기를 현재 장애로 단정하지 않는다. 보안 적용 근거는 [런북](../runbooks/p1-remediation-progress.md), 새 음성 계약은 [음성 계획 §3.4](voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현)로 확인한다.
 
-> **2026-09-12 현재 계획**: [음성 상세](voice-ai-personalization.md)와 [개발 실행안](business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
+> ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
+>
+> 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
+> **"인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로 자동으로
+> 남는 도구"** 로 바뀌었다. 요양보호사는 계획하고 감독하며 확인한다.
+>
+> **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md)**.
+> 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
+> 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
 
 - 작성일: 2026-09-04
 - 성격: **실행 목록.** 검증 근거·감사 보고서 대조 기록은 `app-release-plan.md` 에 있다.

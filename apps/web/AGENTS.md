@@ -1,6 +1,14 @@
 # apps/web — 요양보호사·보호자 관리 웹 (작업 지침)
 
-> **2026-09-12 현재 개발 기준**: [개발 실행안](../../docs/plans/business-plan-development-delta.md)의 현재 구현/변경 목표/인수 조건을 적용한다. 앱은 Live 직접 입력·대화와 검증 Clova 출력, 담당자 시작·회수형 진행으로 변경할 계획이다. 웹 일지는 자유서술형이며 현재 초안은 규칙 기반이다. 사람의 최종 확인·선별 공개는 유지한다. 신규 LLM·과금·계측·학습 기능과 과거 구현/배포 이력을 구분한다.
+> ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
+>
+> 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
+> **"인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로 자동으로
+> 남는 도구"** 로 바뀌었다. 요양보호사는 계획하고 감독하며 확인한다.
+>
+> **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md)**.
+> 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
+> 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
 
 > 📌 **웹 작업 지침의 단일 소스(SoT)다.** 웹(`apps/web`) 파일을 건드리면 이 문서를 읽는다.
 > 옆의 `apps/web/CLAUDE.md` 는 여기를 가리키는 **포인터 스텁**이다 — 거기에 내용을 쓰지 말 것.
@@ -213,6 +221,14 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
 - `*.supabase.co` 도 막혀 있다 → 컨테이너에서는 목업 모드로 뜬다.
 - `.env` 는 커밋 금지. 원격 세션은 `.claude/hooks/session-start.sh` 가 환경변수로 생성한다.
 
-## 2026-09-12 사업 기획 반영 사항
+## 2026-09-12 사업 기획 반영 사항 (당시 기록)
 
 현재 JournalWritePage→core buildJournalDraft는 규칙 기반이다. 실제 LLM 초안은 별도 서버 호출·품질 평가 작업이다. 담당자 최종 승인·공개 선택은 유지한다. 앱 매 턴 확인 제거를 웹 승인 제거로 해석하지 않는다. 현재 Figma에 없는 신규 상태/계측/구독 요구는 사용자 확정 계획을 근거로 상세 설계 후 반영하고 무관한 재디자인은 하지 않는다.
+
+## 2026-09-23 기획 변경 반영 사항
+
+`JournalWritePage` → `buildJournalDraft`(규칙 기반 목업)는 **폐기 대상**이다 —
+`ProgramJournalListPage`·`ProgramJournalDetailPage` 로 대체한다([`pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) W1).
+**담당자 최종 승인·공개 선택 유지는 그대로 유효하고 오히려 강화된다** — 확정은 DB 가 사람만 허용한다
+(`auth.uid() is null` 이면 예외). 신규 화면(감독·프로그램 일지·권한 매트릭스·어르신 동의)은 현재 Figma 에
+없으므로 **사용자 확정 계획을 근거로 상세 설계 후 반영**한다 — 무관한 재디자인은 여전히 하지 않는다.

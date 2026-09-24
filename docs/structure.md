@@ -1,6 +1,14 @@
 # structure.md
 
-> **2026-09-12 현재 계획**: [음성 상세](plans/voice-ai-personalization.md)와 [개발 실행안](plans/business-plan-development-delta.md)을 따른다. 초기 Gemini Live 직접 음성 입력·대화 → 서버 검증 텍스트 → Clova TTS, 담당자 시작·회수형 운영이 목표다. 현재 확인 패널·Live 재생 구현과 구분하며 신규 작업은 미완료다. 일지의 최종 확인·공개 승인은 유지한다. 장기 Whisper·Qwen3.5-9B 특화는 독립 자료·평가 후 진행한다.
+> ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
+>
+> 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
+> **"인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로 자동으로
+> 남는 도구"** 로 바뀌었다. 요양보호사는 계획하고 감독하며 확인한다.
+>
+> **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../docs/plans/pilot-development-plan.md)**.
+> 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
+> 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 멀티테넌시 — `organizations` + `users.org_id` + 역할(RBAC: org_admin/caregiver/(guardian)), 전 테이블 조직 단위 격리. 상세: PLAN §2′ M14 · `docs/security.md`.
 

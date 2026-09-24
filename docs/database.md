@@ -1,6 +1,14 @@
 # Database Setup
 
-> **2026-09-12 현재 개발 기준**: [개발 실행안](plans/business-plan-development-delta.md)의 현재 구현/변경 목표/인수 조건을 적용한다. 앱은 Live 직접 입력·대화와 검증 Clova 출력, 담당자 시작·회수형 진행으로 변경할 계획이다. 웹 일지는 자유서술형이며 현재 초안은 규칙 기반이다. 사람의 최종 확인·선별 공개는 유지한다. 신규 LLM·과금·계측·학습 기능과 과거 구현/배포 이력을 구분한다.
+> ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
+>
+> 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
+> **"인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로 자동으로
+> 남는 도구"** 로 바뀌었다. 요양보호사는 계획하고 감독하며 확인한다.
+>
+> **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../docs/plans/pilot-development-plan.md)**.
+> 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
+> 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 스키마 상향 — `organizations`/`consents`/`audit_log` + **조직 RBAC**(전 테이블 RLS를 조직+역할 기준으로 확장), 리전=**서울(ap-northeast-2)**, 보관/파기 정책. 상세: PLAN §2′(M9·M10·M14) · `docs/security.md` · `docs/compliance.md`.
 
@@ -136,6 +144,15 @@ NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 - API 응답의 `timestamp` 필드는 DB의 `session_logs.spoken_at`에서 매핑한다.
 - 기존 마이그레이션이 `firebase_uid` / `app.user_id` 기반으로 작성돼 있다면, `auth.users` 연결 + `auth.uid()` 기반 RLS로 재작성한다.
 
-## 2026-09-12 사업 기획 반영 사항
+## 2026-09-12 사업 기획 반영 사항 (당시 기록)
 
 현재 테이블을 변경한 것은 아니다. 신규 데이터 계약 후보: 회상/직접 관찰 출처, 입력 원문·생성 초안·최종본 연결, 공급자 모델·프롬프트 버전·청구 토큰·TTS 문자 수·기관/세션 귀속·멱등 키, 작성/수정/승인과 개입 이벤트, 학습 동의·독립 원음/전사·검수·철회 계보. 기존 컬럼으로 가능한 범위를 먼저 대조하고 필요한 마이그레이션만 설계한다. 공개 전환은 초안 승인과 별개이며 RLS·감사·철회 검증이 필요하다.
+
+## 2026-09-23 기획 변경 반영 사항
+
+위 계약 후보 중 다수가 **새 계획에서 확정됐다**([`pilot-development-plan.md`](plans/pilot-development-plan.md) §5):
+프롬프트 버전(`sessions.prompt_version`) · 작성/수정/승인 이벤트(`program_journal_revisions`, `product_events`) ·
+개입 이벤트(`session_interventions`). 신규: **기관 단위 RLS 전환**(현재 9테이블이 배정 격리 —
+`20260722100000`), `org_capabilities`, `program_journals`(공단 필드는 **jsonb 가 아니라 개별 컬럼**),
+`care_grade`, `push_tokens`. ⚠️ `care_journals`·`journal_photos` 는 **삭제**(데이터 포함, 사용자 확정).
+⚠️ 출석 테이블은 만들지 않는다(ERP 영역) — 제공 여부는 `program_journals` 행 유무 + `delivered` 로 표현한다.
