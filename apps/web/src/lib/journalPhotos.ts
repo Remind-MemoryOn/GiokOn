@@ -1,5 +1,5 @@
 // 요양일지 사진 — private 버킷(journal-photos)의 경로를 표시용 signed URL 로 바꾼다.
-// DB(journal_photos.path)에는 경로만 저장한다(elder-photos 와 같은 규약).
+// DB(program_journal_photos.path)에는 경로만 저장한다(elder-photos 와 같은 규약).
 //
 // ⚠️ Storage 정책이 경로 첫 구간(<profile_id>)으로 기관을 확인한다 → 경로는 반드시
 //    `<profile_id>/…` 이고, 어르신을 지우기 전에 파일을 먼저 지워야 한다.
@@ -30,7 +30,7 @@ export function useJournalPhotoUrls(paths: (string | undefined)[], enabled: bool
   });
 }
 
-/** 고른 파일을 올리고 `journal_photos.path` 에 넣을 경로를 돌려준다. */
+/** 고른 파일을 올리고 `program_journal_photos.path` 에 넣을 경로를 돌려준다. */
 export async function uploadJournalPhoto(profileId: string, file: File): Promise<string> {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${profileId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;

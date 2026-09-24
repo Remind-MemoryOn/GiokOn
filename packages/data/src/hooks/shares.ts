@@ -13,9 +13,8 @@ import {
 import { getGiokonClient } from '../client'
 import { queryKeys } from '../query'
 import type {
-  CareJournalRow,
   GuardianShareRow,
-  JournalPhotoRow,
+  ProgramJournalPhotoRow,
   SessionAnalysisRow,
   ShareItemType,
   TablesInsert,
@@ -160,17 +159,28 @@ export function useMarkShareViewed(): UseMutationResult<GuardianShareRow, Error,
   })
 }
 
+/** 보호자에게 공개된 확정 일지 — **보호자 문장만**(공단 서식 칸은 서버가 보내지 않는다, 계획 W4). */
+export interface SharedJournal {
+  id: string
+  profile_id: string
+  journal_date: string
+  operated_from: string | null
+  operated_to: string | null
+  guardian_text: string | null
+  finalized_at: string | null
+}
+
 export interface MySharedContent {
   shares: GuardianShareRow[]
-  journals: CareJournalRow[]
+  journals: SharedJournal[]
   analyses: SessionAnalysisRow[]
   /** `photo` 로 공개된 일지 사진(보호자 공유 사진 갤러리 — 신규 디자인 55:2035). */
-  photos: JournalPhotoRow[]
+  photos: ProgramJournalPhotoRow[]
 }
 
 /**
- * 보호자 타임라인 — 내게 공개된 커밋 + 공개된 원본(일지·분석)을 한 번에.
- * RLS: 승인된 연결 + 미철회 커밋 + 공개된 원본만 반환된다.
+ * 보호자 타임라인 — 내게 공개된 커밋 + 공개된 원본(일지 보호자 문장·분석·사진)을 한 번에.
+ * RLS: 승인된 연결 + 미철회 커밋 + 공개된 원본만 반환된다. 일지는 get_my_shared_journals RPC(확정 + 승인된 보호자 문장).
  */
 export function useMySharedContent(options?: {
   enabled?: boolean
@@ -195,14 +205,14 @@ export function useMySharedContent(options?: {
 
       const [journalsRes, analysesRes, photosRes] = await Promise.all([
         journalIds.length > 0
-          ? client.from('care_journals').select('*').in('id', journalIds)
-          : Promise.resolve({ data: [] as CareJournalRow[], error: null }),
+          ? client.rpc('get_my_shared_journals')
+          : Promise.resolve({ data: [] as SharedJournal[], error: null }),
         analysisIds.length > 0
           ? client.from('session_analyses').select('*').in('id', analysisIds)
           : Promise.resolve({ data: [] as SessionAnalysisRow[], error: null }),
         photoIds.length > 0
-          ? client.from('journal_photos').select('*').in('id', photoIds)
-          : Promise.resolve({ data: [] as JournalPhotoRow[], error: null }),
+          ? client.from('program_journal_photos').select('*').in('id', photoIds)
+          : Promise.resolve({ data: [] as ProgramJournalPhotoRow[], error: null }),
       ])
       if (journalsRes.error) throw new Error(journalsRes.error.message)
       if (analysesRes.error) throw new Error(analysesRes.error.message)
@@ -210,7 +220,7 @@ export function useMySharedContent(options?: {
 
       return {
         shares: shares ?? [],
-        journals: journalsRes.data ?? [],
+        journals: (journalsRes.data ?? []) as SharedJournal[],
         analyses: analysesRes.data ?? [],
         photos: photosRes.data ?? [],
       }

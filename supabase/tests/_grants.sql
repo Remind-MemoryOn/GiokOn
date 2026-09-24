@@ -65,6 +65,22 @@ begin
   assert not has_function_privilege('anon', 'public.register_push_token(text, text)', 'EXECUTE')
      and not has_function_privilege('anon', 'public.revoke_push_token(text)', 'EXECUTE'),
     '푸시 토큰 RPC 는 anon 이 부를 수 없어야 함';
+  -- 파일럿 D5: 수정 이력은 트리거 전용 · 생성 큐는 워커(service_role) 전용 · anon 접근 없음
+  assert not has_table_privilege('authenticated', 'public.program_journal_revisions', 'INSERT,UPDATE,DELETE'),
+    'program_journal_revisions 쓰기는 트리거 전용이어야 함';
+  assert not has_table_privilege('authenticated', 'public.journal_generation_jobs', 'SELECT,INSERT,UPDATE,DELETE'),
+    'journal_generation_jobs 는 클라이언트가 접근할 수 없어야 함';
+  assert not has_table_privilege('anon', 'public.program_journals', 'SELECT')
+     and not has_table_privilege('anon', 'public.program_journal_photos', 'SELECT')
+     and not has_table_privilege('anon', 'public.program_journal_revisions', 'SELECT'),
+    '프로그램 일지 테이블은 anon 이 읽을 수 없어야 함';
+  assert not has_function_privilege('anon', 'public.get_my_shared_journals()', 'EXECUTE')
+     and not has_function_privilege('anon', 'public.retry_journal_generation(uuid)', 'EXECUTE')
+     and not has_function_privilege('authenticated', 'app.enqueue_program_journal()', 'EXECUTE')
+     and not has_function_privilege('authenticated', 'app.guard_program_journal()', 'EXECUTE'),
+    '일지 RPC 는 anon 불가, 트리거 함수는 직접 호출 불가';
+  assert to_regclass('public.care_journals') is null and to_regclass('public.journal_photos') is null,
+    '구 요양일지 테이블은 삭제돼야 함(D5)';
   assert not (select prosecdef from pg_proc where oid = 'app.protect_session_supervision()'::regprocedure),
     '감독 컬럼 보호 트리거는 SECURITY INVOKER 여야 함(current_user 판별)';
 end $$;

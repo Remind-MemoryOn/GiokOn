@@ -17,19 +17,26 @@
 //    **사람이 확인·수정한 뒤** 저장한다(자동 저장 금지).
 // ⚠️ AI 초안은 `@giokon/core` 의 `buildJournalDraft`(규칙 기반)다. 원문을 관찰 항목으로
 //    묶어 줄 뿐 없는 내용을 만들지 않는다. 초안도 저장 전 사람이 확인한다.
-// ⚠️ 사진은 `journal_photos`(20260822030000) 에 여러 장 저장한다. Storage 정책이 경로의
+// ⚠️ 사진은 `program_journal_photos`(D5) 에 여러 장 저장한다. Storage 정책이 경로의
 //    profile_id 로 기관을 확인하므로 경로는 `<profile_id>/…` 이고, **일지 행이 먼저** 있어야
 //    첨부를 붙일 수 있다(저장 → 업로드 → 첨부 행 순서).
+// ⚠️ 2026-09-24 D5: 저장소가 `care_journals` → `program_journals`(공단 서식)로 바뀌었다. 이 화면은
+//    W1(프로그램 일지 목록·상세)이 대체하기 전까지 **같은 시안 그대로** 새 표에 쓴다:
+//    원문 → `activity_content` · 활동 시간 → `operated_from/to` · 담당 요양보호사(본인) → 진행자.
+//    "임시 저장" = 확인 대기(`pending_review`). "저장" = 확정 — 단 확정은 서버가 **위임 권한(journal_finalize)**
+//    으로만 허용하므로 권한이 없으면 확인 대기로 저장하고 그렇게 알린다. 확정된 일지는 수정 사유가
+//    필요한데 이 시안에 사유 칸이 없어 **여기서는 고치지 않는다**(W1 이 사유 입력을 붙인다).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  useAddJournalPhoto,
-  useCareJournals,
-  useCreateCareJournal,
+  useAddProgramJournalPhoto,
+  useCreateProgramJournal,
   useCurrentUser,
-  useJournalPhotos,
+  useHasCapability,
   useProfile,
-  useUpdateCareJournal,
+  useProgramJournalPhotos,
+  useProgramJournals,
+  useUpdateProgramJournal,
 } from '@giokon/data';
 import { buildJournalDraft } from '@giokon/core';
 import { asset } from '../../assets/ui';
@@ -41,6 +48,7 @@ import {
   useJournalPhotoUrls,
 } from '../../lib/journalPhotos';
 import { SttUnavailableError, transcribeAudio } from '../../lib/stt';
+import { journalErrorMessage } from '../../lib/journalErrors';
 import { TimeField } from '../../components/ui/TimeField';
 import { SessionJournalDialog } from '../../components/SessionJournalDialog';
 import { cn } from '../../lib/utils';
@@ -85,18 +93,19 @@ export function JournalWritePage() {
   const setMode = (m: Mode) => setSearch(m === 'typed' ? {} : { mode: m }, { replace: true });
 
   const me = useCurrentUser();
-  const createJournal = useCreateCareJournal();
-  const updateJournal = useUpdateCareJournal();
-  const addPhoto = useAddJournalPhoto();
+  const createJournal = useCreateProgramJournal();
+  const updateJournal = useUpdateProgramJournal();
+  const addPhoto = useAddProgramJournalPhoto();
+  const canFinalize = useHasCapability('journal_finalize', { enabled: isConfigured });
 
   // 수정 모드 — 목록의 연필이 `/journal/:elderId/:journalId` 로 온다.
   const editing = Boolean(journalId);
-  const journals = useCareJournals(editing ? elderId : undefined);
+  const journals = useProgramJournals(editing ? elderId : undefined);
   const existing = useMemo(
     () => (journals.data ?? []).find((j) => j.id === journalId) ?? null,
     [journals.data, journalId],
   );
-  const existingPhotos = useJournalPhotos(journalId);
+  const existingPhotos = useProgramJournalPhotos(journalId);
   const existingUrls = useJournalPhotoUrls(
     (existingPhotos.data ?? []).map((p) => p.path),
     isConfigured,
@@ -131,10 +140,10 @@ export function JournalWritePage() {
     if (!existing || seeded.current) return;
     seeded.current = true;
     setDate(existing.journal_date);
-    setFrom(existing.activity_from?.slice(0, 5) ?? '');
-    setTo(existing.activity_to?.slice(0, 5) ?? '');
-    setContent(existing.content);
-    setGeneratedSource(existing.source === 'ai_draft');
+    setFrom(existing.operated_from?.slice(0, 5) ?? '');
+    setTo(existing.operated_to?.slice(0, 5) ?? '');
+    setContent(existing.activity_content ?? '');
+    setGeneratedSource(existing.draft_generated_at !== null);
   }, [existing]);
 
   /** 음성 파일 → 텍스트. 실패는 이유를 그대로 보여 준다(조용한 실패 금지). */
@@ -178,9 +187,12 @@ export function JournalWritePage() {
     }
   }
 
-  async function save(status: 'draft' | 'final') {
+  async function save(intent: 'draft' | 'final') {
     if (!elderId) return;
     if (!isConfigured) return toast('error', 'Supabase 연동 후 저장할 수 있어요.');
+    if (existing?.status === 'final') {
+      return toast('error', '확정된 일지는 수정 사유를 남겨야 고칠 수 있어요. 이 화면에는 사유 입력이 없어 고칠 수 없어요.');
+    }
     if (!content.trim()) return toast('error', '활동 내용을 입력해주세요.');
     // 한쪽만 적은 것은 허용한다(진행 중 기록). 뒤집힌 구간만 막는다.
     if (from && to && to < from) return toast('error', '종료 시각이 시작 시각보다 빠릅니다.');
@@ -188,29 +200,23 @@ export function JournalWritePage() {
     // 업로드는 성공했는데 첨부 행이 실패하면 Storage 에 주인 없는 파일이 남는다 → 되돌린다.
     const uploaded: string[] = [];
     try {
-      const fields: {
-        journal_date: string;
-        content: string;
-        source: 'photo' | 'voice' | 'typed' | 'ai_draft';
-        status: 'draft' | 'final';
-        activity_from: string | null;
-        activity_to: string | null;
-      } = {
+      // 확정은 위임 권한이 있을 때만 요청한다(서버도 같은 규칙으로 막는다). 없으면 확인 대기.
+      const finalize = intent === 'final' && canFinalize.data === true;
+      const fields = {
         journal_date: date,
-        content: content.trim(),
-        source: generatedSource ? 'ai_draft' : mode === 'photo' ? 'photo' : mode === 'voice' ? 'voice' : 'typed',
-        status,
+        activity_content: content.trim(),
+        status: finalize ? ('final' as const) : ('pending_review' as const),
         // 적지 않았으면 null 이다 — 09:00 같은 기본값을 채우지 않는다.
-        activity_from: from || null,
-        activity_to: to || null,
+        operated_from: from || null,
+        operated_to: to || null,
+        // 진행자 = 담당 요양보호사(본인). 대화에서 만들어진 일지는 세션 진행자를 그대로 둔다.
+        facilitator_user_id: existing?.facilitator_user_id ?? me.data?.id ?? null,
+        // AI 초안을 적용했다는 표시(배지 근거). 한 번 붙으면 지우지 않는다.
+        ...(generatedSource && !existing?.draft_generated_at ? { draft_generated_at: new Date().toISOString() } : {}),
       };
       const row = editing && journalId
         ? await updateJournal.mutateAsync({ id: journalId, patch: fields })
-        : await createJournal.mutateAsync({
-            ...fields,
-            profile_id: elderId,
-            author_id: me.data?.id ?? null,
-          });
+        : await createJournal.mutateAsync({ ...fields, profile_id: elderId });
       // 일지 행이 생긴 뒤에야 Storage 정책을 통과한다 → 저장 → 업로드 → 첨부 행 순서.
       const base = editing ? (existingPhotos.data ?? []).length : 0;
       for (const [i, file] of photos.entries()) {
@@ -220,17 +226,19 @@ export function JournalWritePage() {
       }
       toast(
         'success',
-        editing
-          ? '요양일지를 수정했어요.'
-          : status === 'final'
-            ? '요양일지를 저장했어요.'
-            : '임시 저장했어요.',
+        intent === 'final' && !finalize
+          ? '확인 대기로 저장했어요. 확정은 기관이 확정 권한을 준 분이 할 수 있어요.'
+          : editing
+            ? '요양일지를 수정했어요.'
+            : intent === 'final'
+              ? '요양일지를 저장했어요.'
+              : '임시 저장했어요.',
       );
       navigate(`/caregiver/journal/${elderId}`);
     } catch (e) {
       // 붙지 못한 파일은 지운다(정리에 실패해도 원래 오류를 덮지 않는다).
       if (uploaded.length) await removeJournalPhotoFiles(uploaded).catch(() => {});
-      toast('error', e instanceof Error ? e.message : '저장하지 못했어요.');
+      toast('error', journalErrorMessage(e));
     } finally {
       setSaving(false);
     }

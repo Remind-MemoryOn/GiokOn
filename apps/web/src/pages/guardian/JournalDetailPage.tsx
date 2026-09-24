@@ -65,7 +65,7 @@ export function JournalDetailPage() {
         badge="요양일지"
         tone="journal"
         badgeW={107}
-        at={share?.shared_at ?? journal?.created_at ?? ''}
+        at={share?.shared_at ?? journal?.finalized_at ?? ''}
         title={title}
       />
 
@@ -79,16 +79,16 @@ export function JournalDetailPage() {
       >
         <SectionTitle fx="50:1083">오늘의 활동</SectionTitle>
         <SectionBody fx="50:1084" under>
-          {/* 활동 시간(20260906020000) — 요양보호사가 적었을 때만 나온다.
-              적지 않았으면 지어내지 않고 `—`. */}
-          {journal?.activity_from || journal?.activity_to
-            ? `${hhmm(journal.activity_from)} ~ ${hhmm(journal.activity_to)}`
+          {/* 활동 시간 — 요양보호사가 적었을 때만 나온다. 적지 않았으면 지어내지 않고 `—`. */}
+          {journal?.operated_from || journal?.operated_to
+            ? `${hhmm(journal.operated_from)} ~ ${hhmm(journal.operated_to)}`
             : '—'}
         </SectionBody>
 
         <SectionTitle fx="50:1088" gap={SEC_GAP}>요양일지</SectionTitle>
         <SectionBody fx="50:1089" under pre width={690}>
-          {journal?.content ?? '—'}
+          {/* D5: 보호자에게는 승인된 보호자 문장만(공단 서식 칸은 서버가 보내지 않는다 — 계획 W4). */}
+          {journal?.guardian_text ?? '—'}
         </SectionBody>
 
         <SectionTitle fx="50:1093" gap={SEC_GAP}>오늘의 활동 사진</SectionTitle>

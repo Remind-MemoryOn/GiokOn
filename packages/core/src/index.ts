@@ -31,5 +31,6 @@ export * from './subject-rights'
 export * from './speech'
 export * from './voice-context'
 export * from './generated-session'
+export * from './program-journal'
 
 export * from './voice-failure'

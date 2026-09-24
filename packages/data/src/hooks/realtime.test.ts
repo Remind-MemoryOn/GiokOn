@@ -45,7 +45,7 @@ describe('Realtime → 실제 Query 캐시 무효화', () => {
 
   it.each([
     ['consents', ['consents', 'elder-a']],
-    ['care_journals', ['care_journals', 'org']],
+    ['program_journals', ['program_journals', 'org']],
     ['elder_codes', ['elder_codes', 'elder-a']],
     ['inquiries', ['inquiries', 'detail', 'inquiry-a']],
     ['profile_caregivers', ['profiles']],

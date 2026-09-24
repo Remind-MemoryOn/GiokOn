@@ -8,16 +8,19 @@
 //
 // ⚠️ Figma 는 행 사각형을 소수 y(427.27·686.43…)에, 안쪽 요소는 정수 그리드(469·728…)에
 //    올려놔 행마다 0.2~0.5px 씩 어긋난다 → 행 기준 상대좌표로 통일한다.
-// ⚠️ 일지 사진은 아직 1장 컬럼(`care_journals.photo_path`)이다 — 시안의 "관련 사진 (3장)"
-//    은 여러 장을 전제하므로 Phase 2 에서 `journal_photos` 를 만든 뒤 붙인다.
+// ⚠️ 2026-09-24 D5: 저장소가 `program_journals`(공단 서식)로 바뀌었다. W1(프로그램 일지 목록)이
+//    대체하기 전까지 같은 시안으로 보여 준다 — 본문 = `activity_content`, 활동 시간 = `operated_from/to`.
+//    대화에서 자동으로 만들어지는 일지는 생성 중·생성 실패일 수 있어 **본문 대신 그 상태를** 적는다(없는 내용을 만들지 않는다).
+//    삭제는 확정 전 수기 일지만 된다(서버 규칙) — 그 밖에는 휴지통을 두지 않는다.
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toElderProfile, useCareJournals, useDeleteCareJournal, useProfile } from '@giokon/data';
+import { toElderProfile, useDeleteProgramJournal, useProfile, useProgramJournals, type ProgramJournalRow } from '@giokon/data';
 import { dateDot } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { Badge } from '../../components/ui/Badge';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useStore } from '../../store/store';
+import { journalErrorMessage } from '../../lib/journalErrors';
 
 const Y = (v: number) => v - 122;
 
@@ -30,6 +33,13 @@ const ROW_H = 235.15;
 const ROW_PITCH = 259.164;
 /** 마지막 행 아래 카드 여백(시안: 4행 끝 1439.91 → 카드 끝 1492). */
 const CARD_PAD_BOTTOM = 52.09;
+
+/** 목록 본문 — 생성 중·실패는 내용이 아직 없다는 사실을 그대로 말한다. */
+function rowBody(j: ProgramJournalRow): string {
+  if (j.status === 'generating') return '대화 기록으로 일지 초안을 만들고 있어요.';
+  if (j.status === 'failed') return '일지 초안을 만들지 못했어요. 내용을 직접 입력해 주세요.';
+  return j.activity_content ?? '—';
+}
 
 /** 로컬 달력 하루 키(`2026-07-08`) — 날짜 필터 비교용. */
 function dayKey(iso: string): string {
@@ -49,8 +59,8 @@ function rowTitle(iso: string): string {
 export function JournalListPage() {
   const { elderId } = useParams<{ elderId: string }>();
   const profileQuery = useProfile(elderId);
-  const journals = useCareJournals(elderId);
-  const remove = useDeleteCareJournal();
+  const journals = useProgramJournals(elderId);
+  const remove = useDeleteProgramJournal();
   const toast = useStore((s) => s.toast);
   const [day, setDay] = useState('');
   /** 삭제 확인 대상 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
@@ -198,12 +208,12 @@ export function JournalListPage() {
               </span>
               {/* 활동 시간 — 적었을 때만 날짜 뒤에 붙인다. 없으면 만들지 않는다.
                   (날짜 span 은 실측 프로브라 건드리지 않고 옆에 따로 놓는다.) */}
-              {j.activity_from || j.activity_to ? (
+              {j.operated_from || j.operated_to ? (
                 <span
                   className="absolute left-[700px] whitespace-nowrap text-w-body leading-[28px] text-ink-500"
                   style={{ top: Y(top + 46.03) }}
                 >
-                  {hhmm(j.activity_from)} ~ {hhmm(j.activity_to)}
+                  {hhmm(j.operated_from)} ~ {hhmm(j.operated_to)}
                 </span>
               ) : null}
               <p
@@ -218,7 +228,7 @@ export function JournalListPage() {
                 className="absolute left-[478px] w-[680px] text-w-body leading-[28px] text-ink-700"
                 style={{ top: Y(top + 138.09), wordBreak: 'keep-all' }}
               >
-                {j.content}
+                {rowBody(j)}
               </p>
               <Link
                 to={`/caregiver/journal/${elderId ?? ''}/${j.id}`}
@@ -228,7 +238,9 @@ export function JournalListPage() {
               >
                 <img src={asset.iconPencilLg} alt="" className="block h-full w-full" />
               </Link>
-              {/* 삭제 확인 화면이 디자인에 없어 확인 대화상자로 되돌릴 수 없는 동작을 막는다 */}
+              {/* 삭제 확인 화면이 디자인에 없어 확인 대화상자로 되돌릴 수 없는 동작을 막는다.
+                  확정·대화 일지는 서버가 삭제를 막으므로 버튼을 두지 않는다(누를 수 있어 보이면 동작해야 한다). */}
+              {j.status !== 'final' && j.session_id === null ? (
               <button
                 type="button"
                 aria-label={`${rowTitle(j.journal_date)} 삭제`}
@@ -238,6 +250,7 @@ export function JournalListPage() {
               >
                 <img src={asset.iconTrash} alt="" className="block h-full w-full object-contain" />
               </button>
+              ) : null}
             </div>
           );
         })
@@ -254,7 +267,7 @@ export function JournalListPage() {
             { id: deleting.id, profileId: elderId },
             {
               onSuccess: () => toast('success', '요양일지를 삭제했어요.'),
-              onError: (e) => toast('error', e.message),
+              onError: (e) => toast('error', journalErrorMessage(e, '삭제하지 못했어요.')),
             },
           );
         }}

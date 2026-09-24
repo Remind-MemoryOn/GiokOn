@@ -601,6 +601,176 @@ begin
   reset role;
 end $$;
 
+-- ── D5: 프로그램 일지 — 세션 종료 생성 · 확정 가드 · 확정 후 수정 이력 · 워커 칸 · 공개 게이트 · 재시도 ─────
+-- 역할: a02 요양보호사(기본 권한표에 journal_finalize 없음) · a03 사회복지사(있음) · a01 관리자 · a04 보호자 · a05 타 기관.
+create or replace function pg_temp.expect_sql(p_uid text, p_sql text, p_code text)
+returns void language plpgsql as $$
+declare got text;
+begin
+  perform set_config('test.uid', p_uid, true);
+  begin
+    execute p_sql;
+  exception when others then got := sqlerrm;
+  end;
+  if got is distinct from p_code then
+    raise exception '% (by %) 기대 %, 실제 %', p_sql, p_uid, coalesce(p_code, '성공'), coalesce(got, '성공');
+  end if;
+end $$;
+
+-- D3 단언이 권한표에서 사회복지사를 뺐다 → 기본 위임으로 되돌린다(슈퍼유저).
+update public.org_capabilities set allowed_roles = app.default_capability_roles() where capability = 'journal_finalize';
+
+-- 세션 종료 → generating 일지 + 생성 작업(트리거 ③)
+set role authenticated;
+select set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', false);
+update public.sessions set status = 'ended', ended_at = now() where id = (select sid from pilot_s);
+update public.sessions set status = 'ended' where id = (select sid from pilot_s);  -- 다시 끝내도 중복 생성 없음
+reset role;
+create temp table pilot_j as select id as jid from public.program_journals where session_id = (select sid from pilot_s);
+grant select on pilot_j to authenticated;
+do $$
+declare j public.program_journals%rowtype;
+begin
+  assert (select count(*) from pilot_j) = 1, '세션 종료 1회 = 일지 1건(재종료로 늘지 않음)';
+  select * into j from public.program_journals where id = (select jid from pilot_j);
+  assert j.status = 'generating', '세션 종료 시 일지는 generating 으로 생겨야 함';
+  assert j.facilitator_user_id = 'a0000000-0000-0000-0000-000000000002', '진행자 = 세션을 시작한 요양보호사(AI 아님)';
+  assert j.tool_used = 'AI 대화 프로그램 보조' and j.program_type = '인지활동 - 회상훈련', '공단 서식 기본값';
+  assert (select count(*) from public.journal_generation_jobs where journal_id = j.id and status = 'queued') = 1,
+    '생성 작업이 대기열에 들어가야 함';
+end $$;
+
+-- 워커(서비스 계정 = auth.uid 없음)는 초안까지만 — 확정은 물리적으로 불가(기준 2)
+select set_config('test.uid', '', false);
+update public.program_journals
+   set status = 'pending_review', activity_content = '고향 전주 이야기를 나누셨다.', guardian_text = '오늘 고향 이야기를 들려주셨어요.',
+       draft_generated_at = now()
+ where id = (select jid from pilot_j);
+do $$
+declare blocked boolean := false;
+begin
+  begin
+    update public.program_journals set status = 'final' where id = (select jid from pilot_j);
+  exception when insufficient_privilege then blocked := sqlerrm = 'JOURNAL_FINALIZE_HUMAN_ONLY';
+  end;
+  assert blocked, '서비스 계정(auth.uid 없음)은 일지를 확정할 수 없어야 함';
+end $$;
+
+set role authenticated;
+-- 클라이언트는 워커 칸을 못 쓴다
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set status = %L where id = %L', 'generating', (select jid from pilot_j)), 'JOURNAL_WORKER_FIELDS');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set generation_attempts = 3 where id = %L', (select jid from pilot_j)), 'JOURNAL_WORKER_FIELDS');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('insert into public.program_journals (profile_id, status) values (%L, %L)', (select p1 from pilot_p), 'failed'), 'JOURNAL_WORKER_FIELDS');
+-- 위임 권한 없는 요양보호사는 확정 불가, 사회복지사는 가능
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set status = %L where id = %L', 'final', (select jid from pilot_j)), 'JOURNAL_FINALIZE_FORBIDDEN');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000003',
+  format('update public.program_journals set status = %L, finalized_by = %L where id = %L', 'final',
+    'a0000000-0000-0000-0000-000000000005', (select jid from pilot_j)), null);
+reset role;
+do $$ begin
+  assert (select finalized_by from public.program_journals where id = (select jid from pilot_j)) = 'a0000000-0000-0000-0000-000000000003',
+    '확정자는 클라이언트 값이 아니라 호출자로 채워야 함';
+end $$;
+set role authenticated;
+-- 확정은 되돌릴 수 없다 · 확정 후 수정은 권한 + 사유
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000003',
+  format('update public.program_journals set status = %L where id = %L', 'pending_review', (select jid from pilot_j)), 'JOURNAL_FINAL_LOCKED');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000003',
+  format('update public.program_journals set activity_content = %L where id = %L', '고친 내용', (select jid from pilot_j)), 'JOURNAL_EDIT_REASON_REQUIRED');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set activity_content = %L, edit_reason = %L where id = %L', '고친 내용', '오기 수정', (select jid from pilot_j)), 'JOURNAL_EDIT_FORBIDDEN');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000003',
+  format('update public.program_journals set activity_content = %L, edit_reason = %L where id = %L', '고친 내용', '오기 수정', (select jid from pilot_j)), null);
+reset role;
+do $$
+declare r public.program_journal_revisions%rowtype;
+begin
+  select * into r from public.program_journal_revisions where journal_id = (select jid from pilot_j);
+  assert (select count(*) from public.program_journal_revisions where journal_id = (select jid from pilot_j)) = 1, '확정 후 수정은 이력 1건';
+  assert r.changed_by = 'a0000000-0000-0000-0000-000000000003' and r.reason = '오기 수정', '이력에 누가·왜';
+  assert r.changes -> 'activity_content' ->> 'from' = '고향 전주 이야기를 나누셨다.' and r.changes -> 'activity_content' ->> 'to' = '고친 내용',
+    '이력에 무엇이(이전·이후)';
+  assert (select edit_reason from public.program_journals where id = (select jid from pilot_j)) is null, '사유는 행에 남지 않는다';
+end $$;
+
+-- 보호자 문장 승인: 승인자·시각은 서버가 채우고, 문장이 바뀌면 승인이 풀린다 · 공개 게이트(트리거 ④)
+set role authenticated;
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set guardian_text_approved_at = %L, guardian_text_approved_by = %L where id = %L',
+    '2000-01-01', 'a0000000-0000-0000-0000-000000000005', (select jid from pilot_j)), null);
+reset role;
+do $$ begin
+  assert (select guardian_text_approved_by = 'a0000000-0000-0000-0000-000000000002' and guardian_text_approved_at > now() - interval '1 minute'
+            from public.program_journals where id = (select jid from pilot_j)), '보호자 문장 승인자·시각은 서버가 채워야 함';
+end $$;
+set role authenticated;
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set guardian_text = %L where id = %L', '바뀐 보호자 문장', (select jid from pilot_j)), null);
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000001',
+  format('insert into public.guardian_shares (shared_by, profile_id, item_type, item_id) values (%L, %L, %L, %L)',
+    'a0000000-0000-0000-0000-000000000001', (select p1 from pilot_p), 'journal', (select jid from pilot_j)), 'SHARE_JOURNAL_NOT_READY');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.program_journals set guardian_text_approved_at = now() where id = %L', (select jid from pilot_j)), null);
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000001',
+  format('insert into public.guardian_shares (shared_by, profile_id, item_type, item_id) values (%L, %L, %L, %L)',
+    'a0000000-0000-0000-0000-000000000001', (select p1 from pilot_p), 'journal', (select jid from pilot_j)), null);
+
+-- 수기 일지: 진행자는 같은 기관 돌봄팀만 · 확정에 진행자 필수 · 위임을 켜면 요양보호사도 확정
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('insert into public.program_journals (profile_id, activity_content, facilitator_user_id) values (%L, %L, %L)',
+    (select p1 from pilot_p), '수기', 'a0000000-0000-0000-0000-000000000004'), 'JOURNAL_FACILITATOR_INVALID');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000003',
+  format('insert into public.program_journals (profile_id, activity_content, status) values (%L, %L, %L)',
+    (select p1 from pilot_p), '수기', 'final'), 'JOURNAL_FACILITATOR_REQUIRED');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000001',
+  $q$update public.org_capabilities set allowed_roles = allowed_roles || 'caregiver'::public.org_role where capability = 'journal_finalize'$q$, null);
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('insert into public.program_journals (profile_id, activity_content, facilitator_user_id, status) values (%L, %L, %L, %L)',
+    (select p1 from pilot_p), '위임 뒤 수기 확정', 'a0000000-0000-0000-0000-000000000002', 'final'), null);
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000001',
+  $q$update public.org_capabilities set allowed_roles = array_remove(allowed_roles, 'caregiver'::public.org_role) where capability = 'journal_finalize'$q$, null);
+reset role;
+
+-- 세션 일지는 삭제 불가(파이프라인 기록) · 실패 재시도는 같은 기관 돌봄팀만, 실패 상태에서만
+set role authenticated;
+select set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', false);
+update public.sessions set status = 'ended', ended_at = now()
+ where id = (select id from public.sessions where user_id = 'a0000000-0000-0000-0000-000000000002' and status = 'active'
+               and started_at > now() - interval '30 minutes' limit 1);
+reset role;
+create temp table pilot_j2 as
+  select j.id as jid from public.program_journals j
+   where j.session_id is not null and j.id <> (select jid from pilot_j) and j.status = 'generating'
+     and j.profile_id = (select p1 from pilot_p) limit 1;
+grant select on pilot_j2 to authenticated;
+update public.program_journals set status = 'failed', generation_attempts = 6, last_error = 'synthetic' where id = (select jid from pilot_j2);
+set role authenticated;
+select set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', false);
+delete from public.program_journals where id = (select jid from pilot_j2);
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000005',
+  format('select public.retry_journal_generation(%L)', (select jid from pilot_j2)), 'JOURNAL_NOT_FOUND');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('select public.retry_journal_generation(%L)', (select jid from pilot_j)), 'JOURNAL_RETRY_NOT_FAILED');
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('select public.retry_journal_generation(%L)', (select jid from pilot_j2)), null);
+-- 장기요양등급 입력
+select pg_temp.expect_sql('a0000000-0000-0000-0000-000000000002',
+  format('update public.profiles set care_grade = %L where id = %L', 'grade_3', (select p1 from pilot_p)), null);
+reset role;
+do $$ begin
+  assert (select count(*) from pilot_j2) = 1, '픽스처: 두 번째 세션 일지';
+  assert exists (select 1 from public.program_journals where id = (select jid from pilot_j2)), '세션 일지는 삭제할 수 없어야 함';
+  assert (select status = 'generating' and generation_attempts = 0 and last_error is null
+            from public.program_journals where id = (select jid from pilot_j2)), '재시도는 generating·시도 0 으로 되돌려야 함';
+  assert (select status = 'queued' and attempts = 0 from public.journal_generation_jobs where journal_id = (select jid from pilot_j2)),
+    '재시도는 작업을 다시 대기열에';
+  assert (select care_grade from public.profiles where id = (select p1 from pilot_p)) = 'grade_3', '장기요양등급 저장';
+end $$;
+
 -- ── D7: 푸시 토큰 — 본인만 조회 · 돌봄팀만 등록 · 기기 인계 시 주인 이동 · pushed_at 사용자 변경 불가 ─────────
 -- 아래 블록은 _grants.sql 의 광범위 테스트 권한 아래서 돈다 — RLS·RPC·트리거 판정을 본다(권한 회수는 _grants 사전 검사).
 set role authenticated;
