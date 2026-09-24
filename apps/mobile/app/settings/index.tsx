@@ -18,7 +18,7 @@
 //   - 아이디 = 로그인 이메일, 기관 = organizations.name, 버전 = app.json version
 //   - 간편 로그인 = **실제로 연결된 provider 만** 진하게(연결 안 된 것은 흐리게) — 소셜 3종을
 //     전부 컬러로 보여 주면 연결되지 않은 계정도 연결된 것처럼 보인다.
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -39,6 +39,8 @@ import { webUrl, WEB_ROUTES } from '../../src/lib/webUrl';
 import { useElders } from '../../src/data/reads';
 import { useDeleteElder } from '../../src/data/writes';
 import { NO_VALUE } from '../../src/lib/format';
+import { hasCaregiverPin } from '../../src/features/session/caregiverPin';
+import { CaregiverPinModal } from '../../src/features/session/CaregiverPinModal';
 import iconEdit from '../../assets/brand/icon-edit.png';
 import socialNaver from '../../assets/brand/social-naver.png';
 import socialKakao from '../../assets/brand/social-kakao.png';
@@ -67,6 +69,15 @@ const SOCIALS = [
 
 export default function Settings() {
   const { userRow, user, authed, signOut } = useAuth();
+  // 어르신 화면 복귀 PIN(기기 보안 저장소, 요양보호사별) — null = 확인 중/확인 실패.
+  const [pinSet, setPinSet] = useState<boolean | null>(null);
+  const [pinEditing, setPinEditing] = useState(false);
+  useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+    hasCaregiverPin(user.id).then((v) => { if (alive) setPinSet(v); }, () => { if (alive) setPinSet(null); });
+    return () => { alive = false; };
+  }, [user?.id, pinEditing]);
   // 목업 모드·로그인 전에는 조회하지 않는다(초기화 전 호출 방지).
   const org = useOrganization({ enabled: authed });
   const elders = useElders();
@@ -372,7 +383,59 @@ export default function Settings() {
             v.{version}
           </Text>
         </View>
+
+        {/* ── 어르신 화면 ─────────────────────────────────────────
+         * 시안에 없는 섹션(계획 M4 복귀 게이트) — 위 정보 카드와 같은 카드·행 스타일로 최소 구현. */}
+        <SectionLabel label="어르신 화면" left={29} style={{ marginTop: 33 }} />
+        <View
+          style={{
+            width: SETTINGS.cardW,
+            height: 64,
+            marginTop: 13,
+            marginBottom: 40,
+            borderRadius: SETTINGS.cardR,
+            backgroundColor: '#ffffff',
+            borderWidth: 1,
+            borderColor: SETTINGS.cardBorder,
+          }}
+        >
+          <Pressable
+            onPress={() => { if (user?.id) setPinEditing(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="요양보호사 PIN 정하기"
+            className="absolute active:opacity-60"
+            style={{ left: 0, top: 6, right: 0, height: 52, justifyContent: 'center' }}
+          >
+            <Text
+              className="absolute text-[14px] font-semibold text-black"
+              style={{ left: 26, top: 11, lineHeight: 30 }}
+            >
+              요양보호사 PIN
+            </Text>
+            <Text
+              className="absolute text-[14px] font-normal"
+              style={{ right: 44, top: 13, lineHeight: 25, color: SETTINGS.muted }}
+            >
+              {pinSet === null ? NO_VALUE : pinSet ? '바꾸기' : '정하기'}
+            </Text>
+            <View style={{ position: 'absolute', left: 290, top: 19 }}>
+              <RowChevron />
+            </View>
+          </Pressable>
+        </View>
       </ScrollView>
+      {user?.id ? (
+        <CaregiverPinModal
+          visible={pinEditing}
+          mode="setup"
+          userId={user.id}
+          onDone={() => {
+            setPinEditing(false);
+            Alert.alert('PIN을 정했어요', '어르신 화면에서 돌아올 때 이 숫자를 눌러 주세요.');
+          }}
+          onCancel={() => setPinEditing(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
