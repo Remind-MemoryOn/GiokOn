@@ -50,9 +50,8 @@ export function ElderConsentsPage() {
   };
 
   const rows = requiredConsents('elder').map((type) => {
-    const matches = (row: ConsentRow) =>
-      row.consent_type === type ||
-      (type === 'elder_privacy_required' && row.consent_type === 'privacy_required');
+    // DB 의 세션 처리 판정(app.has_processing_consent)과 같은 기준 — 같은 종류의 유효한 증빙만 인정한다.
+    const matches = (row: ConsentRow) => row.consent_type === type;
     return {
       type,
       definition: CONSENT_CATALOG[type],
@@ -93,7 +92,7 @@ export function ElderConsentsPage() {
         guardian_relation: consentSubject === 'self' ? null : proxyRelation.trim(),
         basis: consentBasis(consentSubject),
       });
-      toast('success', '동의를 다시 기록했습니다.');
+      toast('success', '동의를 기록했습니다.');
       setGrantTarget(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : '동의를 저장하지 못했습니다.';
@@ -110,7 +109,7 @@ export function ElderConsentsPage() {
     <div className="pb-16">
       <PageHeader
         title="어르신 동의 관리"
-        description="동의 이력을 확인하고 필요한 경우 개별 동의를 철회합니다. 철회만으로 계정이 로그아웃되지는 않습니다."
+        description="어르신 필수 동의를 확인하고, 없는 동의는 기록하며 필요한 경우 개별 동의를 철회합니다. 철회만으로 계정이 로그아웃되지는 않습니다."
       />
       <Link to={`/caregiver/elders/${elderId ?? ''}`} className="mt-3 inline-block text-w-sub font-semibold text-accent underline">
         어르신 상세로 돌아가기
@@ -167,7 +166,7 @@ export function ElderConsentsPage() {
                     onClick={() => openGrant(type, latest)}
                     className="rounded-[10px] border border-accent bg-accent px-5 py-3 text-w-label font-semibold text-white"
                   >
-                    다시 동의하기
+                    {latest ? '다시 동의하기' : '동의하기'}
                   </button>
                 )}
               </div>
