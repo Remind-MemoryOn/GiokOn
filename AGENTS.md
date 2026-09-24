@@ -203,9 +203,18 @@
   ⑦ 이름 변경 "분석 → 대화 관찰 리포트"는 **보호자 메뉴만**(기획 6-5). 요양보호사 `분석` 은 유지.
   ⑧ 기획서는 "태블릿 N대"를 전제하는데 앱은 `ios.supportsTablet:false`·`portrait` — 값은 그대로, **파일럿 기기 확정 때 재확인**.
   ⑨ 파일럿 계획의 `D1~D10` 은 DB 파트 번호다. 대체된 사업 기획 델타의 `D1~D11` 과 **이름만 같다** — 인용 시 출처를 붙인다.
+  ⑩ **중계는 위기뿐 아니라 급성 고통·휴식 요청("그만할래")·거부에도 즉시 연결을 끊는다**(`relay.ts:123-127`, `INPUT_REVIEW_REQUIRED`).
+  기획의 종료 정책("그만할래" → 마무리 단계로 짧게)과 부딪힌다 → 권장: 휴식 요청·거부만 마무리 전환, **위기·급성 고통은 즉시 종료 유지**.
+  급성 고통을 바꾸는 것은 안전 완화라 기획·안전 책임자 확인 사항(계획 §9-5·§13, tasks T21.11).
+  ⑪ **파일럿 신규 화면은 Figma 시안이 없다** — 웹 W1·W2·W6·W7·W9, 앱 M2(어르신 표시 모드). 웹 규칙은 "Figma 단독·임의 재디자인 금지"다.
+  시안 선행 vs "시안에 없는 화면" 선례(기존 디자인 언어로 최소 구현 → 시안 오면 교체) 중 **결정 대기**(계획 §7 머리말·§13). 결정 전엔 DB·연동이 먼저.
+  ⑫ `live-token` 한도는 **사용자 기준**(분당 3·일 20). 요양보호사 1명이 기기 여러 대를 자기 계정으로 시작하면 먼저 닿는다 —
+  기기·계정 운영 방식이 곧 일지 진행자 기록이 되므로 기획 결정(계획 §13).
+  ⑬ `apps/web/src/lib/supabase.ts` 주석·콘솔의 "목업 데이터로 동작"은 낡은 문구다(웹 목업 스토어는 이미 없다 — 코드 미수정).
 - 📝 문서 진행: Tier 1(PLAN·tasks·백로그 2종·웹 AGENTS·루트 AGENTS) ✅ · Tier 2(requirements §0 `PF-01~47`·`PN-01~09` ·
   design §0 `SCR-08·09`·`SCR-W12·W15~W21` · product §0 · database · structure §0 · web-launch §5 · app-release-remaining §7 ·
-  음성 계획 2종) ✅ · Tier 3(README·tech·security·compliance·ai-safety·accessibility·런북) 진행.
+  음성 계획 2종) ✅ · Tier 3(README 5종·tech §0·security 역할→범위 표·compliance 처리목록·ai-safety §0-1·accessibility·
+  infrastructure §10·런북 4종·데모 촬영 기록) ✅.
   기존 요구 ID·화면 ID 는 코드 주석·마이그레이션이 인용하므로 **재번호·재사용하지 않고** 폐기·대체 표시만 했다.
 - ⚠️ **안전 아키텍처를 약화시키지 말 것**(계획 §11): 공단 일지 진행자 칸에 AI 를 쓸 수 없다
   (`facilitator_user_id` NOT NULL + `tool_used` 별도) · **위기 시 즉시 `close` 를 `paused` 로

@@ -218,9 +218,15 @@
 
 ## 7. 웹 파트 (`apps/web`)
 
+> ⚠️ **디자인 선행 조건** — 웹의 디자인 기준은 Figma 단독이고 임의 재디자인은 금지다([`apps/web/AGENTS.md`](../../apps/web/AGENTS.md) §1).
+> 그런데 W1(일지 상세의 공단 서식 폼)·W2(감독 화면)·W6(권한 매트릭스·역할·초대)·W7(동의)·W9(합류 온보딩)은 **시안이 없다** —
+> Figma 에는 요양일지 화면(`205:1039`·`221:283` 등)만 있다. 앱의 어르신 표시 모드(M2)도 모바일 시안(`nLfWkg2H7dFfDH1pehcH5I`)에 없다.
+> ① 시안을 먼저 받거나 ② 기존 선례("시안에 없는 화면 — 끊긴 흐름을 잇는 최소 구현", 런북 `figma-web-extraction.md`)처럼
+> 기존 카드·모달 언어로 최소 구현하고 시안이 오면 교체하는 것 중 **결정이 필요하다**(§13). 결정 전에는 DB·연동 파트가 먼저 간다.
+
 | # | 내용 | 파일 |
 |---|---|---|
-| **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) |
+| **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 · 기존 수동 경로 `components/SessionJournalDialog.tsx`(세션 선택 → `session-report` → `renderSessionJournal`)는 기획 6-1 의 "현재"다 — **"다시 생성" 버튼으로 흡수하고 다이얼로그는 지운다** | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) |
 | **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 |
 | **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` |
 | **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` |
@@ -229,6 +235,10 @@
 | **W7** | ⚠️ **어르신 동의 부여/철회 UI** — 지금 `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | 신규 라우트 |
 | **W8** | 어르신 `care_grade` 드롭다운(주간보호 필수) | 등록·수정 화면 |
 | **W9** | ⚠️ **온보딩 합류 경로** — 요양보호사 가입 시 "새 기관 만들기 / 초대 코드로 합류". 합류는 승인 전까지 "승인 대기" 화면만 보인다. **파일럿 블로커**(§3 ⑧) | `pages/public/OnboardingPage.tsx` |
+
+**카피 동반 개정** — 처리방침(`pages/public/LegalPages.tsx`) 1항의 "세션·요양일지·보호자 공개 관리"·"기관과 담당 어르신 연결"은
+W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 열람). Expo Push 는 새 국외 처리자라 위탁·국외이전 고지에 넣는다
+([`compliance.md`](../compliance.md) 2026-09-23 절).
 
 ### 보호자 표현 규칙 (W4)
 
@@ -245,7 +255,7 @@
 ## 8. 웹·앱 연동 파트
 
 **C1. `packages/core` 정리** — `ai.ts` + `ai.test.ts` **파일 삭제**, `voice-flow.ts`(호출처 0) 삭제,
-`journal.ts` 의 `buildJournalDraft`(명시적 mock) 삭제. `conversation.ts` 의 `respondToUserTurn` →
+`journal.ts` 의 `buildJournalDraft`(명시적 mock) 삭제, 웹의 `apps/web/src/lib/ai.ts`(`@giokon/core` 재수출 shim, importer 0) 삭제. `conversation.ts` 의 `respondToUserTurn` →
 **`evaluateUserTurn()` 으로 축소**(안전 계산만, `generateReply` 호출 제거).
 **절대 유지**: `safety.ts` 전체(`assessUtterance`·`screenAiUtterance`·`buildCaregiverAlert`·
 `buildSafetyEventDraft`·`assessEngagement`), `analysis.ts` 의 `detectTurnTopic`·`recommendNextTopics`.
@@ -308,6 +318,11 @@
    `close` 를 유지하고 `paused_at` 기록 + `safety_events` 즉시 기록 + 감독 화면·푸시 알림으로
    **확장**한다. AI 판단을 최종 근거로 삼지 않는다
 5. **종료 정책** — "그만할래", "힘들어" 같은 말이 나오면 마무리 단계로 넘어가 짧게 끝내고 감독 화면에 알린다
+   ⚠️ **지금 중계는 이 말들에 즉시 연결을 끊는다** — `relay.ts:123-127` 이 위기(`escalate`)뿐 아니라 급성 고통 신호("너무 힘들어"·
+   "못 견디겠어")·휴식 요청("그만할래")·거부("듣기 싫어")에도 `INPUT_REVIEW_REQUIRED` 를 보내고 닫는다. 종료 정책대로 하려면
+   **휴식 요청·거부만** "마무리 단계 전환(짧은 인사 한 문장, 의견수렴 생략) + 감독 화면 알림"으로 바꾸고, **위기·급성 고통은 즉시
+   종료를 유지**하는 것을 권장한다. 급성 고통(노인 자살 선행 신호로 분류된 어휘)을 마무리로 바꾸는 것은 안전 완화라 **기획·안전 책임자
+   확인 전에는 하지 않는다**(§13).
 
 | 기관·세션별 변경 가능 (`org_settings`) | 고정 (코드 상수) |
 |---|---|
@@ -329,6 +344,7 @@ D1·D2(enum 단독) → D3 → D4(RLS) ──→ W2 감독목록 · W6 권한UI
 C1(core 삭제) ⟷ M1·M2   ← 반드시 같은 PR. core 만 먼저 머지하면 앱이 깨진다
 M7(저장 순서) → C4 워커 첫 시도 성공률
 W7(동의 UI) → 파일럿 개시 전 블로커
+디자인 경로 결정(§13) → W1·W2·W6·W7·W9 · M2 화면 착수
 D3(직원 합류) → W9 온보딩 · W6 합류 승인 → 파일럿 개시 전 블로커
 ```
 
@@ -409,5 +425,12 @@ bash supabase/tests/run-rls-regression.sh   # PG16 실기동, 마이그레이션
 - 고령자 발화 인식률 Gemini vs Clova 비교 (영향: 전사 출처 구조)
 - Gemini Live 동시 세션 한도·요금 (영향: 기기 수 확장)
 - 카카오 알림톡 템플릿 심사 — **리드타임이 기니 일찍 착수** (영향: 파일럿 이후 보호자 알림)
+- **신규 화면의 디자인 경로** — 웹 W1·W2·W6·W7·W9 와 앱 M2(어르신 표시 모드)는 Figma 시안이 없다. 시안 선행 vs 기존 디자인 언어로 최소 구현 후
+  교체 (영향: 웹·앱 파트 착수 시점. DB·연동 파트는 영향 없음)
+- **종료 정책의 범위** — "힘들어"류(급성 고통 어휘)를 즉시 종료에서 마무리 전환으로 바꿀지. 권장은 휴식 요청·거부만 바꾸고 위기·급성 고통은
+  즉시 종료 유지(§9-5) (영향: 대화 정책 PF-35 · 안전 회귀)
+- **기기·계정 운영 방식** — 요양보호사 1명이 자기 계정으로 기기 여러 대의 세션을 시작하면 `live-token` 사용자 한도
+  (`app.live_token_limits` 기본 분당 3 · 일 20)에 먼저 닿는다(재연결도 토큰을 쓴다). 기기별 계정을 둘지, 한도를 조정할지 정해야 한다.
+  진행자(`facilitator_user_id`)는 "세션을 시작·감독한 사람"이라 계정 운영이 곧 일지의 진행자 기록이 된다 (영향: 병렬 운영·일지 진행자)
 - **파일럿 기기 종류**(iPad · Android 태블릿 · 휴대폰) — 기획서는 "태블릿 N대"를 전제하는데 앱은 `ios.supportsTablet:false`·
   `portrait` 고정이다(2026-09-04 결정, 배포 직전 재확인 대상). iPad 면 아이폰 호환 모드로 돈다 (영향: 어르신 표시 모드 M2 레이아웃)

@@ -11,8 +11,33 @@
 > **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../docs/plans/pilot-development-plan.md)**.
 > 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
 > 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
+>
+> **이 문서 안에서는 §0(파일럿 기술 기준)이 새 기준이다.**
 
 > 🏢 **엔터프라이즈·정부심사 트랙(2026-07-03)**: 리전=**서울(ap-northeast-2)**, 보안스택·암호화·관측성·커넥션 풀링·부하/DR은 `docs/security.md`·`docs/infrastructure.md`. 멀티테넌시(organizations/RBAC)는 PLAN §2′ M14.
+
+## 0. 파일럿 기술 기준 (2026-09-23 기획 변경 — 이 절이 §1~§12 보다 우선한다)
+
+> 무엇을 만들지는 [`pilot-development-plan.md`](plans/pilot-development-plan.md), 구조는 [`structure.md`](structure.md) §0.
+> 아래 §1~§12 에는 "중계는 미구현", "앱 직접 Live 입력" 같은 이전 시점 서술이 남아 있다 — 이 표와 다르면 이 표를 따른다.
+
+| 영역 | 파일럿 기준 | 비고 |
+|---|---|---|
+| 음성 경로 | **중계 단일**: 앱 → `apps/voice-relay`(Node + ws, Docker) → Gemini Live → 출력 검증(`screenAiUtterance`) → CLOVA Voice → 앱 | 중계는 **코드 구현·로컬 검증 완료, 운영 호스팅 미정·실기기 미검증**. 앱 직접 모드는 폐기(M1) |
+| 대화 모델 | **`gemini-3.8-live`** | 모델은 `live-token` 이 `GEMINI_LIVE_MODEL` 시크릿으로 정해 돌려준다 — `.env` 는 런타임에 안 읽힌다. 폴백 상수 2곳이 아직 3.1(T24.5). 3.1 기준 제약(Structured Outputs·proactive/affective 미지원)은 3.8 에서 재확인 |
+| 토큰 발급 | `live-token` 을 **중계 전용**으로 잠근다 | 지금은 중계도 사용자 JWT 로 불러 서버가 직접 호출과 구분 못 한다(C4) |
+| 대화 통제 | 대화 정책(단계형 도입 → 회상 → 마무리·의견수렴)을 시스템 지시로 주입. 단계는 `sessions.phase`(서버 권위) | 중계의 2초 폴을 `session_tick` RPC 로 바꿔 단계·원격 제어를 함께 받는다. 규칙 기반 대화(`packages/core/src/ai.ts`)는 삭제 |
+| 안전 | 결정론 위기 감지 → **즉시 연결 종료**(유지) + `safety_events` 즉시 기록 + 감독 화면·푸시 | 위기 대응·출력 검열·진단표현 금지는 설정으로 끌 수 없다 |
+| 일지 초안 | 세션 종료 → DB 트리거 → `journal_generation_jobs` 큐 → Edge Function 워커(30초 스케줄) → 확인 대기 | 동기 호출 불가(폴백 저장 경로에서는 종료 시점에 분석이 아직 없다). 생성문 검증은 `generated-session.ts` 확장 |
+| 확정 | 사람만 — `auth.uid() is null` 이면 `final` 전환 거부(DB 트리거) | 서비스 계정 워커는 확정을 물리적으로 못 쓴다 |
+| 감독·원격 제어 | Supabase Realtime(`sessions`·`session_interventions`) + DB 행 | broadcast 는 RLS 를 안 타서 쓰지 않는다 |
+| 푸시 | **Expo Push**(EAS 가 FCM/APNs 자격증명 관리) — `notifications` 행 소비자 | 본문에 어르신 성함·발화 금지. `expo-notifications` 추가 → EAS 재빌드 |
+| 권한 | RLS 기관 단위 + 역할(`is_care_team()` · `has_capability()`) | 지금은 담당 배정 격리(`20260722100000`) |
+| 계측 | `product_events` + definer 삽입 함수 | 시간 절감(초안 → 확정 소요)의 유일한 증거. 1주차부터 |
+| 웹 일지 음성 | `stt-transcribe`(CLOVA STT) **보류** | 요양일지 음성 입력 폐기 — 재검토 대상 |
+| 장기 트랙 | Whisper 특화·공개 LLM(Ollama) 전환 | **파일럿 범위 밖**([음성 계획](plans/voice-ai-personalization.md) A2~A5) |
+
+---
 
 ## 1. 기술 스택 개요
 
@@ -60,6 +85,8 @@
 ## 3. 백엔드 기술
 
 현재 일반 데이터 접근은 클라이언트의 supabase-js와 RLS, 토큰 발급·웹 STT 등은 Edge Functions가 담당한다. 2026-09-13 승인 목표에서는 장시간 음성 중계 서버를 추가한다. 실행 환경은 미정이며, 아래 음성 경로는 아직 미구현이다.
+
+> ⚠️ 2026-09-23: 아래 음성 경로는 `apps/voice-relay` 로 **코드 구현됐다**(운영 호스팅 미정). RLS 는 `auth.uid()` 가 아니라 기관 + 배정(현재) → 기관 + 역할(파일럿). §0 참조.
 
 ```
 클라이언트(웹·모바일)
@@ -145,7 +172,7 @@ Gemini Live가 초기 입력·대화 주 경로이며 모델/API 기능·한국�
 | 대화 정책 | 프롬프트 + 서버 행동 규칙 + 개인별 승인 의미 조회 | Qwen3.5-9B를 외부 SFT/LoRA 도구로 학습 후 Ollama 추론 검증 |
 | 출력 음성 | 검증 문장만 Clova TTS | ASR/LLM과 독립 평가; 교정 전 생성 음성 재사용 금지 |
 | Gemini Live | 초기 입력·대화 주 경로(자동 진행·Clova 배선 변경 필요) | 검증 전 재생 금지, 연결·전사·교정·비용·재연결 회귀 검증 |
-| 웹 일지 음성 | 기존 `stt-transcribe` CLOVA STT | 앱 대화 전환 범위 밖 |
+| 웹 일지 음성 | ~~기존 `stt-transcribe` CLOVA STT~~ → 2026-09-23 **보류**(요양일지 폐기) | 재검토 대상 |
 
 개인별 정보는 최소한만 조회해 제공하고, 영구 인지 등급을 모델이 생성하지 않는다. 인지 지원 방식·개인 의미·위험 확인은 서로 다른 상태다. 프로필·전사에 포함된 지시문은 시스템 정책보다 우선하지 못한다.
 
@@ -227,10 +254,10 @@ Clova Voice는 사용자 지정 초기 TTS 목표다. 대상 어르신의 청취
 | 항목 | 현재 | 확장 시 |
 |---|---|---|
 | 대화 LLM | Gemini + 프롬프트·개인 조회 | 외부 학습 공개 LLM → Ollama, 안전/품질/운영 게이트 후 전환 |
-| 음성 루프 | 앱 직접 Live 입력·수동 전사 확인·Live PCM/기기 TTS | 중계 서버·자동 진행·검증 문장 Clova 출력은 신규 목표, 종단 평가 필요 |
+| 음성 루프 | ~~앱 직접 Live 입력·수동 전사 확인·Live PCM/기기 TTS~~ → 중계·자동 진행·검증 문장 Clova 출력 **코드 구현**(2026-09-23 기준) | 운영 호스팅·실기기 종단 평가 · 직접 경로 삭제(M1) · `live-token` 중계 전용화 |
 | 전사 | Gemini 전사 후보·확인 | Whisper 특화 후보·타 ASR 비교, 사투리/무음/미등록 화자 게이트 |
 | 실시간 동기화 | Supabase Realtime 구독·캐시 무효화 구현 | 철회·연결 소실·재접속 시 화면 및 권한 종단 검증 |
-| 보호자 연동 | 연결 승인·항목별 공개·보호자 화면 구현 | 철회 접근 검증 및 필요 시 푸시 알림 |
+| 보호자 연동 | 연결 승인·항목별 공개·보호자 화면 구현 | 철회 접근 검증. 보호자 휴대폰 알림은 카카오 알림톡(기획 7-9 — 파일럿 범위 밖) |
 | 연대기 축적 | 요양보호사 직접 입력 | 세션 로그 기반 AI 자동 연대기 보완 |
-| 인지자극 모듈 | 미구현 (v2) | 별도 프롬프트 + 세션 타입 분기로 추가 |
+| 인지자극 모듈 | 미구현 (v2) | ⚠️ 2026-09-23: 회상 대화 세션 자체가 인지활동 프로그램(회상훈련) 1회로 기록된다 — 별도 모듈이 아니다 |
 | 모니터링 | 없음 | Sentry (에러 추적) + Edge Function 로깅 |

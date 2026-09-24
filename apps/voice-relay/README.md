@@ -1,5 +1,23 @@
 # 음성 중계 — 연결 검증 단계
 
+> ## ⚠️ 2026-09-23 기획 변경 — 이 서버가 유일한 음성 경로가 된다
+>
+> 계획 SoT: [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §8 C3 · §4 D·G.
+> - **중계 단일화**: 앱의 직접 Gemini Live 모드는 폐기한다(M1). 아래 "주소가 없으면 기존 직접 Live 모드" 서술은 파일럿에서
+>   "주소가 없으면 세션 시작 차단"으로 바뀐다.
+> - ⚠️ **`live-token` 중계 전용화**(C4): 지금 이 서버는 **사용자 JWT 로** `live-token` 을 부른다(`src/main.ts`). 서버가 중계와 앱
+>   직접 호출을 구분하지 못해, 구버전 앱·JWT 소지자도 토큰을 받아 출력 검열을 건너뛸 수 있다. 중계만 가진 자격(서버 시크릿)을
+>   추가로 보내고 `live-token` 은 그것이 없으면 403 을 준다 — 이 서버에 **새 환경변수 1개**가 생긴다(이름은 구현 때 확정).
+> - **`session_tick` RPC**: 2초 권한 폴(`can_process_session`)을 이것으로 바꿔 `{allowed, phase, target_minutes, paused, control_request}`
+>   를 한 번에 받는다. 새 타이머·소켓·인증은 없다.
+> - **단계 지시 주입**: 단계(도입 → 회상 → 마무리·의견수렴)가 바뀌면 `clientContent{turns, turnComplete:false}` 로 지시를 넣는다 —
+>   v3 `resumeContext` 와 같은 경로다. 어르신에게 들리지 않고, 출력은 여전히 검증 → CLOVA 를 거친다.
+> - **원격 제어**: `pause` → 입력 전달 차단 + 앱에 `relayControl` 송신, `end` → 연결 종료.
+> - ⚠️ **위기 이벤트 즉시 기록**: `assessUtterance` 적중 시 `safety_events` 를 **바로** 쓴다(지금은 세션 종료 때 앱이 일괄 기록 —
+>   실시간 푸시가 불가능하다). 위기 시 즉시 종료 동작은 **약화하지 않는다**.
+> - 손대지 않는 것: 타이머 · 턴 상한 · 연결 수명 · 재생 영수증 게이팅(v2) · `SESSION_BUSY`(기기 1대 = 세션 1개).
+> - 모델: `gemini-3.8-live`. 모델 ID 는 `live-token` 응답을 따른다(`GEMINI_LIVE_MODEL` 시크릿).
+
 앱 → 이 서버 → Gemini Live → 출력 검사 → CLOVA Voice WAV → PCM → 앱 재생을 연결한다. 현재 앱은 중계 모드에서 시작·회수형 자동 루프를 로컬 구현했다. 자동 채택에는 전사 출처 저장 계약 v1 운영 적용이 필요하다. 중계 인증·발급 한도는 기존 `live-token`을 재사용한다.
 
 ## 설정

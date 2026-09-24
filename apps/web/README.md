@@ -1,107 +1,62 @@
-# 기억온 (GiEok-On) — 시연용 프로토타입
+# @giokon/web — 요양보호사 웹 · 보호자 웹
 
-> ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
->
-> 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
-> **"인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로 자동으로
-> 남는 도구"** 로 바뀌었다. 요양보호사는 계획하고 감독하며 확인한다.
->
-> **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md)**.
-> 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
-> 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
+> 📌 **2026-09-23 기획 변경 반영.** "무엇을 만들지"의 SoT =
+> [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §7(웹 파트 W1~W9).
+> 이 앱에서 작업할 때의 규칙(Figma 단독 디자인 기준·카피 규약·상태 규칙)은 [`AGENTS.md`](./AGENTS.md) 에 있다.
 
-요양보호사가 어르신의 연대기를 입력하고, AI가 어르신과 1:1 음성 회상 대화를 진행하며, 대화에서 새 연대기를 자동으로 축적하는 인지활동 보조 플랫폼의 **시연용 프로토타입**입니다.
+기억온의 웹 클라이언트다. **요양보호사 웹**(연대기·세션 설계·세션 기록·분석·일지·공개·기관 관리)과
+**보호자 웹**(연결한 어르신의 공개된 소식·대화 관찰 리포트)이 한 앱에 있고, 로그인 후 역할에 따라 갈린다.
+어르신 대화(세션 진행)는 이 앱이 아니라 `apps/mobile` 이 한다.
+
+> 이 파일은 2026-06 **localStorage 시연 프로토타입**(`src/lib/ai.ts` 규칙 기반 추출·`ConversePage` 등)을 설명하던
+> 문서를 대체한다. 그 프로토타입은 더 이상 이 앱이 아니다.
 
 ## 실행
 
 ```bash
-npm install
-npm run dev
+# 저장소 루트에서
+pnpm install
+pnpm web                          # vite 개발 서버
+pnpm -F @giokon/web build         # tsc -b && vite build
 ```
 
-`http://localhost:5173` 접속. **Chrome 또는 Edge 권장** (음성 인식이 브라우저 기능에 의존).
+환경변수(`apps/web/.env`, gitignore): `VITE_SUPABASE_URL` · `VITE_SUPABASE_PUBLISHABLE_KEY` — **공개 값만**.
+비밀 키는 웹에 두지 않는다. 값이 없으면 Supabase 에 연결하지 않는다(콘솔 안내만 남는다).
+⚠️ `src/lib/supabase.ts` 의 주석·콘솔 문구 "목업 데이터로 동작"은 **낡았다** — 목업 스토어는 이미 없다(`src/store/store.ts` 는 토스트뿐).
 
-## 프로토타입 범위
+## 검증
 
-이번 학기 워크북의 **Must 4기능을 모두 시연**할 수 있도록 만들었습니다.
+```bash
+pnpm -F @giokon/web typecheck && pnpm -F @giokon/web lint
+pnpm check:copy                   # 비의료 카피 린트 (사용자 노출 문구)
+pnpm check:design                 # 웹 디자인 규칙 검사
+pnpm -F @giokon/web smoke         # 라우트 스모크
+pnpm check:web                    # 위를 묶은 웹 게이트
+pnpm check:a11y                   # 대비 등 접근성 감사 (대비는 현재 비차단 — 결과를 "전체 통과"로 읽지 말 것)
+```
 
-| Must 기능 | 본 서비스 구현 | 프로토타입 구현 |
+## 화면 구성 (현재)
+
+| 영역 | 경로 | 비고 |
 |---|---|---|
-| 1. AI 대화 기반 연대기 자동 축적 | GPT-4o가 의미 추출 | 키워드 규칙 기반 추출 (`src/lib/ai.ts`) |
-| 2. AI 회상 대화 자동 진행 | GPT-4o JSON 응답 | 연대기·이력 기반 템플릿 응답 |
-| 3. 요양보호사 세션 설계 화면 | React + REST API | 단일 페이지 React + localStorage |
-| 4. 대화 세션 기록 자동 저장 | PostgreSQL | localStorage (Zustand persist) |
+| 공개 | `/` · `/guide` · `/privacy` · `/terms` · `/inquiries` | 로그인 없이 열린다 |
+| 인증 | `/login` · `/signup` · `/onboarding` · `/find-id` · `/forgot-password` · `/reset-password` | 온보딩 완료 전에는 데이터 화면 차단 |
+| 요양보호사 | `/caregiver` 아래 대시보드 · 어르신 · 연대기 · 세션(설계·기록) · 분석 · **일지** · 공개 관리 · 기관 관리 · 설정 | Realtime 으로 앱 대화 결과가 바로 반영된다 |
+| 보호자 | `/guardian` 아래 어르신 연결 · 공개된 소식 · 분석 · 설정 | **공개(커밋)된 항목만** — 서버 RLS 가 강제한다 |
 
-| 본 서비스 | 프로토타입 |
-|---|---|
-| Clova Voice TTS | 브라우저 `speechSynthesis` (한국어) |
-| Whisper / Clova Speech STT | 브라우저 `SpeechRecognition` (한국어) |
-| Supabase Auth | 단일 사용자 시연 — 인증 생략 |
-| Supabase (직접연동 + Edge Functions) | 없음 (모두 클라이언트 측에서 동작) |
+## 파일럿에서 바뀌는 것 (파일럿 계획 §7)
 
-> 핵심 비즈니스 로직(연대기 → 질문 생성, 대화 → 연대기 추출)은 `src/lib/ai.ts` 한 파일에 격리되어 있어, 본 서비스 구축 시 이 파일만 GPT-4o API 호출로 교체하면 됩니다.
+| # | 변경 | 지금 |
+|---|---|---|
+| W1 | **프로그램 일지** 목록·상세(공단 서식 필드 · 확정 · 확정 후 수정 사유 · 이력 · 다시 생성 · 재시도) | `journal/*` 요양일지(사진·타이핑·음성 3경로 + 수동 초안 다이얼로그) — 삭제 |
+| W2 | **감독 화면**(반응형 — 요양보호사 휴대폰 브라우저 우선) · 원격 일시정지·재개·종료 · 위기 카드의 위기 안내 | 없음 |
+| W3 | 네비: `요양일지` → `프로그램 일지`, **보호자** `분석` → `대화 관찰 리포트`, 보호자 소식 필터 `요양일지` → `오늘의 이야기` | — |
+| W4 | 보호자 표현을 판정형 → 기술형, 하단 고정 문구, 일지는 **보호자용 문장만** 렌더 | `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 포함 |
+| W5 | 세션 설계의 목표 시간(기존 `duration_minutes`) 초기값을 기관 설정에서 · 단계 미리보기 · 기관 기본 피할 주제 | 초기값 고정 15분 |
+| W6 | 기관 설정 · 권한 매트릭스 · 구성원 역할 지정 · 직원 초대 코드·합류 승인 | 구성원 표는 역할을 보여 주기만 한다 |
+| W7 | ⚠️ 어르신 처리 동의 부여·철회 화면 — **파일럿 블로커** | `ElderDetailPage.tsx` 의 동의 링크가 없는 라우트를 가리킨다 |
+| W8 | 어르신 장기요양등급 입력(주간보호 필수) | 없음 |
+| W9 | ⚠️ 온보딩 "새 기관 만들기 / 초대 코드로 합류" — **파일럿 블로커** | 요양보호사는 가입할 때마다 새 기관을 만든다 |
 
-## 시연 시나리오 (3분)
-
-1. **대시보드** (`/`) — 첫 진입 시 3명의 시연용 어르신 (이순자/김복례/박정환)과 세션이 자동으로 시드됩니다.
-2. **어르신 선택** — '이순자' 카드 클릭 → 상세 페이지로 이동.
-3. **세션 시작** — '전주 시절 회상 세션'의 **시작** 버튼 클릭 → 어르신용 대화 화면으로 전환.
-4. **AI 첫 질문 자동 재생** — 연대기(전주, 식당)가 반영된 질문이 음성으로 자동 재생됩니다.
-5. **마이크 버튼 탭 → 답변** — 예: *"전주 시내에서 김치찌개 식당을 운영했어요. 단골 손님들이 많이 왔지요."* 라고 답변.
-   - 답변 중 키워드("김치", "식당")가 감지되면 상단에 **"AI가 새 연대기를 모았어요"** 표시.
-   - AI가 답변 내용을 인용하며 후속 질문 자동 생성 → TTS 재생.
-6. **3~5턴 대화 반복.** 동일 주제 2회 후엔 AI가 자연스럽게 주제 전환.
-7. **세션 종료** 버튼 → '대화 기록 보기' → 대화 전문 + **이번 대화에서 자동으로 모은 연대기 항목**을 확인.
-8. **어르신 상세로 돌아오면** 연대기 목록에 `AI 자동` 배지로 새 항목이 추가되어 있음.
-
-### 시연 시 주의
-
-- 첫 진입 시 브라우저가 마이크 권한을 요청합니다. **허용** 필요.
-- 일부 브라우저는 첫 페이지 로드 시 자동 재생이 차단될 수 있습니다. 그 경우 화면 하단 **음성 다시 듣기** 버튼이 표시됩니다.
-- 마이크 사용이 어려운 환경에서는 **음성 대신 텍스트로 입력** 버튼으로 키보드 입력 가능.
-
-## 파일 구조
-
-```
-src/
-├── App.tsx                       # 라우터
-├── main.tsx
-├── index.css                     # Tailwind
-├── types.ts                      # Session / ChronicleEntry / ConversationLog
-├── lib/
-│   ├── ai.ts                     # 🧠 LLM mock — GPT-4o로 교체할 자리
-│   ├── speech.ts                 # Web Speech API (TTS + STT)
-│   ├── seed.ts                   # 시연용 초기 데이터
-│   └── utils.ts
-├── store/
-│   └── store.ts                  # Zustand + persist (localStorage)
-├── components/
-│   ├── Layout.tsx
-│   ├── PageHeader.tsx
-│   ├── ElderFormDialog.tsx       # 연대기 입력 폼
-│   ├── SessionFormDialog.tsx     # 세션 설계 폼
-│   ├── ChronicleView.tsx         # 연대기 조회/편집
-│   └── ui/                       # Button / Card / Input / Dialog / Toast ...
-└── pages/
-    ├── DashboardPage.tsx
-    ├── EldersPage.tsx
-    ├── ElderDetailPage.tsx
-    ├── ConversePage.tsx          # ★ 어르신 대화 화면
-    ├── LogsPage.tsx
-    └── LogDetailPage.tsx
-```
-
-## 본 서비스로의 이전
-
-| 프로토타입 | 이전 작업 |
-|---|---|
-| `lib/ai.ts` 의 `generateOpener` / `generateReply` / `extractChronicle` | `packages/core`의 `AIProvider`로 이전 → 실연동은 Edge Function의 GPT-4o 호출. 시스템 프롬프트 + JSON 응답 포맷 그대로 사용 |
-| `lib/speech.ts` | `SpeechProvider`로 추상화 → 웹은 Web Speech, 모바일은 Expo AV. 실 STT/TTS는 Edge Function(Whisper/Clova) |
-| `store/store.ts` (Zustand) | `packages/core`로 이전, 영속화를 `packages/data`(supabase-js) 어댑터로 교체 |
-| 모든 화면 컴포넌트 | 로직(core)은 공유, UI는 Figma 토큰 기반 재구성 (웹=`apps/web`, 어르신=`apps/mobile`) |
-
-## 알려진 제약
-
-- 브라우저 TTS 한국어 음성은 OS 기본 음성에 의존 — Windows 한국어 음성이 설치되어 있어야 자연스럽게 재생됨.
-- localStorage 기반이므로 브라우저 시크릿 모드에서는 데이터가 유지되지 않음.
-- 자동 연대기 추출은 키워드 규칙 기반이므로 본 서비스 LLM보다 추출 폭이 좁음.
+권한 판단은 화면마다 역할 문자열을 비교하지 않고 `useHasCapability`(`packages/data`) 하나로 한다.
+`= 'caregiver'` 비교는 새 역할(사회복지사·센터장)을 조용히 빼 버린다.
