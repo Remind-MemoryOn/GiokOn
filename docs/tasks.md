@@ -13,13 +13,13 @@
 ### M22 — 권한 재설계 (머지 단위 ①) → `PLAN.md` M22.2
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T22.1 | `org_role` 에 `social_worker`·`center_director` 추가 — ⚠️ **단독 마이그레이션**(같은 트랜잭션에서 신규 enum 값 사용 불가) | D1 | — | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
-| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) + ⚠️ **역할 부여 RPC `set_member_role`**(`org_admin`·`center_director` 만 · 자기 자신 불가 · 보호자↔돌봄팀 전환 불가 · 마지막 `org_admin` 강등 불가). 없으면 새 역할은 0명이다 | D3 | T22.1 | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
-| T22.3 | `app.is_care_team()`·`app.has_capability()` + **9테이블 RLS 기관 단위 전환**(보호자 브랜치 무변경) | D4 | T22.2 | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
+| T22.1 | `org_role` 에 `social_worker`·`center_director` 추가 — ⚠️ **단독 마이그레이션**(같은 트랜잭션에서 신규 enum 값 사용 불가) | D1 | — | ✅ 2026-09-24 (로컬 검증 → ✅ 운영 적용 2026-09-24) |
+| T22.2 | `org_settings`·`org_capabilities` + 조직 생성 시드(행 없으면 기본집합 폴백) + ⚠️ **역할 부여 RPC `set_member_role`**(`org_admin`·`center_director` 만 · 자기 자신 불가 · 보호자↔돌봄팀 전환 불가 · 마지막 `org_admin` 강등 불가). 없으면 새 역할은 0명이다 | D3 | T22.1 | ✅ 2026-09-24 (로컬 검증 → ✅ 운영 적용 2026-09-24) |
+| T22.3 | `app.is_care_team()`·`app.has_capability()` + **9테이블 RLS 기관 단위 전환**(보호자 브랜치 무변경) | D4 | T22.2 | ✅ 2026-09-24 (로컬 검증 → ✅ 운영 적용 2026-09-24) |
 | T22.4 | `= 'caregiver'` 비교 전면 grep → `is_care_team()` 치환(새 역할이 조용히 빠지는 것 방지) | §11-8 | T22.3 | ✅ 2026-09-24 SQL·앱·data·중계·Edge Function (웹 발견분은 계획 §7 W6·W9 에 인계) |
 | T22.5 | 권한 매트릭스 UI(3종 × 역할) + 기관 설정 + 구성원 역할 지정 | W6 | T22.3 | ⏳ |
 | T22.6 | RLS 회귀 단언: 같은 기관 다른 담당자 열람 성공 · 타 기관·guardian 0건 · 신규 역할 동작 · 위임 on/off · `set_member_role` 거부 4종 · 합류 승인 전 0건 | §12 | T22.3 | ✅ 2026-09-24 `supabase/tests/pilot_access.sql` (service_role 확정 차단·공개 게이트는 D5 와 함께) |
-| T22.7 | ⚠️ **직원 합류(파일럿 블로커)** — `org_invites`(초대 코드·합류 후 역할·만료·회수) · `org_join_requests`(pending) · `approve_org_join`(`org_admin`·`center_director` 만, 자기 요청 불가). **`users.org_id` 는 승인 전까지 NULL** — 지금은 가입하는 요양보호사마다 새 기관이 생긴다 | D3 | T22.1 | ✅ 2026-09-24 DB (로컬 검증 · 운영 미적용) — UI 는 T22.8 |
+| T22.7 | ⚠️ **직원 합류(파일럿 블로커)** — `org_invites`(초대 코드·합류 후 역할·만료·회수) · `org_join_requests`(pending) · `approve_org_join`(`org_admin`·`center_director` 만, 자기 요청 불가). **`users.org_id` 는 승인 전까지 NULL** — 지금은 가입하는 요양보호사마다 새 기관이 생긴다 | D3 | T22.1 | ✅ 2026-09-24 DB (로컬 검증 → ✅ 운영 적용 2026-09-24) — UI 는 T22.8 |
 | T22.8 | 온보딩 "새 기관 만들기 / 초대 코드로 합류" + 승인 대기 화면 · 기관 관리의 초대 코드 발급·회수·합류 승인("승인하면 기관 전체 기록 열람" 명시) | W9, W6 | T22.7 | ⏳ |
 
 ### M20 — 프로그램 일지 자동 생성 (머지 단위 ②) → `PLAN.md` M20
@@ -38,7 +38,7 @@
 ### M21 — 감독 화면 + 대화 단계 (머지 단위 ③) → `PLAN.md` M21·M22.1
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ✅ 2026-09-24 (로컬 검증 · 운영 미적용) |
+| T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ✅ 2026-09-24 (로컬 검증 → ✅ 운영 적용 2026-09-24) |
 | T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ✅ 2026-09-24 core `session-phase.ts` + `PROMPT_VERSION='v2.0'`(저장은 중계가 `advance_session_phase` 로 — T21.3) |
 | T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입(`resumeContext` 와 같은 경로) · 원격 제어 처리 | C3 | T21.1, T21.2 | ✅ 2026-09-24 중계 2초 폴=`session_tick` · 단계 전환(`advance_session_phase`, 시작자 권한) + 지시를 **턴 사이에만** 주입 · 원격 일시정지·종료 → `relayControl` 송신 후 2초 유예 닫기. ⚠️ 배포 순서: DB 마이그레이션 → 중계 |
 | T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ⏳ |
@@ -47,7 +47,7 @@
 | T21.7 | 세션 설계: 목표 시간(기존 `duration_minutes`, 초기값을 고정 15분 대신 기관 설정에서) · 단계 미리보기 · 기관 기본 피할 주제 | W5 | T21.1 | ⏳ |
 | T21.11 | 종료 정책(✅ 권장안 확정 2026-09-24) — 휴식 요청·거부는 즉시 종료 → 마무리 단계 전환 + 감독 화면 알림. 위기·급성 고통은 즉시 종료 **유지** | §9-5 | T21.3 | ⏳ |
 | T21.12 | **세션 최대 10분** — 중계 연결 수명 25분 → 10분(서버 고정값), 마무리 단계 진입 시점을 10분 안에서, 세션 설계 선택지 10분 이하 | §9-6 | T21.3 | ⏳ |
-| T21.13 | **요양보호사 1명당 동시 최대 4대** — `active` 전환 시 DB 가 같은 감독자의 `active` 수를 세어 5번째를 거절 · 앱은 이유 표시 | §6 | T21.1 | ✅ 2026-09-24 DB 트리거(최근 30분 시작분만 셈) + 앱 안내 `start.tsx` — 로컬 검증 · 운영 미적용 |
+| T21.13 | **요양보호사 1명당 동시 최대 4대** — `active` 전환 시 DB 가 같은 감독자의 `active` 수를 세어 5번째를 거절 · 앱은 이유 표시 | §6 | T21.1 | ✅ 2026-09-24 DB 트리거(최근 30분 시작분만 셈) + 앱 안내 `start.tsx` — 로컬 검증 · ✅ 운영 적용(2026-09-24) |
 | T21.14 | `live-token` 한도 조정 — 사용자 분당 3 → 4 이상, 일 한도는 운영 시간 기준 재계산 | §6 | — | ⏳ |
 
 ### M23 — core 정리 + 어르신 표시 모드 (머지 단위 ④, **반드시 한 PR**) → `PLAN.md` M22.1·M23
