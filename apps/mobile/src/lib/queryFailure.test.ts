@@ -1,6 +1,6 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
-import { hasActiveQueryFailure } from './queryFailure';
+import { hasActiveQueryFailure, queryFailureBannerAllowed } from './queryFailure';
 
 describe('active query failure notice', () => {
   it('does not call an empty or still-loading record set a failure', () => {
@@ -25,5 +25,12 @@ describe('active query failure notice', () => {
     unsubscribe();
     expect(hasActiveQueryFailure(client)).toBe(false);
     client.clear();
+  });
+
+  it('never shows the caregiver banner on the talk screen that hosts the elder display mode', () => {
+    expect(queryFailureBannerAllowed('/session/talk')).toBe(false);
+    expect(queryFailureBannerAllowed('/session/start')).toBe(true);
+    expect(queryFailureBannerAllowed('/')).toBe(true);
+    expect(queryFailureBannerAllowed(undefined)).toBe(true);
   });
 });

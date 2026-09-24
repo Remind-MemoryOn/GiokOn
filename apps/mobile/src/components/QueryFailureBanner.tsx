@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePathname } from 'expo-router';
 import { useAuth } from '../auth/AuthProvider';
-import { hasActiveQueryFailure } from '../lib/queryFailure';
+import { hasActiveQueryFailure, queryFailureBannerAllowed } from '../lib/queryFailure';
 
 export function QueryFailureBanner() {
   const client = useQueryClient();
   const { authed } = useAuth();
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   const [failed, setFailed] = useState(() => hasActiveQueryFailure(client));
 
   useEffect(() => {
@@ -17,7 +19,7 @@ export function QueryFailureBanner() {
     return client.getQueryCache().subscribe(refresh);
   }, [client]);
 
-  if (!authed || !failed) return null;
+  if (!authed || !failed || !queryFailureBannerAllowed(pathname)) return null;
   return (
     <View
       accessibilityRole="alert"

@@ -6,8 +6,7 @@
 // 치료/진단/완치/처방 등 의학적 단정은 앱스토어 건강정책·정부심사에서 위험하다.
 //
 // 스캔 대상: apps/**(소스). 제외: node_modules/dist/dist-audit/build/*.test.*.
-// 예외 허용: 같은 줄의 `nonmedical-ok`, 또는 원문 보존 파일의 첫머리에
-// `nonmedical-ok-file`을 명시하면 통과(법률 문서 등 정당한 사용만 허용).
+// 예외 허용: 같은 줄에 `nonmedical-ok` 주석을 달면 통과(정당한 사용 명시).
 //
 // docs/*(정책 문서)는 금지어를 "설명"하기 위해 필연적으로 포함하므로 스캔하지 않는다.
 
@@ -62,9 +61,7 @@ function walk(dir, out) {
 const violations = []
 for (const root of ROOTS) {
   for (const file of walk(root, [])) {
-    const source = readFileSync(file, 'utf8')
-    if (source.split('\n').slice(0, 5).some((line) => line.includes('nonmedical-ok-file'))) continue
-    const lines = source.split('\n')
+    const lines = readFileSync(file, 'utf8').split('\n')
     lines.forEach((line, i) => {
       if (line.includes(ALLOW_MARK)) return
       for (const term of FORBIDDEN) {

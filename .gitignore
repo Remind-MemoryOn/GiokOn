@@ -71,3 +71,6 @@ dist-audit/
 # 배포용 산출물 사본·pnpm 스토어는 저장소에 넣지 않는다(2026-09-02)
 deliverables/
 .pnpm-store/
+
+# 로컬 작업용 임시 폴더(HWP 추출 도구 등) — 저장소에 넣지 않는다
+.tmp/
