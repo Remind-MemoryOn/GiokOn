@@ -50,6 +50,7 @@ import {
   type UserRow,
 } from '@giokon/data';
 import { dateDot, type ElderProfile } from '@giokon/core';
+import { asset } from '../../assets/ui';
 import { PageHeader } from '../../components/Layout';
 import { Avatar } from '../../components/ui/Avatar';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -504,32 +505,62 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
             <h2 className="absolute left-[66px] top-[27px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900">
               직원 초대 코드
             </h2>
-            <label className="sr-only" htmlFor="invite-role">합류 후 역할</label>
-            <select
-              id="invite-role"
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as InvitableRole)}
-              className="absolute left-[520px] top-[40px] h-[44px] w-[170px] rounded-[10px] border border-line bg-white px-[16px] text-[18px] text-ink-900 focus:border-accent focus:outline-none"
-            >
-              {INVITE_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ORG_ROLE_LABEL[r]}
-                </option>
-              ))}
-            </select>
-            <label className="sr-only" htmlFor="invite-days">유효 기간</label>
-            <select
-              id="invite-days"
-              value={inviteDays}
-              onChange={(e) => setInviteDays(Number(e.target.value))}
-              className="absolute left-[702px] top-[40px] h-[44px] w-[140px] rounded-[10px] border border-line bg-white px-[16px] text-[18px] text-ink-900 focus:border-accent focus:outline-none"
-            >
-              {INVITE_DAYS.map((d) => (
-                <option key={d} value={d}>
-                  {d}일 동안
-                </option>
-              ))}
-            </select>
+            {/* 드롭다운 2개 — 앱의 다른 드롭다운(분석 기간 · 일지 날짜)과 같은 부품: r5 · 1px line · h37.02 ·
+                라벨 16/23 ink-500 @19 · 화살표 12×7.81 을 오른쪽 26 에 세로 가운데 · 네이티브 select 는 투명하게 칸 전체.
+                세로는 옆 '코드 만들기'(h44 @40)와 가운데를 맞춘다(40 + (44 - 37.02) / 2). */}
+            {[
+              {
+                id: 'invite-role',
+                label: '합류 후 역할',
+                left: 520,
+                width: 170,
+                text: ORG_ROLE_LABEL[inviteRole],
+                value: inviteRole,
+                onChange: (v: string) => setInviteRole(v as InvitableRole),
+                options: INVITE_ROLES.map((r) => ({ value: r, label: ORG_ROLE_LABEL[r] })),
+              },
+              {
+                id: 'invite-days',
+                label: '유효 기간',
+                left: 702,
+                width: 140,
+                text: `${inviteDays}일 동안`,
+                value: String(inviteDays),
+                onChange: (v: string) => setInviteDays(Number(v)),
+                options: INVITE_DAYS.map((d) => ({ value: String(d), label: `${d}일 동안` })),
+              },
+            ].map((dd) => (
+              <div
+                key={dd.id}
+                className="absolute h-[37.02px] rounded-[5px] border border-line bg-white focus-within:border-accent"
+                style={{ left: dd.left, top: 40 + (44 - 37.02) / 2, width: dd.width }}
+              >
+                <span className="pointer-events-none absolute left-[19px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[23px] text-ink-500">
+                  {dd.text}
+                </span>
+                <img
+                  src={asset.iconChevronDownSm}
+                  alt=""
+                  width={12}
+                  height={7.81}
+                  className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
+                  style={{ left: dd.width - 26 }}
+                />
+                <select
+                  id={dd.id}
+                  aria-label={dd.label}
+                  value={dd.value}
+                  onChange={(e) => dd.onChange(e.target.value)}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  {dd.options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
             <button
               type="button"
               disabled={createInvite.isPending || !isConfigured}

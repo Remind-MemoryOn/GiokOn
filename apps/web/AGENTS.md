@@ -331,6 +331,9 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
   **에셋을 새로 받으면 잉크 bbox 가 테두리에 닿는지부터 본다**(닿으면 잘린 것이다).
 - **아이콘 세로 중앙은 손으로 박은 `top` 대신 `top-1/2 -translate-y-1/2`.** 드롭다운 화살표가 바닥에 붙어 있었다(15곳).
 - **같은 부품은 같은 값.** 날짜 칸 화살표 x 144 통일 · 드롭다운 라벨 `text-[16px] leading-[23px] text-ink-500`.
+  시안 밖 화면에 드롭다운을 새로 둘 때도 같은 부품을 쓴다(2026-09-25 기관 관리 직원 초대 역할·기간): 칸 r5 · 1px `line` · 흰 배경 ·
+  h37.02 · `focus-within:border-accent` · 라벨 @19 · 화살표 `iconChevronDownSm` 12×7.81 을 오른쪽 26 에 `top-1/2 -translate-y-1/2` ·
+  네이티브 `<select>` 는 `opacity-0` 으로 칸 전체를 덮는다(보이는 테두리 있는 네이티브 select 를 그대로 두지 않는다).
 - **24시간제는 네이티브 `<input type="time">` 으로 못 한다**(한국어 로캘이 오전/오후로 쪼갬) → `components/ui/TimeField.tsx`.
   날짜는 네이티브를 쓰되 기본 달력 아이콘을 `.date-native-hidden`(`index.css`)으로 투명하게 칸 전체로 늘린다.
 - **문구 길이는 코드가 정할 수 없다** → 칸 폭을 주고 접는다(동의 라벨이 상태 pill 을 뚫었다. 문구 SoT 는 core 동의 카탈로그).
