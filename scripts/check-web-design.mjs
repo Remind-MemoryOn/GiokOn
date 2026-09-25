@@ -253,6 +253,14 @@ const SCREENS = [
   [`${WEB}/src/components/shell/TopBar.tsx`, '상단 바: 새 역할 호칭(사회복지사·센터장을 요양보호사로 부르지 않는다)', [
     /roleHonorific\(userRow\?\.role\)/,
   ]],
+  [`${WEB}/src/pages/caregiver/SupervisionPage.tsx`, '감독 화면(W2): RPC 원격 제어 · 종료는 확인 후 · 위기 안내는 서버 문구 · 조회 실패 ≠ 대화 없음', [
+    /useRequestSessionControl/, /<ConfirmDialog/, /a\.caregiver_alert/, /role="alert" aria-live="assertive"/,
+    /대화가 없다는 뜻은 아닙니다/, /의학적 판단이 아닙니다/, { absent: /window\.confirm\(/ },
+    { absent: /from\('sessions'\)\.update/ },
+  ]],
+  [`${WEB}/src/components/shell/nav.ts`, '사이드바: 감독 메뉴는 맨 끝(시안 항목 좌표 불변)', [
+    /label: '설정', icon: 'settings' \},\n  \/\/[^\n]*\n  \{ to: '\/caregiver\/supervision', label: '감독'/,
+  ]],
 [`${WEB}/src/pages/public/JoinPendingPage.tsx`, '승인 대기: 조회 실패 ≠ 요청 없음 · 취소는 확인 후 · 기관명 미표시', [
     /요청이 없다는 뜻은 아닙니다/, /<ConfirmDialog/, { absent: /window\.confirm\(/ }, { absent: /useOrganization/ },
   ]],

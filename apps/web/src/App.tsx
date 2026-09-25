@@ -51,6 +51,7 @@ import { AnalysisSessionPage as GuardianAnalysisSessionPage } from './pages/guar
 import { useAuth } from './auth/AuthProvider';
 import { isAwaitingOrgJoin } from '@giokon/data';
 import { JoinPendingPage } from './pages/public/JoinPendingPage';
+import { SupervisionPage } from './pages/caregiver/SupervisionPage';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
 // 화면↔노드 맵: docs/runbooks/figma-web-extraction.md
@@ -106,6 +107,15 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* ── 요양보호사 ── */}
+        {/* 감독 화면(파일럿 W2) — 휴대폰 브라우저가 기본이라 1440 셸 밖의 반응형 단독 화면. 가드는 같다. */}
+        <Route
+          path="/caregiver/supervision"
+          element={
+            <CaregiverGuard>
+              <SupervisionPage />
+            </CaregiverGuard>
+          }
+        />
         <Route
           path="/caregiver"
           element={

@@ -32,6 +32,7 @@ export type RealtimeTable =
   | 'inquiries'
   | 'profile_caregivers'
   | 'profile_guardians'
+  | 'session_interventions'
 
 export interface RealtimeEvent {
   table: RealtimeTable
@@ -80,6 +81,8 @@ const DEFAULT_TABLES: RealtimeTable[] = [
   'inquiries',
   'profile_caregivers',
   'profile_guardians',
+  // 감독 개입 기록(파일럿 D9) — 다른 감독자가 멈추거나 재개한 것을 즉시 본다.
+  'session_interventions',
 ]
 
 function invalidateFor(
@@ -121,6 +124,7 @@ function invalidateFor(
       if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.chronicles(profileId) })
       break
     case 'sessions':
+      void qc.invalidateQueries({ queryKey: queryKeys.activeOrgSessions })
       void qc.invalidateQueries({ queryKey: queryKeys.recentSessions })
       void qc.invalidateQueries({ queryKey: queryKeys.sessionCounts })
       if (profileId) void qc.invalidateQueries({ queryKey: queryKeys.sessions(profileId) })
@@ -142,6 +146,10 @@ function invalidateFor(
       if (profileId) {
         void qc.invalidateQueries({ queryKey: queryKeys.guardianShares(profileId) })
       }
+      break
+    case 'session_interventions':
+      void qc.invalidateQueries({ queryKey: ['session_interventions'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.activeOrgSessions })
       break
     case 'safety_events':
       void qc.invalidateQueries({ queryKey: queryKeys.unacknowledgedSafetyEvents })

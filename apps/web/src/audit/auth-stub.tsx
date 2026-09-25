@@ -8,6 +8,7 @@
 // ⚠️ 제품 빌드에는 포함되지 않는다(FIGMA_AUDIT 없을 때 alias 미적용).
 import type { ReactNode } from 'react';
 import { queryKeys } from '@giokon/data';
+import { CRISIS_CAREGIVER_ALERT } from '@giokon/core';
 import { queryScope } from '../lib/supabase';
 import { QueryClientProvider } from '@tanstack/react-query';
 
@@ -643,6 +644,35 @@ function seedOrgManager(q: typeof queryClient) {
   ]);
 }
 seedOrgManager(queryClient);
+
+/** 감독 화면(/caregiver/supervision, 파일럿 W2) — 진행 중 2건(진행·원격 일시정지) + 위기 1건 + 개입 기록. */
+function seedSupervision(q: typeof queryClient) {
+  if (!/^\/caregiver\/supervision/.test(window.location.pathname)) return;
+  const at = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  const live = (id: string, profileId: string, startedMin: number, extra: Record<string, unknown>) => ({
+    id, profile_id: profileId, user_id: USER.id, org_id: ORG.id, status: 'active', turn_count: 6,
+    duration_seconds: null, current_topic: null, title: null, goal: null, content: null, avoid_topics: null,
+    keywords: [], duration_minutes: 10, planned_date: null, started_at: at(startedMin), ended_at: null,
+    updated_at: at(0), phase: 'reminiscence', phase_started_at: at(startedMin - 1), paused_at: null,
+    paused_by: null, pause_reason: null, control_request: null, prompt_version: 'v2.0', ...extra,
+  });
+  q.setQueryData(queryKeys.activeOrgSessions, [
+    live('sv-1', 'e1', 6, {}),
+    live('sv-2', 'e2', 3, { phase: 'intro', paused_at: at(1), paused_by: USER.id, pause_reason: '어르신이 쉬고 싶어 하심', control_request: 'pause' }),
+  ]);
+  q.setQueryData(queryKeys.sessionInterventions(['sv-1', 'sv-2']), [
+    { id: 'iv-1', session_id: 'sv-2', profile_id: 'e2', org_id: ORG.id, actor_id: USER.id, action: 'pause', detail: null, created_at: at(1) },
+  ]);
+  q.setQueryData(queryKeys.unacknowledgedSafetyEvents, [
+    {
+      id: 'se-sv', org_id: ORG.id, user_id: USER.id, profile_id: 'e1', session_id: 'sv-1', level: 'escalate',
+      categories: ['medical_emergency'], matched_terms: [], excerpt: '가슴이 너무 답답해',
+      caregiver_alert: CRISIS_CAREGIVER_ALERT.medical_emergency, // 서버가 저장하는 것과 같은 core 문구
+      acknowledged_at: null, acknowledged_by: null, created_at: at(0.5), updated_at: at(0.5),
+    },
+  ]);
+}
+seedSupervision(queryClient);
 
 /* eslint-disable react-refresh/only-export-components -- 감사 전용 스텁(제품 번들 미포함) */
 export function AuthProvider({ children }: { children: ReactNode }) {

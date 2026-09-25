@@ -74,6 +74,8 @@ const EXTRA_SCREENS = [
   { name: '기관 합류 승인 대기', route: '/join-pending', height: 1024 },
   // 파일럿 W6 — 관리 역할(센터장)에게만 보이는 직원 합류 승인·초대 코드 카드
   { name: '기관 관리(관리 역할)', route: '/caregiver/org?audit-role=center_director', height: 1900 },
+  // 파일럿 W2 — 감독 화면(셸 밖 반응형, 시안 없음)
+  { name: '감독 화면', route: '/caregiver/supervision', height: 1200 },
 ];
 
 for (const s of [...SCREENS, ...EXTRA_SCREENS]) {
