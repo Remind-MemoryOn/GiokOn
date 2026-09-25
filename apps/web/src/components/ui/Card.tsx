@@ -7,18 +7,6 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return <div {...rest} className={cn('rounded-[10px] border border-line bg-white', className)} />;
 }
 
-export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...rest} className={cn('px-[52px] pt-8', className)} />;
-}
-
-export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 {...rest} className={cn('text-w-section font-bold text-ink-900', className)} />;
-}
-
-export function CardDescription({ className, ...rest }: HTMLAttributes<HTMLParagraphElement>) {
-  return <p {...rest} className={cn('text-w-sub text-ink-700', className)} />;
-}
-
 export function CardBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return <div {...rest} className={cn('px-[52px] py-6', className)} />;
 }

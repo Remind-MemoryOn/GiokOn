@@ -37,9 +37,6 @@ const CARD4_TOP = 2091;
 const RULE_TOP = 238;
 const RULE_PITCH = 122;
 
-// 사회복지사·센터장까지 — 역할 이름은 @giokon/data 한 곳에서(파일럿 W6).
-const ROLE_LABEL: Record<string, string> = ORG_ROLE_LABEL;
-
 /** 계정 삭제 시 데이터 처리 기준(시안 5행). 문구는 컴플라이언스 근거라 그대로 옮긴다. */
 const DELETION_RULES = [
   { tone: 'mute', badge: '기관 재귀속', item: '어르신(profiles)·연대기·세션·대화로그',
@@ -169,7 +166,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
           {[
             { fxL: '121:743', fxV: '121:769', label: '이메일', value: me?.email, left: 67 },
             { fxL: '121:771', fxV: '121:772', label: '전화번호', value: me?.phone, left: 373 },
-            { fxL: '121:774', fxV: '121:775', label: '역할', value: me ? (ROLE_LABEL[me.role] ?? me.role) : null, left: 67, row: 1 },
+            { fxL: '121:774', fxV: '121:775', label: '역할', value: me ? (ORG_ROLE_LABEL[me.role] ?? me.role) : null, left: 67, row: 1 },
             { fxL: '121:776', fxV: '121:777', label: '소속 기관', value: org.data?.name, left: 373, row: 1 },
           ].map((f) => (
             <div key={f.label}>

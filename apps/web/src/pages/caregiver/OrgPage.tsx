@@ -90,8 +90,6 @@ const WAITING_LABEL: Record<Waiting['kind'], string> = {
   staff: '직원 합류',
 };
 
-const ROLE_LABEL: Record<string, string> = ORG_ROLE_LABEL;
-
 /** 초대로 줄 수 있는 역할(서버 create_org_invite 와 같은 집합). */
 const INVITE_ROLES: InvitableRole[] = ['caregiver', 'social_worker', 'center_director'];
 /** 초대 코드 유효 기간 선택지 — 서버 허용 1~30일. */
@@ -170,7 +168,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
         id: r.id,
         who: r.requester_name || '—',
         // 요청자 이메일은 기관 밖 사람이라 읽을 수 없다 — 초대 코드에 걸린 역할만 보인다.
-        detail: `${ROLE_LABEL[r.requested_role] ?? r.requested_role}(으)로 합류`,
+        detail: `${ORG_ROLE_LABEL[r.requested_role] ?? r.requested_role}(으)로 합류`,
         elder: null,
         at: r.created_at,
         selfRequest: false,
@@ -337,7 +335,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                     )}
                     style={{ left: 66, top: top + 48 }}
                   >
-                    {ROLE_LABEL[m.role] ?? m.role}
+                    {ORG_ROLE_LABEL[m.role] ?? m.role}
                   </span>
                   <Avatar
                     data-fx={i === 0 ? '131:1101' : undefined}
@@ -484,7 +482,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
             >
               {INVITE_ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {ROLE_LABEL[r]}
+                  {ORG_ROLE_LABEL[r]}
                 </option>
               ))}
             </select>
@@ -543,7 +541,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                       className="absolute flex h-[33px] w-[119px] items-center justify-center rounded-pill bg-accent-soft text-w-body font-medium leading-[28px] text-ink-900"
                       style={{ left: 66, top: top + 48 }}
                     >
-                      {ROLE_LABEL[inv.role] ?? inv.role}
+                      {ORG_ROLE_LABEL[inv.role] ?? inv.role}
                     </span>
                     <span
                       className="absolute whitespace-nowrap text-w-body font-semibold leading-[28px] tracking-[0.12em] text-ink-900"
