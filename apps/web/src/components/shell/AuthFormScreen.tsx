@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicHeader } from './PublicHeader';
 import { asset } from '../../assets/ui';
+import { Y } from '../../lib/figmaY';
 
 // 아이디 찾기(111:148) · 비밀번호 찾기(111:170) · 비밀번호 재설정(114:247)은
 // 골격이 완전히 같다(실측 확인): 돌아가기 @187 · 제목 @287 · 부제 @325 ·
@@ -14,8 +15,6 @@ import { asset } from '../../assets/ui';
 // ⚠️ 라인 높이 — Figma 는 제목만 30 을 지정하고 나머지는 auto(≈1.2)다.
 //    토큰(text-w-sub=18/28 등)을 그대로 쓰면 라인박스가 커져 잉크가 3px 내려간다.
 //    실측 라인박스(24·21)를 명시해 잉크 위치를 맞춘다.
-const Y = (v: number) => v - 122;
-
 export interface AuthField {
   label: string;
   value: string;

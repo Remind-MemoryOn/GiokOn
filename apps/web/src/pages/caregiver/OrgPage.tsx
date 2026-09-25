@@ -56,8 +56,8 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 import { orgJoinErrorMessage } from '../../lib/orgJoinErrors';
+import { Y } from '../../lib/figmaY';
 
-const Y = (v: number) => v - 122;
 /** PageHeader(제목+설명) 블록이 끝나는 266 에서 첫 카드(315)까지의 간격. */
 const HEADER_GAP = 49;
 

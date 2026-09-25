@@ -18,8 +18,7 @@ import { asset } from '../../assets/ui';
 import { Avatar } from '../../components/ui/Avatar';
 import { useAuth } from '../../auth/AuthProvider';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 const CARD_TOP = 343;
 /** 카드 좌상단 기준 어르신 카드 배치 — 3열, 가로 피치 323, 세로 피치 200. */

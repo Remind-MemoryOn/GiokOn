@@ -40,6 +40,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { LineChart, RadarChart } from './charts';
 import { cn } from '../lib/utils';
 import { Y, type Months } from '../lib/analysis';
+import { secondsParts } from '../lib/format';
 
 /** 카드 좌상단을 원점으로 쓰는 좌표. */
 const C1 = 343;
@@ -91,14 +92,6 @@ function StatValue({ parts }: { parts: { n: string; unit: string }[] }) {
       ))}
     </span>
   );
-}
-
-/** 초 → `11분 18초` 조각. 근거가 없으면 null. */
-function secondsParts(sec: number | null): { n: string; unit: string }[] | null {
-  if (sec == null) return null;
-  const m = Math.floor(sec / 60);
-  const r = sec % 60;
-  return r === 0 ? [{ n: `${m}`, unit: '분' }] : [{ n: `${m}`, unit: '분 ' }, { n: `${r}`, unit: '초' }];
 }
 
 /** 카드 2장(참여도·TOP5·AI 의견 / 인지 지표)만 그린다 — 머리(제목·탭·기간)는 화면마다 다르다. */

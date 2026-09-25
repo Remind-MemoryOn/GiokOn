@@ -20,6 +20,7 @@ import { routeForUser } from '../../auth/routes';
 import { useStore } from '../../store/store';
 import { orgJoinErrorMessage } from '../../lib/orgJoinErrors';
 import { cn } from '../../lib/utils';
+import { Y } from '../../lib/figmaY';
 
 type Role = 'caregiver' | 'guardian';
 
@@ -39,8 +40,6 @@ const ROLES: { key: Role; title: string; lines: [string, string]; left: number; 
     fx: '25:389',
   },
 ];
-
-const Y = (v: number) => v - 122;
 
 /** 라벨 + 별표 + 입력 + 도움말 — 넷 다 Figma 실측 좌표를 그대로 받는다.
  *  (Figma 가 넷을 각각 옮겨 놔 오프셋으로 유도할 수 없다. 라인박스도 실측: 라벨 24 · 도움말 19) */

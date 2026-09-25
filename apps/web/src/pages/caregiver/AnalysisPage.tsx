@@ -33,8 +33,8 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { LineChart, RadarChart } from '../../components/charts';
 import { cn } from '../../lib/utils';
+import { Y } from '../../lib/figmaY';
 
-const Y = (v: number) => v - 122;
 /** 카드 좌상단을 원점으로 쓰는 좌표(카드 안 요소는 전부 이 기준). */
 const C1 = 343;
 const C2 = 2294;

@@ -40,8 +40,7 @@ import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { useStore } from '../../store/store';
 import { journalErrorMessage } from '../../lib/journalErrors';
 import { cn } from '../../lib/utils';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 /**
  * 공개 행의 신원은 **(유형, 항목)** 이다. `session_summary` 와 `analysis` 는 같은

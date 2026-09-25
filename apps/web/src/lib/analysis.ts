@@ -5,5 +5,5 @@
 export const PERIODS = [3, 6, 12] as const;
 export type Months = (typeof PERIODS)[number];
 
-/** 화면 절대 y → 본문 컨테이너 좌표(탑바 122 를 되뺀다). */
-export const Y = (v: number) => v - 122;
+/** 화면 절대 y → 본문 컨테이너 좌표 — 정의는 `figmaY` 하나(이 경로로 쓰던 화면을 위해 다시 내보낸다). */
+export { Y } from './figmaY';

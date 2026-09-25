@@ -24,8 +24,7 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 /** 라벨(Medium 20) + 필수 별표(Medium 12 accent, 라벨보다 9px 위 라인박스). */
 function Label({

@@ -30,8 +30,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ShareReceiptDialog, type ShareReceipt } from '../../components/share-receipt';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 const CARD_LEFT = 329;
 const CARD_TOP = 345;

@@ -17,8 +17,8 @@ import { asset } from '../../assets/ui';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
+import { dayKey } from '../../lib/format';
 
 /** 카드 안쪽 실측 — 행 크기·간격과 위/아래 여백. */
 const CARD_TOP = 318;
@@ -31,13 +31,6 @@ const ADD_H = 77.06;
 const CARD_PAD_BOTTOM = 50.1;
 
 /** 로컬 달력 하루 키(`2026-07-08`) — 날짜 필터 비교용. */
-function dayKey(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
 export function ElderChroniclesPage() {
   const { elderId } = useParams<{ elderId: string }>();
   const toast = useStore((s) => s.toast);

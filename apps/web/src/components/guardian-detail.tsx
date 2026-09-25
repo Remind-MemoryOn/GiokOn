@@ -10,8 +10,10 @@ import { Link } from 'react-router-dom';
 import { dateDotTime } from '@giokon/core';
 import { asset } from '../assets/ui';
 import { Badge, type BadgeTone } from './ui/Badge';
+import { Y } from '../lib/figmaY';
 
-export const Y = (v: number) => v - 122;
+// 보호자 상세 화면들이 이 경로로 쓰던 좌표 변환 — 정의는 `lib/figmaY` 하나.
+export { Y };
 
 export const CARD_TOP = 432.33;
 /** 본문 줄높이(Figma 28.021). */

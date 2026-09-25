@@ -40,8 +40,7 @@ import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { MessageNoticeDialog } from '../../components/guardian-message';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { cn } from '../../lib/utils';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 const CARD_TOP = 343;
 const ITEM_TOP = 387;

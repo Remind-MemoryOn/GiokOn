@@ -20,8 +20,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicHeader } from '../../components/shell/PublicHeader';
 import { PublicFooter } from '../../components/shell/PublicFooter';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 // ── Figma 1:17 실측 상수 ────────────────────────────────────────────────
 const CARD_X = 118;

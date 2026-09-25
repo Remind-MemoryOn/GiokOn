@@ -25,6 +25,7 @@ import { asset } from '../assets/ui';
 import { cn } from '../lib/utils';
 
 import { Y } from '../lib/analysis';
+import { secondsParts } from '../lib/format';
 
 const CARD_TOP = 259.15;
 const COL = 86; // 카드 안 콘텐츠 왼쪽(408 - 322)
@@ -54,14 +55,6 @@ function stamp(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return '—';
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}   ${d.getHours()}:${p(d.getMinutes())}`;
-}
-
-/** 초 → `14분 12초` 조각(숫자 SemiBold 35 · 단위 Regular 22). */
-function secondsParts(sec: number | null): { n: string; unit: string }[] | null {
-  if (sec == null) return null;
-  const m = Math.floor(sec / 60);
-  const r = sec % 60;
-  return r === 0 ? [{ n: `${m}`, unit: '분' }] : [{ n: `${m}`, unit: '분 ' }, { n: `${r}`, unit: '초' }];
 }
 
 function StatValue({ parts }: { parts: { n: string; unit: string }[] | null }) {

@@ -10,8 +10,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { routeForUser } from '../../auth/routes';
 import { useStore } from '../../store/store';
 import { isSupabaseConfigured } from '../../lib/supabase';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 export function SignUpPage() {
   const toast = useStore((s) => s.toast);

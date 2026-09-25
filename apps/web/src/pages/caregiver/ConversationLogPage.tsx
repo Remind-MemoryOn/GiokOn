@@ -18,8 +18,7 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { Avatar } from '../../components/ui/Avatar';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 const CARD_TOP = 315;
 /** 카드 안 첫 말풍선 위치와 말풍선 사이 간격(시안 전 구간 57 — 마지막 3칸만 흘렸다). */

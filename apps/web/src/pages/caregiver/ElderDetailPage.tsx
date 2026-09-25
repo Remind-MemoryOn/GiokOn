@@ -38,8 +38,8 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { cn, relativeDay } from '../../lib/utils';
+import { Y } from '../../lib/figmaY';
 
-const Y = (v: number) => v - 122;
 /** 동의 행 세로 피치 — 시안 92(3행) → 4행이 카드 안에 들어가도록 74. */
 const CONSENT_PITCH = 74;
 /** 값이 없으면 만들어내지 않는다 — 화면은 `—`. */

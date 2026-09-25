@@ -14,8 +14,8 @@ import { toElderProfile, useProfile, useSessions } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
+import { dayKey } from '../../lib/format';
 
 const CARD_TOP = 315;
 const ROW_TOP = 381;
@@ -23,13 +23,6 @@ const ROW_TOP = 381;
 const CARD_PAD_BOTTOM = 66;
 
 /** 로컬 달력 하루 키(`2026-07-08`) — 날짜 필터 비교용. */
-function dayKey(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
 export function SessionListPage() {
   const { elderId } = useParams<{ elderId: string }>();
   const profileQuery = useProfile(elderId);

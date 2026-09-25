@@ -33,8 +33,7 @@ import { feedHref } from '../../lib/guardianElder';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
-
-const Y = (v: number) => v - 122;
+import { Y } from '../../lib/figmaY';
 
 const CARD1_TOP = 340;
 const CARD2_TOP = 861;
