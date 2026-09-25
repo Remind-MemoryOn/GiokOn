@@ -70,6 +70,8 @@ const EXTRA_SCREENS = [
   { name: '문의사항 등록', route: '/inquiries/new', height: 1400 },
   // Figma 에 프레임이 없는 화면(찾기 화면 골격을 한 칸 연장) — 그래도 접근성은 같은 기준.
   { name: '회원가입(이메일)', route: '/signup', height: 1200 },
+  // 파일럿 W9 — 초대 코드 합류의 승인 대기(시안 없음, 최소 구현)
+  { name: '기관 합류 승인 대기', route: '/join-pending', height: 1024 },
 ];
 
 for (const s of [...SCREENS, ...EXTRA_SCREENS]) {

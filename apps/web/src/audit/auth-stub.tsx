@@ -588,6 +588,26 @@ function seed() {
 }
 seed();
 
+/** 승인 대기 화면(/join-pending) — 대기 중인 합류 요청 1건. 기관 이름은 요청자에게 보이지 않는다. */
+function seedJoinPending(q: typeof queryClient) {
+  if (!/^\/join-pending/.test(window.location.pathname)) return;
+  q.setQueryData(queryKeys.myOrgJoinRequests, [
+    {
+      id: 'join-1',
+      org_id: ORG.id,
+      user_id: USER.id,
+      invite_id: 'invite-1',
+      requested_role: 'caregiver',
+      requester_name: USER.name,
+      status: 'pending',
+      created_at: '2026-09-25T00:00:00Z',
+      decided_at: null,
+      decided_by: null,
+    },
+  ]);
+}
+seedJoinPending(queryClient);
+
 /* eslint-disable react-refresh/only-export-components -- 감사 전용 스텁(제품 번들 미포함) */
 export function AuthProvider({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -600,11 +620,15 @@ export function useAuth() {
   const path = window.location.pathname;
   const app = /^\/(caregiver|guardian)/.test(path);
   const onboarding = /^\/(signup|onboarding)/.test(path);
-  const signedIn = app || onboarding;
+  // 초대 코드로 가입해 기관 승인을 기다리는 계정(파일럿 W9) — 가입은 끝났고 기관이 없다.
+  const joinPending = /^\/join-pending/.test(path);
+  const signedIn = app || onboarding || joinPending;
   // 보호자 화면은 역할이 guardian 이어야 가드를 통과하고 탑바 문구도 바뀐다(31:616 "김민수 보호자님").
   const me = /^\/guardian/.test(path)
     ? { ...USER, id: 'guardian-1', name: '김민수', role: 'guardian', email: 'minsu@example.com' }
-    : USER;
+    : joinPending
+      ? { ...USER, org_id: null }
+      : USER;
   return {
     session: signedIn ? { user: { id: me.id, email: me.email } } : null,
     user: signedIn ? { id: me.id, email: me.email, user_metadata: { name: me.name } } : null,

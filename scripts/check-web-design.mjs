@@ -234,7 +234,21 @@ const SCREENS = [
   ], 'copy'],
 
   // ── 온보딩(회원가입 페이지2) 15:444 ────────────────────────────────────
-  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 역할 카드 275×128 r10 @ (432/733,320) + 라디오 25/13', [
+    // 파일럿 W9 — 초대 코드 합류 + 승인 대기(시안 없음). 기관 없는 가입 계정을 요양보호사 화면에 들이지 않는다.
+  [`${WEB}/src/auth/routes.ts`, '라우팅: 합류 승인 대기 계정은 /join-pending', [
+    /isAwaitingOrgJoin\(row\) \? '\/join-pending' : '\/caregiver'/,
+  ]],
+  [`${WEB}/src/App.tsx`, '가드: 요양보호사 영역은 합류 대기 계정을 승인 대기 화면으로', [
+    /if \(isAwaitingOrgJoin\(userRow\)\) return <Navigate to="\/join-pending" replace \/>;/,
+    /<Route path="\/join-pending" element=\{<JoinPendingPage \/>\} \/>/,
+  ]],
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 새 기관 / 초대 코드 합류 선택(좌표 불변)', [
+    /inviteCode: joining \? inviteCode\.trim\(\) : undefined/, /초대 코드로 합류하기/,
+  ]],
+  [`${WEB}/src/pages/public/JoinPendingPage.tsx`, '승인 대기: 조회 실패 ≠ 요청 없음 · 취소는 확인 후 · 기관명 미표시', [
+    /요청이 없다는 뜻은 아닙니다/, /<ConfirmDialog/, { absent: /window\.confirm\(/ }, { absent: /useOrganization/ },
+  ]],
+[`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 역할 카드 275×128 r10 @ (432/733,320) + 라디오 25/13', [
     /h-\[128px\] w-\[275px\] rounded-\[10px\]/, /left: r\.left, top: Y\(320\)/,
     /left: 432/, /left: 733/, /h-\[25px\] w-\[25px\] items-center justify-center rounded-full border-2/,
     /h-\[13px\] w-\[13px\] rounded-full/,

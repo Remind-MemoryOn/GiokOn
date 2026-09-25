@@ -49,6 +49,8 @@ import { AnalysisPage as GuardianAnalysisPage } from './pages/guardian/AnalysisP
 import { AnalysisSessionsPage as GuardianAnalysisSessionsPage } from './pages/guardian/AnalysisSessionsPage';
 import { AnalysisSessionPage as GuardianAnalysisSessionPage } from './pages/guardian/AnalysisSessionPage';
 import { useAuth } from './auth/AuthProvider';
+import { isAwaitingOrgJoin } from '@giokon/data';
+import { JoinPendingPage } from './pages/public/JoinPendingPage';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
 // 화면↔노드 맵: docs/runbooks/figma-web-extraction.md
@@ -62,6 +64,8 @@ function CaregiverGuard({ children }: { children: React.ReactNode }) {
   if (!session) return <Navigate to="/login" replace />;
   if (!userRow || !userRow.onboarded_at) return <Navigate to="/onboarding" replace />;
   if (userRow.role === 'guardian') return <Navigate to="/guardian" replace />;
+  // 초대 코드로 가입해 승인을 기다리는(기관 없는) 계정 — 기관 데이터가 0건이라 빈 화면이 "기록 없음"으로 보인다.
+  if (isAwaitingOrgJoin(userRow)) return <Navigate to="/join-pending" replace />;
   return <>{children}</>;
 }
 
@@ -95,6 +99,8 @@ function App() {
             가입 경로가 필요하다 — 찾기 화면의 실측 골격을 한 칸 연장해 쓴다. */}
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
+        {/* 초대 코드 합류의 승인 대기(파일럿 W9) — Figma 에 없는 화면이라 온보딩과 같은 체계로 최소 구현 */}
+        <Route path="/join-pending" element={<JoinPendingPage />} />
         <Route path="/find-id" element={<FindIdPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

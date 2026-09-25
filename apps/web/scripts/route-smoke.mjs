@@ -130,6 +130,7 @@ const CASES = [
   ['/caregiver/shares/x?settings=y', '계정으로 로그인해 주세요.', '공개 기록 설정 가드'],
   ['/caregiver/shares/x/history?receipt=y', '계정으로 로그인해 주세요.', '공개 이력 상세 가드'],
   ['/onboarding', '계정으로 로그인해 주세요.', '온보딩(미인증→로그인)'],
+  ['/join-pending', '계정으로 로그인해 주세요.', '합류 승인 대기(미인증→로그인)'],
   ['/no-such-route', '서비스 소개', '404 → 랜딩'],
 ];
 
