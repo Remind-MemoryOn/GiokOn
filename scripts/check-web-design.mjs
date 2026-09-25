@@ -279,9 +279,12 @@ const SCREENS = [
     /at=\{\[763\.61, 529, 756, 797\.64, 862\.69\]\}/,
     /text-\[12px\] font-medium leading-\[30px\] text-accent/,
   ]],
-  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 동의 박스 576×151 @916 · CTA 576×71 @1106', [
-    /h-\[151px\] w-\[576px\] rounded-\[10px\] border border-line/, /top: Y\(916\)/,
-    /h-\[71px\] w-\[576px\] rounded-\[10px\] bg-accent/, /top: Y\(1106\)/,
+  // 시안 동의 박스는 2줄(151 @916) 기준 — 이용약관 줄(법무)이 더해져 줄 수에서 박스·버튼을 계산한다(사용자 확정 2026-09-25).
+  // 시안 실측 간격(첫 줄 948.76 · 피치 36.03 · 아래 여백 32.29 · 버튼까지 38.88)은 그대로 고정한다.
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 동의 박스 w576 @916 · 줄 피치 36.03 · CTA 576×71 = 박스 끝 + 38.88', [
+    /w-\[576px\] rounded-\[10px\] border border-line bg-white/, /const CONSENT_BOX_TOP = 916;/,
+    /const CONSENT_FIRST = 948\.76;/, /const CONSENT_PITCH = 36\.03;/, /const CONSENT_PAD_BOTTOM = 32\.29;/, /const CTA_GAP = 38\.88;/,
+    /h-\[71px\] w-\[576px\] rounded-\[10px\] bg-accent/, /top: Y\(ctaTop\)/,
   ]],
   [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 카피(Figma 문구 그대로)', [
     /기본 정보를 입력해 주세요/, /소셜 로그인은 완료됐어요\./, /어떤 역할로 이용하시나요\?/,

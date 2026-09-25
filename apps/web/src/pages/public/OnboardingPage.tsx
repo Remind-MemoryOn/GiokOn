@@ -3,7 +3,9 @@
 //   역할 카드 275×128 r10 @ (432,320)/(733,320) — 라디오 25 + 제목 SemiBold 20 + 설명 16/22
 //   입력 576×57 r10 @ 이름 508 · 전화번호 652 · 소속 기관명 798 (라벨 Medium 20 · 힌트 16)
 //   ⚠️ 798 칸은 시안의 '소속 기관명'이 아니라 **초대 코드**다(아래 A안) — 좌표·치수는 시안 그대로.
-//   동의 박스 576×151 @ 916 · 가입 완료 576×71 accent @ 1106
+//   동의 박스 576×151 @ 916 · 가입 완료 576×71 accent @ 1106 — 시안은 동의 **2줄**(개인정보·소셜 확인) 기준이다.
+//   ⚠️ 이용약관 줄이 더해져(법무) 3줄이 됐다 → 줄을 시안 간격(36.03)으로 늘어놓고 박스·버튼을 줄 수에서 계산한다
+//   (사용자 확정 2026-09-25 — 시안과 다름). 박스 위 여백 32.76 · 아래 여백 32.29 · 버튼까지 38.88 은 시안 값.
 //
 // ⚠️ 이 프레임의 공개 헤더 좌표만 다른 공개 화면(랜딩·로그인)과 다르다(워드마크 63 vs 130).
 //    Figma 자체 불일치라 다수(2/3)를 따르는 PublicHeader 로 통일한다.
@@ -26,6 +28,15 @@ import { cn } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
 
 type Role = 'caregiver' | 'guardian';
+
+/** 동의 박스 실측(15:444): 박스 위 916 · 첫 줄 글자 위 948.76 · 줄 피치 36.03 · 아래 여백 32.29 · 버튼까지 38.88. */
+const CONSENT_BOX_TOP = 916;
+const CONSENT_FIRST = 948.76;
+const CONSENT_PITCH = 36.03;
+const CONSENT_PAD_BOTTOM = 32.29;
+const CTA_GAP = 38.88;
+/** 가입 완료 버튼 아래 본문 여백(시안 1106 버튼 + 71 → 본문 높이 1205). */
+const PAGE_PAD_BOTTOM = 1205 - (1106 - 122 + 71);
 
 const ROLES: { key: Role; title: string; lines: [string, string]; left: number; fx: string }[] = [
   {
@@ -170,10 +181,16 @@ export function OnboardingPage() {
     }
   }
 
+  // 동의 줄 수(소셜 계정이면 3줄, 이메일 가입이면 2줄)에서 박스 높이와 가입 완료 버튼 위치를 계산한다.
+  const consentRows = isSocialAccount ? 3 : 2;
+  const consentBottom =
+    CONSENT_FIRST + (consentRows - 1) * CONSENT_PITCH + (isSocialAccount ? 50.04 : 21.02) + CONSENT_PAD_BOTTOM;
+  const ctaTop = consentBottom + CTA_GAP;
+
   return (
     <div className="min-h-screen bg-white">
       <PublicHeader />
-      <main className="relative mx-auto h-[1205px] w-full max-w-[1440px]">
+      <main className="relative mx-auto w-full max-w-[1440px]" style={{ height: Y(ctaTop) + 71 + PAGE_PAD_BOTTOM }}>
         <h1
           data-fx="25:250"
           className="absolute left-[591px] whitespace-nowrap text-w-section font-semibold leading-[30px] text-ink-900"
@@ -285,27 +302,24 @@ export function OnboardingPage() {
         {/* 회원가입 필수 동의: 약관과 개인정보 동의를 분리해 각각 확인한다. */}
         <div
           data-fx="25:421"
-          className="absolute left-[432px] h-[151px] w-[576px] rounded-[10px] border border-line bg-white"
-          style={{ top: Y(916) }}
+          className="absolute left-[432px] w-[576px] rounded-[10px] border border-line bg-white"
+          style={{ top: Y(CONSENT_BOX_TOP), height: consentBottom - CONSENT_BOX_TOP }}
         />
         {[
           {
             fx: ['terms-check', 'terms-label'],
-            checkTop: 922,
-            textTop: 918,
+            lines: 1,
             leading: 21,
             checked: termsAgreed,
             set: setTermsAgreed,
             label: '이용약관 동의(필수)',
             detail: '/terms',
             detailLabel: '약관 상세보기',
-            detailTop: 918,
             body: <><span className="font-semibold text-ink-900">[필수]</span> 이용약관에 동의합니다.</>,
           },
           {
             fx: ['25:602', '25:422'],
-            checkTop: 952,
-            textTop: 948.76,
+            lines: 1,
             leading: 21,
             checked: privacyAgreed,
             set: setPrivacyAgreed,
@@ -313,7 +327,6 @@ export function OnboardingPage() {
             detail: '/consents/member-privacy',
             detailLabel: '수집·이용 상세보기',
             detailFx: '25:428',
-            detailTop: 946.76,
             body: (
               <>
                 <span className="font-semibold text-ink-900">[필수]</span> 개인정보 수집·이용에
@@ -323,15 +336,15 @@ export function OnboardingPage() {
           },
           ...(isSocialAccount ? [{
             fx: ['25:605', '25:468'],
-            checkTop: 990,
-            textTop: 984.79,
+            lines: 2,
             leading: 25,
             checked: socialAgreed,
             set: setSocialAgreed,
             label: '소셜 계정 정보 제공 확인(필수)',
             detail: '/privacy',
             detailLabel: '처리방침 보기',
-            detailTop: 984.79,
+            // 두 줄짜리 문장의 첫 줄 위에 링크가 겹쳤다 → 둘째 줄 문장 끝에 둔다.
+            detailOnLastLine: true,
             body: (
               <>
                 <span className="font-semibold text-ink-900">[필수]</span> 소셜
@@ -341,7 +354,12 @@ export function OnboardingPage() {
               </>
             ),
           }] : []),
-        ].map((c) => (
+        ].map((c, i) => {
+          // 줄 위치 = 첫 줄 + 피치 × 순번. 체크박스·링크의 오프셋은 시안 실측(한 줄 +3.24 · 두 줄 +5.21 · 링크 -2).
+          const textTop = CONSENT_FIRST + i * CONSENT_PITCH;
+          const checkTop = textTop + (c.lines === 2 ? 5.21 : 3.24);
+          const detailTop = 'detailOnLastLine' in c ? textTop + c.leading + (c.leading - 21) / 2 : textTop - 2;
+          return (
           <div key={c.fx[0]}>
             <input
               id={`consent-${c.fx[0]}`}
@@ -351,13 +369,13 @@ export function OnboardingPage() {
               onChange={(e) => c.set(e.target.checked)}
               aria-label={c.label}
               className="absolute left-[458px] h-[17px] w-[17px] cursor-pointer accent-accent"
-              style={{ top: Y(c.checkTop) }}
+              style={{ top: Y(checkTop) }}
             />
             <label
               htmlFor={`consent-${c.fx[0]}`}
               data-fx={c.fx[1]}
               className="absolute left-[487px] cursor-pointer text-w-sub text-ink-500"
-              style={{ top: Y(c.textTop), lineHeight: `${c.leading}px` }}
+              style={{ top: Y(textTop), lineHeight: `${c.leading}px` }}
             >
               {c.body}
             </label>
@@ -368,13 +386,14 @@ export function OnboardingPage() {
               className="absolute text-w-label leading-[21px] text-[#8a8a8a] underline"
               style={{
                 left: 'detailFx' in c ? 779 : 829,
-                top: Y(c.detailTop),
+                top: Y(detailTop),
               }}
             >
               {c.detailLabel}
             </Link>
           </div>
-        ))}
+          );
+        })}
 
         <button
           type="button"
@@ -382,7 +401,7 @@ export function OnboardingPage() {
           disabled={submitting || !isConfigured}
           data-fx="41:117"
           className="absolute left-[432px] h-[71px] w-[576px] rounded-[10px] bg-accent text-w-cta font-semibold text-white transition hover:brightness-95 disabled:opacity-50"
-          style={{ top: Y(1106) }}
+          style={{ top: Y(ctaTop) }}
         >
           {submitting ? '처리 중...' : '가입 완료'}
         </button>
