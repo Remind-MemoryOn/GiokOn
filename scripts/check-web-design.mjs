@@ -245,7 +245,15 @@ const SCREENS = [
   [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 새 기관 / 초대 코드 합류 선택(좌표 불변)', [
     /inviteCode: joining \? inviteCode\.trim\(\) : undefined/, /초대 코드로 합류하기/,
   ]],
-  [`${WEB}/src/pages/public/JoinPendingPage.tsx`, '승인 대기: 조회 실패 ≠ 요청 없음 · 취소는 확인 후 · 기관명 미표시', [
+    [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리(W6): 관리 역할 = 관리자+센터장 · 직원 합류 승인은 전체 열람 확인 후 · 초대 발급·회수', [
+    /const isManager = isOrgManagerRole\(me\.data\?\.role\)/, /이 기관의 모든 어르신 기록을 볼 수 있습니다/,
+    /useCreateOrgInvite/, /useRevokeOrgInvite/, /초대 코드를 불러오지 못했어요\. 코드가 없다는 뜻은 아닙니다/,
+    { absent: /window\.confirm\(/ },
+  ]],
+  [`${WEB}/src/components/shell/TopBar.tsx`, '상단 바: 새 역할 호칭(사회복지사·센터장을 요양보호사로 부르지 않는다)', [
+    /roleHonorific\(userRow\?\.role\)/,
+  ]],
+[`${WEB}/src/pages/public/JoinPendingPage.tsx`, '승인 대기: 조회 실패 ≠ 요청 없음 · 취소는 확인 후 · 기관명 미표시', [
     /요청이 없다는 뜻은 아닙니다/, /<ConfirmDialog/, { absent: /window\.confirm\(/ }, { absent: /useOrganization/ },
   ]],
 [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 역할 카드 275×128 r10 @ (432/733,320) + 라디오 25/13', [

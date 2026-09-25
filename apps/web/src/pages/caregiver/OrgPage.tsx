@@ -16,6 +16,12 @@
 //    만들지 않고 **카드2(구성원)의 실측 리듬을 그대로** 쓴다 — 카드 1054 · 제목 @(66,27) ·
 //    설명 @(66,93.68) · 구분선 922 @(66,154) · 행 기준 152 · 피치 122.
 //    대기 건이 없으면 카드를 그리지 않는다(빈 카드로 화면을 늘리지 않는다).
+//
+// 파일럿 W6(2026-09-25) — ① 카드3 에 **직원 합류 요청**(org_join_requests, 초대 코드로 가입한 직원)을 더한다.
+//    승인하면 그 사람이 **기관 전체 어르신 기록**을 보게 되므로 승인 전에 그 사실을 확인창으로 알린다.
+//    ② 카드4 "직원 초대 코드"(관리 역할만) — 발급(합류 후 역할·유효 기간)·복사·회수. 같은 카드 리듬.
+//    ③ 관리 역할 = 기관 관리자 + 센터장(서버 app.is_org_manager 와 같은 집합). 기관 이름 수정만은
+//       DB 정책(organizations_update_admin)대로 기관 관리자 한정이다. 판정의 최종 방어선은 RPC·RLS 다.
 import { useMemo, useState } from 'react';
 import {
   toElderProfile,
@@ -30,6 +36,16 @@ import {
   useOrganization,
   useProfiles,
   useUpdateOrganization,
+  useApproveOrgJoin,
+  useCreateOrgInvite,
+  useOrgInvites,
+  useOrgJoinRequests,
+  useRejectOrgJoin,
+  useRevokeOrgInvite,
+  isOrgManagerRole,
+  ORG_ROLE_LABEL,
+  type InvitableRole,
+  type OrgInviteRow,
   type OrganizationRow,
 } from '@giokon/data';
 import { dateDot } from '@giokon/core';
@@ -39,6 +55,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
+import { orgJoinErrorMessage } from '../../lib/orgJoinErrors';
 
 const Y = (v: number) => v - 122;
 /** PageHeader(제목+설명) 블록이 끝나는 266 에서 첫 카드(315)까지의 간격. */
@@ -55,7 +72,7 @@ const CARD_GAP = 67;
 /** 승인 대기 한 건 — 두 종류(기관 합류 · 보호자 연결)를 한 목록으로 다룬다. */
 interface Waiting {
   key: string;
-  kind: 'join' | 'guardian';
+  kind: 'join' | 'guardian' | 'staff';
   id: string;
   /** 요청한 사람. 이름이 없으면 이메일, 그것도 없으면 만들지 않는다. */
   who: string;
@@ -67,15 +84,18 @@ interface Waiting {
 }
 
 const WAITING_LABEL: Record<Waiting['kind'], string> = {
-  join: '기관 합류',
+  // 어르신 코드로 한 어르신의 담당을 요청한 것(profile_caregivers) — 기관 합류(staff)와 다르다.
+  join: '담당 요청',
   guardian: '보호자 연결',
+  staff: '직원 합류',
 };
 
-const ROLE_LABEL: Record<string, string> = {
-  org_admin: '기관 관리자',
-  caregiver: '요양보호사',
-  guardian: '보호자',
-};
+const ROLE_LABEL: Record<string, string> = ORG_ROLE_LABEL;
+
+/** 초대로 줄 수 있는 역할(서버 create_org_invite 와 같은 집합). */
+const INVITE_ROLES: InvitableRole[] = ['caregiver', 'social_worker', 'center_director'];
+/** 초대 코드 유효 기간 선택지 — 서버 허용 1~30일. */
+const INVITE_DAYS = [1, 3, 7, 14, 30];
 
 export function OrgPage() {
   const { isConfigured } = useAuth();
@@ -99,12 +119,25 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
   const approveGuardian = useApproveGuardianLink();
   const rejectGuardian = useRevokeGuardianLink();
   const rejectJoin = useRemoveCaregiverAssignment();
+  // 관리 역할(기관 관리자·센터장) — 직원 초대·합류 승인. 기관 이름 수정은 기관 관리자만(DB 정책).
+  const isManager = isOrgManagerRole(me.data?.role);
+  const staffJoins = useOrgJoinRequests({ enabled: isConfigured && isManager });
+  const approveStaff = useApproveOrgJoin();
+  const rejectStaff = useRejectOrgJoin();
+  const invites = useOrgInvites({ enabled: isConfigured && isManager });
+  const createInvite = useCreateOrgInvite();
+  const revokeInvite = useRevokeOrgInvite();
+  const [inviteRole, setInviteRole] = useState<InvitableRole>('caregiver');
+  const [inviteDays, setInviteDays] = useState(7);
+  /** 직원 합류 승인 확인 대상 — 승인하면 기관 전체 기록을 보게 된다. */
+  const [approvingStaff, setApprovingStaff] = useState<Waiting | null>(null);
+  const [revoking, setRevoking] = useState<OrgInviteRow | null>(null);
 
   const [name, setName] = useState(orgRow?.name ?? '');
   /** 거절 확인 대상 — 되돌리려면 상대가 다시 요청해야 한다. */
   const [rejecting, setRejecting] = useState<Waiting | null>(null);
 
-  const isAdmin = me.data?.role === 'org_admin';
+  const isAdmin = me.data?.role === 'org_admin'; // 기관 이름 수정 — organizations_update_admin
   const elders = useMemo(() => (profiles.data ?? []).map(toElderProfile), [profiles.data]);
   const rows = members.data ?? [];
   /** 카드 높이는 구성원 수에서 계산한다(시안은 2명 고정). */
@@ -130,6 +163,19 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
         selfRequest: a.caregiver_user_id === me.data?.id,
       });
     }
+    for (const r of staffJoins.data ?? []) {
+      out.push({
+        key: `staff-${r.id}`,
+        kind: 'staff',
+        id: r.id,
+        who: r.requester_name || '—',
+        // 요청자 이메일은 기관 밖 사람이라 읽을 수 없다 — 초대 코드에 걸린 역할만 보인다.
+        detail: `${ROLE_LABEL[r.requested_role] ?? r.requested_role}(으)로 합류`,
+        elder: null,
+        at: r.created_at,
+        selfRequest: false,
+      });
+    }
     for (const g of guardianLinks.data ?? []) {
       if (g.status !== 'pending') continue;
       out.push({
@@ -144,15 +190,24 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
       });
     }
     return out.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  }, [pendingJoins.data, guardianLinks.data, elderName, me.data?.id]);
+  }, [pendingJoins.data, staffJoins.data, guardianLinks.data, elderName, me.data?.id]);
 
   const card3Top = CARD2_TOP + card2Height + CARD_GAP;
   const card3Height = MEMBER_TOP + waiting.length * MEMBER_PITCH + 114;
-  const pageBottom = waiting.length > 0 ? card3Top + card3Height : CARD2_TOP + card2Height;
+  const inviteRows = invites.data ?? [];
+  const afterWaiting = waiting.length > 0 ? card3Top + card3Height : CARD2_TOP + card2Height;
+  const card4Top = afterWaiting + CARD_GAP;
+  const card4Height = MEMBER_TOP + Math.max(inviteRows.length, 1) * MEMBER_PITCH + 114;
+  const pageBottom = isManager ? card4Top + card4Height : afterWaiting;
 
   function decide(w: Waiting, approve: boolean) {
     const done = (msg: string) => () => toast('success', msg);
-    const fail = (e: Error) => toast('error', e.message);
+    const fail = (e: Error) => toast('error', orgJoinErrorMessage(e));
+    if (w.kind === 'staff') {
+      if (approve) approveStaff.mutate(w.id, { onSuccess: done(`${w.who} 님의 합류를 승인했어요.`), onError: fail });
+      else rejectStaff.mutate(w.id, { onSuccess: done('합류 요청을 거절했어요.'), onError: fail });
+      return;
+    }
     if (w.kind === 'join') {
       if (approve) approveJoin.mutate({ id: w.id }, { onSuccess: done('기관 합류를 승인했어요.'), onError: fail });
       else rejectJoin.mutate({ id: w.id }, { onSuccess: done('합류 요청을 거절했어요.'), onError: fail });
@@ -337,14 +392,16 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                 approveJoin.isPending ||
                 approveGuardian.isPending ||
                 rejectJoin.isPending ||
-                rejectGuardian.isPending;
+                rejectGuardian.isPending ||
+                approveStaff.isPending ||
+                rejectStaff.isPending;
               return (
                 <div key={w.key}>
                   <span
                     className={cn(
                       'absolute flex h-[33px] w-[119px] items-center justify-center rounded-pill',
                       'text-w-body font-medium leading-[28px] text-ink-900',
-                      w.kind === 'join' ? 'bg-accent-soft' : 'bg-info-soft',
+                      w.kind === 'guardian' ? 'bg-info-soft' : 'bg-accent-soft',
                     )}
                     style={{ left: 66, top: top + 48 }}
                   >
@@ -377,7 +434,8 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => decide(w, true)}
+                        // 직원 합류는 기관 전체 기록 열람으로 이어진다 — 확인창을 먼저 띄운다.
+                        onClick={() => (w.kind === 'staff' ? setApprovingStaff(w) : decide(w, true))}
                         className="absolute h-[44px] w-[96px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-50"
                         style={{ left: 780, top: top + 44 }}
                       >
@@ -406,7 +464,163 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
             })}
           </div>
         ) : null}
+
+        {/* 카드4 · 직원 초대 코드 — 관리 역할만(Figma 에 없는 화면 — 카드2 리듬 그대로) */}
+        {isManager ? (
+          <div
+            className="absolute left-[322px] w-[1054px] rounded-[10px] bg-white shadow-card"
+            style={{ top: Y(card4Top) - Y(315), height: card4Height }}
+          >
+            <h2 className="absolute left-[66px] top-[27px] whitespace-nowrap text-w-section font-bold leading-[70px] text-ink-900">
+              직원 초대 코드
+            </h2>
+            <label className="sr-only" htmlFor="invite-role">합류 후 역할</label>
+            <select
+              id="invite-role"
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as InvitableRole)}
+              className="absolute left-[520px] top-[40px] h-[44px] w-[170px] rounded-[10px] border border-line bg-white px-[16px] text-[18px] text-ink-900 focus:border-accent focus:outline-none"
+            >
+              {INVITE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="invite-days">유효 기간</label>
+            <select
+              id="invite-days"
+              value={inviteDays}
+              onChange={(e) => setInviteDays(Number(e.target.value))}
+              className="absolute left-[702px] top-[40px] h-[44px] w-[140px] rounded-[10px] border border-line bg-white px-[16px] text-[18px] text-ink-900 focus:border-accent focus:outline-none"
+            >
+              {INVITE_DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {d}일 동안
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={createInvite.isPending || !isConfigured}
+              onClick={() =>
+                createInvite.mutate(
+                  { role: inviteRole, validDays: inviteDays },
+                  {
+                    onSuccess: (row) => toast('success', `초대 코드 ${row.code} 를 만들었어요.`),
+                    onError: (e) => toast('error', orgJoinErrorMessage(e, '초대 코드를 만들지 못했어요.')),
+                  },
+                )
+              }
+              className="absolute left-[854px] top-[40px] h-[44px] w-[134px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-50"
+            >
+              코드 만들기
+            </button>
+            <p
+              className="absolute left-[66px] top-[93.68px] w-[922px] text-[18px] leading-[28px] text-ink-400"
+              style={{ wordBreak: 'keep-all' }}
+            >
+              직원이 가입할 때 이 코드를 입력하면 합류 요청이 옵니다. 승인하면 그 직원은 기관의 모든 어르신 기록을 볼 수 있어요.
+            </p>
+            <div className="absolute left-[66px] top-[154px] h-px w-[922px] bg-line" />
+
+            {invites.isError ? (
+              // 조회 실패를 '코드 없음'으로 보이지 않게 한다.
+              <p role="alert" className="absolute left-[66px] w-[922px] text-w-body leading-[30px] text-alert" style={{ top: MEMBER_TOP + 20 }}>
+                초대 코드를 불러오지 못했어요. 코드가 없다는 뜻은 아닙니다.
+              </p>
+            ) : inviteRows.length === 0 ? (
+              <p className="absolute left-[66px] w-[922px] text-w-body leading-[30px] text-ink-500" style={{ top: MEMBER_TOP + 20 }}>
+                {isConfigured ? '사용할 수 있는 초대 코드가 없어요.' : 'Supabase 연동 후 초대 코드가 표시됩니다.'}
+              </p>
+            ) : (
+              inviteRows.map((inv, i) => {
+                const top = MEMBER_TOP + i * MEMBER_PITCH;
+                return (
+                  <div key={inv.id}>
+                    <span
+                      className="absolute flex h-[33px] w-[119px] items-center justify-center rounded-pill bg-accent-soft text-w-body font-medium leading-[28px] text-ink-900"
+                      style={{ left: 66, top: top + 48 }}
+                    >
+                      {ROLE_LABEL[inv.role] ?? inv.role}
+                    </span>
+                    <span
+                      className="absolute whitespace-nowrap text-w-body font-semibold leading-[28px] tracking-[0.12em] text-ink-900"
+                      style={{ left: 217, top: top + 34.75 }}
+                    >
+                      {inv.code}
+                    </span>
+                    <span
+                      className="absolute whitespace-nowrap text-[18px] leading-[28px] text-ink-500"
+                      style={{ left: 217, top: top + 69.78 }}
+                    >
+                      {dateDot(inv.expires_at)} 까지 사용 가능
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void navigator.clipboard
+                          .writeText(inv.code)
+                          .then(() => toast('success', '초대 코드를 복사했어요.'))
+                          .catch(() => toast('error', '복사하지 못했어요. 코드를 직접 전달해 주세요.'))
+                      }
+                      className="absolute h-[44px] w-[96px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
+                      style={{ left: 780, top: top + 44 }}
+                    >
+                      복사
+                    </button>
+                    <button
+                      type="button"
+                      disabled={revokeInvite.isPending}
+                      onClick={() => setRevoking(inv)}
+                      className="absolute h-[44px] w-[96px] rounded-[10px] border border-line bg-white text-w-sub font-semibold leading-[30px] text-ink-700 disabled:opacity-50"
+                      style={{ left: 892, top: top + 44 }}
+                    >
+                      회수
+                    </button>
+                    {i < inviteRows.length - 1 ? (
+                      <div className="absolute left-[66px] h-px w-[922px] bg-line" style={{ top: top + 124 }} />
+                    ) : null}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : null}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(approvingStaff)}
+        title="직원 합류를 승인할까요?"
+        description={
+          approvingStaff
+            ? `승인하면 ${approvingStaff.who} 님이 이 기관의 모든 어르신 기록을 볼 수 있습니다. 요청한 사람이 맞는지 확인해 주세요.`
+            : ''
+        }
+        confirmLabel="승인"
+        onConfirm={() => {
+          if (approvingStaff) decide(approvingStaff, true);
+        }}
+        onClose={() => setApprovingStaff(null)}
+      />
+      <ConfirmDialog
+        open={Boolean(revoking)}
+        title="초대 코드를 회수할까요?"
+        description={
+          revoking
+            ? `${revoking.code} 로는 더 이상 합류를 요청할 수 없어요. 이 코드로 이미 온 대기 요청도 승인할 수 없게 됩니다.`
+            : ''
+        }
+        confirmLabel="회수"
+        onConfirm={() => {
+          if (revoking)
+            revokeInvite.mutate(revoking.id, {
+              onSuccess: () => toast('success', '초대 코드를 회수했어요.'),
+              onError: (e) => toast('error', orgJoinErrorMessage(e, '회수하지 못했어요.')),
+            });
+        }}
+        onClose={() => setRevoking(null)}
+      />
 
       <ConfirmDialog
         open={Boolean(rejecting)}

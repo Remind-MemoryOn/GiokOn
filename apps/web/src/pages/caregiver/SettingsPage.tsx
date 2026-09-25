@@ -17,6 +17,7 @@ import {
   useOrganization,
   useProfiles,
   useUpdateMyName,
+  ORG_ROLE_LABEL,
   type UserRow,
 } from '@giokon/data';
 import { PageHeader } from '../../components/Layout';
@@ -36,11 +37,8 @@ const CARD4_TOP = 2091;
 const RULE_TOP = 238;
 const RULE_PITCH = 122;
 
-const ROLE_LABEL: Record<string, string> = {
-  org_admin: '기관 관리자',
-  caregiver: '요양보호사',
-  guardian: '보호자',
-};
+// 사회복지사·센터장까지 — 역할 이름은 @giokon/data 한 곳에서(파일럿 W6).
+const ROLE_LABEL: Record<string, string> = ORG_ROLE_LABEL;
 
 /** 계정 삭제 시 데이터 처리 기준(시안 5행). 문구는 컴플라이언스 근거라 그대로 옮긴다. */
 const DELETION_RULES = [

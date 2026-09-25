@@ -159,6 +159,12 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
   `org_id` 는 승인 전까지 NULL 이다 → 기관 데이터 0건. `@giokon/data` `isAwaitingOrgJoin()` 하나로 판정하고 `routeForUser`·
   `CaregiverGuard` 가 `/join-pending`(승인 대기)으로 보낸다. 요청자는 기관 이름을 읽을 수 없다(organizations RLS) — 지어 보여 주지 않는다.
   온보딩의 합류 전환은 **Figma 좌표를 옮기지 않고** 같은 칸의 내용만 바꾼다.
+- **역할은 이름으로 직접 비교하지 않는다**(2026-09-25): 관리 역할 판정 = `@giokon/data` `isOrgManagerRole()`(관리자+센터장, 서버
+  `app.is_org_manager` 와 같은 집합), 역할 이름 = `ORG_ROLE_LABEL`, 상단 바 호칭 = `roleHonorific()`. `role === 'org_admin'` 은
+  **DB 정책이 정확히 그 역할만 허용하는 곳**(기관 이름 수정 `organizations_update_admin`)에만 남긴다.
+- 직원 합류 승인은 **기관 전체 어르신 기록 열람 권한을 주는 일**이라 확인창에서 그 사실을 먼저 알린다(`OrgPage`). 요청자 이메일은
+  기관 밖 사람이라 읽을 수 없다 — `requester_name` 과 초대 역할만 보인다.
+- 감사 스텁의 `?audit-role=<역할>` 은 **접근성 감사 전용**이다(관리 역할 카드 렌더). Figma 좌표 감사는 쓰지 않는다.
 - RLS 가 최종 방어선이다. 화면에서 감추는 것으로 접근통제를 대신하지 않는다.
 - **보호자는 "공개된 분석에 매달린" 세션만 읽는다**(2026-09-06, `app.is_session_shared_to_me`).
   승인된 연결 + 그 어르신 + **그 세션의 분석이 미철회 공개**, 셋을 다 만족할 때만 열린다.

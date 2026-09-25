@@ -72,6 +72,8 @@ const EXTRA_SCREENS = [
   { name: '회원가입(이메일)', route: '/signup', height: 1200 },
   // 파일럿 W9 — 초대 코드 합류의 승인 대기(시안 없음, 최소 구현)
   { name: '기관 합류 승인 대기', route: '/join-pending', height: 1024 },
+  // 파일럿 W6 — 관리 역할(센터장)에게만 보이는 직원 합류 승인·초대 코드 카드
+  { name: '기관 관리(관리 역할)', route: '/caregiver/org?audit-role=center_director', height: 1900 },
 ];
 
 for (const s of [...SCREENS, ...EXTRA_SCREENS]) {

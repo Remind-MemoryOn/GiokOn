@@ -608,6 +608,42 @@ function seedJoinPending(q: typeof queryClient) {
 }
 seedJoinPending(queryClient);
 
+/** 기관 관리의 관리 역할 카드(?audit-role=…) — 직원 합류 요청 1건 + 초대 코드 1건. */
+function seedOrgManager(q: typeof queryClient) {
+  const role = new URLSearchParams(window.location.search).get('audit-role');
+  if (!role) return;
+  // 화면은 useCurrentUser() 로 관리 역할을 판단한다 — 그 캐시도 같은 역할로.
+  q.setQueryData(queryKeys.currentUser, { ...USER, role });
+  q.setQueryData(queryKeys.orgJoinRequests, [
+    {
+      id: 'join-2',
+      org_id: ORG.id,
+      user_id: 'user-9',
+      invite_id: 'invite-1',
+      requested_role: 'social_worker',
+      requester_name: '박하늘',
+      status: 'pending',
+      created_at: '2026-09-25T00:00:00Z',
+      decided_at: null,
+      decided_by: null,
+    },
+  ]);
+  q.setQueryData(queryKeys.orgInvites, [
+    {
+      id: 'invite-1',
+      org_id: ORG.id,
+      code: 'K7M2Q9RXTV',
+      role: 'social_worker',
+      created_by: USER.id,
+      created_at: '2026-09-25T00:00:00Z',
+      expires_at: '2026-10-02T00:00:00Z',
+      revoked_at: null,
+      revoked_by: null,
+    },
+  ]);
+}
+seedOrgManager(queryClient);
+
 /* eslint-disable react-refresh/only-export-components -- 감사 전용 스텁(제품 번들 미포함) */
 export function AuthProvider({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -622,13 +658,18 @@ export function useAuth() {
   const onboarding = /^\/(signup|onboarding)/.test(path);
   // 초대 코드로 가입해 기관 승인을 기다리는 계정(파일럿 W9) — 가입은 끝났고 기관이 없다.
   const joinPending = /^\/join-pending/.test(path);
+  // 접근성 감사 전용 — 관리 역할에게만 보이는 카드(직원 초대·합류 승인)를 그리려고 역할만 바꾼다.
+  // Figma 좌표 감사는 이 값을 쓰지 않는다(기존 화면 상태 불변).
+  const auditRole = new URLSearchParams(window.location.search).get('audit-role');
   const signedIn = app || onboarding || joinPending;
   // 보호자 화면은 역할이 guardian 이어야 가드를 통과하고 탑바 문구도 바뀐다(31:616 "김민수 보호자님").
   const me = /^\/guardian/.test(path)
     ? { ...USER, id: 'guardian-1', name: '김민수', role: 'guardian', email: 'minsu@example.com' }
     : joinPending
       ? { ...USER, org_id: null }
-      : USER;
+      : auditRole
+        ? { ...USER, role: auditRole }
+        : USER;
   return {
     session: signedIn ? { user: { id: me.id, email: me.email } } : null,
     user: signedIn ? { id: me.id, email: me.email, user_metadata: { name: me.name } } : null,

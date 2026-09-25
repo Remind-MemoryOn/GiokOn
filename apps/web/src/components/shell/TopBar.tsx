@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { dateDotTime } from '@giokon/core';
+import { roleHonorific } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { cn } from '../../lib/utils';
@@ -60,7 +61,8 @@ export function TopBar({
   const home = !user ? '/' : userRow?.role === 'guardian' ? '/guardian' : '/caregiver';
 
   const name = (userRow?.name ?? (user?.user_metadata?.name as string | undefined))?.trim();
-  const roleLabel = userRow?.role === 'guardian' ? '보호자님' : '요양보호사님';
+  // 사회복지사·센터장을 '요양보호사님'으로 부르지 않는다(파일럿 T22.4 웹 발견분).
+  const roleLabel = roleHonorific(userRow?.role);
   const displayName = name ? `${name} ${roleLabel}` : (user?.email ?? roleLabel);
 
   function handleLogout() {
