@@ -3,10 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import {
   CONSENT_CATALOG,
   CONSENT_SUBJECT_OPTIONS,
-  CONSENT_VERSION,
-  capacityForSubject,
-  consentBasis,
-  isCurrentConsent,
   requiredConsents,
   type ConsentSubjectType,
   type ConsentType,
@@ -25,6 +21,7 @@ import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
 import { useStore } from '../../store/store';
 import { CONSENT_DOCUMENT_PATH } from '../../lib/consentDocuments';
+import { consentSaveError, currentConsentOf, elderConsentGrant } from '../../lib/consents';
 
 export function ElderConsentsPage() {
   const { elderId } = useParams<{ elderId: string }>();
@@ -48,9 +45,7 @@ export function ElderConsentsPage() {
       type,
       definition: CONSENT_CATALOG[type],
       latest: (consents.data ?? []).find(matches),
-      active: (consents.data ?? []).find(
-        (row) => matches(row) && isCurrentConsent(row),
-      ),
+      active: currentConsentOf(consents.data, type),
     };
   });
 
@@ -71,29 +66,22 @@ export function ElderConsentsPage() {
     const user = currentUser.data;
     if (!user) return toast('error', '로그인 정보를 확인할 수 없어요.');
     try {
-      await recordConsent.mutateAsync({
-        profile_id: elderId,
-        user_id: user.id,
-        org_id: user.org_id,
-        consent_type: grantTarget,
-        granted: true,
-        version: CONSENT_VERSION,
-        subject_type: consentSubject,
-        capacity: capacityForSubject(consentSubject),
-        guardian_name: consentSubject === 'self' ? null : proxyName.trim(),
-        guardian_relation: consentSubject === 'self' ? null : proxyRelation.trim(),
-        basis: consentBasis(consentSubject),
-      });
+      await recordConsent.mutateAsync(
+        elderConsentGrant({
+          profileId: elderId,
+          userId: user.id,
+          orgId: user.org_id,
+          type: grantTarget,
+          subject: consentSubject,
+          proxyName,
+          proxyRelation,
+        }),
+      );
       toast('success', '동의를 기록했어요.');
       setGrantTarget(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : '동의를 저장하지 못했어요.';
-      toast(
-        'error',
-        message.includes('elder_privacy_required') && message.includes('consent_type')
-          ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았어요.'
-          : message,
-      );
+      toast('error', consentSaveError(message));
     }
   };
 

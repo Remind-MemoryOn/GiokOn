@@ -11,7 +11,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateProfile, useCurrentUser, useDeleteProfile, useRecordConsent, useUpdateProfile } from '@giokon/data';
-import { CONSENT_CATALOG, CONSENT_VERSION, CONSENT_SUBJECT_OPTIONS, KEY_MEMORY_TOPIC, birthSlashLabel, capacityForSubject, consentBasis, isBirthDate, requiredElderConsents, type ConsentSubjectType, type ConsentType } from '@giokon/core';
+import { CONSENT_CATALOG, CONSENT_SUBJECT_OPTIONS, KEY_MEMORY_TOPIC, birthSlashLabel, isBirthDate, requiredElderConsents, type ConsentSubjectType, type ConsentType } from '@giokon/core';
 import { useCreateChronicle } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
@@ -19,6 +19,7 @@ import { useStore } from '../../store/store';
 import { uploadElderPhoto } from '../../lib/elderPhotos';
 import { useModalA11y } from '../../lib/modalA11y';
 import { CONSENT_DOCUMENT_PATH } from '../../lib/consentDocuments';
+import { consentSaveError, elderConsentGrant } from '../../lib/consents';
 
 const COL = { inputL: 88, labelL: 89, inputR: 551, labelR: 552 };
 const VALUE = 'text-w-sub leading-[21px] text-ink-900';
@@ -186,19 +187,17 @@ export function ElderRegisterDialog() {
       });
       createdProfileId = row.id;
       for (const consentType of elderConsentTypes) {
-        await recordConsent.mutateAsync({
-          profile_id: row.id,
-          user_id: userId,
-          org_id: currentUser.data?.org_id ?? null,
-          consent_type: consentType,
-          granted: true,
-          version: CONSENT_VERSION,
-          subject_type: consentSubject,
-          capacity: capacityForSubject(consentSubject),
-          guardian_name: consentSubject === 'self' ? null : proxyName.trim(),
-          guardian_relation: consentSubject === 'self' ? null : proxyRelation.trim(),
-          basis: consentBasis(consentSubject),
-        });
+        await recordConsent.mutateAsync(
+          elderConsentGrant({
+            profileId: row.id,
+            userId,
+            orgId: currentUser.data?.org_id ?? null,
+            type: consentType,
+            subject: consentSubject,
+            proxyName,
+            proxyRelation,
+          }),
+        );
       }
       // 사진은 행이 생긴 뒤에만 올릴 수 있다. 실패해도 등록 자체는 살린다.
       if (photo && isConfigured) {
@@ -234,9 +233,7 @@ export function ElderRegisterDialog() {
         }
       }
       const message = err instanceof Error ? err.message : '어르신 등록에 실패했어요.';
-      const friendly = message.includes('elder_privacy_required') && message.includes('consent_type')
-        ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았어요.'
-        : message;
+      const friendly = consentSaveError(message);
       toast(
         'error',
         rollbackFailed

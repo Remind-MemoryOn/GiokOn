@@ -27,7 +27,6 @@ import {
   CONSENT_CATALOG,
   birthLabel,
   elderAge,
-  isCurrentConsent,
   isKeyMemory,
   requiredConsents,
 } from '@giokon/core';
@@ -38,6 +37,7 @@ import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { cn, relativeDay } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
 import { useElderProfile } from '../../lib/elderProfile';
+import { currentConsentOf } from '../../lib/consents';
 
 /** 동의 행 세로 피치 — 시안 92(3행) → 4행이 카드 안에 들어가도록 74. */
 const CONSENT_PITCH = 74;
@@ -231,7 +231,7 @@ export function ElderDetailPage() {
     type,
     label: CONSENT_CATALOG[type].label,
     // 체크 표시는 DB 에 남은 **유효한** 동의 증빙(현재 버전·미철회·부여)으로만 판단한다.
-    done: (consents.data ?? []).some((row) => row.consent_type === type && isCurrentConsent(row)),
+    done: Boolean(currentConsentOf(consents.data, type)),
   }));
   // 주요 기억은 '기본 정보 수정' 폼이 관리한다 → 연대기 목록에서는 감춘다(두 곳에서 지워지지 않게).
   const chronicleRows = (chronicles.data ?? []).filter((c) => !isKeyMemory(c.topic)).slice(0, 2);
