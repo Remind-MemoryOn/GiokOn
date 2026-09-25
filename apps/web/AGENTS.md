@@ -206,8 +206,22 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
   · **규칙 기반** `AI 초안 만들기` → core `buildJournalDraft`(W1 때 삭제 — 루트 AGENTS C1 결정).
   · **실 LLM** `회상 대화에서 일지 초안`(2026-09-14, `components/SessionJournalDialog.tsx`) → `ended` 세션 선택 →
     Edge Function **`session-report`** → 미리보기 → **명시적 적용**(`source='ai_draft'`). 서버가 종료·담당·현재 동의·
-    **시연 허용 계정(`REPORT_ALLOWED_USER_IDS`)** 을 검사한다. W1 은 이 다이얼로그를 "다시 생성" 버튼으로 흡수한다.
+    **기관 AI 스위치(`org_settings.ai_drafts_enabled`, 2026-09-25 — 허용목록 폐기)** 를 검사한다. 스위치가 꺼진 기관은 403 문구가 뜬다.
+    ⚠️ **W1(WT7)은 이 두 버튼을 흡수하지 않고 지운다** — 아래 "일지 초안은 자동" 참고.
   · 본문 한도 **5000자** — DB `care_journals_content_check`(1~5000)와 같다.
+- 🟠 **일지 초안은 자동이다 — "초안 생성" 버튼을 만들지 않는다**(사용자 확정 2026-09-25, C4 운영 반영).
+  대화가 끝나면 DB 트리거 → 워커 `program-journal-draft` 가 AI 초안을 채워 **확인 대기**로 올린다. 사람은 확인·수정·확정만 한다.
+  WT7(프로그램 일지 목록·상세)이 지킬 것:
+  · 지금의 `AI 초안 만들기`(`buildJournalDraft`)·`AI 초안 생성·불러오기`(`SessionJournalDialog` → `session-report`)는 **삭제**한다.
+  · **"다시 생성"은 `status='failed'` 일지에만** 보이는 복구 버튼이다 → `useRetryJournalGeneration`(RPC `retry_journal_generation`).
+    `session-report` 를 부르지 않는다.
+  · 상태별 화면: `generating` = "AI 가 초안을 만들고 있어요"(수정은 가능, 워커는 사람이 먼저 쓴 칸을 덮어쓰지 않는다) ·
+    `pending_review` = 확인 대기(**`draft_generated_at` 이 있으면 AI 초안 배지**, 없으면 직접 작성) ·
+    `failed` = `last_error` 문구 + 다시 생성 · `final` = 확정. 전환은 Realtime `program_journals` 로 반영(이미 등록됨).
+  · `pending_review` 인데 `last_error` 가 있으면(처리 동의 없음으로 AI 를 건너뜀) 그 문구를 안내로 보여 준다.
+  · 기관 AI 스위치(`org_settings.ai_drafts_enabled`)가 **꺼진 기관**은 세션이 끝나면 곧바로 빈 초안(`pending_review`)이 생긴다 —
+    "AI 초안 없음 · 직접 작성" 상태로 보이면 된다. 스위치는 **플랫폼 운영자만** 켠다(웹에 켜는 UI 를 만들지 않는다 — DB 가 막는다).
+  · 워커는 활동 내용·참여자 반응·의견 수렴·보호자 문장만 채운다. 종합평가·다음 계획·확정·보호자 문장 승인은 사람 몫이다.
 - 🔒 **보안 수정이 세운 웹 불변식**(판정 SoT = `docs/runbooks/security-fixes.md`):
   · **R009 계정 격리** — 인증 경계마다 **`QueryClient` 를 새로 만든다**(`@giokon/data` `AuthQueryScope`: 이전 클라이언트는
     취소·폐기, 늦게 끝난 작업은 lease 의 `assertCurrent()` 가 막는다). ⛔ 전역 `queryClient` 하나로 되돌리지 말 것 —

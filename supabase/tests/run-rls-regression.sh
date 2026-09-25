@@ -56,3 +56,4 @@ done
 "${PSQL[@]}" -f "$HERE/transcript_provenance.sql"
 "${PSQL[@]}" -f "$HERE/pilot_access.sql"
 "${PSQL[@]}" -f "$HERE/legal_consents.sql"
+"${PSQL[@]}" -f "$HERE/journal_worker.sql"

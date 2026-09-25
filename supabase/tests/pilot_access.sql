@@ -620,6 +620,11 @@ end $$;
 -- D3 단언이 권한표에서 사회복지사를 뺐다 → 기본 위임으로 되돌린다(슈퍼유저).
 update public.org_capabilities set allowed_roles = app.default_capability_roles() where capability = 'journal_finalize';
 
+-- C4(20260925000000) 부터 AI 초안은 기관 스위치가 켜진 기관만 — 이 블록은 켜진 기관의 흐름을 본다(운영자 = 슈퍼유저).
+-- 꺼진 기관의 흐름은 journal_worker.sql 이 본다.
+update public.org_settings set ai_drafts_enabled = true
+ where org_id = (select org_id from public.sessions where id = (select sid from pilot_s));
+
 -- 세션 종료 → generating 일지 + 생성 작업(트리거 ③)
 set role authenticated;
 select set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', false);

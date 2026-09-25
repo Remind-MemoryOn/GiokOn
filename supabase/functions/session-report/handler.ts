@@ -1,5 +1,5 @@
 import { validateGeneratedSession, type GenerationSourceTurn, type SessionReportRecord } from '../../../packages/core/src/generated-session.ts'
-import { generateReport } from './provider.ts'
+import { exceedsGenerationLimit, generateReport, hasElderSpeech } from '../_shared/report-generation.ts'
 
 export type ReportRecord = SessionReportRecord
 export interface ReportContext {
@@ -55,8 +55,8 @@ export function createReportHandler(deps: ReportDependencies) {
       const context = await deps.authorize(auth, sessionId)
       if (!await context.allowed()) throw new ReportError(403, '처리 권한 또는 필수 동의를 확인해 주세요.')
       const turns = context.turns
-      if (!turns.some(t => t.speaker === 'Elderly' && t.text.trim())) throw new ReportError(409, '저장된 어르신 발화가 없습니다.')
-      if (turns.length > 240 || JSON.stringify(turns).length > 48000) throw new ReportError(413, '시연 분석 범위를 초과한 대화입니다.')
+      if (!hasElderSpeech(turns)) throw new ReportError(409, '저장된 어르신 발화가 없습니다.')
+      if (exceedsGenerationLimit(turns)) throw new ReportError(413, '시연 분석 범위를 초과한 대화입니다.')
       const hash = await sourceHash(turns)
       const cached = context.cached as ReportRecord | null
       if (cached?.schemaVersion === 'session-report-v1' && cached.sourceSessionId === sessionId && cached.sourceHash === hash) {
