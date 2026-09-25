@@ -28,7 +28,8 @@ import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { SessionReportPanel } from '../../src/components/SessionReportPanel';
 import { SectionHeading, Divider, StatTile, DETAIL } from '../../src/components/detail';
 import { useAnalysis, useElderSessions, useLog } from '../../src/data/reads';
-import { clockLabel, longKoreanDate, metric, NO_VALUE } from '../../src/lib/format';
+import { clockLabel, longKoreanDate, metric } from '../../src/lib/format';
+import { durationLabel, expressLabel, focusLabel, lengthLabel, summaryBullets } from '../../src/features/analysis/traits';
 import iconShare from '../../assets/brand/icon-share.png';
 import iconSmile from '../../assets/brand/icon-smile.png';
 import statTime from '../../assets/brand/stat-time.png';
@@ -37,11 +38,18 @@ import statRate from '../../assets/brand/stat-rate.png';
 
 const SHEET_RADIUS = 30;
 
-function durationLabel(startIso: string, endIso?: string): string {
-  if (!endIso) return NO_VALUE;
-  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
-  const s = Math.max(0, Math.round(ms / 1000));
-  return `${Math.floor(s / 60)}분 ${s % 60}초`;
+/**
+ * 어르신 발화의 응답 정도 분포(활발/짧게/무응답, %). 감정 판정이 아니라 관찰이다.
+ * 발화가 없으면 모두 0.
+ */
+function engagementShares(turns: readonly { speaker: string; text: string }[]) {
+  const elderTurns = turns.filter((t) => t.speaker === 'Elderly');
+  const rich = elderTurns.filter((t) => assessEngagement(t.text) === 'rich').length;
+  const silent = elderTurns.filter((t) => assessEngagement(t.text) === 'silent').length;
+  const short = elderTurns.length - rich - silent;
+  const total = elderTurns.length;
+  const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
+  return { rich: pct(rich), short: pct(short), silent: pct(silent) };
 }
 
 /** 2×2 특성 카드 — 라벨은 Figma 그대로, 값은 실측 관찰지표에서 나온다. */
@@ -116,25 +124,9 @@ export default function SingleAnalysis() {
   }
 
   const m = analysis.metrics;
-  const elderTurns = log.turns.filter((t) => t.speaker === 'Elderly');
-  const rich = elderTurns.filter((t) => assessEngagement(t.text) === 'rich').length;
-  const silent = elderTurns.filter((t) => assessEngagement(t.text) === 'silent').length;
-  const short = elderTurns.length - rich - silent;
-  const total = elderTurns.length;
-  const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
+  const share = engagementShares(log.turns);
   const tone = EMOTION_META[analysis.emotionTone];
-  // 정성 등급은 실측값에서 파생한다(임의값 아님 — 기준을 코드에 명시).
-  const focusLabel = m.participation >= 0.5 ? '높음' : m.participation >= 0.25 ? '보통' : '낮음';
-  const expressLabel =
-    m.avgUtteranceChars >= 30 ? '높음' : m.avgUtteranceChars >= 15 ? '보통' : '낮음';
-  const minutes = session?.durationMinutes ?? 0;
-  const lengthLabel =
-    minutes >= 15 ? '긺' : minutes >= 8 ? '보통' : minutes > 0 ? '짧음' : NO_VALUE;
-  // 요약은 문장 단위 불릿으로(근거 없으면 빈 상태).
-  const bullets = analysis.summary
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const bullets = summaryBullets(analysis.summary);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -243,14 +235,14 @@ export default function SingleAnalysis() {
               style={{ width: DETAIL.width, marginTop: 11, columnGap: 12 }}
             >
               <TraitCard label="주요 감정" value={tone.label} />
-              <TraitCard label="대화 집중도" value={focusLabel} />
+              <TraitCard label="대화 집중도" value={focusLabel(m.participation)} />
             </View>
             <View
               className="flex-row"
               style={{ width: DETAIL.width, marginTop: 12, columnGap: 12 }}
             >
-              <TraitCard label="표현 빈도" value={expressLabel} />
-              <TraitCard label="대화 길이" value={lengthLabel} />
+              <TraitCard label="표현 빈도" value={expressLabel(m.avgUtteranceChars)} />
+              <TraitCard label="대화 길이" value={lengthLabel(session?.durationMinutes ?? 0)} />
             </View>
 
             {analysis.interestKeywords.length > 0 ? (
@@ -297,21 +289,21 @@ export default function SingleAnalysis() {
                     style={{ lineHeight: 30, width: 73.5 }}
                     numberOfLines={1}
                   >
-                    활발 {pct(rich)}%
+                    활발 {share.rich}%
                   </Text>
                   <Text
                     className="text-[12px] font-semibold text-black"
                     style={{ lineHeight: 30, width: 73.5 }}
                     numberOfLines={1}
                   >
-                    짧게 {pct(short)}%
+                    짧게 {share.short}%
                   </Text>
                   <Text
                     className="text-[12px] font-semibold text-black"
                     style={{ lineHeight: 30 }}
                     numberOfLines={1}
                   >
-                    무응답 {pct(silent)}%
+                    무응답 {share.silent}%
                   </Text>
                 </View>
               </View>
@@ -329,9 +321,9 @@ export default function SingleAnalysis() {
                 marginTop: 11,
               }}
             >
-              <View style={{ width: `${pct(rich)}%`, backgroundColor: DETAIL.accent }} />
-              <View style={{ width: `${pct(short)}%`, backgroundColor: '#f3bb8a' }} />
-              <View style={{ width: `${pct(silent)}%`, backgroundColor: '#fbe0c8' }} />
+              <View style={{ width: `${share.rich}%`, backgroundColor: DETAIL.accent }} />
+              <View style={{ width: `${share.short}%`, backgroundColor: '#f3bb8a' }} />
+              <View style={{ width: `${share.silent}%`, backgroundColor: '#fbe0c8' }} />
             </View>
           </ScrollView>
         </View>
