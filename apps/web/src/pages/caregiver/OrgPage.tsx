@@ -249,6 +249,17 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
   const pageBottom = isManager ? card4Top + card4Height : afterWaiting;
 
 
+  // 복사는 권한·보안 컨텍스트 문제로 실패할 수 있다. `navigator.clipboard` 자체가 없는 환경(비보안 http 등)에서는
+  // 호출이 **동기적으로** 예외를 던져 .catch 까지 가지 못했다 → 알림 없이 조용히 실패했다. try 로 전부 받는다.
+  async function copyInvite(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast('success', '초대 코드를 복사했어요.');
+    } catch {
+      toast('error', '복사하지 못했어요. 코드를 직접 전달해 주세요.');
+    }
+  }
+
   function onSave() {
     if (!org.data) return;
     if (!name.trim()) return toast('error', '기관 이름을 입력해 주세요.');
@@ -577,12 +588,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        void navigator.clipboard
-                          .writeText(inv.code)
-                          .then(() => toast('success', '초대 코드를 복사했어요.'))
-                          .catch(() => toast('error', '복사하지 못했어요. 코드를 직접 전달해 주세요.'))
-                      }
+                      onClick={() => void copyInvite(inv.code)}
                       className="absolute h-[44px] w-[96px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
                       style={{ left: 780, top: top + 44 }}
                     >
