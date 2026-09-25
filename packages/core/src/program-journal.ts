@@ -6,7 +6,7 @@
 //   · 진단·판정 표현이 걸린 칸은 **그 칸만 비운다**(전체 실패가 아니다) — 무엇을 비웠는지 돌려주어
 //     확인 화면이 "이 칸은 직접 적어 주세요"라고 알릴 수 있게 한다.
 // Edge Function 과 공유하므로 런타임·환경 import 가 없다.
-import { DIAGNOSTIC_EXPRESSION, type GeneratedSession, type GroundedClaim } from './generated-session'
+import { DIAGNOSTIC_EXPRESSION, type GeneratedSession, type GroundedClaim } from './generated-session.ts'
 
 /** 워커가 초안으로 채우는 공단 서식 칸(program_journals 컬럼 이름 그대로). */
 export interface JournalDraftFields {
