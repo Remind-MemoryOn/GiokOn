@@ -4,13 +4,25 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { KEY_MEMORY_TOPIC, birthYearFromDate } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ProfileForm, type ProfileSubmit } from '../../src/components/ProfileForm';
 import { useChronicles, useElderView } from '../../src/data/reads';
 import { useDeleteChronicle, useUpsertChronicle, useUpsertElder } from '../../src/data/writes';
 import { removeElderPhoto, saveElderPhoto, useElderPhotoUrl } from '../../src/data/elder-photo';
+import { applyChronicleSync, elderFieldsFromForm, planChronicleSync } from '../../src/features/profile/profileSubmit';
 
+/**
+ * 사진을 바꿨으면 이전 파일을 지운다 — 프로필 저장이 끝난 뒤에 지워야
+ * 저장이 실패했을 때 예전 사진이 사라지지 않는다. 정리 실패는 저장을 막지 않는다.
+ */
+async function removeReplacedPhoto(previousPhoto: string | undefined, photoPath: string | undefined) {
+  if (!photoPath || !previousPhoto || previousPhoto === photoPath) return;
+  try {
+    await removeElderPhoto(previousPhoto);
+  } catch (e) {
+    console.warn('[giokon] 이전 사진을 지우지 못했습니다.', e);
+  }
+}
 
 export default function ChronicleEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,48 +73,12 @@ export default function ChronicleEdit() {
     try {
       const previousPhoto = elder.photoPath;
       const photoPath = v.pickedPhoto ? await saveElderPhoto(elder.id, v.pickedPhoto) : undefined;
-      await upsertElder({
-        id: elder.id,
-        name: v.name.trim(),
-        birthDate: v.birthDate,
-        birthYear: birthYearFromDate(v.birthDate),
-        hometown: v.hometown.trim() || undefined,
-        family: v.family.trim() || undefined,
-        job: v.job.trim() || undefined,
-        hobbies: v.hobbies.trim() || undefined,
-        gender: v.gender,
-        photoPath,
+      await upsertElder({ id: elder.id, ...elderFieldsFromForm(v), photoPath });
+      await removeReplacedPhoto(previousPhoto, photoPath);
+      await applyChronicleSync(elder.id, planChronicleSync(chronicles, v.memories), {
+        upsert: upsertChronicle,
+        remove: deleteChronicle,
       });
-
-      // 사진을 바꿨으면 이전 파일을 지운다 — 프로필 저장이 끝난 뒤에 지워야
-      // 저장이 실패했을 때 예전 사진이 사라지지 않는다. 정리 실패는 저장을 막지 않는다.
-      if (photoPath && previousPhoto && previousPhoto !== photoPath) {
-        try {
-          await removeElderPhoto(previousPhoto);
-        } catch (e) {
-          console.warn('[giokon] 이전 사진을 지우지 못했습니다.', e);
-        }
-      }
-
-      // 주요 기억 = 연대기 항목. 목록에서 사라진 항목은 삭제, 내용이 바뀐 항목은 수정,
-      // 새 항목(new-*)은 추가한다.
-      const keptIds = new Set(v.memories.map((m) => m.key));
-      for (const c of chronicles) {
-        if (!keptIds.has(c.id)) await deleteChronicle({ id: c.id, elderId: elder.id });
-      }
-      for (const m of v.memories) {
-        const content = m.text.trim();
-        const existing = chronicles.find((c) => c.id === m.key);
-        if (existing) {
-          if (content && content !== existing.content) {
-            await upsertChronicle({ id: existing.id, elderId: elder.id, topic: existing.topic, content, keywords: existing.keywords });
-          } else if (!content) {
-            await deleteChronicle({ id: existing.id, elderId: elder.id });
-          }
-        } else if (content) {
-          await upsertChronicle({ elderId: elder.id, topic: KEY_MEMORY_TOPIC, content, keywords: [] });
-        }
-      }
       router.back();
     } catch (e) {
       Alert.alert('저장 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
