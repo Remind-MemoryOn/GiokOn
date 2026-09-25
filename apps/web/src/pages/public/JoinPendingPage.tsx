@@ -79,8 +79,15 @@ export function JoinPendingPage() {
   async function submitCode() {
     if (!code.trim()) return toast('error', '기관 관리자에게 받은 초대 코드를 입력해 주세요.');
     try {
-      await requestJoin.mutateAsync(code);
+      const request = await requestJoin.mutateAsync(code);
       setCode('');
+      // 운영자가 준 관리자 코드는 승인 없이 바로 합류한다(A안 2026-09-25) — 대기 화면에 머물 이유가 없다.
+      if (request?.status === 'approved') {
+        const row = await refreshUserRow();
+        toast('success', '기관에 합류했어요.');
+        navigate(routeForUser(row), { replace: true });
+        return;
+      }
       toast('success', '합류를 요청했어요. 승인을 기다려 주세요.');
     } catch (error) {
       toast('error', orgJoinErrorMessage(error, '합류를 요청하지 못했어요.'));

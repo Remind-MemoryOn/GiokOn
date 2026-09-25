@@ -9,7 +9,7 @@ insert into auth.users(id,email,raw_user_meta_data) values
  ('91919191-9191-4191-8191-919191919191','provenance@example.invalid','{}');
 set local role authenticated;
 set local test.uid='91919191-9191-4191-8191-919191919191';
-select public.complete_onboarding('Test','010-1234-5678','caregiver','Test',null,array['privacy_required'],'v1.0',true);
+select public.complete_onboarding('Test','010-1234-5678','caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('Test'));
 do $$
 declare pid uuid; sid uuid; lid uuid; saved jsonb; retried jsonb; history jsonb; rejected boolean;
 begin

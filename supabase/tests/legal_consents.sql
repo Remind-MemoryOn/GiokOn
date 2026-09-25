@@ -22,17 +22,14 @@ do $$
 declare blocked boolean := false;
 begin
   perform set_config('test.uid', 'c0000000-0000-0000-0000-000000000001', true);
-  perform public.complete_onboarding('약관가입자', '010-1000-0001', 'caregiver', '약관요양원', null,
-    array['terms_required','privacy_required'], 'v1.0', true);
+  perform public.complete_onboarding('약관가입자', '010-1000-0001', 'caregiver', null, null, array['terms_required','privacy_required'], 'v1.0', true, public.test_admin_code('약관요양원'));
 
   perform set_config('test.uid', 'c0000000-0000-0000-0000-000000000002', true);
-  perform public.complete_onboarding('옛웹가입자', '010-1000-0002', 'caregiver', '옛웹요양원', null,
-    array['privacy_required'], 'v1.0', true);
+  perform public.complete_onboarding('옛웹가입자', '010-1000-0002', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('옛웹요양원'));
 
   perform set_config('test.uid', 'c0000000-0000-0000-0000-000000000003', true);
   begin
-    perform public.complete_onboarding('잘못된가입자', '010-1000-0003', 'caregiver', '잘못요양원', null,
-      array['terms_required','privacy_required','ai_processing'], 'v1.0', true);
+    perform public.complete_onboarding('잘못된가입자', '010-1000-0003', 'caregiver', null, null, array['terms_required','privacy_required','ai_processing'], 'v1.0', true, public.test_admin_code('잘못요양원'));
   exception when others then blocked := true;
   end;
   assert blocked, '계정 동의 목록 밖의 종류(ai_processing)는 온보딩에서 거부돼야 함';

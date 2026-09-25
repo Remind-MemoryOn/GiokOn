@@ -3,6 +3,7 @@
 import { serverErrorMessage } from './serverErrors';
 
 const MESSAGES: Record<string, string> = {
+  ORG_INVITE_REQUIRED: '요양보호사는 기관에서 받은 초대 코드로 가입해요. 기관 관리자(또는 기억온 운영팀)에게 코드를 받아 주세요.',
   ORG_INVITE_INVALID: '초대 코드가 맞지 않거나 만료·회수된 코드예요. 기관 관리자에게 새 코드를 받아 주세요.',
   ORG_JOIN_PENDING: '이미 승인을 기다리는 합류 요청이 있어요.',
   ORG_JOIN_FORBIDDEN: '지금 계정 상태에서는 합류를 요청할 수 없어요.',

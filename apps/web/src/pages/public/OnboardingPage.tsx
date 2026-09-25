@@ -2,14 +2,17 @@
 //   제목 SemiBold 25/30 @ (591,194) · 부제 Regular 18 @ (481,232)
 //   역할 카드 275×128 r10 @ (432,320)/(733,320) — 라디오 25 + 제목 SemiBold 20 + 설명 16/22
 //   입력 576×57 r10 @ 이름 508 · 전화번호 652 · 소속 기관명 798 (라벨 Medium 20 · 힌트 16)
+//   ⚠️ 798 칸은 시안의 '소속 기관명'이 아니라 **초대 코드**다(아래 A안) — 좌표·치수는 시안 그대로.
 //   동의 박스 576×151 @ 916 · 가입 완료 576×71 accent @ 1106
 //
 // ⚠️ 이 프레임의 공개 헤더 좌표만 다른 공개 화면(랜딩·로그인)과 다르다(워드마크 63 vs 130).
 //    Figma 자체 불일치라 다수(2/3)를 따르는 PublicHeader 로 통일한다.
 //
-// 파일럿 W9 — 요양보호사는 **새 기관 만들기 / 초대 코드로 합류** 중 하나를 고른다. 시안에 없는 선택이라
-// 좌표는 하나도 옮기지 않고, '소속 기관명' 라벨 줄 오른쪽의 전환 링크와 같은 칸의 입력 내용만 바꾼다.
-// 합류는 가입만 끝내고 기관·역할은 관리자·센터장 승인 전까지 정하지 않는다(→ /join-pending).
+// A안(사용자 확정 2026-09-25) — 요양보호사는 **초대 코드로만** 가입한다. 기관은 운영자가 만든다(app.provision_org).
+// 예전엔 기관명을 입력할 때마다 기관이 새로 생겨 같은 기관이 둘로 갈렸다(운영 '선문대학교' 2개 → 병합).
+//   · 운영자가 준 **관리자 코드** → 가입 즉시 그 기관의 기관 관리자
+//   · 기관이 준 **직원 코드** → 가입만 끝나고 관리자·센터장 승인 전까지 대기(→ /join-pending)
+// 시안(15:444)의 '소속 기관명' 칸 자리·치수는 그대로 두고 내용만 초대 코드로 바꿨다(사용자 확정 — 시안과 다름).
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { completeOnboarding } from '@giokon/data';
@@ -28,7 +31,7 @@ const ROLES: { key: Role; title: string; lines: [string, string]; left: number; 
   {
     key: 'caregiver',
     title: '요양보호사',
-    lines: ['어르신·세션·일지를 관리해요.', '소속 기관명을 입력합니다.'],
+    lines: ['어르신·세션·일지를 관리해요.', '초대 코드로 기관에 합류해요.'],
     left: 432,
     fx: '25:382',
   },
@@ -117,8 +120,6 @@ export function OnboardingPage() {
   const [role, setRole] = useState<Role>('caregiver');
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
-  const [orgName, setOrgName] = useState('');
-  const [joinMode, setJoinMode] = useState<'new' | 'invite'>('new');
   const [inviteCode, setInviteCode] = useState('');
   const [elderCode, setElderCode] = useState('');
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
@@ -138,8 +139,7 @@ export function OnboardingPage() {
     if (!isConfigured) return;
     if (!name.trim()) return toast('error', '이름을 입력해 주세요.');
     if (!phone.trim()) return toast('error', '전화번호를 입력해 주세요.');
-    const joining = role === 'caregiver' && joinMode === 'invite';
-    if (role === 'caregiver' && !joining && !orgName.trim()) return toast('error', '소속 기관명을 입력해 주세요.');
+    const joining = role === 'caregiver';
     if (joining && !inviteCode.trim()) return toast('error', '기관 관리자에게 받은 초대 코드를 입력해 주세요.');
     if (!termsAgreed || !privacyAgreed || (isSocialAccount && !socialAgreed)) return toast('error', '필수 동의 항목에 체크해 주세요.');
 
@@ -149,7 +149,6 @@ export function OnboardingPage() {
         name: name.trim(),
         phone: phone.trim(),
         role,
-        orgName: role === 'caregiver' && !joining ? orgName.trim() : undefined,
         inviteCode: joining ? inviteCode.trim() : undefined,
         elderCode: role === 'guardian' ? elderCode.trim() || undefined : undefined,
         // 계정 필수 동의를 consents 에 기록한다(C2 — 이전에는 UI 게이트만으로 미기록).
@@ -158,9 +157,10 @@ export function OnboardingPage() {
         socialAcknowledged: isSocialAccount ? socialAgreed : true,
       });
       const row = await refreshUserRow();
+      // 관리자 코드는 바로 기관에 들어가고(org_id 있음), 직원 코드는 승인을 기다린다(org_id 없음).
       toast(
         'success',
-        joining ? '가입이 완료됐어요. 기관 관리자의 합류 승인을 기다려 주세요.' : '가입이 완료됐어요. 환영해요!',
+        joining && !row?.org_id ? '가입이 완료됐어요. 기관 관리자의 합류 승인을 기다려 주세요.' : '가입이 완료됐어요. 환영해요!',
       );
       navigate(routeForUser(row), { replace: true });
     } catch (err) {
@@ -259,26 +259,16 @@ export function OnboardingPage() {
           fx={['25:404', '25:405', '25:407']}
           inputProps={{ type: 'tel', autoComplete: 'tel' }}
         />
-        {role === 'caregiver' && joinMode === 'invite' ? (
+        {role === 'caregiver' ? (
           <FieldAt
             label="초대 코드"
             at={[763.61, 529, 756, 797.64, 862.69]}
             value={inviteCode}
             onChange={(v) => setInviteCode(v.toUpperCase())}
-            placeholder="기관 관리자에게 받은 코드"
-            hint="관리자·센터장이 승인하면 그 기관의 어르신 기록을 함께 보게 됩니다. 승인 전에는 대기 화면만 보여요."
+            placeholder="기관에서 받은 초대 코드"
+            hint="기관 관리자(또는 기억온 운영팀)에게 받은 코드를 입력해 주세요."
             fx={['25:415', '25:416', '25:418']}
             inputProps={{ autoComplete: 'off', spellCheck: false }}
-          />
-        ) : role === 'caregiver' ? (
-          <FieldAt
-            label="소속 기관명"
-            at={[763.61, 529, 756, 797.64, 862.69]}
-            value={orgName}
-            onChange={setOrgName}
-            placeholder="예: 햇살 요양원"
-            hint="근무하시는 기관(요양원·복지관) 이름을 입력해 주세요."
-            fx={['25:415', '25:416', '25:418']}
           />
         ) : (
           <FieldAt
@@ -291,18 +281,6 @@ export function OnboardingPage() {
             fx={['25:415', '25:416', '25:418']}
           />
         )}
-        {role === 'caregiver' ? (
-          // 새 기관 / 초대 코드 합류 전환 — 라벨 줄 오른쪽(입력 칸 오른쪽 끝 1008 에 맞춤). 상세보기 링크와 같은 글꼴·색.
-          <button
-            type="button"
-            onClick={() => setJoinMode((m) => (m === 'new' ? 'invite' : 'new'))}
-            aria-pressed={joinMode === 'invite'}
-            className="absolute left-[788px] w-[220px] text-right text-w-label leading-[21px] text-[#8a8a8a] underline"
-            style={{ top: Y(765) }}
-          >
-            {joinMode === 'new' ? '초대 코드로 합류하기' : '새 기관 만들기로 돌아가기'}
-          </button>
-        ) : null}
 
         {/* 회원가입 필수 동의: 약관과 개인정보 동의를 분리해 각각 확인한다. */}
         <div

@@ -187,7 +187,10 @@ export interface OnboardingParams {
   name: string
   phone: string
   role: 'caregiver' | 'guardian'
-  /** 요양보호사: 신규 기관 생성 시 기관명. `inviteCode` 와 둘 중 하나. */
+  /**
+   * ⚠️ 더 이상 쓰지 않는다(2026-09-25 A안 — 기관은 운영자가 만든다). 값을 주면 서버가 `ORG_INVITE_REQUIRED` 로 거부한다.
+   * RPC 시그니처 호환을 위해 필드만 남겨 둔다.
+   */
   orgName?: string
   /**
    * 요양보호사: 기관 초대 코드로 합류(파일럿 D3). 가입은 끝나되 **승인 전까지 org_id 가 NULL** —
@@ -207,7 +210,7 @@ export interface OnboardingParams {
 
 /**
  * 온보딩 회원가입 확정(RPC complete_onboarding).
- * 요양보호사=새 기관 생성+org_admin / 보호자=guardian(+어르신 코드 연결).
+ * 요양보호사=초대 코드로 합류(운영자 관리자 코드면 즉시 org_admin, 직원 코드면 승인 대기) / 보호자=guardian(+어르신 코드 연결).
  * 반환: 갱신된 users row(역할 라우팅에 사용).
  */
 export async function completeOnboarding(params: OnboardingParams): Promise<UserRow> {

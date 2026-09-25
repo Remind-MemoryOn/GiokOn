@@ -242,8 +242,11 @@ const SCREENS = [
     /if \(isAwaitingOrgJoin\(userRow\)\) return <Navigate to="\/join-pending" replace \/>;/,
     /<Route path="\/join-pending" element=\{<JoinPendingPage \/>\} \/>/,
   ]],
-  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 새 기관 / 초대 코드 합류 선택(좌표 불변)', [
-    /inviteCode: joining \? inviteCode\.trim\(\) : undefined/, /초대 코드로 합류하기/,
+  // A안(사용자 확정 2026-09-25): 요양보호사는 초대 코드로만 가입 — 기관은 운영자가 만든다(app.provision_org).
+  // 시안 15:444 의 '소속 기관명' 칸 자리(798)는 그대로, 내용만 초대 코드. 기관명으로 새 기관을 만드는 경로가 되살아나면 안 된다.
+  [`${WEB}/src/pages/public/OnboardingPage.tsx`, '온보딩: 요양보호사는 초대 코드로만 가입(좌표 불변 · 기관명 입력 없음)', [
+    /const joining = role === 'caregiver';/, /inviteCode: joining \? inviteCode\.trim\(\) : undefined/, /label="초대 코드"/,
+    { absent: /orgName:/ }, { absent: /label="소속 기관명"/ }, { absent: /새 기관 만들기/ },
   ]],
     [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리(W6): 관리 역할 = 관리자+센터장 · 직원 합류 승인은 전체 열람 확인 후 · 초대 발급·회수', [
     /const isManager = isOrgManagerRole\(me\.data\?\.role\)/, /이 기관의 모든 어르신 기록을 볼 수 있습니다/,

@@ -61,11 +61,11 @@ end $$;
 -- 온보딩(요양보호사) — 기관 생성 + org_admin.
 set role authenticated;
 set test.uid = '11111111-1111-1111-1111-111111111111';
-select public.complete_onboarding('기관A관리자', '010-1111-2222', 'caregiver', 'A요양원', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('기관A관리자', '010-1111-2222', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('A요양원'));
 set test.uid = '22222222-2222-2222-2222-222222222222';
-select public.complete_onboarding('기관B관리자', '010-2222-3333', 'caregiver', 'B요양원', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('기관B관리자', '010-2222-3333', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('B요양원'));
 set test.uid = '33333333-3333-3333-3333-333333333333';
-select public.complete_onboarding('기관A요양보호사', '010-3333-4444', 'caregiver', '임시기관C', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('기관A요양보호사', '010-3333-4444', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('임시기관C'));
 reset role;
 
 -- 요양보호사 C 를 기관 A 소속(role=caregiver)으로 이동(기관 합류 초대는 후속 — 모사).
@@ -382,7 +382,7 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('66666666-6666-6666-6666-666666666666', 'd@x.kr', '{"name":"요양보호사D"}');
 set role authenticated;
 set test.uid = '66666666-6666-6666-6666-666666666666';
-select public.complete_onboarding('요양보호사D', '010-6666-7777', 'caregiver', 'D요양원', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('요양보호사D', '010-6666-7777', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('D요양원'));
 do $$ begin
   assert (select role from public.users where id = '66666666-6666-6666-6666-666666666666') = 'org_admin',
     '기관명으로 온보딩한 요양보호사는 org_admin 이어야 함';

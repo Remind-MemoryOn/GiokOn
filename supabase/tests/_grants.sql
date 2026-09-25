@@ -95,3 +95,10 @@ grant usage on schema auth to authenticated;
 grant execute on all functions in schema auth to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
+
+-- 테스트 전용: 운영자처럼 기관을 만들고 관리자 코드를 돌려준다(A안 2026-09-25 — 온보딩은 초대 코드로만 합류).
+-- app.provision_org 는 authenticated 에게 닫혀 있어, `set role authenticated` 상태의 픽스처가 부를 수 있게 definer 로 감싼다.
+create or replace function public.test_admin_code(p_name text) returns text
+language sql security definer set search_path = public
+as $$ select admin_code from app.provision_org(p_name) $$;
+grant execute on function public.test_admin_code(text) to authenticated;

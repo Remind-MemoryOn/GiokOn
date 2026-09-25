@@ -29,17 +29,17 @@ insert into auth.users (id, email, raw_user_meta_data) values
 
 set role authenticated;
 set test.uid = 'a0000000-0000-0000-0000-000000000001';
-select public.complete_onboarding('PA관리자', '010-0000-0001', 'caregiver', '파일럿A요양원', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('PA관리자', '010-0000-0001', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('파일럿A요양원'));
 set test.uid = 'a0000000-0000-0000-0000-000000000005';
-select public.complete_onboarding('PB관리자', '010-0000-0005', 'caregiver', '파일럿B요양원', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('PB관리자', '010-0000-0005', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('파일럿B요양원'));
 set test.uid = 'a0000000-0000-0000-0000-000000000002';
-select public.complete_onboarding('PA요양보호사', '010-0000-0002', 'caregiver', '임시2', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('PA요양보호사', '010-0000-0002', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('임시2'));
 set test.uid = 'a0000000-0000-0000-0000-000000000003';
-select public.complete_onboarding('PA직원', '010-0000-0003', 'caregiver', '임시3', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('PA직원', '010-0000-0003', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('임시3'));
 set test.uid = 'a0000000-0000-0000-0000-000000000004';
-select public.complete_onboarding('PA보호자', '010-0000-0004', 'caregiver', '임시4', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('PA보호자', '010-0000-0004', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('임시4'));
 set test.uid = 'a0000000-0000-0000-0000-000000000006';
-select public.complete_onboarding('PA관리자2', '010-0000-0006', 'caregiver', '임시6', null, array['privacy_required'], 'v1.0', true);
+select public.complete_onboarding('PA관리자2', '010-0000-0006', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, public.test_admin_code('임시6'));
 reset role;
 set test.uid = '';
 
@@ -275,10 +275,21 @@ select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000013',
   format($q$select public.complete_onboarding('합류3', '010-0000-0013', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, %L)$q$, (select code from pilot_invite_revoked)), 'ORG_INVITE_INVALID');
 select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000013',
   $q$select public.complete_onboarding('합류3', '010-0000-0013', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, 'NOSUCHCODE')$q$, 'ORG_INVITE_INVALID');
--- 새 기관명과 초대 코드를 함께 주면 거부
+-- A안(2026-09-25): 기관은 운영자만 만든다 — 기관명을 주면(코드와 함께여도) 거부, 코드 없이도 거부.
 select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000013',
   format($q$select public.complete_onboarding('합류3', '010-0000-0013', 'caregiver', '새기관', null, array['privacy_required'], 'v1.0', true, %L)$q$, (select code from pilot_invite)),
-  '새 기관 만들기와 초대 코드 합류 중 하나만 선택해 주세요');
+  'ORG_INVITE_REQUIRED');
+select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000013',
+  $q$select public.complete_onboarding('합류3', '010-0000-0013', 'caregiver', '새기관', null, array['privacy_required'], 'v1.0', true)$q$,
+  'ORG_INVITE_REQUIRED');
+select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000013',
+  $q$select public.complete_onboarding('합류3', '010-0000-0013', 'caregiver', null, null, array['privacy_required'], 'v1.0', true)$q$,
+  'ORG_INVITE_REQUIRED');
+-- 운영자 함수는 사용자에게 닫혀 있다.
+select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000001',
+  $q$select * from app.provision_org('몰래기관')$q$, 'permission denied for function provision_org');
+select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000001',
+  $q$select app.issue_admin_code((select org_id from public.users where id = auth.uid()))$q$, 'permission denied for function issue_admin_code');
 
 -- 정상 합류 요청 두 건
 set test.uid = 'a0000000-0000-0000-0000-000000000011';
@@ -311,13 +322,15 @@ end $$;
 -- 승인 전: 요청자는 기관 데이터 0건, 자기 요청만 본다 / 다른 기관 관리자는 요청을 못 본다
 do $$
 declare n_settings int; n_req int; n_other int;
+  pa uuid := (select org_id from public.users where id = 'a0000000-0000-0000-0000-000000000001');
 begin
   set role authenticated;
   perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000011', true);
   select count(*) into n_settings from public.org_settings;
   select count(*) into n_req from public.org_join_requests;
   perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000005', true);
-  select count(*) into n_other from public.org_join_requests;
+  -- PA 의 요청만 센다(PB 관리자 자신도 운영자 관리자 코드로 합류해 자기 요청 1건이 있다 — A안 2026-09-25).
+  select count(*) into n_other from public.org_join_requests where org_id = pa;
   reset role;
   assert n_settings = 0, '승인 전 합류 요청자는 기관 데이터를 볼 수 없어야 함';
   assert n_req = 1, '요청자는 자기 요청만 봐야 함';
@@ -852,6 +865,38 @@ do $$
 begin
   assert (select read_at from public.notifications where title = '테스트 알림') is not null, '읽음 처리는 계속 가능해야 함';
   assert (select pushed_at from public.notifications where title = '테스트 알림') is null, 'pushed_at 은 비어 있어야 함';
+end $$;
+
+-- A안: 운영자 관리자 코드 — 승인 없이 바로 org_admin, 1회용, 기관 1개만 생긴다.
+reset role;
+create temp table pilot_admin_code as select * from app.provision_org('운영자등록요양원');
+grant select on pilot_admin_code to authenticated;
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('a0000000-0000-0000-0000-000000000021', 'op-admin@z.kr', '{"name":"운영등록관리자"}'),
+  ('a0000000-0000-0000-0000-000000000022', 'op-admin2@z.kr', '{"name":"두번째"}');
+do $$
+begin
+  assert (select count(*) from public.organizations where name = '운영자등록요양원') = 1, 'provision_org 는 기관 1개를 만들어야 함';
+  assert (select count(*) from public.org_settings where org_id = (select org_id from pilot_admin_code)) = 1, '새 기관 설정이 시드돼야 함';
+  assert (select auto_approve and role = 'org_admin' and created_by is null from public.org_invites
+          where code = (select admin_code from pilot_admin_code)), '관리자 코드는 운영자 발급(auto_approve·org_admin)이어야 함';
+end $$;
+set role authenticated;
+set test.uid = 'a0000000-0000-0000-0000-000000000021';
+select public.complete_onboarding('운영등록관리자', '010-0000-0021', 'caregiver', null, null, array['privacy_required'], 'v1.0', true,
+  (select admin_code from pilot_admin_code));
+select pg_temp.expect_sqlerrm('a0000000-0000-0000-0000-000000000022',
+  $q$select public.complete_onboarding('두번째', '010-0000-0022', 'caregiver', null, null, array['privacy_required'], 'v1.0', true, (select admin_code from pilot_admin_code))$q$,
+  'ORG_INVITE_INVALID');
+reset role;
+do $$
+declare u public.users;
+begin
+  select * into u from public.users where id = 'a0000000-0000-0000-0000-000000000021';
+  assert u.org_id = (select org_id from pilot_admin_code) and u.role = 'org_admin', '관리자 코드 가입은 바로 그 기관의 org_admin 이어야 함';
+  assert (select status = 'approved' and decided_by is null from public.org_join_requests where user_id = u.id), '자동 승인 요청은 approved(결정자 없음)여야 함';
+  assert (select revoked_at is not null from public.org_invites where code = (select admin_code from pilot_admin_code)), '관리자 코드는 1회용이어야 함';
+  assert (select org_id is null from public.users where id = 'a0000000-0000-0000-0000-000000000022'), '두 번째 사용자는 합류하지 않아야 함';
 end $$;
 
 select 'pilot access assertions passed' as result;
