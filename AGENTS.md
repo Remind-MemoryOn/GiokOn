@@ -320,6 +320,15 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
 - core: `generated-session` 선택 섹션(participantResponse·opinion·guardianText — 배포된 `session-report` 캐시와 호환) + 금지어(인지 저하·우울·정서 불안·진료 권유). `program-journal.ts`(매핑·칸 단위 차단·보호자 문장).
 - ⏳ 남은 것(서버 파트): C4 `program-journal-draft` 워커(큐 소비 → 이 core 함수로 칸 채움 → pending_review) · `session-report` 허용목록 → 기관 게이트(T20.5).
 
+### 이어서 — 앱 리팩토링(2026-09-25 사용자 지시, **외부 동작·공개 이름·반환 형식·오류 메시지 불변 · 의존성 추가 없음**)
+
+- 결정: 범위 = `apps/mobile` 만 · 아무도 안 쓰는 export/파일은 제거 · Figma 게이트가 파일 경로로 고정한 문구는 **제자리 유지**(규칙 경로 안 바꿈) ·
+  **비동기 핵심(`src/lib/live/*` — 연결·엔진·자동 대화·재생)은 대상에서 제외**(사용자 명시).
+- 단계: 1 죽은 코드 제거 → 2 중복 통합(시간 포맷 `hhmm`/`hhmmLabel`, `social.ts` 내부 헬퍼) → 3 `Talk` 책임 분리(같은 파일 안) → 4 나머지 화면.
+- ✅ 1단계: `components/ui.tsx`·`AppHeader.tsx`·`decor.tsx`(import 0) 삭제, 사용처 0 인 `RADIUS`·`hasWebUrl`·`ToneBar` 삭제,
+  파일 안에서만 쓰는 값 export 9개에서 `export` 만 제거. 타입 export 는 공개 함수 시그니처를 설명하므로 유지. 게이트에 이름이 박힌
+  `MAX`·`FORM`·`HEADER_TABS_H` 는 손대지 않음. 검증: typecheck·lint·test 264·check:figma 174·copy·font·bom·design·Android export.
+
 ## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
 
 > PR #14(A1~A5·B1~B9) 머지 뒤, 사용자 지시 "다음 테스크" = 남은 유일한 앱 테스크 **M6**. 선행 D7 을 같은 방식(로컬 검증만)으로 함께 했다.

@@ -21,7 +21,7 @@ function keyFor(userId: string): string {
   return `giokon.caregiverPin.${userId}`;
 }
 
-export function isValidPin(pin: string): boolean {
+function isValidPin(pin: string): boolean {
   return PIN_RE.test(pin);
 }
 

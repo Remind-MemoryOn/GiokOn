@@ -4,4 +4,3 @@
 import { figma } from '@giokon/theme';
 
 export const C = figma.color;
-export const RADIUS = figma.radius;

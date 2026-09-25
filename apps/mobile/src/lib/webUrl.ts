@@ -23,6 +23,3 @@ export const WEB_ROUTES = {
 export function webUrl(path: string): string | null {
   return BASE ? `${BASE}${path}` : null;
 }
-
-/** 웹 주소가 설정돼 있는지. */
-export const hasWebUrl = BASE !== null;

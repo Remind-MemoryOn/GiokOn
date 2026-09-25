@@ -29,7 +29,7 @@ import Svg, { Path } from 'react-native-svg';
 import { daysInMonth, isBirthDate } from '@giokon/core';
 
 /** Figma 실측 상수 — scripts/check-figma-spec.mjs 가 검사한다. */
-export const CAL = {
+const CAL = {
   width: 318,
   pad: 16,
   inner: 286, // 318 - 16*2

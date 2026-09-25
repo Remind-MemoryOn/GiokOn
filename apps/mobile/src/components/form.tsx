@@ -44,7 +44,7 @@ import iconPhotoEdit from '../../assets/brand/icon-photo-edit.png';
  * 다른 필드(이름 10·가족 25·직업 30·취미 30)와 달리 Figma 에 카운터가 없어 상한 표시는
  * 하지 않지만, 넘겨서 입력하면 저장 시 날것의 DB 오류가 뜨므로 입력 단계에서 막는다.
  */
-export const MEMORY_MAX = 2000;
+const MEMORY_MAX = 2000;
 
 /** Figma 폼 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다. */
 export const FORM = {
@@ -68,7 +68,7 @@ const valueClass = 'text-[18px] font-normal text-black';
 const valueStyle = { lineHeight: 30, padding: 0 } as const;
 
 // ── 라벨 ──────────────────────────────────────────────────────
-export function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
+function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
   return (
     <View className="flex-row items-start">
       <Text className="text-[20px] font-semibold text-black" style={{ lineHeight: 30 }}>
