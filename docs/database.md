@@ -115,6 +115,14 @@
   동의 버전 단일화 `app.current_consent_version()`(D10).
 - ⚠️ **출석 테이블은 만들지 않는다**(ERP 영역). 주간보호 제공 여부는 `program_journals` 행 유무 + `delivered`/`non_delivery_reason` 로만 표현한다.
 
+## 기관 만들기 · 합류 (2026-09-25 A안)
+
+- 기관은 **운영자만** 만든다: `select * from app.provision_org('기관 이름');` → `(org_id, admin_code, expires_at)`.
+  `admin_code` 로 가입한 사람은 승인 없이 즉시 그 기관의 `org_admin`(코드 1회용 · `org_invites.auto_approve`).
+  추가 관리자·재발급: `select app.issue_admin_code('<org_id>', 14);`. 두 함수는 anon·authenticated 실행 불가.
+- 요양보호사 온보딩(`complete_onboarding`)은 초대 코드가 필수다 — 코드 없이·기관명으로는 `ORG_INVITE_REQUIRED`.
+- 직원 초대 코드(`create_org_invite`)는 기관 관리자·센터장이 만들고, 합류는 승인(`approve_org_join`)으로 끝난다.
+
 ## Access Model
 
 대부분의 요청은 클라이언트가 **supabase-js로 직접** 수행한다. 인증된 사용자의 JWT가 자동 첨부되고, RLS가 각 행의 소유자(`user_id = auth.uid()`)를 검증한다.
