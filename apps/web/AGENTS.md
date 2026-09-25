@@ -177,6 +177,13 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 - **알림(toast) 문구는 해요체 + '해 주세요'**(2026-09-25 사용자 확정). Figma 문구(placeholder 등)와 서버 원문(`e.message`)은 대상이 아니다.
 - 동의서 전문 경로는 `lib/consentDocuments.ts` `CONSENT_DOCUMENT_PATH` 하나를 쓴다(화면마다 표를 두다 값이 어긋났다).
 - 시안에 없는 사이드바 메뉴의 아이콘은 새로 그리지 않고 **시안 글리프를 다시 칠해** 만든다(`scripts/crop-web-figma-assets.py` `RECOLOR` — 감독 = 눈).
+- **공용 모듈(2026-09-25 리팩토링) — 같은 일을 화면에서 다시 짜지 말고 이것을 쓴다**:
+  `lib/figmaY` `Y`(Figma 절대 y → 본문 좌표) · `lib/format` `dayKey`·`secondsParts` · `lib/elderProfile` `useElderProfile` ·
+  `lib/shareViewed` `useMarkShareViewedOnce`(보호자 열람 1회) · `lib/serverErrors` `serverErrorMessage`(오류 코드 → 문구 본체) ·
+  `lib/myName` `useMyNameForm` · `lib/consents` `currentConsentOf`(⛔ 동의 완료 판정은 여기 하나 — DB 판정과 같아야 한다)·
+  `elderConsentGrant`·`consentSaveError` · `lib/consentDocuments` `CONSENT_DOCUMENT_PATH`.
+  ⚠️ `check:design` 이 소스 문자열로 고정한 표현(예: `LandingPage` 의 `const Y`, `OrgForm` 의 `org.data?.id ?? '—'`)은
+  리팩토링에서도 **제자리에 둔다**(사용자 확정 A안) — 게이트를 코드에 맞춰 고치지 않는다.
 - RLS 가 최종 방어선이다. 화면에서 감추는 것으로 접근통제를 대신하지 않는다.
 - **보호자는 "공개된 분석에 매달린" 세션만 읽는다**(2026-09-06, `app.is_session_shared_to_me`).
   승인된 연결 + 그 어르신 + **그 세션의 분석이 미철회 공개**, 셋을 다 만족할 때만 열린다.

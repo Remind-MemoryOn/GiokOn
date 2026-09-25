@@ -291,6 +291,16 @@
 
 ✅ **2026-09-24 해소**: WT2~WT5 가 쓰는 RPC·테이블(`20260924*`)이 **운영에 적용됐다**(위 Supabase 절). 웹은 이제 운영 DB 기준으로 붙여도 된다.
 
+#### 2026-09-25 웹 리팩토링(추천안 1~5단계 · D1~D11 병합 뒤 별도 PR)
+외부 동작·공개 이름·반환 형식·오류 문구 불변, 의존성 추가 없음, 게이트 고정 코드는 제자리(A안), W1 교체 대상(일지 목록·작성) 제외.
+① 미사용 제거(`lib/consents` 구판·`CardHeader/Title/Description`·`react.svg`·역할 라벨 별칭) ② `Y`·`dayKey`·`secondsParts` 한 곳
+③ `useElderProfile`(13화면)·`useMarkShareViewedOnce`·`serverErrorMessage`·`useMyNameForm` ④ 동의 판정·저장 입력 `lib/consents`
+⑤ `AppShell` 훅 3개 · `SupervisionPage` `SessionCard` · `OrgForm` 승인 대기 훅 2개.
+검증(단계마다): 게이트 수치 불변 + **렌더 DOM 66화면이 리팩토링 전과 동일** + 클릭 시나리오 30상태를 리팩토링 전 빌드와 비교해 동일.
+하지 않은 것: `stamp()` 두 벌(출력이 서로 다름) · 랜딩 원본 PNG 2장(크롭 스크립트 산출물) · 기관 관리 카드 컴포넌트화(좌표가 카드 사이에 이어짐).
+🐞 **발견한 버그(별도 수정 필요)**: 기관 관리 초대 코드 '복사'는 `navigator.clipboard` 가 없는 환경(비보안 http 등)에서 **알림 없이 예외만** 난다
+(어르신 상세의 코드 복사는 try/catch 로 실패 알림을 띄운다). 리팩토링은 동작을 바꾸지 않으므로 고치지 않았다.
+
 ### 09-23 웹 전수 점검에서 넘어온 열린 항목
 ① `apps/web/supabase/config.toml`(`project_id="web"`) 삭제 여부 — 사용자 결정 · ② LLM 일지 흐름 자동 회귀 없음(`report-flow-smoke.mjs` 는 msedge 전용 —
 W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다) · ③ `test:auth` 원격 실행 불가(`executablePath` 미지정) ·
