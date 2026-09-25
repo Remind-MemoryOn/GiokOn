@@ -18,27 +18,64 @@ const redirectTo = makeRedirectUri({ scheme: 'giokon', path: 'auth/callback' });
 
 export type SocialResult = { ok: true } | { ok: false; canceled: boolean };
 
-function callbackParams(urlStr: string): URLSearchParams {
-  const u = new URL(urlStr);
+type Provider = 'google' | 'kakao' | 'naver';
+type AuthClient = ReturnType<typeof getGiokonClient>;
+
+function callbackParams(u: URL): URLSearchParams {
   const fromQuery = u.searchParams;
   if (fromQuery.get('code') || fromQuery.get('access_token')) return fromQuery;
   // 암시적 플로우는 프래그먼트(#access_token=…)로 온다.
   return new URLSearchParams(u.hash.startsWith('#') ? u.hash.slice(1) : u.hash);
 }
 
-/** 구글·카카오 — Supabase 네이티브 OAuth(PKCE). */
-let oauthInFlight: { provider: 'google' | 'kakao' | 'naver'; promise: Promise<SocialResult> } | null = null;
+let oauthInFlight: { provider: Provider; promise: Promise<SocialResult> } | null = null;
 
-export function signInWithSupabaseProvider(provider: 'google' | 'kakao'): Promise<SocialResult> {
-  // 두 브라우저가 같은 PKCE verifier를 덮어쓰거나 코드를 중복 교환하지 않게 한다.
+/**
+ * 로그인은 한 번에 하나만 — 두 브라우저가 같은 PKCE verifier를 덮어쓰거나 코드를 중복
+ * 교환하지 않게 한다. 같은 공급자를 다시 누르면 진행 중인 요청을 그대로 돌려준다.
+ */
+function singleFlight(provider: Provider, run: () => Promise<SocialResult>): Promise<SocialResult> {
   if (oauthInFlight) {
     return oauthInFlight.provider === provider
       ? oauthInFlight.promise
       : Promise.reject(new Error('진행 중인 로그인을 먼저 완료해 주세요.'));
   }
-  const promise = completeSupabaseSignIn(provider).finally(() => { oauthInFlight = null; });
+  const promise = run().finally(() => { oauthInFlight = null; });
   oauthInFlight = { provider, promise };
   return promise;
+}
+
+/**
+ * 시스템 브라우저로 인증을 열고 복귀 URL 이 앱 콜백 주소와 정확히 같은지 확인한다.
+ * 사용자가 닫으면 null(취소).
+ */
+async function openAuthCallback(authUrl: string): Promise<URL | null> {
+  const res = await WebBrowser.openAuthSessionAsync(authUrl, redirectTo);
+  if (res.type === 'cancel' || res.type === 'dismiss') return null;
+  if (res.type !== 'success' || !res.url) throw new Error('로그인 결과를 확인하지 못했어요.');
+
+  const callback = new URL(res.url);
+  const expected = new URL(redirectTo);
+  if (callback.protocol !== expected.protocol || callback.host !== expected.host ||
+      callback.pathname !== expected.pathname || callback.username || callback.password) {
+    throw new Error('로그인 콜백 주소가 올바르지 않아요.');
+  }
+  return callback;
+}
+
+async function setSessionFromTokens(
+  client: AuthClient,
+  access_token: string,
+  refresh_token: string,
+): Promise<SocialResult> {
+  const { error } = await client.auth.setSession({ access_token, refresh_token });
+  if (error) throw error;
+  return { ok: true };
+}
+
+/** 구글·카카오 — Supabase 네이티브 OAuth(PKCE). */
+export function signInWithSupabaseProvider(provider: 'google' | 'kakao'): Promise<SocialResult> {
+  return singleFlight(provider, () => completeSupabaseSignIn(provider));
 }
 
 async function completeSupabaseSignIn(
@@ -53,16 +90,9 @@ async function completeSupabaseSignIn(
   if (error) throw error;
   if (!data?.url) throw new Error('인증 화면을 시작하지 못했어요.');
 
-  const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (res.type === 'cancel' || res.type === 'dismiss') return { ok: false, canceled: true };
-  if (res.type !== 'success' || !res.url) throw new Error('로그인 결과를 확인하지 못했어요.');
+  const callback = await openAuthCallback(data.url);
+  if (!callback) return { ok: false, canceled: true };
 
-  const callback = new URL(res.url);
-  const expected = new URL(redirectTo);
-  if (callback.protocol !== expected.protocol || callback.host !== expected.host ||
-      callback.pathname !== expected.pathname || callback.username || callback.password) {
-    throw new Error('로그인 콜백 주소가 올바르지 않아요.');
-  }
   const fragment = new URLSearchParams(callback.hash.slice(1));
   if (callback.searchParams.has('error') || callback.searchParams.has('error_description') ||
       fragment.has('error') || fragment.has('error_description')) {
@@ -70,7 +100,7 @@ async function completeSupabaseSignIn(
     throw new Error('소셜 로그인이 거절되었어요. 다시 시도해 주세요.');
   }
 
-  const params = callbackParams(res.url);
+  const params = callbackParams(callback);
   const code = params.get('code');
   if (code) {
     const { error: exErr } = await client.auth.exchangeCodeForSession(code);
@@ -80,9 +110,7 @@ async function completeSupabaseSignIn(
   const access = params.get('access_token');
   const refresh = params.get('refresh_token');
   if (!access || !refresh) throw new Error('로그인 결과를 확인하지 못했어요.');
-  const { error: sErr } = await client.auth.setSession({ access_token: access, refresh_token: refresh });
-  if (sErr) throw sErr;
-  return { ok: true };
+  return setSessionFromTokens(client, access, refresh);
 }
 
 /**
@@ -90,13 +118,7 @@ async function completeSupabaseSignIn(
  * 네이버 코드는 HTTPS 서버 콜백으로만 받는다. 앱의 verifier로 일회성 교환한다.
  */
 export function signInWithNaver(): Promise<SocialResult> {
-  if (oauthInFlight) {
-    return oauthInFlight.provider === 'naver' ? oauthInFlight.promise
-      : Promise.reject(new Error('진행 중인 로그인을 먼저 완료해 주세요.'));
-  }
-  const promise = completeNaverSignIn().finally(() => { oauthInFlight = null; });
-  oauthInFlight = { provider: 'naver', promise };
-  return promise;
+  return singleFlight('naver', completeNaverSignIn);
 }
 
 async function completeNaverSignIn(): Promise<SocialResult> {
@@ -119,17 +141,9 @@ async function completeNaverSignIn(): Promise<SocialResult> {
   authUrl.search = new URLSearchParams({ mode: 'mobile', redirect_to: redirectTo,
     challenge: request.codeChallenge, app_state: state }).toString();
 
-  const res = await WebBrowser.openAuthSessionAsync(authUrl.toString(), redirectTo);
-  if (res.type === 'cancel' || res.type === 'dismiss') return { ok: false, canceled: true };
-  if (res.type !== 'success' || !res.url) throw new Error('로그인 결과를 확인하지 못했어요.');
-
-  const callback = new URL(res.url);
-  const expected = new URL(redirectTo);
-  if (callback.protocol !== expected.protocol || callback.host !== expected.host ||
-      callback.pathname !== expected.pathname || callback.username || callback.password) {
-    throw new Error('로그인 콜백 주소가 올바르지 않아요.');
-  }
-  const params = callbackParams(res.url);
+  const callback = await openAuthCallback(authUrl.toString());
+  if (!callback) return { ok: false, canceled: true };
+  const params = callbackParams(callback);
   if (params.has('naver_error')) throw new Error('네이버 로그인을 완료하지 못했어요. 다시 시도해 주세요.');
   const transactionId = params.get('transaction_id');
   const returnedState = params.get('state');
@@ -148,10 +162,5 @@ async function completeNaverSignIn(): Promise<SocialResult> {
   if (!json.access_token || !json.refresh_token) {
     throw new Error('세션 발급 응답이 올바르지 않아요.');
   }
-  const { error } = await getGiokonClient().auth.setSession({
-    access_token: json.access_token,
-    refresh_token: json.refresh_token,
-  });
-  if (error) throw error;
-  return { ok: true };
+  return setSessionFromTokens(getGiokonClient(), json.access_token, json.refresh_token);
 }

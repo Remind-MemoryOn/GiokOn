@@ -328,6 +328,10 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
 - ✅ 1단계: `components/ui.tsx`·`AppHeader.tsx`·`decor.tsx`(import 0) 삭제, 사용처 0 인 `RADIUS`·`hasWebUrl`·`ToneBar` 삭제,
   파일 안에서만 쓰는 값 export 9개에서 `export` 만 제거. 타입 export 는 공개 함수 시그니처를 설명하므로 유지. 게이트에 이름이 박힌
   `MAX`·`FORM`·`HEADER_TABS_H` 는 손대지 않음. 검증: typecheck·lint·test 264·check:figma 174·copy·font·bom·design·Android export.
+- ✅ 2단계: 같은 시각 포맷 두 벌(`log/[id]` 의 `hhmm` · `analysis/[logId]` 의 `hhmmLabel`) → `src/lib/format.ts` `clockLabel` 하나 + 경계 테스트.
+  `social.ts` 는 로그인 동시 실행 가드(`singleFlight`)·브라우저 열기와 콜백 주소 검증(`openAuthCallback`)·토큰 세션 설정(`setSessionFromTokens`)을
+  내부 헬퍼로 모음. 공개 함수 2개·`SocialResult`·오류 문구·검사 순서 그대로. 네이버 콜백 주소·성공 URL 없음 특성 테스트 추가(원본 코드에서도 통과 확인,
+  헬퍼 변형 시 실패 확인). test 270.
 
 ## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
 

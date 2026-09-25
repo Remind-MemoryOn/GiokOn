@@ -28,7 +28,7 @@ import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { SessionReportPanel } from '../../src/components/SessionReportPanel';
 import { SectionHeading, Divider, StatTile, DETAIL } from '../../src/components/detail';
 import { useAnalysis, useElderSessions, useLog } from '../../src/data/reads';
-import { longKoreanDate, metric, NO_VALUE } from '../../src/lib/format';
+import { clockLabel, longKoreanDate, metric, NO_VALUE } from '../../src/lib/format';
 import iconShare from '../../assets/brand/icon-share.png';
 import iconSmile from '../../assets/brand/icon-smile.png';
 import statTime from '../../assets/brand/stat-time.png';
@@ -42,12 +42,6 @@ function durationLabel(startIso: string, endIso?: string): string {
   const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
   const s = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(s / 60)}분 ${s % 60}초`;
-}
-
-function hhmmLabel(iso: string): string {
-  const d = new Date(iso);
-  const h = d.getHours();
-  return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 /** 2×2 특성 카드 — 라벨은 Figma 그대로, 값은 실측 관찰지표에서 나온다. */
@@ -158,7 +152,7 @@ export default function SingleAnalysis() {
           className="text-[14px] font-medium text-muted"
           style={{ lineHeight: 25, marginTop: 30.25 }}
         >
-          {longKoreanDate(log.startedAt).replace(/^\d+년\s/, '')} {hhmmLabel(log.startedAt)}
+          {longKoreanDate(log.startedAt).replace(/^\d+년\s/, '')} {clockLabel(log.startedAt)}
         </Text>
         <Text
           className="text-[20px] font-semibold text-black"

@@ -40,6 +40,13 @@ export function longKoreanDate(iso: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`;
 }
 
+/** "오전 9:05" · "오후 12:30" — 대화 기록·분석 화면의 시각 표기. */
+export function clockLabel(iso: string): string {
+  const d = new Date(iso);
+  const h = d.getHours();
+  return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /**
  * 성별 표기 — DB enum('female'/'male') → 화면 문구. 미입력이면 null(표기 생략).
  * ⚠️ 값이 없을 때 임의로 채우지 않는다.
