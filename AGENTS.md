@@ -332,6 +332,10 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
   `social.ts` 는 로그인 동시 실행 가드(`singleFlight`)·브라우저 열기와 콜백 주소 검증(`openAuthCallback`)·토큰 세션 설정(`setSessionFromTokens`)을
   내부 헬퍼로 모음. 공개 함수 2개·`SocialResult`·오류 문구·검사 순서 그대로. 네이버 콜백 주소·성공 URL 없음 특성 테스트 추가(원본 코드에서도 통과 확인,
   헬퍼 변형 시 실패 확인). test 270.
+- ✅ 3단계: `session/talk.tsx` `Talk`(309줄·분기 30 → 209줄·분기 18). 같은 파일 안에서 뒤로가기 차단(`useBlockBackInElderMode`)·부분 전사 초안
+  (`useRecoveredDraft`)·저장 결과 알림(`createSaveResultPresenter`)·부분 전사 패널(`RecoveredInputPanel`)로 분리 — Figma 고정 문구는 talk.tsx 에 그대로.
+  두 번 쓰던 멈추기 버튼 비활성 조건과 인라인 상태 문구표는 `src/features/session/caregiverStatus.ts`(`elderStatus.ts` 와 같은 자리)로 옮기고 테스트
+  (원격 일시정지는 현장 재개 불가 포함). 문구 8개 원본과 동일 확인. test 277.
 
 ## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
 
