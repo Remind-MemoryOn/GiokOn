@@ -87,6 +87,8 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/pilot_access.sql
       - name: 법률 문서 동의 회귀 테스트
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/legal_consents.sql
+      - name: 일지 초안 워커 회귀 테스트
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/journal_worker.sql
 
   security-audit:
     runs-on: ubuntu-latest

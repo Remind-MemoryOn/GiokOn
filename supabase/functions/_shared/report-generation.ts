@@ -1,4 +1,24 @@
+// 대화 → AI 생성(Gemini) 공용 로직 — session-report(사람이 요청)와 program-journal-draft(세션 종료 자동)가 함께 쓴다.
+// 런타임·환경 import 가 없다(키·모델은 호출자가 넘긴다). 검증은 core validateGeneratedSession 이 한다.
 import { GENERATED_SESSION_SCHEMA, SESSION_GENERATION_INSTRUCTION, validateGeneratedSession, type GenerationSourceTurn } from '../../../packages/core/src/generated-session.ts'
+
+/** 생성 입력 상한 — 넘치면 일부만 몰래 보내지 않고 거절한다. */
+export const GENERATION_TURN_LIMIT = 240
+export const GENERATION_JSON_LIMIT = 48000
+
+/** session_logs 행 → 생성 입력(어르신 = user 역할). */
+export function toSourceTurns(rows: { id: string; role: string; content: string }[]): GenerationSourceTurn[] {
+  return rows.map(t => ({ id: t.id, speaker: t.role === 'user' ? 'Elderly' : 'AI', text: t.content }))
+}
+
+/** 근거가 될 어르신 발화가 하나라도 있는지. */
+export function hasElderSpeech(turns: GenerationSourceTurn[]): boolean {
+  return turns.some(t => t.speaker === 'Elderly' && t.text.trim())
+}
+
+export function exceedsGenerationLimit(turns: GenerationSourceTurn[]): boolean {
+  return turns.length > GENERATION_TURN_LIMIT || JSON.stringify(turns).length > GENERATION_JSON_LIMIT
+}
 
 export async function generateReport(turns: GenerationSourceTurn[], config: { apiKey: string; model: string }, signal: AbortSignal, fetcher: typeof fetch = fetch) {
   if (!/^gemini-[a-z0-9.-]+$/.test(config.model) || !config.apiKey) throw new Error('REPORT_CONFIGURATION')

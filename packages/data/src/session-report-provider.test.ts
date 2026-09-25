@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { generateReport } from '../../../supabase/functions/session-report/provider'
+import { generateReport } from '../../../supabase/functions/_shared/report-generation'
 
 const turns = [{ id: 't1', speaker: 'Elderly', text: '고향 시장에서 어머니와 장을 봤어요.' }]
 const claim = { text: '고향 시장을 회상했습니다.', evidence: [{ turnId: 't1', quote: '고향 시장' }] }

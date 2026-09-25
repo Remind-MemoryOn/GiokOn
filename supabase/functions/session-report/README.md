@@ -1,6 +1,15 @@
 # Session report — 시연용 LLM 분석·일지 초안
 
-> ## ⚠️ 2026-09-23 기획 변경 — 이 함수의 역할이 바뀐다
+> ## ✅ 2026-09-25 반영(C4 · T20.5·T20.6)
+>
+> - 생성 로직은 `../_shared/report-generation.ts` 로 옮겼다(이 함수와 워커 `program-journal-draft` 가 공유).
+> - **`REPORT_ALLOWED_USER_IDS` 허용목록은 없앴다** → 기관 AI 스위치 `org_settings.ai_drafts_enabled`(기본 꺼짐, **플랫폼 운영자만** 켠다 —
+>   클라이언트는 기관 관리자라도 못 바꾼다). 꺼진 기관·보호자·기관 없는 계정은 기록을 읽기 전에 403.
+>   켜려면(운영자, SQL): `update public.org_settings set ai_drafts_enabled = true where org_id = '<기관 UUID>';`
+> - 일지 초안은 **대화가 끝나면 워커가 자동으로** 만든다(사용자 확정 — "초안 생성" 버튼 없음). 이 함수는 웹 WT7 이
+>   기존 요양일지 화면의 "AI 초안 생성·불러오기"를 흡수할 때까지 남는 수동 경로다.
+>
+> ## (기록) 2026-09-23 기획 변경 — 이 함수의 역할이 바뀐다
 >
 > 계획 SoT: [`docs/plans/pilot-development-plan.md`](../../../docs/plans/pilot-development-plan.md) §8 C4.
 > - **생성 로직 공유**: `handler.ts` 의 생성 로직을 `_shared/report-generation.ts` 로 추출해, 이 함수와 새 워커
@@ -13,18 +22,18 @@
 > - 생성문 검증(어르신 발화 근거 인용 강제·진단/효능 표현 차단)은 **재사용·확장**한다 — 금지어에 `인지 저하`·`우울`·`정서 불안`·
 >   `병원 진료 권장` 을 더하고, 적중한 **필드만 비워** 확인 대기로 넘긴다.
 
-POST 본문은 `{ "session_id": "종료된 세션 UUID" }`만 받는다. Supabase JWT 검증을 유지하며 서버에서 현재 담당 권한·필수 동의·시연 허용 계정을 검사한다. 전사는 서버가 session_logs에서 조회한다.
+POST 본문은 `{ "session_id": "종료된 세션 UUID" }`만 받는다. Supabase JWT 검증을 유지하며 서버에서 기관 AI 스위치·같은 기관 돌봄팀·필수 동의를 검사한다. 전사는 서버가 session_logs에서 조회한다.
 
 ## 운영 설정
 
 - `GEMINI_API_KEY`: 기존 서버 등록 키를 재사용한다. 클라이언트로 반환하지 않는다.
 - `GEMINI_REPORT_MODEL`: 보고서용 텍스트 모델. 현재 운영 등록값은 `gemini-2.5-flash`이며 실제 공급자 성공은 시연 계정으로 확인해야 한다.
-- `REPORT_ALLOWED_USER_IDS`: 사용을 허용할 시연 담당자 UUID를 쉼표로 구분한다. 미등록이면 요청을 거절한다. 보호자는 생성 API를 호출할 필요가 없다.
+- ~~`REPORT_ALLOWED_USER_IDS`~~: 2026-09-25 폐기(더 읽지 않는다). 운영 시크릿에 남아 있으면 지워도 된다.
 - Supabase URL/anon key는 Edge 런타임 기본값을 사용한다. service role로 데이터 권한을 우회하지 않는다.
 
 배포: `supabase functions deploy session-report --project-ref ufkbzpdjomtmxjipmwub --use-api`. `--no-verify-jwt`와 `--prune`를 사용하지 않는다. 환경 파일은 읽지 않는다.
 
-### 사용자 직접 검증 전 설정
+### (폐기) 시연 단계 설정 — 2026-09-25 부터 쓰지 않는다
 
 Supabase Dashboard → Authentication → Users에서 시연 담당자 계정의 User UID를 확인한다. 아래 자리표시자를 해당 UUID로 교체해 실행하거나, Dashboard의 Edge Function Secrets에서 같은 이름으로 등록한다. 이메일 주소가 아니라 UUID를 사용한다.
 

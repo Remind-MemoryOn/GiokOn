@@ -1,6 +1,7 @@
 // @ts-nocheck -- Deno entrypoint. Pure handler/provider modules are checked and tested by packages/data.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.108.2'
 import { createReportHandler, ReportError, sourceHash } from './handler.ts'
+import { toSourceTurns } from '../_shared/report-generation.ts'
 
 // No dotenv reads. Credentials are supplied by the Edge runtime only.
 const handler = createReportHandler({
@@ -13,9 +14,10 @@ const handler = createReportHandler({
     })
     const { data, error } = await db.auth.getUser()
     if (error || !data.user) throw new ReportError(401, '다시 로그인해 주세요.')
-    // Explicit demo account allowlist: fail closed before the provider can incur cost.
-    const allowedUsers = (Deno.env.get('REPORT_ALLOWED_USER_IDS') ?? '').split(',').map(s => s.trim()).filter(Boolean)
-    if (!allowedUsers.includes(data.user.id)) throw new ReportError(403, '시연 분석 사용 계정 설정을 확인해 주세요.')
+    // 기관 AI 스위치(org_settings.ai_drafts_enabled — 운영자만 켠다): 비용이 드는 호출 전에, 기록을 읽기 전에 닫는다.
+    // RLS 로 자기 기관 설정 1행만 보인다(돌봄팀). 보호자·기관 없음·스위치 꺼짐은 모두 거절.
+    const org = await db.from('org_settings').select('ai_drafts_enabled').maybeSingle()
+    if (org.error || org.data?.ai_drafts_enabled !== true) throw new ReportError(403, '이 기관은 AI 초안 기능이 켜져 있지 않아요. 운영팀에 문의해 주세요.')
     const session = await db.from('sessions').select('id, profile_id, status, user_id').eq('id', sessionId).single()
     if (session.error || session.data.status !== 'ended') throw new ReportError(403, '종료된 담당 세션만 분석할 수 있습니다.')
     const allowed = async () => {
@@ -26,7 +28,7 @@ const handler = createReportHandler({
     const loadTurns = async () => {
       const logs = await db.from('session_logs').select('id, role, content, turn_index').eq('session_id', sessionId).order('turn_index').limit(241)
       if (logs.error) throw new ReportError(503, '대화 기록을 읽지 못했습니다.')
-      return logs.data.map(t => ({ id: t.id, speaker: t.role === 'user' ? 'Elderly' : 'AI', text: t.content }))
+      return toSourceTurns(logs.data)
     }
     const turns = await loadTurns()
     const baseline = await db.from('session_analyses').select('id, analysis, updated_at').eq('session_id', sessionId).single()

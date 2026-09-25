@@ -258,7 +258,7 @@
 | 1 | WT2 | W9 · T22.8 전반 | 온보딩 "새 기관 / 초대 코드 합류" + 승인 대기 화면 · **파일럿 블로커** | ✅ 2026-09-25 웹(`claude/web-development-session-6mb8mk`) — 온보딩 '초대 코드로 합류하기' 전환(Figma 좌표 불변) · `/join-pending` 승인 대기(상태·재요청·취소·15초 재확인) · `routeForUser`·`CaregiverGuard` 가 기관 없는 가입 계정을 대기 화면으로. 요청자는 기관 이름을 못 읽으므로(RLS) 표시하지 않는다 |
 | 2 | WT3a | W6 · T22.8 후반 · T22.4 | 기관 관리의 **초대 코드 발급·회수 · 합류 승인/거절**("승인하면 기관 전체 기록 열람" 명시) + 관리 역할 인식(`isAdmin` 이 센터장 제외 · `ROLE_LABEL` · TopBar 호칭) · **블로커(W9 짝)** | ✅ 2026-09-25 — 기관 관리 카드3 에 직원 합류 요청(승인 전 '기관의 모든 어르신 기록을 볼 수 있습니다' 확인창·거절) · 카드4 '직원 초대 코드'(관리 역할만: 합류 후 역할·유효 기간·복사·회수) · 관리 역할 = 관리자+센터장(`isOrgManagerRole`) · 역할 이름 `ORG_ROLE_LABEL`(사회복지사·센터장) · TopBar 호칭 `roleHonorific` · 기존 '기관 합류' 라벨(어르신 코드 담당 요청)은 '담당 요청'으로. 기관 이름 수정은 DB 정책대로 기관 관리자 한정 유지 |
 | 3 | WT5 | W2 · T21.5 | 감독 화면(반응형) + 원격 일시정지·재개·종료 + data `supervision.ts` + realtime `session_interventions` | ✅ 2026-09-25 웹(PR #18) — `/caregiver/supervision`(1440 셸 밖 반응형 단독 화면, 사이드바 맨 끝 '감독') · 기관의 진행 중 세션 카드(어르신·시작한 사람·단계·경과/목표·상태) · 원격 일시정지(선택 사유)·재개·종료(확인창 — 저장은 기기에서) · 위기 카드(서버 `caregiver_alert` 그대로 + 확인) · 개입 기록 3건 · Realtime `session_interventions` 등록. 계획과 다른 점: 세션에 기기 정보가 없어 '기기' 대신 '시작한 사람'. ⚠️ 위기 카드는 T21.4(중계 즉시 기록) 전에는 세션 종료 뒤에야 뜬다 |
-| 4 | WT7 ← 다음 | W1·W3 · T20.8 | 프로그램 일지 목록·상세(12칸)·확정·이력·재시도 + 요양보호사 네비 이름 · `buildJournalDraft`·`SessionJournalDialog` 흡수 | ⏳ (C4 워커 전에는 초안 자동 생성 없음 — 수동 경로로 동작) |
+| 4 | WT7 ← 다음 | W1·W3 · T20.8 | 프로그램 일지 목록·상세(12칸)·확정·이력·재시도 + 요양보호사 네비 이름 · `buildJournalDraft`·`SessionJournalDialog` **삭제**(흡수 아님) | ⏳ — ✅ 선행 C4 워커 운영 반영(2026-09-25). **초안은 대화 종료 시 자동 — "초안 생성" 버튼 없음, "다시 생성"은 failed 일지 복구 전용**(사용자 확정, 상세 `apps/web/AGENTS.md` §3 "일지 초안은 자동") |
 | 5 | WT3b | W6 · T22.5 | 구성원 역할 지정 · 권한 매트릭스 · 기관 설정 | ⏳ |
 | 6 | WT4 | W5 · T21.7 | 세션 설계 목표 시간 **10분 상한**(지금 선택지 10~40분이 확정 상한과 어긋남) · 기관 기본 피할 주제 · 단계 미리보기 | ⏳ |
 | 7 | WT6 | W3·W4 일부 · T20.9 | 보호자 `분석`→`대화 관찰 리포트` · 고정 문구 · `session_summary` 미렌더 버그 · 죽은 `'report'` | ⏳ |
@@ -329,7 +329,27 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
 - 웹(앱 세션이 사용자 지시로 수정): 기존 요양일지 화면을 **같은 시안 그대로** 새 표에 연결(상세는 `apps/web/AGENTS.md` §3). Figma 게이트 전부 기준선 유지.
   `check-web-design.mjs` 는 **칸 이름 정규식 3개만** 새 이름으로(Figma 실측 규칙은 그대로). ⚠️ **운영 웹은 이 PR 머지·재배포 전까지 일지 화면이 실패한다**(옛 표를 부른다).
 - core: `generated-session` 선택 섹션(participantResponse·opinion·guardianText — 배포된 `session-report` 캐시와 호환) + 금지어(인지 저하·우울·정서 불안·진료 권유). `program-journal.ts`(매핑·칸 단위 차단·보호자 문장).
-- ⏳ 남은 것(서버 파트): C4 `program-journal-draft` 워커(큐 소비 → 이 core 함수로 칸 채움 → pending_review) · `session-report` 허용목록 → 기관 게이트(T20.5).
+- ~~⏳ 남은 것(서버 파트): C4 워커 · T20.5~~ → ✅ 아래 "C4 일지 초안 자동 생성".
+
+### 이어서 — C4 일지 초안 자동 생성(2026-09-25, T20.5·T20.6 · 사용자 결정 1-C · 2-A · 기관 스위치는 **아직 켜지 않음**)
+
+> 사용자 확정: **"초안 생성" 버튼은 필요 없다 — 대화가 끝나자마자 AI 가 초안을 만든다.** 계획의 흐름(세션 종료 트리거 → 워커)과 같다.
+> 사람이 누르는 것은 **failed 일지의 "다시 생성"**(복구) 하나 — 웹 WT7 이 지킬 규칙은 `apps/web/AGENTS.md` §3 "일지 초안은 자동".
+
+- ✅ 운영 적용 `20260925000000_journal_draft_worker.sql`(pg_cron 1.6.4·pg_net 0.20.4 설치 포함 · 이력 버전 정정):
+  · `org_settings.ai_drafts_enabled` — 기관별 AI 초안 스위치(기본 꺼짐). **플랫폼 운영자만** 켠다 — 클라이언트는 기관 관리자라도 못 바꾼다(트리거).
+    켜기: `update public.org_settings set ai_drafts_enabled = true where org_id = '<기관>';` — ⚠️ **운영 2곳 모두 꺼짐**(사용자 지시 "켜지 마").
+  · 세션 종료 트리거 분기: 꺼진 기관 → 작업 없이 바로 `pending_review`(빈 초안 = 직접 작성).
+  · 워커 RPC `claim/finish/fail_journal_generation*` — service_role 전용 + DB 가 만든 워커 비밀값(`app.worker_config`, API 비노출). 백오프 30s·1m·2m·4m·5m ·
+    6회째 failed · 5분 멈춘 작업 회수 · 잡을 때 재확인(사람이 이미 확인 / AI 꺼짐 / **처리 동의 없음 → AI 로 안 보냄**) · 사람이 먼저 쓴 칸 보존 · 확정은 여전히 사람만.
+  · `app.kick_journal_worker()` + cron `program-journal-draft` 30초 — 할 일이 있을 때만 pg_net 호출. 운영 `worker_config.endpoint` 설정 완료.
+- ✅ Edge: `_shared/report-generation.ts`(생성 공용) · `session-report` v6(허용목록 폐기 → 기관 스위치, 기록 읽기 전 403) ·
+  `program-journal-draft` v1(verify_jwt=false — 비밀값 인증, 202 + `EdgeRuntime.waitUntil`). 운영에서 pg_net 으로 호출해 **틀린/없는 비밀값 401 · DB 비밀값 202** 확인.
+  Deno 가 확장자 없는 import 를 못 읽어 core `program-journal.ts` 의 import 에 `.ts` + core·mobile·relay tsconfig `allowImportingTsExtensions`(모두 noEmit).
+- 검증: `supabase/tests/journal_worker.sql`(CI·`run-rls-regression.sh` 에 추가) — 변형 **14종 모두 검출** · 워커/진입점 단위 테스트 · 전체 게이트.
+  테스트 core 224 · data 183 · mobile 316 · relay 50. 보안 advisor 새 지적 없음.
+- ⏳ 남은 것: ① **기관 스위치 켜기**(사용자 결정 후) → 실제 Gemini 종단(대화 종료 → 초안) 확인 · ② 운영 Edge 시크릿 `REPORT_ALLOWED_USER_IDS` 는 더 읽지 않는다(지워도 됨, 사용자 대시보드) ·
+  ③ 웹 WT7 — 수동 초안 버튼 2개 삭제 · 상태별 화면 · "다시 생성"=failed 전용 · ④ C4 나머지: `live-token` 중계 전용화(T23.5) · `push-dispatch`(T21.9).
 
 ### 이어서 — 앱 리팩토링(2026-09-25 사용자 지시, **외부 동작·공개 이름·반환 형식·오류 메시지 불변 · 의존성 추가 없음**)
 
