@@ -336,6 +336,13 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
   (`useRecoveredDraft`)·저장 결과 알림(`createSaveResultPresenter`)·부분 전사 패널(`RecoveredInputPanel`)로 분리 — Figma 고정 문구는 talk.tsx 에 그대로.
   두 번 쓰던 멈추기 버튼 비활성 조건과 인라인 상태 문구표는 `src/features/session/caregiverStatus.ts`(`elderStatus.ts` 와 같은 자리)로 옮기고 테스트
   (원격 일시정지는 현장 재개 불가 포함). 문구 8개 원본과 동일 확인. test 277.
+- ✅ 4단계(화면 파생 계산 → `src/features/*` 순수 함수 + 테스트, Figma 고정 문구는 화면에 그대로):
+  · `profile/profileSubmit` — register·chronicle 의 폼→저장 필드 변환 공유, 연대기 삭제/수정/추가를 계획(`planChronicleSync`)·실행으로 분리(chronicle onSubmit 분기 21 → 4).
+  · `observations/summary`(축 정렬·평균 변화·등급·문장) · `analysis/traits`(시간·집중도·표현·길이·요약 불릿) · `analysis/topicStats`(언급·활발 응답률·평균 시간·키워드)
+    — `analysis/[logId]` 에 게이트가 고정한 `assessEngagement` 분포는 같은 파일 `engagementShares` 로.
+  · `settings/useManagedElders` — settings/index·elders 에 두 벌 있던 목록·기관·삭제 확인 공유. Settings 는 같은 파일 섹션 컴포넌트 4개로(JSX 원본과 공백 제외 동일 확인).
+  · `consent/subject` — 대리 동의 성함·관계 필수 규칙(DB `consents_guardian_check`).
+  · 결과: Observations 분기 27→15 · SingleAnalysis 15→8 · Topics 13→10 · ConsentSubject 13→9. test 316. **`src/lib/live/*` 는 한 줄도 바꾸지 않았다**(타입 import 만).
 
 ## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
 
