@@ -5,44 +5,15 @@
 //   카드 336×113 @(29,146) pitch 134 — 설정 화면의 카드와 같은 컴포넌트
 //
 // 삭제는 되돌릴 수 없다(연대기·대화·분석·사진까지 함께 파기) → 확인 후 진행한다.
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useOrganization } from '@giokon/data';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { ManagedElderCard, SETTINGS } from '../../src/components/settings';
-import { useAuth } from '../../src/auth/AuthProvider';
-import { useElders } from '../../src/data/reads';
-import { useDeleteElder } from '../../src/data/writes';
+import { useManagedElders } from '../../src/features/settings/useManagedElders';
 
 export default function ManagedElders() {
-  const { authed } = useAuth();
-  const elders = useElders();
-  // 목업 모드·로그인 전에는 조회하지 않는다(초기화 전 호출 방지).
-  const org = useOrganization({ enabled: authed });
-  const deleteElder = useDeleteElder();
-  const orgName = org.data?.name ?? null;
-
-  const confirmDelete = (id: string, name: string) => {
-    Alert.alert(
-      `${name} 어르신을 삭제할까요?`,
-      '연대기·대화 기록·분석·사진까지 모두 지워지고 되돌릴 수 없어요.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteElder(id);
-            } catch (e) {
-              Alert.alert('삭제 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
-            }
-          },
-        },
-      ],
-    );
-  };
+  const { elders, orgName, confirmDelete } = useManagedElders();
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>

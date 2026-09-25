@@ -18,7 +18,6 @@ import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { assessEngagement } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { DETAIL, Divider, PeriodPill, SectionHeading } from '../../src/components/detail';
 import { TrendChart } from '../../src/components/charts';
@@ -38,6 +37,7 @@ import {
 } from '../../src/data/observations';
 import { metric, NO_VALUE } from '../../src/lib/format';
 import { TOPIC_PERIODS } from '../../src/lib/period';
+import { topicStats } from '../../src/features/analysis/topicStats';
 import iconShare from '../../assets/brand/icon-share.png';
 
 /** 주제 시계열 색(개인 인지효과분석 범례와 같은 팔레트). */
@@ -128,23 +128,12 @@ export default function Topics() {
   // 상세 분석 대상 주제 = 관찰된 1위 주제(임의 선택 금지).
   const focus = topics[0];
 
-  // 언급 빈도 — 해당 주제의 어르신 발화 수 합.
-  const mentions = focus
-    ? analyses.reduce(
-        (n, a) => n + (a.topicOutcomes.find((o) => o.topic === focus.label)?.elderTurns ?? 0),
-        0,
-      )
-    : 0;
-  // "긍정 반응률" → 우리가 실제로 세는 값: 해당 주제에서 활발히 응답한 비율.
-  const elderUtterances = logs.flatMap((l) => l.turns.filter((t) => t.speaker === 'Elderly'));
-  const rich = elderUtterances.filter((t) => assessEngagement(t.text) === 'rich').length;
-  const engagedRate = elderUtterances.length
-    ? Math.round((rich / elderUtterances.length) * 100)
-    : null;
-  const avgMinutes = sessions.length
-    ? Math.round(sessions.reduce((n, s) => n + s.durationMinutes, 0) / sessions.length)
-    : null;
-  const keywords = [...new Set(analyses.flatMap((a) => a.interestKeywords))].slice(0, 8);
+  const { mentions, engagedRate, avgMinutes, keywords } = topicStats({
+    focusTopic: focus?.label,
+    analyses,
+    logs,
+    sessions,
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>

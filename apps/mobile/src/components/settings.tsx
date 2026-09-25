@@ -114,7 +114,7 @@ export function LogoutGlyph() {
 }
 
 /** 휴지통 글리프 — 잉크 21×21(노드 19×19), Figma `Group2`. */
-export function TrashGlyph() {
+function TrashGlyph() {
   return <Image source={iconTrash} style={{ width: 21, height: 21 }} resizeMode="contain" />;
 }
 

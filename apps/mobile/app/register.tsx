@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { KEY_MEMORY_TOPIC, birthYearFromDate } from '@giokon/core';
 import { EMPTY_VALUES, ProfileForm, type ProfileSubmit } from '../src/components/ProfileForm';
 import { useUpsertChronicle, useUpsertElder } from '../src/data/writes';
 import { saveElderPhoto } from '../src/data/elder-photo';
+import { applyChronicleSync, elderFieldsFromForm, planChronicleSync } from '../src/features/profile/profileSubmit';
 
 
 export default function Register() {
@@ -18,16 +18,7 @@ export default function Register() {
     if (saving) return;
     setSaving(true);
     try {
-      const base = {
-        name: v.name.trim(),
-        birthDate: v.birthDate,
-        birthYear: birthYearFromDate(v.birthDate),
-        gender: v.gender,
-        hometown: v.hometown.trim() || undefined,
-        family: v.family.trim() || undefined,
-        job: v.job.trim() || undefined,
-        hobbies: v.hobbies.trim() || undefined,
-      };
+      const base = elderFieldsFromForm(v);
       let elder = await upsertElder(base);
 
       // 사진은 어르신 id 가 있어야 저장 경로가 정해지므로 등록 직후에 올린다.
@@ -41,12 +32,11 @@ export default function Register() {
         }
       }
 
-      for (const m of v.memories) {
-        const content = m.text.trim();
-        if (content) {
-          await upsertChronicle({ elderId: elder.id, topic: KEY_MEMORY_TOPIC, content, keywords: [] });
-        }
-      }
+      // 새 어르신이라 기존 연대기가 없다 → 비어 있지 않은 주요 기억만 추가된다.
+      await applyChronicleSync(elder.id, planChronicleSync([], v.memories), {
+        upsert: upsertChronicle,
+        remove: async () => {},
+      });
       // 등록 흐름의 다음 단계는 동의 주체 확인과 필수 동의 4종이다.
       // 동의를 완료하기 전에는 세션 시작으로 진행할 수 없다.
       router.replace(`/consent/${elder.id}`);

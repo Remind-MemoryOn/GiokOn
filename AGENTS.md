@@ -330,6 +330,30 @@ W1 이 그 흐름을 대체하므로 W1 에서 새 흐름의 회귀를 만든다
 - core: `generated-session` 선택 섹션(participantResponse·opinion·guardianText — 배포된 `session-report` 캐시와 호환) + 금지어(인지 저하·우울·정서 불안·진료 권유). `program-journal.ts`(매핑·칸 단위 차단·보호자 문장).
 - ⏳ 남은 것(서버 파트): C4 `program-journal-draft` 워커(큐 소비 → 이 core 함수로 칸 채움 → pending_review) · `session-report` 허용목록 → 기관 게이트(T20.5).
 
+### 이어서 — 앱 리팩토링(2026-09-25 사용자 지시, **외부 동작·공개 이름·반환 형식·오류 메시지 불변 · 의존성 추가 없음**)
+
+- 결정: 범위 = `apps/mobile` 만 · 아무도 안 쓰는 export/파일은 제거 · Figma 게이트가 파일 경로로 고정한 문구는 **제자리 유지**(규칙 경로 안 바꿈) ·
+  **비동기 핵심(`src/lib/live/*` — 연결·엔진·자동 대화·재생)은 대상에서 제외**(사용자 명시).
+- 단계: 1 죽은 코드 제거 → 2 중복 통합(시간 포맷 `hhmm`/`hhmmLabel`, `social.ts` 내부 헬퍼) → 3 `Talk` 책임 분리(같은 파일 안) → 4 나머지 화면.
+- ✅ 1단계: `components/ui.tsx`·`AppHeader.tsx`·`decor.tsx`(import 0) 삭제, 사용처 0 인 `RADIUS`·`hasWebUrl`·`ToneBar` 삭제,
+  파일 안에서만 쓰는 값 export 9개에서 `export` 만 제거. 타입 export 는 공개 함수 시그니처를 설명하므로 유지. 게이트에 이름이 박힌
+  `MAX`·`FORM`·`HEADER_TABS_H` 는 손대지 않음. 검증: typecheck·lint·test 264·check:figma 174·copy·font·bom·design·Android export.
+- ✅ 2단계: 같은 시각 포맷 두 벌(`log/[id]` 의 `hhmm` · `analysis/[logId]` 의 `hhmmLabel`) → `src/lib/format.ts` `clockLabel` 하나 + 경계 테스트.
+  `social.ts` 는 로그인 동시 실행 가드(`singleFlight`)·브라우저 열기와 콜백 주소 검증(`openAuthCallback`)·토큰 세션 설정(`setSessionFromTokens`)을
+  내부 헬퍼로 모음. 공개 함수 2개·`SocialResult`·오류 문구·검사 순서 그대로. 네이버 콜백 주소·성공 URL 없음 특성 테스트 추가(원본 코드에서도 통과 확인,
+  헬퍼 변형 시 실패 확인). test 270.
+- ✅ 3단계: `session/talk.tsx` `Talk`(309줄·분기 30 → 209줄·분기 18). 같은 파일 안에서 뒤로가기 차단(`useBlockBackInElderMode`)·부분 전사 초안
+  (`useRecoveredDraft`)·저장 결과 알림(`createSaveResultPresenter`)·부분 전사 패널(`RecoveredInputPanel`)로 분리 — Figma 고정 문구는 talk.tsx 에 그대로.
+  두 번 쓰던 멈추기 버튼 비활성 조건과 인라인 상태 문구표는 `src/features/session/caregiverStatus.ts`(`elderStatus.ts` 와 같은 자리)로 옮기고 테스트
+  (원격 일시정지는 현장 재개 불가 포함). 문구 8개 원본과 동일 확인. test 277.
+- ✅ 4단계(화면 파생 계산 → `src/features/*` 순수 함수 + 테스트, Figma 고정 문구는 화면에 그대로):
+  · `profile/profileSubmit` — register·chronicle 의 폼→저장 필드 변환 공유, 연대기 삭제/수정/추가를 계획(`planChronicleSync`)·실행으로 분리(chronicle onSubmit 분기 21 → 4).
+  · `observations/summary`(축 정렬·평균 변화·등급·문장) · `analysis/traits`(시간·집중도·표현·길이·요약 불릿) · `analysis/topicStats`(언급·활발 응답률·평균 시간·키워드)
+    — `analysis/[logId]` 에 게이트가 고정한 `assessEngagement` 분포는 같은 파일 `engagementShares` 로.
+  · `settings/useManagedElders` — settings/index·elders 에 두 벌 있던 목록·기관·삭제 확인 공유. Settings 는 같은 파일 섹션 컴포넌트 4개로(JSX 원본과 공백 제외 동일 확인).
+  · `consent/subject` — 대리 동의 성함·관계 필수 규칙(DB `consents_guardian_check`).
+  · 결과: Observations 분기 27→15 · SingleAnalysis 15→8 · Topics 13→10 · ConsentSubject 13→9. test 316. **`src/lib/live/*` 는 한 줄도 바꾸지 않았다**(타입 import 만).
+
 ## 이전 위치 (2026-09-24 — M6 푸시 토큰: D7 → M6)
 
 > PR #14(A1~A5·B1~B9) 머지 뒤, 사용자 지시 "다음 테스크" = 남은 유일한 앱 테스크 **M6**. 선행 D7 을 같은 방식(로컬 검증만)으로 함께 했다.

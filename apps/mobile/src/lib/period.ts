@@ -36,7 +36,7 @@ export const TOPIC_PERIODS: PeriodOption[] = [
 ];
 
 /** 기간 시작 시각(ISO). null(전체 기간)이면 undefined. */
-export function periodStart(months: PeriodMonths, now = new Date()): string | undefined {
+function periodStart(months: PeriodMonths, now = new Date()): string | undefined {
   if (months === null) return undefined;
   const d = new Date(now);
   d.setMonth(d.getMonth() - months);

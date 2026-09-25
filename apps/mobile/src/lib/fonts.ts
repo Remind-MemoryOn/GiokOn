@@ -10,7 +10,7 @@
 // 해당 패밀리를 가리키게 매핑한다(tailwind.config.js 플러그인).
 
 /** 굵기별 등록 패밀리 이름 — tailwind.config.js 와 반드시 일치해야 한다. */
-export const FONT = {
+const FONT = {
   regular: 'Pretendard-Regular',
   medium: 'Pretendard-Medium',
   semibold: 'Pretendard-SemiBold',

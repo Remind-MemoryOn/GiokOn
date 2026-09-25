@@ -129,4 +129,23 @@ describe('모바일 Naver 일회성 교환', () => {
     await expect(signInWithNaver()).rejects.toThrow('400');
     expect(mocks.setSession).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['https://evil.invalid/callback#transaction_id=x&state=' + 'c'.repeat(43), '로그인 콜백 주소가 올바르지 않아요.'],
+    ['giokon://auth/wrong#transaction_id=x&state=' + 'c'.repeat(43), '로그인 콜백 주소가 올바르지 않아요.'],
+  ])('앱 콜백 주소가 아니면 교환하지 않는다: %s', async (url, message) => {
+    mocks.open.mockResolvedValueOnce({ type: 'success', url });
+    await expect(signInWithNaver()).rejects.toThrow(message);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.setSession).not.toHaveBeenCalled();
+  });
+
+  it.each([{ type: 'locked' }, { type: 'success' }])('성공 URL 이 없으면 결과 확인 실패로 끝낸다: %o', async (res) => {
+    mocks.open.mockResolvedValueOnce(res);
+    await expect(signInWithNaver()).rejects.toThrow('로그인 결과를 확인하지 못했어요.');
+    mocks.open.mockResolvedValueOnce(res);
+    await expect(signInWithSupabaseProvider('kakao')).rejects.toThrow('로그인 결과를 확인하지 못했어요.');
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.exchange).not.toHaveBeenCalled();
+  });
 });

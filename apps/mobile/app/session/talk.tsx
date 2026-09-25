@@ -41,59 +41,47 @@ import { hasCaregiverPin } from '../../src/features/session/caregiverPin';
 import { CaregiverPinModal } from '../../src/features/session/CaregiverPinModal';
 import { ElderView } from '../../src/features/session/ElderView';
 import { QuestionCard } from '../../src/features/session/QuestionCard';
+import { CAREGIVER_STATUS, isInConversation, pauseButtonState } from '../../src/features/session/caregiverStatus';
 import iconClose from '../../assets/brand/icon-close.png';
 
 const FRAME_H = 852;
 /** Interrupted relay inputs retain the full storage allowance. */
 const UTTERANCE_MAX = 4000;
 
-export default function Talk() {
-  const active = useApp((s) => s.active);
-  const lease = queryScope.capture();
-  const stillCurrent = () => lease.current() &&
-    useApp.getState().active?.session.id === active?.session.id;
-  const discard = useApp((s) => s.discardUtterance);
-  const acknowledge = useApp((s) => s.acknowledgeSafety);
-  const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
-  const automatic = useAutomaticConversation(active, syncProgress);
-  const { height } = useWindowDimensions();
-  const finishing = useRef(false);
-  const { user } = useAuth();
-  const [mode, setMode] = useState<'caregiver' | 'elder'>('caregiver');
-  const [pinModal, setPinModal] = useState<'setup' | 'verify' | null>(null);
-  const checkingPin = useRef(false);
+type Persistence = ReturnType<typeof useSessionPersistence>;
 
-  // 어르신 화면에서는 안드로이드 뒤로가기로 요양보호사 화면·이전 화면이 열리지 않게 한다.
+/** 어르신 화면에서는 안드로이드 뒤로가기로 요양보호사 화면·이전 화면이 열리지 않게 한다. */
+function useBlockBackInElderMode(mode: 'caregiver' | 'elder') {
   useEffect(() => {
     if (mode !== 'elder') return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
     return () => sub.remove();
   }, [mode]);
+}
 
-  const question = active?.currentQuestion;
-  const pending = active?.pendingStt ?? null;
-  // 부분 전사(pending)를 기준으로 편집 초안을 **파생**한다 — 사용자가 고친 내용은
-  // 원본(base)과 함께 보관해, pending 이 바뀌면 자동으로 새 전사로 초기화된다.
-  // (effect 로 동기 setState 하지 않기 위한 구조)
+/**
+ * 부분 전사(pending)를 기준으로 편집 초안을 **파생**한다 — 사용자가 고친 내용은
+ * 원본(base)과 함께 보관해, pending 이 바뀌면 자동으로 새 전사로 초기화된다.
+ * (effect 로 동기 setState 하지 않기 위한 구조)
+ */
+function useRecoveredDraft(pending: string | null) {
   const [edited, setEdited] = useState<{ base: string; text: string } | null>(null);
   const draft = pending === null ? '' : edited?.base === pending ? edited.text : pending;
   const setDraft = (t: string) => {
     if (pending !== null) setEdited({ base: pending, text: t });
   };
+  return { draft, setDraft, resetDraft: () => setEdited(null) };
+}
 
-  // 세션이 끝나 화면을 떠날 때 연결 정리(종료 경로는 endAndSave 에서 먼저 닫는다).
-  useEffect(() => {
-    if (!active && !finishing.current) void closeLiveEngine();
-  }, [active]);
-
-  useEffect(() => {
-    if (!active && !finishing.current) router.replace('/main');
-  }, [active]);
-
-  if (!active) return <SafeAreaView className="flex-1 bg-white" />;
-
-  // 저장 결과 처리 — 실패를 삼키고 "저장되었습니다" 화면으로 넘어가면 요양보호사가
-  // 대화 전량이 사라진 걸 알 수 없다(감사 지적). 실패하면 재시도/포기를 묻는다.
+/**
+ * 저장 결과 처리 — 실패를 삼키고 "저장되었습니다" 화면으로 넘어가면 요양보호사가
+ * 대화 전량이 사라진 걸 알 수 없다(감사 지적). 실패하면 재시도/포기를 묻는다.
+ */
+function createSaveResultPresenter(
+  lease: { current(): boolean },
+  retrySave: Persistence['retrySave'],
+  discardUnsaved: Persistence['discardUnsaved'],
+) {
   async function retryAndPresent() {
     presentResult(await retrySave());
   }
@@ -122,6 +110,44 @@ export default function Talk() {
       { cancelable: false },
     );
   }
+
+  return presentResult;
+}
+
+export default function Talk() {
+  const active = useApp((s) => s.active);
+  const lease = queryScope.capture();
+  const stillCurrent = () => lease.current() &&
+    useApp.getState().active?.session.id === active?.session.id;
+  const discard = useApp((s) => s.discardUtterance);
+  const acknowledge = useApp((s) => s.acknowledgeSafety);
+  const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
+  const automatic = useAutomaticConversation(active, syncProgress);
+  const { height } = useWindowDimensions();
+  const finishing = useRef(false);
+  const { user } = useAuth();
+  const [mode, setMode] = useState<'caregiver' | 'elder'>('caregiver');
+  const [pinModal, setPinModal] = useState<'setup' | 'verify' | null>(null);
+  const checkingPin = useRef(false);
+
+  useBlockBackInElderMode(mode);
+
+  const question = active?.currentQuestion;
+  const pending = active?.pendingStt ?? null;
+  const { draft, setDraft, resetDraft } = useRecoveredDraft(pending);
+
+  // 세션이 끝나 화면을 떠날 때 연결 정리(종료 경로는 endAndSave 에서 먼저 닫는다).
+  useEffect(() => {
+    if (!active && !finishing.current) void closeLiveEngine();
+  }, [active]);
+
+  useEffect(() => {
+    if (!active && !finishing.current) router.replace('/main');
+  }, [active]);
+
+  if (!active) return <SafeAreaView className="flex-1 bg-white" />;
+
+  const presentResult = createSaveResultPresenter(lease, retrySave, discardUnsaved);
 
   const endAndSave = async () => {
     if (!stillCurrent()) return;
@@ -189,7 +215,8 @@ export default function Talk() {
     );
   }
 
-  const inConversation = !['idle', 'stopped'].includes(automatic.phase);
+  const inConversation = isInConversation(automatic.phase);
+  const pauseButton = pauseButtonState(automatic.phase, automatic.remote, pending !== null);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -253,27 +280,23 @@ export default function Talk() {
             {automatic.phase === 'idle' ? '자동 대화 시작' : '대화 회수·저장'}
           </Text>
         </Pressable>
-        {!['idle','stopped'].includes(automatic.phase) && (
+        {inConversation && (
           <Pressable
             onPress={() => void (automatic.phase === 'paused' ? automatic.resume() : automatic.pause())}
-            // 감독 화면의 원격 일시정지는 현장에서 풀지 않는다(사용자 확정) — 감독 화면 재개 시 자동으로 이어진다.
-            disabled={automatic.phase === 'pausing' || (automatic.phase === 'paused' && (pending !== null || automatic.remote === true))}
+            disabled={pauseButton.disabled}
             accessibilityRole="button"
-            accessibilityState={{ disabled: automatic.phase === 'pausing' || (automatic.phase === 'paused' && (pending !== null || automatic.remote === true)) }}
+            accessibilityState={{ disabled: pauseButton.disabled }}
             className="items-center justify-center active:opacity-70"
             style={{ width: 336, minHeight: 48, marginTop: 8, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
           >
             <Text className="text-[18px] font-semibold text-black" style={{ lineHeight: 28 }}>
-              {automatic.phase === 'paused' ? (automatic.remote ? '감독 화면 재개 대기' : '대화 재개') : automatic.phase === 'pausing' ? '일시정지 중…' : '잠시 멈추기'}
+              {pauseButton.label}
             </Text>
           </Pressable>
         )}
         <Text className="text-[18px] font-medium text-black text-center" accessibilityLiveRegion="polite"
           style={{ lineHeight: 28, marginTop: 8, width: 336 }}>
-          {automatic.reason ?? ({idle:'담당자가 시작하면 대화가 자동으로 이어져요.', starting:'대화를 준비하고 있어요.',
-            listening:'말씀해 주세요.', processing:'말씀을 기록하고 응답을 준비하고 있어요.', speaking:'듣고 있어요...',
-            pausing:'음성을 멈추고 있어요.', paused:'대화를 잠시 멈췄어요.',
-            stopped:'대화를 멈췄어요. 기록을 저장해 주세요.'}[automatic.phase])}
+          {automatic.reason ?? CAREGIVER_STATUS[automatic.phase]}
         </Text>
       </View>
 
@@ -281,78 +304,103 @@ export default function Talk() {
 
       {/* 중단된 청취의 부분 전사 — 담당자가 확인·수정하거나 제외한다(자동 채택 금지) */}
       {pending !== null ? (
-        <View
-          className="absolute left-0 right-0 bottom-0 bg-white"
-          style={{ paddingHorizontal: 28.5, paddingTop: 16, paddingBottom: 24, boxShadow: '0px -2px 12px rgba(0,0,0,0.12)' }}
-        >
-          <Text className="text-[18px] font-semibold text-ink" style={{ lineHeight: 30 }}>
-            중단 전 인식된 말씀을 확인해 주세요.
-          </Text>
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: '#cccdce',
-              borderRadius: 10,
-              backgroundColor: '#ffffff',
-              paddingHorizontal: 16,
-              paddingTop: 12,
-              paddingBottom: 30,
-              marginTop: 10,
-            }}
-          >
-            <TextInput
-              className="text-[17px] text-ink font-normal"
-              value={draft}
-              onChangeText={(t) => {
-                if (t.length <= UTTERANCE_MAX) setDraft(t);
-              }}
-              multiline
-              placeholder="어르신 말씀을 확인·수정해 주세요"
-              placeholderTextColor="#7b7c7c"
-              style={{ minHeight: 72, maxHeight: 160, textAlignVertical: 'top' }}
-            />
-            {/* 카운터는 텍스트 박스 **안** 우측 하단(Figma 동일) */}
-            <Text
-              className="text-[13px] text-muted font-normal"
-              style={{ position: 'absolute', right: 12, bottom: 8 }}
-            >
-              {draft.length}/{UTTERANCE_MAX}
-            </Text>
-          </View>
-
-          <View className="flex-row" style={{ marginTop: 12 }}>
-            <Pressable
-              onPress={() => {
-                discard();
-                setEdited(null);
-              }}
-              accessibilityRole="button"
-              className="flex-1 items-center justify-center active:opacity-70"
-              style={{ height: 57, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce', marginRight: 10 }}
-            >
-              <Text className="text-[18px] font-semibold text-muted" style={{ lineHeight: 30 }}>
-                이 입력 제외
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                if (useApp.getState().confirmRecoveredInput(draft)) {
-                  setEdited(null);
-                  if (automatic.phase !== 'paused') void endAndSave();
-                }
-              }}
-              disabled={!draft.trim()}
-              accessibilityRole="button"
-              className="flex-1 items-center justify-center active:opacity-90"
-              style={{ height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
-            >
-              <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
-                {automatic.phase === 'paused' ? '입력 확인' : '확인 후 저장'}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
+        <RecoveredInputPanel
+          draft={draft}
+          onChangeDraft={setDraft}
+          paused={automatic.phase === 'paused'}
+          onDiscard={() => {
+            discard();
+            resetDraft();
+          }}
+          onConfirm={() => {
+            if (useApp.getState().confirmRecoveredInput(draft)) {
+              resetDraft();
+              if (automatic.phase !== 'paused') void endAndSave();
+            }
+          }}
+        />
       ) : null}
     </SafeAreaView>
+  );
+}
+
+/** 중단된 청취의 부분 전사 확인 패널 — 수정·제외·확인만 한다(자동 채택 금지). */
+function RecoveredInputPanel({
+  draft,
+  onChangeDraft,
+  paused,
+  onDiscard,
+  onConfirm,
+}: {
+  draft: string;
+  onChangeDraft: (text: string) => void;
+  paused: boolean;
+  onDiscard: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <View
+      className="absolute left-0 right-0 bottom-0 bg-white"
+      style={{ paddingHorizontal: 28.5, paddingTop: 16, paddingBottom: 24, boxShadow: '0px -2px 12px rgba(0,0,0,0.12)' }}
+    >
+      <Text className="text-[18px] font-semibold text-ink" style={{ lineHeight: 30 }}>
+        중단 전 인식된 말씀을 확인해 주세요.
+      </Text>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: '#cccdce',
+          borderRadius: 10,
+          backgroundColor: '#ffffff',
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 30,
+          marginTop: 10,
+        }}
+      >
+        <TextInput
+          className="text-[17px] text-ink font-normal"
+          value={draft}
+          onChangeText={(t) => {
+            if (t.length <= UTTERANCE_MAX) onChangeDraft(t);
+          }}
+          multiline
+          placeholder="어르신 말씀을 확인·수정해 주세요"
+          placeholderTextColor="#7b7c7c"
+          style={{ minHeight: 72, maxHeight: 160, textAlignVertical: 'top' }}
+        />
+        {/* 카운터는 텍스트 박스 **안** 우측 하단(Figma 동일) */}
+        <Text
+          className="text-[13px] text-muted font-normal"
+          style={{ position: 'absolute', right: 12, bottom: 8 }}
+        >
+          {draft.length}/{UTTERANCE_MAX}
+        </Text>
+      </View>
+
+      <View className="flex-row" style={{ marginTop: 12 }}>
+        <Pressable
+          onPress={onDiscard}
+          accessibilityRole="button"
+          className="flex-1 items-center justify-center active:opacity-70"
+          style={{ height: 57, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce', marginRight: 10 }}
+        >
+          <Text className="text-[18px] font-semibold text-muted" style={{ lineHeight: 30 }}>
+            이 입력 제외
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={onConfirm}
+          disabled={!draft.trim()}
+          accessibilityRole="button"
+          className="flex-1 items-center justify-center active:opacity-90"
+          style={{ height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+        >
+          <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
+            {paused ? '입력 확인' : '확인 후 저장'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }

@@ -30,7 +30,7 @@ import { Image, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polygon } from 'react-native-svg';
-import type { AxisObservation, ObservationAxis } from '@giokon/core';
+import type { ObservationAxis } from '@giokon/core';
 import { ScreenHeader } from '../src/components/ScreenHeader';
 import { AiOpinion, DETAIL, Divider, PeriodPill, SectionHeading } from '../src/components/detail';
 import { RadarChart, TrendChart } from '../src/components/charts';
@@ -43,6 +43,7 @@ import {
 } from '../src/data/observations';
 import { metric, NO_VALUE } from '../src/lib/format';
 import { TREND_PERIODS } from '../src/lib/period';
+import { AXIS_ORDER, orderAxes, summarizeObservations } from '../src/features/observations/summary';
 import iconShare from '../assets/brand/icon-share.png';
 import iconSmileBig from '../assets/brand/icon-smile.png';
 import statTime from '../assets/brand/stat-time.png';
@@ -58,8 +59,6 @@ const AXIS_LABEL: Record<ObservationAxis, string> = {
   focus: '집중력',
   expression: '언어 표현력',
 };
-/** 레이더·범례 표시 순서(Figma 배치와 동일). */
-const AXIS_ORDER: ObservationAxis[] = ['recall', 'emotion', 'participation', 'focus', 'expression'];
 /** 추이 그래프 계열 색(Figma 범례 실측). */
 const SERIES_COLOR: Record<ObservationAxis, string> = {
   recall: '#e9822b',
@@ -203,32 +202,12 @@ export default function Observations() {
 
   const axes = isElder ? elderAxes : overallAxes;
   const trend = isElder ? elderTrend : overallTrend;
-  const byAxis = new Map<ObservationAxis, AxisObservation>(axes.map((a) => [a.axis, a]));
-  const ordered = AXIS_ORDER.map((k) => byAxis.get(k) ?? { axis: k, value: null, delta: null });
-
-  // 종합 평가 — 측정된 축의 평균 변화량으로 등급을 매긴다(임의 문구 금지).
-  const deltas = ordered.map((a) => a.delta).filter((d): d is number => d !== null);
-  const avgDelta = deltas.length
-    ? Math.round(deltas.reduce((n, d) => n + d, 0) / deltas.length)
-    : null;
-  const grade =
-    avgDelta === null
-      ? null
-      : avgDelta >= 10
-        ? '매우 긍정적'
-        : avgDelta > 0
-          ? '긍정적'
-          : avgDelta === 0
-            ? '변화 없음'
-            : '주의 관찰';
-  const measured = ordered.filter((a) => a.value !== null).length;
-  // 관찰 근거에서만 문장을 만든다(디자인의 예시 문장은 쓰지 않는다).
-  const summarySentence =
-    measured === 0
-      ? '아직 관찰된 기록이 없어요. 대화가 쌓이면 지표를 보여드려요.'
-      : avgDelta === null
-        ? `${isElder ? (elder?.name ?? '어르신') + ' 어르신의' : '담당 어르신의'} 관찰 지표 ${measured}개를 측정했어요. 비교할 이전 기간 기록이 아직 없어요.`
-        : `관찰 지표 ${measured}개 기준으로 직전 동일 기간 대비 평균 ${avgDelta > 0 ? '+' : ''}${avgDelta}%p 변화가 관찰됐어요.`;
+  const ordered = orderAxes(axes);
+  const deltaOf = (axis: ObservationAxis) => ordered.find((a) => a.axis === axis)?.delta ?? null;
+  const { avgDelta, grade, summarySentence } = summarizeObservations(
+    ordered,
+    isElder ? (elder?.name ?? '어르신') + ' 어르신의' : '담당 어르신의',
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
@@ -286,13 +265,13 @@ export default function Observations() {
             label="기억 회상 향상률"
             icon={statTrend}
             iconSize={{ width: 29.25, height: 17.25 }}
-            delta={byAxis.get('recall')?.delta ?? null}
+            delta={deltaOf('recall')}
           />
           <RateCard
             label="감정 표현 증가율"
             icon={statSmile}
             iconSize={{ width: 25, height: 25 }}
-            delta={byAxis.get('emotion')?.delta ?? null}
+            delta={deltaOf('emotion')}
           />
         </View>
         <View className="flex-row" style={{ width: DETAIL.width, marginTop: 13, columnGap: 12 }}>
@@ -300,13 +279,13 @@ export default function Observations() {
             label="대화 참여도 향상률"
             icon={statCount}
             iconSize={{ width: 26, height: 25.25 }}
-            delta={byAxis.get('participation')?.delta ?? null}
+            delta={deltaOf('participation')}
           />
           <RateCard
             label="응답 지속 시간 증가율"
             icon={statTime}
             iconSize={{ width: 25, height: 25 }}
-            delta={byAxis.get('expression')?.delta ?? null}
+            delta={deltaOf('expression')}
           />
         </View>
 

@@ -54,7 +54,7 @@ export interface PickedPhoto {
  * 고른 사진을 업로드하고 저장할 경로를 반환한다.
  * RN 에는 File 이 없어 base64 → Uint8Array 로 바이트를 만들어 올린다.
  */
-export async function uploadElderPhoto(profileId: string, photo: PickedPhoto): Promise<string> {
+async function uploadElderPhoto(profileId: string, photo: PickedPhoto): Promise<string> {
   if (!photo.base64) throw new Error('사진을 읽지 못했어요. 다시 선택해 주세요.');
   const ext = (photo.uri.split('.').pop() || 'jpg').toLowerCase().split('?')[0];
   const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
@@ -90,7 +90,7 @@ export async function removeElderPhoto(photoPath: string | null | undefined): Pr
 }
 
 /** 경로 → 표시용 signed URL(발급 실패 시 null). */
-export async function getElderPhotoUrl(photoPath: string): Promise<string | null> {
+async function getElderPhotoUrl(photoPath: string): Promise<string | null> {
   if (isLocalUri(photoPath)) return photoPath;
   const { data, error } = await getGiokonClient()
     .storage.from(BUCKET)

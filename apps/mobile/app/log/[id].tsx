@@ -23,7 +23,7 @@ import { initial, type ConversationTurn } from '@giokon/core';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { useAnalysis, useElder, useLog } from '../../src/data/reads';
 import { useElderPhotoUrl } from '../../src/data/elder-photo';
-import { longKoreanDate } from '../../src/lib/format';
+import { clockLabel, longKoreanDate } from '../../src/lib/format';
 import avatarAi from '../../assets/brand/avatar-ai.png';
 import btnPlay from '../../assets/brand/btn-play.png';
 
@@ -31,14 +31,6 @@ const CONTENT_LEFT = 29;
 /** 버블 최대 폭(Figma 실측: AI 226 / 어르신 206 — 아바타·시간 자리를 뺀 값). */
 const MAX_AI = 226;
 const MAX_ELDER = 206;
-
-function hhmm(iso: string): string {
-  const d = new Date(iso);
-  const h = d.getHours();
-  const ampm = h < 12 ? '오전' : '오후';
-  const hr = h % 12 || 12;
-  return `${ampm} ${hr}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 function TimeLabel({ text, side }: { text: string; side: 'left' | 'right' }) {
   return (
@@ -76,7 +68,7 @@ function AiBubble({ turn }: { turn: ConversationTurn }) {
           {turn.text}
         </Text>
       </View>
-      <TimeLabel text={hhmm(turn.timestamp)} side="right" />
+      <TimeLabel text={clockLabel(turn.timestamp)} side="right" />
     </View>
   );
 }
@@ -94,7 +86,7 @@ function ElderBubble({
 }) {
   return (
     <View className="flex-row items-end justify-end" style={{ marginBottom: 30 }}>
-      <TimeLabel text={hhmm(turn.timestamp)} side="left" />
+      <TimeLabel text={clockLabel(turn.timestamp)} side="left" />
       <View
         style={{
           maxWidth: MAX_ELDER,

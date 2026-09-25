@@ -37,6 +37,7 @@ import {
   GuardianRiskNotice,
 } from '../../../src/components/consent';
 import { useElderView } from '../../../src/data/reads';
+import { subjectSelection } from '../../../src/features/consent/subject';
 
 /** 대리 동의자 성함 상한 — DB `consents_guardian_check`(50자)와 같다. */
 const NAME_MAX = 50;
@@ -66,20 +67,13 @@ export default function ConsentSubject() {
     );
   }
 
-  const isProxy = subject !== null && subject !== 'self';
-  const canProceed =
-    subject !== null && (!isProxy || (name.trim().length > 0 && relation.length > 0));
+  const { isProxy, canProceed, guardianName, guardianRelation } = subjectSelection(subject, name, relation);
 
   const goNext = () => {
     if (!canProceed || subject === null) return;
     router.push({
       pathname: '/consent/[id]/terms',
-      params: {
-        id,
-        subject,
-        guardianName: isProxy ? name.trim() : '',
-        guardianRelation: isProxy ? relation : '',
-      },
+      params: { id, subject, guardianName, guardianRelation },
     });
   };
 

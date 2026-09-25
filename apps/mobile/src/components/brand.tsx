@@ -4,10 +4,8 @@
 // 이모지 대체) 원본과 확연히 달라진다. 이전 구현은 로봇(안테나+점 눈)·파형·마이크를
 // 코드로 그려 Figma 디자인과 완전히 달랐다. 지금은 @4x 스크린샷에서 크롭한 실제 에셋을
 // 쓴다(assets/brand/*). 에셋 원본 비율을 유지해 왜곡을 막는다.
-//
-// 예외: ToneBar 는 아이콘이 아니라 **데이터에 따라 폭이 바뀌는 시각화**라 코드로 그린다.
 
-import { Image, Text, View } from 'react-native';
+import { Image } from 'react-native';
 import wordmarkAsset from '../../assets/brand/wordmark.png';
 import robotAsset from '../../assets/brand/robot-mascot.png';
 import robotInlineAsset from '../../assets/brand/robot-inline.png';
@@ -91,32 +89,5 @@ export function MicIndicator({ yourTurn, size = 123 }: { yourTurn: boolean; size
       resizeMode="contain"
       accessible={false}
     />
-  );
-}
-
-// ── 관찰 반응 분포 바(데이터 시각화 — 값에 따라 폭이 바뀌므로 코드로 그린다) ──
-export function ToneBar({
-  segments,
-}: {
-  segments: { label: string; percent: number; color: string }[];
-}) {
-  return (
-    <View>
-      <View className="flex-row h-4 rounded-full overflow-hidden">
-        {segments.map((s, i) => (
-          <View key={i} style={{ width: `${s.percent}%`, backgroundColor: s.color }} />
-        ))}
-      </View>
-      <View className="flex-row flex-wrap mt-2 gap-x-4 gap-y-1">
-        {segments.map((s, i) => (
-          <View key={i} className="flex-row items-center">
-            <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: s.color }} />
-            <Text className="text-[13px] text-muted ml-1.5 font-normal">
-              {s.label} {s.percent}%
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
   );
 }
