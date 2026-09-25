@@ -11,14 +11,14 @@
 //    감싸는 패딩으로 만든다. 세로 간격 57 과 좌우 기준선은 실측 그대로.
 // ⚠️ **재생바는 '녹음 없음'** — 세션 음성 저장은 아직 구현 범위가 아니다(동의·보관정책 필요).
 //    시안의 "00:00 / 14:12" 는 자리표시자라 값을 만들지 않는다(앱 `log/[id]` 과 같은 판단).
-import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toElderProfile, useProfile, useSession, useSessionLogs } from '@giokon/data';
+import { useProfile, useSession, useSessionLogs } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { Avatar } from '../../components/ui/Avatar';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 315;
 /** 카드 안 첫 말풍선 위치와 말풍선 사이 간격(시안 전 구간 57 — 마지막 3칸만 흘렸다). */
@@ -57,10 +57,7 @@ export function ConversationLogPage() {
   const session = useSession(sessionId);
   const logs = useSessionLogs(sessionId);
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const photos = useElderPhotoUrls(elder?.photoPath ? [elder.photoPath] : [], isConfigured);
   const turns = logs.data ?? [];
   const heading = dayHeading(session.data?.started_at);

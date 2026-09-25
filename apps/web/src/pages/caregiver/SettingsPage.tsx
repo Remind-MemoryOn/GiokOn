@@ -10,13 +10,12 @@
 //    화면은 처리 기준만 알린다.
 // ⚠️ 다운로드는 지금 화면이 이미 받은 데이터(계정·담당 어르신 연대기·동의)를 JSON 으로 묶는다.
 //    받지 못한 항목은 넣지 않는다(빈 배열) — 없는 데이터를 만들지 않는다.
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   toElderProfile,
   useCurrentUser,
   useOrganization,
   useProfiles,
-  useUpdateMyName,
   ORG_ROLE_LABEL,
   type UserRow,
 } from '@giokon/data';
@@ -25,6 +24,7 @@ import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { Y } from '../../lib/figmaY';
+import { useMyNameForm } from '../../lib/myName';
 
 /** PageHeader(제목+설명) 블록이 끝나는 266 에서 첫 카드(315)까지의 간격. */
 const HEADER_GAP = 49;
@@ -65,24 +65,11 @@ function SettingsBody({ me }: { me: UserRow | null }) {
   const { isConfigured } = useAuth();
   const org = useOrganization({ enabled: isConfigured });
   const profiles = useProfiles();
-  const rename = useUpdateMyName();
   const toast = useStore((s) => s.toast);
-  const [name, setName] = useState(me?.name ?? '');
+  const { name, setName, onSave, saving } = useMyNameForm(me);
 
   const elders = useMemo(() => (profiles.data ?? []).map(toElderProfile), [profiles.data]);
   const card3Height = RULE_TOP + DELETION_RULES.length * RULE_PITCH + 54;
-
-  function onSave() {
-    if (!me) return;
-    if (!name.trim()) return toast('error', '이름을 입력해 주세요.');
-    rename.mutate(
-      { id: me.id, name: name.trim() },
-      {
-        onSuccess: () => toast('success', '이름을 저장했어요.'),
-        onError: (e) => toast('error', e.message),
-      },
-    );
-  }
 
   function onDownload() {
     const payload = {
@@ -156,7 +143,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
           <button
             type="button"
             data-fx="121:754"
-            disabled={rename.isPending}
+            disabled={saving}
             onClick={onSave}
             className="absolute left-[651px] top-[154.42px] h-[57.05px] w-[102px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[29px] text-white disabled:opacity-60"
           >

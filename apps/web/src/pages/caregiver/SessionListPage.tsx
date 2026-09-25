@@ -10,12 +10,13 @@
 // ⚠️ 카드 높이는 시안이 3행 고정이지만 실데이터는 개수가 달라진다 → 행 수에서 계산한다.
 import { useMemo, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
-import { toElderProfile, useProfile, useSessions } from '@giokon/data';
+import { useProfile, useSessions } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
 import { Y } from '../../lib/figmaY';
 import { dayKey } from '../../lib/format';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 315;
 const ROW_TOP = 381;
@@ -29,10 +30,7 @@ export function SessionListPage() {
   const sessions = useSessions(elderId);
   const [day, setDay] = useState('');
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const rows = useMemo(() => {
     const all = sessions.data ?? [];
     return day

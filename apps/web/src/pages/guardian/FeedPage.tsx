@@ -25,7 +25,6 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
-  toElderProfile,
   useMySharedContent,
   useProfile,
   type ShareItemType,
@@ -41,6 +40,7 @@ import { MessageNoticeDialog } from '../../components/guardian-message';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { cn } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 343;
 const ITEM_TOP = 387;
@@ -107,10 +107,7 @@ export function FeedPage() {
   const { link: approvedLink } = useGuardianElder();
   const shared = useMySharedContent({ enabled: isConfigured });
   const profileQuery = useProfile(approvedLink?.profile_id);
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
 
   const photoPaths = useMemo(() => (shared.data?.photos ?? []).map((p) => p.path), [shared.data]);
   const photoUrls = useJournalPhotoUrls(photoPaths, isConfigured);

@@ -7,12 +7,11 @@
 // 요양보호사 설정(121:598)과 계정 카드·하단 바가 같은 좌표다 — 값만 다르다.
 // ⚠️ 알림 설정 행에는 시안에 화살표가 있지만 **여는 화면이 디자인에 없고** 알림 센터도
 //    아직 배선 전이다(Phase 2) → 행은 그대로 그리되 누를 수 없게 둔다.
-import { useState } from 'react';
-import { useCurrentUser, useUpdateMyName, type UserRow } from '@giokon/data';
+import { useCurrentUser, type UserRow } from '@giokon/data';
 import { PageHeader } from '../../components/Layout';
 import { asset } from '../../assets/ui';
-import { useStore } from '../../store/store';
 import { APP_VERSION } from '../../lib/version';
+import { useMyNameForm } from '../../lib/myName';
 
 const HEADER_GAP = 49;
 
@@ -31,21 +30,7 @@ export function SettingsPage() {
 }
 
 function SettingsBody({ me }: { me: UserRow | null }) {
-  const rename = useUpdateMyName();
-  const toast = useStore((s) => s.toast);
-  const [name, setName] = useState(me?.name ?? '');
-
-  function onSave() {
-    if (!me) return;
-    if (!name.trim()) return toast('error', '이름을 입력해 주세요.');
-    rename.mutate(
-      { id: me.id, name: name.trim() },
-      {
-        onSuccess: () => toast('success', '이름을 저장했어요.'),
-        onError: (e) => toast('error', e.message),
-      },
-    );
-  }
+  const { name, setName, onSave, saving } = useMyNameForm(me);
 
   return (
     <>
@@ -97,7 +82,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
           <button
             type="button"
             data-fx="334:769"
-            disabled={rename.isPending}
+            disabled={saving}
             onClick={onSave}
             className="absolute left-[651px] top-[154.42px] h-[57.05px] w-[102px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[29px] text-white disabled:opacity-60"
           >

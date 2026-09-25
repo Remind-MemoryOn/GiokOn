@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  toElderProfile, useProfile, useSessions,
+  useProfile, useSessions,
 } from '@giokon/data';
 import { withinMonths } from '@giokon/core';
 import { asset } from '../../assets/ui';
@@ -19,6 +19,7 @@ import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
 import { PERIODS, Y, type Months } from '../../lib/analysis';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 343;
 const ROW_TOP = 458;
@@ -32,10 +33,7 @@ export function AnalysisSessionsPage() {
   const profileQuery = useProfile(approvedLink?.profile_id);
   const sessionsQuery = useSessions(approvedLink?.profile_id);
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   // 보호자에게는 **끝난 대화**만 보인다(진행 중·설계된 세션은 공개 항목이 아니다).
   const rows = useMemo(
     () => (sessionsQuery.data ?? [])

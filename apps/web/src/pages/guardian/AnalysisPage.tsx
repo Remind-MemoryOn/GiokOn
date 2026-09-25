@@ -4,25 +4,23 @@
 //   카드 2장은 요양보호사 개인별 종합분석(228:4091)과 **같은 화면**이라 공용 부품을 쓴다.
 //
 // ⚠️ 기간 pill 의 ∨ 는 반전 노드라 metadata x(1358)가 렌더 위치가 아니다 — 프레임 오른끝 − 폭.
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { toElderProfile, useProfile } from '@giokon/data';
+import { useProfile } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useGuardianElder } from '../../lib/guardianElder';
 import { ElderAnalysisCards } from '../../components/analysis-comprehensive';
 import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { PERIODS, Y, type Months } from '../../lib/analysis';
+import { useElderProfile } from '../../lib/elderProfile';
 
 export function AnalysisPage() {
   const { userRow } = useAuth();
   const [months, setMonths] = useState<Months>(3);
   const { link: approvedLink } = useGuardianElder();
   const profileQuery = useProfile(approvedLink?.profile_id);
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
 
   return (
     // 좌표가 화면 절대값이라 본문 여백과 사이드바를 되빼 원점을 맞춘다.

@@ -34,6 +34,7 @@ import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD1_TOP = 340;
 const CARD2_TOP = 861;
@@ -291,10 +292,7 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
   /** 연결 해제 확인 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
   const [confirmUnlink, setConfirmUnlink] = useState(false);
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const photos = useElderPhotoUrls(elder?.photoPath ? [elder.photoPath] : [], isConfigured);
   /** 마지막 활동 = 가장 최근에 공개된 항목 시각. 없으면 만들지 않는다. */
   const lastAt = useMemo(() => {

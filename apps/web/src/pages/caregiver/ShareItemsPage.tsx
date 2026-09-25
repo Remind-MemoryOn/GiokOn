@@ -15,7 +15,6 @@ import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
-  toElderProfile,
   useProgramJournals,
   useCreateGuardianShare,
   useGuardianLinks,
@@ -41,6 +40,7 @@ import { useStore } from '../../store/store';
 import { journalErrorMessage } from '../../lib/journalErrors';
 import { cn } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 /**
  * 공개 행의 신원은 **(유형, 항목)** 이다. `session_summary` 와 `analysis` 는 같은
@@ -113,10 +113,7 @@ export function ShareItemsPage() {
   }, [guardians.data]);
 
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
 
   /**
    * (유형, 항목) → 철회되지 않은 공개 행. 없으면 미공개다.

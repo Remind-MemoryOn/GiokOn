@@ -10,12 +10,13 @@
 //    (목록에서 감추면 요양보호사가 세션이 사라진 줄 안다).
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toElderProfile, useProfile, useSessions } from '@giokon/data';
+import { useProfile, useSessions } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
 import { Y } from '../../lib/figmaY';
 import { dayKey } from '../../lib/format';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 343;
 const ROW_TOP = 409;
@@ -29,10 +30,7 @@ export function ConversationAnalysisListPage() {
   const sessions = useSessions(elderId);
   const [day, setDay] = useState('');
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const rows = useMemo(() => {
     // 분석은 대화가 **끝나야** 생긴다 — 설계·진행 중 세션을 여기 세우면 빈 분석으로 간다.
     const all = (sessions.data ?? []).filter((s) => s.status === 'ended');

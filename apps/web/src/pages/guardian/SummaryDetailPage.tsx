@@ -8,14 +8,15 @@
 //
 // ⚠️ 시안의 요약 본문 상자는 6줄인데 그중 마지막 한 줄이 비어 있다(맨 끝 줄바꿈). 그 빈 줄을
 //    빼고 재면 "기억에 남은 이야기" 앞 간격은 27.4 다 — 빈 줄을 흉내 내지 않고 27.4 를 쓴다.
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { parseSessionAnalysis, useMarkShareViewed, useMySharedContent } from '@giokon/data';
+import { parseSessionAnalysis, useMySharedContent } from '@giokon/data';
 import { useAuth } from '../../auth/AuthProvider';
 import {
   BackLink, BODY_DY, CARD_TOP, DetailHead, PAD_TOP, PAD_X, SectionBody, SectionTitle,
   TokenList, Y,
 } from '../../components/guardian-detail';
+import { useMarkShareViewedOnce } from '../../lib/shareViewed';
 
 const SEC_GAP = 35.5;
 /** 두 번째 열(AI 회상 대화 시간) — 1112 − 408. */
@@ -34,17 +35,8 @@ export function SummaryDetailPage() {
   );
   const analysis = useMemo(() => (row ? parseSessionAnalysis(row) : null), [row]);
 
-  // 보호자가 열어 본 사실을 남긴다(공개 이력의 "보호자 확인" · 확인 정보 모달이 읽는다).
-  // 한 번 연 화면에서 두 번 세지 않도록 공개 id 당 한 번만 부른다.
-  const markViewed = useMarkShareViewed();
-  const marked = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isConfigured || !share?.id || marked.current === share.id) return;
-    marked.current = share.id;
-    markViewed.mutate(share.id);
-    // markViewed 는 매 렌더 새 객체라 의존성에서 뺀다(ref 가이드로 한 번만 부른다).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConfigured, share?.id]);
+  // 보호자가 열어 본 사실을 남긴다(공개 id 당 한 번).
+  useMarkShareViewedOnce(share?.id, isConfigured);
 
   const topics = analysis?.topicOutcomes.map((t) => t.topic) ?? [];
   const keywords = analysis?.interestKeywords ?? [];

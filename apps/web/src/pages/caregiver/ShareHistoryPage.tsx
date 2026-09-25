@@ -14,7 +14,6 @@ import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   parseSessionAnalysis,
-  toElderProfile,
   useProgramJournals,
   useCurrentUser,
   useGuardianLinks,
@@ -31,6 +30,7 @@ import { ShareReceiptDialog, type ShareReceipt } from '../../components/share-re
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_LEFT = 329;
 const CARD_TOP = 345;
@@ -81,10 +81,7 @@ export function ShareHistoryPage() {
     if (id === null && search.get('receipt')) setSearch({}, { replace: true });
   };
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
 
   /** item_id → 제목. 원본이 지워졌으면 키가 없다(제목을 만들지 않는다). */
   const titles = useMemo(() => {

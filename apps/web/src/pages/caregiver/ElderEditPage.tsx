@@ -8,10 +8,9 @@
 // ⚠️ **특이사항**은 `profiles.note`(최대 500자)다 — 돌봄에서 참고할 메모(선호·주의할 점)이고
 //    **건강 상태를 적는 칸이 아니다**(비의료 포지셔닝).
 // ⚠️ **주요 기억**은 앱과 같은 방식으로 `chronicle_entries(topic='주요 기억')` 에 담는다.
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  toElderProfile,
   useChronicles,
   useCreateChronicle,
   useDeleteChronicle,
@@ -25,6 +24,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 /** 라벨(Medium 20) + 필수 별표(Medium 12 accent, 라벨보다 9px 위 라인박스). */
 function Label({
@@ -429,10 +429,7 @@ export function ElderEditPage() {
   const { elderId } = useParams<{ elderId: string }>();
   const { isConfigured } = useAuth();
   const profileQuery = useProfile(elderId);
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const photos = useElderPhotoUrls(elder?.photoPath ? [elder.photoPath] : [], isConfigured);
 
   if (profileQuery.isLoading) return null;

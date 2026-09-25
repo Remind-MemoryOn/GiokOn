@@ -11,10 +11,8 @@
 //    법률 문서 확정본(2026-09-24)으로 4종이 되어 같은 카드(높이 419.25) 안에 들어가도록 74 로 줄였다.
 //    첫 행의 좌표(시안 실측)는 그대로다.
 // ⚠️ 특이사항(profiles.note)은 없을 수 있다 → 값을 만들지 않고 `—`(Figma 도 "-").
-import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  toElderProfile,
   useChronicles,
   useConsents,
   useElderCode,
@@ -39,6 +37,7 @@ import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { cn, relativeDay } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
+import { useElderProfile } from '../../lib/elderProfile';
 
 /** 동의 행 세로 피치 — 시안 92(3행) → 4행이 카드 안에 들어가도록 74. */
 const CONSENT_PITCH = 74;
@@ -218,10 +217,7 @@ export function ElderDetailPage() {
   const chronicles = useChronicles(elderId);
   const safety = useSafetyEvents(elderId);
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const photos = useElderPhotoUrls(elder?.photoPath ? [elder.photoPath] : [], isConfigured);
   const photo = elder?.photoPath ? photos.data?.[elder.photoPath] : undefined;
 

@@ -2,21 +2,19 @@
 //   제목 @(322,186) · 부제 @(322,236.13) · 목록으로 @(1285,187.1) ·
 //   탭 @301(활성=종합 분석, 밑줄 81×3 @341) · 기간 pill 127×30 @(1249,292)
 //   카드 2장은 보호자 종합 분석(96:94)과 같은 화면이라 `components/analysis-comprehensive` 공용.
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toElderProfile, useProfile } from '@giokon/data';
+import { useProfile } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { ElderAnalysisCards } from '../../components/analysis-comprehensive';
 import { PERIODS, Y, type Months } from '../../lib/analysis';
+import { useElderProfile } from '../../lib/elderProfile';
 
 export function AnalysisElderPage() {
   const { elderId } = useParams<{ elderId: string }>();
   const [months, setMonths] = useState<Months>(3);
   const profileQuery = useProfile(elderId);
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
 
   return (
     // 좌표가 화면 절대값이라 본문 여백과 사이드바를 되빼 원점을 맞춘다.

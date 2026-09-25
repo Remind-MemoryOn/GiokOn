@@ -1,6 +1,8 @@
 // 프로그램 일지 서버 오류 코드 → 요양보호사용 문구(D5 트리거·RLS).
 // 서버 문구를 그대로 띄우면 `JOURNAL_FINALIZE_FORBIDDEN` 같은 식별자가 보인다. 규칙 판정은 서버가 하고
 // 여기서는 **읽을 수 있는 말로만** 바꾼다 — 화면에서 다시 판정하지 않는다.
+import { serverErrorMessage } from './serverErrors';
+
 const MESSAGES: Record<string, string> = {
   JOURNAL_FINALIZE_FORBIDDEN: '일지 확정 권한이 없어요. 기관 권한표에서 확정 권한을 받은 분이 확정할 수 있어요.',
   JOURNAL_FINALIZE_HUMAN_ONLY: '일지 확정은 담당자가 직접 해야 해요.',
@@ -18,7 +20,5 @@ const MESSAGES: Record<string, string> = {
 
 /** 오류 → 화면 문구. 알려진 코드가 아니면 원래 문구를 그대로 둔다. */
 export function journalErrorMessage(error: unknown, fallback = '저장하지 못했어요.'): string {
-  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  const code = Object.keys(MESSAGES).find((k) => raw.includes(k));
-  return code ? MESSAGES[code] : raw || fallback;
+  return serverErrorMessage(MESSAGES, error, fallback);
 }

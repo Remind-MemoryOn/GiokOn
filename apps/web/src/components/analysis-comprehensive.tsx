@@ -17,7 +17,6 @@
 import { useMemo } from 'react';
 import {
   parseSessionAnalysis,
-  toElderProfile,
   toSession,
   useOrgSessionAnalyses,
   useProfile,
@@ -41,6 +40,7 @@ import { LineChart, RadarChart } from './charts';
 import { cn } from '../lib/utils';
 import { Y, type Months } from '../lib/analysis';
 import { secondsParts } from '../lib/format';
+import { useElderProfile } from '../lib/elderProfile';
 
 /** 카드 좌상단을 원점으로 쓰는 좌표. */
 const C1 = 343;
@@ -104,10 +104,7 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
   // "전체 평균 대비" 는 기관 전체 분석이 있어야 낼 수 있다.
   const orgAnalysesQuery = useOrgSessionAnalyses({ enabled: isConfigured, fetchAll: true });
 
-  const elder = useMemo(
-    () => (profileQuery.data ? toElderProfile(profileQuery.data) : null),
-    [profileQuery.data],
-  );
+  const elder = useElderProfile(profileQuery.data);
   const sessions = useMemo(
     () => (sessionsQuery.data ?? []).map(toSession),
     [sessionsQuery.data],

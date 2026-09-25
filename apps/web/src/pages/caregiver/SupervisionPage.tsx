@@ -38,6 +38,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Dialog } from '../../components/ui/Dialog';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
+import { serverErrorMessage } from '../../lib/serverErrors';
 
 const ACTION_LABEL: Record<string, string> = {
   pause: '일시정지',
@@ -53,9 +54,7 @@ const CONTROL_ERRORS: Record<string, string> = {
   SESSION_CONTROL_ACTION: '알 수 없는 요청이에요.',
 };
 function controlError(e: unknown): string {
-  const raw = e instanceof Error ? e.message : '';
-  const code = Object.keys(CONTROL_ERRORS).find((k) => raw.includes(k));
-  return code ? CONTROL_ERRORS[code] : raw || '요청하지 못했어요.';
+  return serverErrorMessage(CONTROL_ERRORS, e, '요청하지 못했어요.');
 }
 
 function timeHM(iso: string): string {
