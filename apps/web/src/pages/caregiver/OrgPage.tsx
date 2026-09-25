@@ -47,8 +47,9 @@ import {
   type InvitableRole,
   type OrgInviteRow,
   type OrganizationRow,
+  type UserRow,
 } from '@giokon/data';
-import { dateDot } from '@giokon/core';
+import { dateDot, type ElderProfile } from '@giokon/core';
 import { PageHeader } from '../../components/Layout';
 import { Avatar } from '../../components/ui/Avatar';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -102,51 +103,22 @@ export function OrgPage() {
   return <OrgForm key={org.data?.id ?? 'none'} org={org.data ?? null} />;
 }
 
-function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
-  const { isConfigured } = useAuth();
-  const members = useOrgMembers();
-  const me = useCurrentUser();
-  const save = useUpdateOrganization();
-  const toast = useStore((s) => s.toast);
-  const profiles = useProfiles();
-  const org = { data: orgRow };
-  // 승인 대기 — 보호자 연결 요청 + 요양보호사 기관 합류 요청.
+/** 승인 대기 세 종류(담당 요청 · 직원 합류 · 보호자 연결)를 한 목록으로 모은다. 직원 합류는 관리 역할만 읽는다. */
+function useWaitingList(
+  isConfigured: boolean,
+  isManager: boolean,
+  me: { data?: UserRow | null },
+  elders: ElderProfile[],
+): Waiting[] {
   const pendingJoins = useOrgPendingAssignments({ enabled: isConfigured });
   const guardianLinks = useOrgGuardianLinks({ enabled: isConfigured });
-  const approveJoin = useApproveCaregiverAssignment();
-  const approveGuardian = useApproveGuardianLink();
-  const rejectGuardian = useRevokeGuardianLink();
-  const rejectJoin = useRemoveCaregiverAssignment();
-  // 관리 역할(기관 관리자·센터장) — 직원 초대·합류 승인. 기관 이름 수정은 기관 관리자만(DB 정책).
-  const isManager = isOrgManagerRole(me.data?.role);
   const staffJoins = useOrgJoinRequests({ enabled: isConfigured && isManager });
-  const approveStaff = useApproveOrgJoin();
-  const rejectStaff = useRejectOrgJoin();
-  const invites = useOrgInvites({ enabled: isConfigured && isManager });
-  const createInvite = useCreateOrgInvite();
-  const revokeInvite = useRevokeOrgInvite();
-  const [inviteRole, setInviteRole] = useState<InvitableRole>('caregiver');
-  const [inviteDays, setInviteDays] = useState(7);
-  /** 직원 합류 승인 확인 대상 — 승인하면 기관 전체 기록을 보게 된다. */
-  const [approvingStaff, setApprovingStaff] = useState<Waiting | null>(null);
-  const [revoking, setRevoking] = useState<OrgInviteRow | null>(null);
-
-  const [name, setName] = useState(orgRow?.name ?? '');
-  /** 거절 확인 대상 — 되돌리려면 상대가 다시 요청해야 한다. */
-  const [rejecting, setRejecting] = useState<Waiting | null>(null);
-
-  const isAdmin = me.data?.role === 'org_admin'; // 기관 이름 수정 — organizations_update_admin
-  const elders = useMemo(() => (profiles.data ?? []).map(toElderProfile), [profiles.data]);
-  const rows = members.data ?? [];
-  /** 카드 높이는 구성원 수에서 계산한다(시안은 2명 고정). */
-  const card2Height = MEMBER_TOP + Math.max(rows.length, 1) * MEMBER_PITCH + 114;
-
   const elderName = useMemo(
     () => new Map(elders.map((e) => [e.id, e.name])),
     [elders],
   );
   /** 승인 대기 두 종류를 한 목록으로. 오래 기다린 것이 위로 온다. */
-  const waiting = useMemo<Waiting[]>(() => {
+  return useMemo<Waiting[]>(() => {
     const out: Waiting[] = [];
     for (const a of pendingJoins.data ?? []) {
       out.push({
@@ -189,14 +161,24 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
     }
     return out.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   }, [pendingJoins.data, staffJoins.data, guardianLinks.data, elderName, me.data?.id]);
+}
 
-  const card3Top = CARD2_TOP + card2Height + CARD_GAP;
-  const card3Height = MEMBER_TOP + waiting.length * MEMBER_PITCH + 114;
-  const inviteRows = invites.data ?? [];
-  const afterWaiting = waiting.length > 0 ? card3Top + card3Height : CARD2_TOP + card2Height;
-  const card4Top = afterWaiting + CARD_GAP;
-  const card4Height = MEMBER_TOP + Math.max(inviteRows.length, 1) * MEMBER_PITCH + 114;
-  const pageBottom = isManager ? card4Top + card4Height : afterWaiting;
+/** 승인·거절 — 종류마다 다른 서버 동작을 부르고 결과를 알린다. `deciding` 은 어느 하나라도 진행 중인가. */
+function useDecideWaiting(me: { data?: UserRow | null }) {
+  const toast = useStore((s) => s.toast);
+  const approveJoin = useApproveCaregiverAssignment();
+  const approveGuardian = useApproveGuardianLink();
+  const rejectGuardian = useRevokeGuardianLink();
+  const rejectJoin = useRemoveCaregiverAssignment();
+  const approveStaff = useApproveOrgJoin();
+  const rejectStaff = useRejectOrgJoin();
+  const deciding =
+    approveJoin.isPending ||
+    approveGuardian.isPending ||
+    rejectJoin.isPending ||
+    rejectGuardian.isPending ||
+    approveStaff.isPending ||
+    rejectStaff.isPending;
 
   function decide(w: Waiting, approve: boolean) {
     const done = (msg: string) => () => toast('success', msg);
@@ -222,6 +204,50 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
       rejectGuardian.mutate({ id: w.id }, { onSuccess: done('연결 요청을 거절했어요.'), onError: fail });
     }
   }
+
+  return { decide, deciding };
+}
+
+function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
+  const { isConfigured } = useAuth();
+  const members = useOrgMembers();
+  const me = useCurrentUser();
+  const save = useUpdateOrganization();
+  const toast = useStore((s) => s.toast);
+  const profiles = useProfiles();
+  const org = { data: orgRow };
+  // 관리 역할(기관 관리자·센터장) — 직원 초대·합류 승인. 기관 이름 수정은 기관 관리자만(DB 정책).
+  const isManager = isOrgManagerRole(me.data?.role);
+  const invites = useOrgInvites({ enabled: isConfigured && isManager });
+  const createInvite = useCreateOrgInvite();
+  const revokeInvite = useRevokeOrgInvite();
+  const [inviteRole, setInviteRole] = useState<InvitableRole>('caregiver');
+  const [inviteDays, setInviteDays] = useState(7);
+  /** 직원 합류 승인 확인 대상 — 승인하면 기관 전체 기록을 보게 된다. */
+  const [approvingStaff, setApprovingStaff] = useState<Waiting | null>(null);
+  const [revoking, setRevoking] = useState<OrgInviteRow | null>(null);
+
+  const [name, setName] = useState(orgRow?.name ?? '');
+  /** 거절 확인 대상 — 되돌리려면 상대가 다시 요청해야 한다. */
+  const [rejecting, setRejecting] = useState<Waiting | null>(null);
+
+  const isAdmin = me.data?.role === 'org_admin'; // 기관 이름 수정 — organizations_update_admin
+  const elders = useMemo(() => (profiles.data ?? []).map(toElderProfile), [profiles.data]);
+  const waiting = useWaitingList(isConfigured, isManager, me, elders);
+  const { decide, deciding } = useDecideWaiting(me);
+  const rows = members.data ?? [];
+  /** 카드 높이는 구성원 수에서 계산한다(시안은 2명 고정). */
+  const card2Height = MEMBER_TOP + Math.max(rows.length, 1) * MEMBER_PITCH + 114;
+
+
+  const card3Top = CARD2_TOP + card2Height + CARD_GAP;
+  const card3Height = MEMBER_TOP + waiting.length * MEMBER_PITCH + 114;
+  const inviteRows = invites.data ?? [];
+  const afterWaiting = waiting.length > 0 ? card3Top + card3Height : CARD2_TOP + card2Height;
+  const card4Top = afterWaiting + CARD_GAP;
+  const card4Height = MEMBER_TOP + Math.max(inviteRows.length, 1) * MEMBER_PITCH + 114;
+  const pageBottom = isManager ? card4Top + card4Height : afterWaiting;
+
 
   function onSave() {
     if (!org.data) return;
@@ -387,13 +413,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
 
             {waiting.map((w, i) => {
               const top = MEMBER_TOP + i * MEMBER_PITCH;
-              const busy =
-                approveJoin.isPending ||
-                approveGuardian.isPending ||
-                rejectJoin.isPending ||
-                rejectGuardian.isPending ||
-                approveStaff.isPending ||
-                rejectStaff.isPending;
+              const busy = deciding;
               return (
                 <div key={w.key}>
                   <span

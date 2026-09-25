@@ -19,20 +19,12 @@ import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
 import { cn } from '../lib/utils';
 
-// 신규 디자인의 공용 셸: 상단 바(122) + 좌측 사이드바(296) + 콘텐츠 열(1054 @ x323).
-// 요양보호사·보호자 모두 같은 셸을 쓰고 사이드바 항목만 다르다.
-function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'caregiver' | 'guardian' }) {
-  const { isConfigured } = useAuth();
-  const toast = useStore((s) => s.toast);
-  const location = useLocation();
-  const [search, setSearch] = useState('');
-  const hideSearch = variant === 'guardian' && location.pathname === '/guardian';
-
-  // 검색 결과 — 시안에는 입력창만 있고 결과가 없어 아무 데도 갈 수 없었다.
-  // 지금 보고 있는 업무 섹션(어르신·세션·분석·일지·공개) 안에서 그 어르신으로 옮겨 준다.
-  const isCaregiver = location.pathname.startsWith('/caregiver');
+/** 탑바 검색 결과 — 시안에는 입력창만 있고 결과가 없어 아무 데도 갈 수 없었다.
+ *  지금 보고 있는 업무 섹션(어르신·세션·분석·일지·공개) 안에서 그 어르신으로 옮겨 준다. */
+function useElderSearch(search: string, pathname: string, isConfigured: boolean) {
+  const isCaregiver = pathname.startsWith('/caregiver');
   const profiles = useProfiles({ enabled: isConfigured && isCaregiver });
-  const section = location.pathname.split('/')[2] || 'elders';
+  const section = pathname.split('/')[2] || 'elders';
   const sectionRoot = ['elders', 'sessions', 'analysis', 'journal', 'shares'].includes(section)
     ? section
     : 'elders';
@@ -49,8 +41,12 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
         to: `/caregiver/${sectionRoot}/${elder.id}`,
       }));
   }, [isCaregiver, term, profiles.data, sectionRoot]);
+  return { isCaregiver, searchResults };
+}
 
-  // 앱 대화 종료 → 세션·분석·공개 변경을 실시간 반영.
+/** 앱 대화 종료 → 세션·분석·공개 변경을 실시간 반영. */
+function useShellRealtime(isConfigured: boolean) {
+  const toast = useStore((s) => s.toast);
   const onRealtimeEvent = useCallback(
     (event: RealtimeEvent) => {
       if (event.table === 'session_analyses' && event.eventType === 'INSERT') {
@@ -60,9 +56,11 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
     [toast],
   );
   useGiokonRealtime({ enabled: isConfigured, onEvent: onRealtimeEvent });
+}
 
-  // 탑바 벨 — 알림은 DB 트리거가 파생한다(안전 이벤트·보호자 확인). 근거 없는
-  // 숫자를 만들지 않으므로 알림이 없으면 배지도 없다.
+/** 탑바 벨 — 알림은 DB 트리거가 파생한다(안전 이벤트·보호자 확인). 근거 없는
+ *  숫자를 만들지 않으므로 알림이 없으면 배지도 없다. */
+function useShellNotifications(isConfigured: boolean) {
   const { data: notificationRows } = useMyNotifications({ enabled: isConfigured });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
@@ -81,11 +79,21 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
       read: n.read_at !== null,
     }));
   }, [notificationRows, messageRows]);
-  const handleReadNotification = useCallback(
-    (id: string) => markRead.mutate(id),
-    [markRead],
-  );
-  const handleReadAllNotifications = useCallback(() => markAllRead.mutate(), [markAllRead]);
+  const onRead = useCallback((id: string) => markRead.mutate(id), [markRead]);
+  const onReadAll = useCallback(() => markAllRead.mutate(), [markAllRead]);
+  return { count: unreadCount(notificationRows), notifications, onRead, onReadAll };
+}
+
+// 신규 디자인의 공용 셸: 상단 바(122) + 좌측 사이드바(296) + 콘텐츠 열(1054 @ x323).
+// 요양보호사·보호자 모두 같은 셸을 쓰고 사이드바 항목만 다르다.
+function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'caregiver' | 'guardian' }) {
+  const { isConfigured } = useAuth();
+  const location = useLocation();
+  const [search, setSearch] = useState('');
+  const hideSearch = variant === 'guardian' && location.pathname === '/guardian';
+  const { isCaregiver, searchResults } = useElderSearch(search, location.pathname, isConfigured);
+  useShellRealtime(isConfigured);
+  const bell = useShellNotifications(isConfigured);
 
   return (
     <div className="min-h-screen bg-white">
@@ -104,10 +112,10 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
             : { value: search, onChange: setSearch, placeholder: isCaregiver ? '어르신 검색' : '' }
         }
         searchResults={searchResults}
-        notificationCount={unreadCount(notificationRows)}
-        notifications={notifications}
-        onReadNotification={handleReadNotification}
-        onReadAllNotifications={handleReadAllNotifications}
+        notificationCount={bell.count}
+        notifications={bell.notifications}
+        onReadNotification={bell.onRead}
+        onReadAllNotifications={bell.onReadAll}
       />
       {/* 조회 실패를 "기록 없음" 으로 오해하지 않게 — 레이아웃은 건드리지 않는다 */}
       <QueryErrorBanner />

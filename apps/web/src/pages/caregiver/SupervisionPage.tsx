@@ -28,7 +28,9 @@ import {
   useSessionInterventions,
   useUnacknowledgedSafetyEvents,
   SESSION_PHASE_LABEL,
+  type SafetyEventRow,
   type SessionControlAction,
+  type SessionInterventionRow,
   type SessionRow,
 } from '@giokon/data';
 import { asset } from '../../assets/ui';
@@ -70,6 +72,172 @@ function useNow(ms = 1000): number {
     return () => window.clearInterval(id);
   }, [ms]);
   return now;
+}
+
+/** 진행 중인 세션 한 장 — 위기 카드 · 어르신/시작한 사람 · 상태 · 단계/경과/목표 · 제어 버튼 · 개입 기록. */
+function SessionCard({
+  row,
+  now,
+  orgTargetMinutes,
+  elderName,
+  alerts,
+  history,
+  whoName,
+  busy,
+  ackDisabled,
+  onAcknowledge,
+  onPause,
+  onResume,
+  onEnd,
+}: {
+  row: SessionRow;
+  now: number;
+  orgTargetMinutes: number | null | undefined;
+  elderName: string | undefined;
+  alerts: SafetyEventRow[];
+  history: SessionInterventionRow[];
+  whoName: (id: string | null | undefined) => string | null;
+  busy: boolean;
+  ackDisabled: boolean;
+  onAcknowledge: (alertId: string) => void;
+  onPause: () => void;
+  onResume: () => void;
+  onEnd: () => void;
+}) {
+  const state = supervisionState(row);
+  const target = sessionTargetMinutes(row.duration_minutes, orgTargetMinutes);
+  const elapsed = elapsedLabel(row.started_at, now);
+  const over = Date.parse(row.started_at) + target * 60_000 < now;
+  const starter = whoName(row.user_id);
+  const pausedBy = whoName(row.paused_by);
+  return (
+    <article
+      aria-label={`${elderName ?? '어르신'} 대화`}
+      className={cn(
+        'flex min-w-0 flex-col rounded-[10px] bg-white p-5 shadow-card',
+        alerts.length > 0 && 'ring-2 ring-alert',
+      )}
+    >
+      {/* 위기 카드 — 서버가 저장한 요양보호사 알림 문구(전화번호·비의료 고지 포함)를 그대로 */}
+      {alerts.map((a) => (
+        <div key={a.id} role="alert" aria-live="assertive" className="mb-4 rounded-[10px] border-l-4 border-alert bg-alert/10 p-4">
+          <p className="text-w-sub font-semibold leading-[26px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
+            {a.caregiver_alert}
+          </p>
+          {a.excerpt ? (
+            <p className="mt-2 text-w-label leading-[22px] text-ink-700">"{a.excerpt}"</p>
+          ) : null}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-w-label text-ink-700">
+              {timeHM(a.created_at)} 감지 · <span className="whitespace-nowrap">키워드 기반 안전장치</span>
+            </span>
+            <button
+              type="button"
+              disabled={ackDisabled}
+              onClick={() => onAcknowledge(a.id)}
+              className="shrink-0 rounded-[10px] border-2 border-alert bg-white px-4 py-2 text-w-label font-semibold text-ink-900 disabled:opacity-50"
+            >
+              확인했어요
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-w-nav font-bold leading-[30px] text-ink-900">
+            {elderName ?? '어르신'}
+          </h2>
+          <p className="mt-1 text-w-label text-ink-500">
+            {timeHM(row.started_at)} 시작{starter ? ` · ${starter}` : ''}
+          </p>
+        </div>
+        <span
+          className={cn(
+            'inline-flex shrink-0 items-center gap-2 rounded-pill px-3 py-1 text-w-label font-semibold text-ink-900',
+            state === 'running' && 'bg-live-soft',
+            state === 'paused' && 'bg-accent-soft',
+            state === 'ending' && 'bg-mute',
+          )}
+        >
+          {/* 상태 색은 점으로만 — 색 글자는 연한 배경 위 대비가 모자란다(감독 화면 대비 보정 2026-09-25) */}
+          <span
+            aria-hidden
+            className={cn(
+              'h-2 w-2 rounded-full',
+              state === 'running' && 'bg-live',
+              state === 'paused' && 'bg-accent',
+              state === 'ending' && 'bg-ink-400',
+            )}
+          />
+          {state === 'running' ? '진행 중' : state === 'paused' ? '일시정지' : '종료 요청됨'}
+        </span>
+      </header>
+
+      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-[10px] bg-mute-pale px-2 py-3">
+          <dt className="text-w-label text-ink-700">단계</dt>
+          <dd className="mt-1 text-w-sub font-semibold text-ink-900">
+            {row.phase ? SESSION_PHASE_LABEL[row.phase] : '시작 전'}
+          </dd>
+        </div>
+        <div className="rounded-[10px] bg-mute-pale px-2 py-3">
+          <dt className="text-w-label text-ink-700">경과</dt>
+          <dd
+            className={cn(
+              'mt-1 text-w-sub font-semibold tabular-nums text-ink-900',
+              over && 'underline decoration-alert decoration-2 underline-offset-4',
+            )}
+          >
+            {elapsed ?? '—'}
+            {over ? <span className="sr-only"> (목표 시간 초과)</span> : null}
+          </dd>
+        </div>
+        <div className="rounded-[10px] bg-mute-pale px-2 py-3">
+          <dt className="text-w-label text-ink-700">목표</dt>
+          <dd className="mt-1 text-w-sub font-semibold text-ink-900">{target}분</dd>
+        </div>
+      </dl>
+
+      {state === 'paused' ? (
+        <p className="mt-3 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
+          {row.paused_at ? `${timeHM(row.paused_at)}에 ` : ''}{pausedBy === '나' ? '내가 ' : pausedBy ? `${pausedBy} 님이 ` : ''}멈췄어요
+          {row.pause_reason ? ` — ${row.pause_reason}` : ''}. 재개하면 어르신 화면이 이어집니다.
+        </p>
+      ) : state === 'ending' ? (
+        <p className="mt-3 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
+          종료를 요청했어요. 기기에서 저장하면 이 목록에서 사라집니다.
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex gap-2">
+        {state === 'running' ? (
+          <Button size="sm" variant="outline" className="flex-1" disabled={busy} onClick={onPause}>
+            일시정지
+          </Button>
+        ) : state === 'paused' ? (
+          <Button size="sm" className="flex-1 !text-ink-900" disabled={busy} onClick={onResume}>
+            재개
+          </Button>
+        ) : null}
+        {state !== 'ending' ? (
+          <Button size="sm" variant="danger" className="flex-1 !text-ink-900" disabled={busy} onClick={onEnd}>
+            종료
+          </Button>
+        ) : null}
+      </div>
+
+      {history.length > 0 ? (
+        <ol aria-label="개입 기록" className="mt-4 space-y-1 border-t border-line pt-3 text-w-label text-ink-500">
+          {history.map((h) => (
+            <li key={h.id}>
+              {timeHM(h.created_at)} · {whoName(h.actor_id) ?? '직원'} · {ACTION_LABEL[h.action] ?? h.action}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </article>
+  );
 }
 
 export function SupervisionPage() {
@@ -121,6 +289,14 @@ export function SupervisionPage() {
     );
   }
 
+  function acknowledge(alertId: string) {
+    if (!me.data?.id) return;
+    ack.mutate(
+      { id: alertId, userId: me.data.id },
+      { onError: (e) => toast('error', e.message || '확인 처리하지 못했어요.') },
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f8f8f8]">
       <header className="sticky top-0 z-10 bg-white shadow-topbar">
@@ -156,152 +332,27 @@ export function SupervisionPage() {
           <p className="mt-10 rounded-[10px] bg-white p-6 text-w-sub text-ink-500 shadow-card">지금 진행 중인 대화가 없어요.</p>
         ) : (
           <section aria-label="진행 중인 대화" className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-            {rows.map((row) => {
-              const state = supervisionState(row);
-              const target = sessionTargetMinutes(row.duration_minutes, settings.data?.target_minutes);
-              const elapsed = elapsedLabel(row.started_at, now);
-              const over = Date.parse(row.started_at) + target * 60_000 < now;
-              const alerts = (safety.data ?? []).filter((e) => e.session_id === row.id);
-              const history = (interventions.data ?? []).filter((i) => i.session_id === row.id).slice(0, 3);
-              const starter = whoName(row.user_id);
-              const pausedBy = whoName(row.paused_by);
-              const busy = control.isPending;
-              return (
-                <article
-                  key={row.id}
-                  aria-label={`${elderName.get(row.profile_id) ?? '어르신'} 대화`}
-                  className={cn(
-                    'flex min-w-0 flex-col rounded-[10px] bg-white p-5 shadow-card',
-                    alerts.length > 0 && 'ring-2 ring-alert',
-                  )}
-                >
-                  {/* 위기 카드 — 서버가 저장한 요양보호사 알림 문구(전화번호·비의료 고지 포함)를 그대로 */}
-                  {alerts.map((a) => (
-                    <div key={a.id} role="alert" aria-live="assertive" className="mb-4 rounded-[10px] border-l-4 border-alert bg-alert/10 p-4">
-                      <p className="text-w-sub font-semibold leading-[26px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
-                        {a.caregiver_alert}
-                      </p>
-                      {a.excerpt ? (
-                        <p className="mt-2 text-w-label leading-[22px] text-ink-700">"{a.excerpt}"</p>
-                      ) : null}
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-w-label text-ink-700">
-                          {timeHM(a.created_at)} 감지 · <span className="whitespace-nowrap">키워드 기반 안전장치</span>
-                        </span>
-                        <button
-                          type="button"
-                          disabled={ack.isPending || !me.data?.id}
-                          onClick={() =>
-                            me.data?.id &&
-                            ack.mutate(
-                              { id: a.id, userId: me.data.id },
-                              { onError: (e) => toast('error', e.message || '확인 처리하지 못했어요.') },
-                            )
-                          }
-                          className="shrink-0 rounded-[10px] border-2 border-alert bg-white px-4 py-2 text-w-label font-semibold text-ink-900 disabled:opacity-50"
-                        >
-                          확인했어요
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  <header className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="truncate text-w-nav font-bold leading-[30px] text-ink-900">
-                        {elderName.get(row.profile_id) ?? '어르신'}
-                      </h2>
-                      <p className="mt-1 text-w-label text-ink-500">
-                        {timeHM(row.started_at)} 시작{starter ? ` · ${starter}` : ''}
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        'inline-flex shrink-0 items-center gap-2 rounded-pill px-3 py-1 text-w-label font-semibold text-ink-900',
-                        state === 'running' && 'bg-live-soft',
-                        state === 'paused' && 'bg-accent-soft',
-                        state === 'ending' && 'bg-mute',
-                      )}
-                    >
-                      {/* 상태 색은 점으로만 — 색 글자는 연한 배경 위 대비가 모자란다(감독 화면 대비 보정 2026-09-25) */}
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'h-2 w-2 rounded-full',
-                          state === 'running' && 'bg-live',
-                          state === 'paused' && 'bg-accent',
-                          state === 'ending' && 'bg-ink-400',
-                        )}
-                      />
-                      {state === 'running' ? '진행 중' : state === 'paused' ? '일시정지' : '종료 요청됨'}
-                    </span>
-                  </header>
-
-                  <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-[10px] bg-mute-pale px-2 py-3">
-                      <dt className="text-w-label text-ink-700">단계</dt>
-                      <dd className="mt-1 text-w-sub font-semibold text-ink-900">
-                        {row.phase ? SESSION_PHASE_LABEL[row.phase] : '시작 전'}
-                      </dd>
-                    </div>
-                    <div className="rounded-[10px] bg-mute-pale px-2 py-3">
-                      <dt className="text-w-label text-ink-700">경과</dt>
-                      <dd
-                        className={cn(
-                          'mt-1 text-w-sub font-semibold tabular-nums text-ink-900',
-                          over && 'underline decoration-alert decoration-2 underline-offset-4',
-                        )}
-                      >
-                        {elapsed ?? '—'}
-                        {over ? <span className="sr-only"> (목표 시간 초과)</span> : null}
-                      </dd>
-                    </div>
-                    <div className="rounded-[10px] bg-mute-pale px-2 py-3">
-                      <dt className="text-w-label text-ink-700">목표</dt>
-                      <dd className="mt-1 text-w-sub font-semibold text-ink-900">{target}분</dd>
-                    </div>
-                  </dl>
-
-                  {state === 'paused' ? (
-                    <p className="mt-3 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
-                      {row.paused_at ? `${timeHM(row.paused_at)}에 ` : ''}{pausedBy === '나' ? '내가 ' : pausedBy ? `${pausedBy} 님이 ` : ''}멈췄어요
-                      {row.pause_reason ? ` — ${row.pause_reason}` : ''}. 재개하면 어르신 화면이 이어집니다.
-                    </p>
-                  ) : state === 'ending' ? (
-                    <p className="mt-3 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
-                      종료를 요청했어요. 기기에서 저장하면 이 목록에서 사라집니다.
-                    </p>
-                  ) : null}
-
-                  <div className="mt-4 flex gap-2">
-                    {state === 'running' ? (
-                      <Button size="sm" variant="outline" className="flex-1" disabled={busy} onClick={() => { setPauseReason(''); setPausing(row); }}>
-                        일시정지
-                      </Button>
-                    ) : state === 'paused' ? (
-                      <Button size="sm" className="flex-1 !text-ink-900" disabled={busy} onClick={() => send(row, 'resume')}>
-                        재개
-                      </Button>
-                    ) : null}
-                    {state !== 'ending' ? (
-                      <Button size="sm" variant="danger" className="flex-1 !text-ink-900" disabled={busy} onClick={() => setEnding(row)}>
-                        종료
-                      </Button>
-                    ) : null}
-                  </div>
-
-                  {history.length > 0 ? (
-                    <ol aria-label="개입 기록" className="mt-4 space-y-1 border-t border-line pt-3 text-w-label text-ink-500">
-                      {history.map((h) => (
-                        <li key={h.id}>
-                          {timeHM(h.created_at)} · {whoName(h.actor_id) ?? '직원'} · {ACTION_LABEL[h.action] ?? h.action}
-                        </li>
-                      ))}
-                    </ol>
-                  ) : null}
-                </article>
-              );
-            })}
+            {rows.map((row) => (
+              <SessionCard
+                key={row.id}
+                row={row}
+                now={now}
+                orgTargetMinutes={settings.data?.target_minutes}
+                elderName={elderName.get(row.profile_id)}
+                alerts={(safety.data ?? []).filter((e) => e.session_id === row.id)}
+                history={(interventions.data ?? []).filter((i) => i.session_id === row.id).slice(0, 3)}
+                whoName={whoName}
+                busy={control.isPending}
+                ackDisabled={ack.isPending || !me.data?.id}
+                onAcknowledge={acknowledge}
+                onPause={() => {
+                  setPauseReason('');
+                  setPausing(row);
+                }}
+                onResume={() => send(row, 'resume')}
+                onEnd={() => setEnding(row)}
+              />
+            ))}
           </section>
         )}
         <p className="mt-8 text-w-label leading-[22px] text-ink-700">
