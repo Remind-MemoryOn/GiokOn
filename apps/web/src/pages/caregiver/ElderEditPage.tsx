@@ -161,9 +161,9 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
 
   function save() {
     if (!elderId) return;
-    if (!form.name.trim()) return toast('error', '이름을 입력해주세요.');
+    if (!form.name.trim()) return toast('error', '이름을 입력해 주세요.');
     if (!form.birthDate || !isBirthDate(form.birthDate))
-      return toast('error', '생년월일을 선택해주세요.');
+      return toast('error', '생년월일을 선택해 주세요.');
     update.mutate(
       {
         id: elderId,

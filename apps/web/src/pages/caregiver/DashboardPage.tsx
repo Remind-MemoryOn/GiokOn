@@ -122,7 +122,7 @@ export function DashboardPage() {
                     acknowledge.mutate(
                       { id: ev.id, userId },
                       {
-                        onSuccess: () => toast('success', '안전 알림을 확인 처리했습니다.'),
+                        onSuccess: () => toast('success', '안전 알림을 확인 처리했어요.'),
                         onError: (err) =>
                           toast('error', err instanceof Error ? err.message : '확인 처리 실패'),
                       },

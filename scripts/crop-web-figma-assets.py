@@ -302,6 +302,21 @@ def bars_alpha(crop: Image.Image, full: Image.Image, bg_x: int, y0: int) -> Imag
 FRAME_WIDTH = {CHRON_MODAL: 1054.0, REGISTER: 1054.0}
 
 
+# 시안에 없는 사이드바 메뉴(감독, 파일럿 W2)의 아이콘 — 새로 그리지 않고 **시안 글리프를 다시 칠한다**.
+# 로그인 화면의 눈(icon-eye)을 사이드바 기본 회색·활성 주황으로 칠해 두 판을 만든다(모양·알파는 그대로).
+RECOLOR = [
+    ("nav-supervision",    "icon-eye", (123, 124, 124)),  # nav-* 기본판의 잉크 #7b7c7c
+    ("nav-supervision-on", "icon-eye", (233, 130, 43)),   # nav-*-on 활성판의 잉크 #e9822b(accent)
+]
+
+
+def recolor(im: Image.Image, rgb: tuple[int, int, int]) -> Image.Image:
+    """알파(모양)는 두고 색만 바꾼다."""
+    out = Image.new("RGBA", im.size, (*rgb, 0))
+    out.putalpha(im.getchannel("A"))
+    return out
+
+
 def main() -> None:
     for name, srcname, x1, y1, x2, y2 in CROPS:
         src = SRC / srcname
@@ -326,6 +341,9 @@ def main() -> None:
             cropped = cropped.resize((cropped.size[0] // 2, cropped.size[1] // 2), Image.LANCZOS)
         cropped.save(OUT / f"{name}.png")
         print(f"{name:22s} {box}  ({box[2]-box[0]}×{box[3]-box[1]}px @{scale:g}x)")
+    for name, base, rgb in RECOLOR:
+        recolor(Image.open(OUT / f"{base}.png").convert("RGBA"), rgb).save(OUT / f"{name}.png")
+        print(f"{name:22s} ← {base} 다시 칠함 {rgb}")
 
 
 if __name__ == "__main__":

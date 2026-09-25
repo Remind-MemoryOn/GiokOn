@@ -137,11 +137,11 @@ export function OnboardingPage() {
 
   async function submit() {
     if (!isConfigured) return;
-    if (!name.trim()) return toast('error', '이름을 입력해주세요.');
-    if (!phone.trim()) return toast('error', '전화번호를 입력해주세요.');
+    if (!name.trim()) return toast('error', '이름을 입력해 주세요.');
+    if (!phone.trim()) return toast('error', '전화번호를 입력해 주세요.');
     const joining = role === 'caregiver' && joinMode === 'invite';
-    if (role === 'caregiver' && !joining && !orgName.trim()) return toast('error', '소속 기관명을 입력해주세요.');
-    if (joining && !inviteCode.trim()) return toast('error', '기관 관리자에게 받은 초대 코드를 입력해주세요.');
+    if (role === 'caregiver' && !joining && !orgName.trim()) return toast('error', '소속 기관명을 입력해 주세요.');
+    if (joining && !inviteCode.trim()) return toast('error', '기관 관리자에게 받은 초대 코드를 입력해 주세요.');
     if (!termsAgreed || !privacyAgreed || (isSocialAccount && !socialAgreed)) return toast('error', '필수 동의 항목에 체크해 주세요.');
 
     setSubmitting(true);
@@ -161,11 +161,11 @@ export function OnboardingPage() {
       const row = await refreshUserRow();
       toast(
         'success',
-        joining ? '가입이 완료되었습니다. 기관 관리자의 합류 승인을 기다려 주세요.' : '가입이 완료되었습니다. 환영합니다!',
+        joining ? '가입이 완료됐어요. 기관 관리자의 합류 승인을 기다려 주세요.' : '가입이 완료됐어요. 환영해요!',
       );
       navigate(routeForUser(row), { replace: true });
     } catch (err) {
-      toast('error', orgJoinErrorMessage(err, '가입 처리에 실패했습니다.'));
+      toast('error', orgJoinErrorMessage(err, '가입 처리에 실패했어요.'));
     } finally {
       setSubmitting(false);
     }

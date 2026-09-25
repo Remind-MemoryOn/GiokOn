@@ -67,7 +67,7 @@ export function EldersPage() {
         onSuccess: () => {
           setCode('');
           setClaimOpen(false);
-          toast('success', '담당 어르신으로 추가했어요. 기존 기록을 그대로 이어받습니다.');
+          toast('success', '담당 어르신으로 추가했어요. 기존 기록을 그대로 이어받아요.');
         },
         onError: (err) => toast('error', err.message),
       },

@@ -24,6 +24,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Button } from '../../components/ui/Button';
 import { Dialog } from '../../components/ui/Dialog';
 import { useStore } from '../../store/store';
+import { CONSENT_DOCUMENT_PATH } from '../../lib/consentDocuments';
 
 export function ElderConsentsPage() {
   const { elderId } = useParams<{ elderId: string }>();
@@ -39,15 +40,6 @@ export function ElderConsentsPage() {
   const [consentSubject, setConsentSubject] = useState<ConsentSubjectType>('self');
   const [proxyName, setProxyName] = useState('');
   const [proxyRelation, setProxyRelation] = useState('');
-  const detailPath: Record<ConsentType, string> = {
-    terms_required: '/terms',
-    privacy_required: '/consents/member-privacy',
-    elder_privacy_required: '/consents/elder-privacy',
-    sensitive_health_voice: '/consents/elder-sensitive',
-    cross_border_transfer: '/consents/elder-cross-border',
-    ai_processing: '/consents/elder-ai',
-    marketing_optional: '/privacy',
-  };
 
   const rows = requiredConsents('elder').map((type) => {
     // DB 의 세션 처리 판정(app.has_processing_consent)과 같은 기준 — 같은 종류의 유효한 증빙만 인정한다.
@@ -77,7 +69,7 @@ export function ElderConsentsPage() {
       return toast('error', '대리 동의자 성명과 어르신과의 관계를 입력해 주세요.');
     }
     const user = currentUser.data;
-    if (!user) return toast('error', '로그인 정보를 확인할 수 없습니다.');
+    if (!user) return toast('error', '로그인 정보를 확인할 수 없어요.');
     try {
       await recordConsent.mutateAsync({
         profile_id: elderId,
@@ -92,14 +84,14 @@ export function ElderConsentsPage() {
         guardian_relation: consentSubject === 'self' ? null : proxyRelation.trim(),
         basis: consentBasis(consentSubject),
       });
-      toast('success', '동의를 기록했습니다.');
+      toast('success', '동의를 기록했어요.');
       setGrantTarget(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '동의를 저장하지 못했습니다.';
+      const message = error instanceof Error ? error.message : '동의를 저장하지 못했어요.';
       toast(
         'error',
         message.includes('elder_privacy_required') && message.includes('consent_type')
-          ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았습니다.'
+          ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았어요.'
           : message,
       );
     }
@@ -132,42 +124,30 @@ export function ElderConsentsPage() {
                 <h2 className="text-w-sub font-semibold text-ink-900">{definition.label}</h2>
                 <p className="mt-2 text-w-label text-ink-700">{definition.summary}</p>
                 <p className="mt-2 text-w-label text-ink-500">{active ? `철회되지 않은 동의 기록 · ${new Date(active.granted_at).toLocaleDateString('ko-KR')}` : '철회되지 않은 동의 기록 없음'}</p>
-                <Link to={detailPath[type]} target="_blank" className="mt-2 inline-block text-w-label font-semibold text-accent underline">동의서 상세보기</Link>
+                <Link to={CONSENT_DOCUMENT_PATH[type]} target="_blank" className="mt-2 inline-block text-w-label font-semibold text-accent underline">동의서 상세보기</Link>
               </div>
               <div className="flex items-center gap-3">
+                {/* 상태 표시 — 누를 수 없는 표시라 컨트롤(라디오) 모양을 쓰지 않는다(웹 AGENTS §6.1). */}
                 <span
-                  aria-label={active ? '동의 완료' : '미동의'}
-                  className={`inline-flex min-w-[112px] items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-w-label font-semibold ${
+                  className={`inline-flex h-[44px] min-w-[112px] items-center justify-center rounded-pill px-5 text-w-body font-semibold ${
                     active ? 'bg-live-soft text-live' : 'bg-mute text-ink-400'
                   }`}
                 >
-                  <span
-                    aria-hidden
-                    className={`flex h-5 w-5 items-center justify-center rounded-full border text-[13px] leading-none ${
-                      active ? 'border-live bg-live text-white' : 'border-ink-400 bg-white'
-                    }`}
-                  >
-                    {active ? '✓' : ''}
-                  </span>
                   {active ? '동의 완료' : '미동의'}
                 </span>
                 {active ? (
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="danger"
                     disabled={revoke.isPending}
                     onClick={() => setTarget({ id: active.id, type })}
-                    className="rounded-[10px] border border-alert px-5 py-3 text-w-label font-semibold text-alert disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     동의 철회
-                  </button>
+                  </Button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => openGrant(type, latest)}
-                    className="rounded-[10px] border border-accent bg-accent px-5 py-3 text-w-label font-semibold text-white"
-                  >
+                  <Button size="sm" onClick={() => openGrant(type, latest)}>
                     {latest ? '다시 동의하기' : '동의하기'}
-                  </button>
+                  </Button>
                 )}
               </div>
             </article>
@@ -184,7 +164,7 @@ export function ElderConsentsPage() {
         onConfirm={() => {
           if (!target) return;
           revoke.mutate({ id: target.id }, {
-            onSuccess: () => toast('success', '동의를 철회했습니다.'),
+            onSuccess: () => toast('success', '동의를 철회했어요.'),
             onError: (error) => toast('error', error.message),
           });
         }}
@@ -227,7 +207,7 @@ export function ElderConsentsPage() {
                     key={option.value}
                     type="button"
                     onClick={() => setConsentSubject(option.value)}
-                    className={`rounded-[10px] border px-4 py-2 text-w-label ${
+                    className={`rounded-[10px] border px-5 py-3 text-w-label ${
                       consentSubject === option.value
                         ? 'border-accent text-accent'
                         : 'border-line text-ink-700'
@@ -260,7 +240,7 @@ export function ElderConsentsPage() {
                 {CONSENT_CATALOG[grantTarget].summary}
               </p>
               <Link
-                to={detailPath[grantTarget]}
+                to={CONSENT_DOCUMENT_PATH[grantTarget]}
                 target="_blank"
                 className="mt-2 inline-block text-w-label font-semibold text-accent underline"
               >

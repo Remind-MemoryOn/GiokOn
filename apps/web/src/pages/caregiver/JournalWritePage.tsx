@@ -193,9 +193,9 @@ export function JournalWritePage() {
     if (existing?.status === 'final') {
       return toast('error', '확정된 일지는 수정 사유를 남겨야 고칠 수 있어요. 이 화면에는 사유 입력이 없어 고칠 수 없어요.');
     }
-    if (!content.trim()) return toast('error', '활동 내용을 입력해주세요.');
+    if (!content.trim()) return toast('error', '활동 내용을 입력해 주세요.');
     // 한쪽만 적은 것은 허용한다(진행 중 기록). 뒤집힌 구간만 막는다.
-    if (from && to && to < from) return toast('error', '종료 시각이 시작 시각보다 빠릅니다.');
+    if (from && to && to < from) return toast('error', '종료 시각이 시작 시각보다 빨라요.');
     setSaving(true);
     // 업로드는 성공했는데 첨부 행이 실패하면 Storage 에 주인 없는 파일이 남는다 → 되돌린다.
     const uploaded: string[] = [];

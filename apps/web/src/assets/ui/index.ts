@@ -60,6 +60,9 @@ import navOrg from './nav-org.png';
 import navOrgOn from './nav-org-on.png';
 import navSettings from './nav-settings.png';
 import navSettingsOn from './nav-settings-on.png';
+// 감독(시안에 없는 메뉴) — 로그인 화면의 눈 글리프를 사이드바 색으로 다시 칠한 것(크롭 스크립트 RECOLOR).
+import navSupervision from './nav-supervision.png';
+import navSupervisionOn from './nav-supervision-on.png';
 import navLogout from './nav-logout.png';
 import statElders from './stat-elders.png';
 import statSessions from './stat-sessions.png';
@@ -192,6 +195,7 @@ export const navIcon = {
   shares: [navShares, navSharesOn],
   org: [navOrg, navOrgOn],
   settings: [navSettings, navSettingsOn],
+  supervision: [navSupervision, navSupervisionOn],
 } as const;
 
 export type NavIconKey = keyof typeof navIcon;

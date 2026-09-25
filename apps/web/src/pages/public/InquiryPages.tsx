@@ -39,7 +39,7 @@ const ROW = 'grid w-full grid-cols-[1fr_160px_140px_130px] items-center px-8';
 
 function Shell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#fbfbfb]">
+    <div className="min-h-screen bg-[#f8f8f8]">
       <PublicHeader />
       <main className="mx-auto min-h-[760px] w-full max-w-[1204px] py-20">{children}</main>
       <PublicFooter />
@@ -58,7 +58,7 @@ export function InquiryListPage() {
 
   const requireLogin = (to: string) => {
     if (!session) {
-      toast('info', '로그인이 먼저 필요한 서비스입니다.');
+      toast('info', '로그인이 먼저 필요한 서비스예요.');
       navigate('/login', { state: { from: to } });
       return;
     }
@@ -70,7 +70,7 @@ export function InquiryListPage() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-[40px] font-bold text-ink-900">문의사항</h1>
-          <p className="mt-4 text-w-body text-ink-500">
+          <p className="mt-4 text-w-body text-ink-700">
             서비스 이용 중 궁금한 점과 불편한 사항을 확인하거나 등록할 수 있어요.
           </p>
         </div>
@@ -158,12 +158,12 @@ export function InquiryListPage() {
       ) : null}
 
       {items.some((item) => item.locked) ? (
-        <p className="mt-5 text-w-label text-ink-500">
+        <p className="mt-5 text-w-label text-ink-700">
           비공개 문의의 제목과 내용은 작성자와 사이트 운영자만 볼 수 있어요.
         </p>
       ) : null}
       {!isConfigured ? (
-        <p className="mt-5 text-w-label text-ink-500">
+        <p className="mt-5 text-w-label text-ink-700">
           Supabase 연결 후 실제 문의 목록이 표시됩니다.
         </p>
       ) : null}
@@ -194,12 +194,12 @@ export function InquiryDetailPage() {
 
   return (
     <Shell>
-      <Link to="/inquiries" className="font-semibold text-ink-500 hover:text-accent">
+      <Link to="/inquiries" className="font-semibold text-ink-700 hover:text-accent">
         ← 문의사항 목록
       </Link>
 
       {row.isLoading ? (
-        <p className="mt-12 text-center text-ink-500">문의를 불러오고 있어요.</p>
+        <p className="mt-12 text-center text-ink-700">문의를 불러오고 있어요.</p>
       ) : !row.data ? (
         <div className="mt-12 rounded-[10px] border border-line bg-white px-8 py-16 text-center">
           <h1 className="text-w-nav font-semibold">내용을 열람할 수 없습니다.</h1>
@@ -412,7 +412,7 @@ function InquiryForm({ edit }: { edit: boolean }) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!userRow) return toast('error', '로그인이 먼저 필요한 서비스입니다.');
+    if (!userRow) return toast('error', '로그인이 먼저 필요한 서비스예요.');
     if (!title.trim() || !content.trim()) return toast('error', '제목과 내용을 입력해 주세요.');
     const done = (id: string) => {
       toast('success', edit ? '문의사항을 수정했어요.' : '문의사항을 등록했어요.');
@@ -435,7 +435,7 @@ function InquiryForm({ edit }: { edit: boolean }) {
     <Shell>
       <Link
         to={edit && inquiryId ? `/inquiries/${inquiryId}` : '/inquiries'}
-        className="font-semibold text-ink-500 hover:text-accent"
+        className="font-semibold text-ink-700 hover:text-accent"
       >
         ← 돌아가기
       </Link>

@@ -18,7 +18,7 @@ export const CAREGIVER_NAV: NavItem[] = [
   { to: '/caregiver/org', label: '기관 관리', icon: 'org' },
   { to: '/caregiver/settings', label: '설정', icon: 'settings' },
   // 파일럿 W2 감독 화면 — 시안에 없는 메뉴라 **맨 끝**에 둔다(중간에 끼우면 시안 실측 항목 좌표가 79px 씩 밀린다).
-  { to: '/caregiver/supervision', label: '감독', icon: 'sessions' },
+  { to: '/caregiver/supervision', label: '감독', icon: 'supervision' },
 ];
 
 export const GUARDIAN_NAV: NavItem[] = [

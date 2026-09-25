@@ -15,15 +15,15 @@ export function ResetPasswordPage() {
 
   async function submit() {
     if (!isSupabaseConfigured) {
-      toast('error', 'Supabase가 설정되지 않아 비밀번호 재설정을 사용할 수 없습니다.');
+      toast('error', 'Supabase가 설정되지 않아 비밀번호 재설정을 사용할 수 없어요.');
       return;
     }
     if (password.length < 8) {
-      toast('error', '비밀번호는 8자 이상이어야 합니다.');
+      toast('error', '비밀번호는 8자 이상이어야 해요.');
       return;
     }
     if (password !== confirm) {
-      toast('error', '비밀번호가 일치하지 않습니다.');
+      toast('error', '비밀번호가 일치하지 않아요.');
       return;
     }
     setSubmitting(true);
@@ -36,7 +36,7 @@ export function ResetPasswordPage() {
         'error',
         err instanceof Error
           ? err.message
-          : '변경에 실패했습니다. 재설정 링크를 다시 요청해 주세요.',
+          : '변경에 실패했어요. 재설정 링크를 다시 요청해 주세요.',
       );
     } finally {
       setSubmitting(false);

@@ -29,20 +29,20 @@ export function SignUpPage() {
 
   async function submit() {
     if (!isSupabaseConfigured) {
-      toast('error', 'Supabase가 설정되지 않아 회원가입을 사용할 수 없습니다.');
+      toast('error', 'Supabase가 설정되지 않아 회원가입을 사용할 수 없어요.');
       return;
     }
     const addr = email.trim();
     if (!addr || !addr.includes('@')) {
-      toast('error', '가입할 이메일(아이디)을 입력해주세요.');
+      toast('error', '가입할 이메일(아이디)을 입력해 주세요.');
       return;
     }
     if (password.length < 8) {
-      toast('error', '비밀번호는 8자 이상이어야 합니다.');
+      toast('error', '비밀번호는 8자 이상이어야 해요.');
       return;
     }
     if (password !== confirm) {
-      toast('error', '비밀번호가 일치하지 않습니다.');
+      toast('error', '비밀번호가 일치하지 않아요.');
       return;
     }
     setSubmitting(true);
@@ -62,7 +62,7 @@ export function SignUpPage() {
       toast('success', '가입했어요. 기본 정보를 입력해 주세요.');
       navigate('/onboarding', { replace: true });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '회원가입에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : '회원가입에 실패했어요.');
     } finally {
       setSubmitting(false);
     }

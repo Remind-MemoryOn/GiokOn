@@ -106,8 +106,8 @@ export function ChronicleDialog({ mode }: { mode: 'add' | 'edit' }) {
       pending={create.isPending || update.isPending}
       onSave={(v) => {
         if (!elderId) return;
-        if (!v.title.trim()) return toast('error', '제목을 입력해주세요.');
-        if (!v.content.trim()) return toast('error', '내용을 입력해주세요.');
+        if (!v.title.trim()) return toast('error', '제목을 입력해 주세요.');
+        if (!v.content.trim()) return toast('error', '내용을 입력해 주세요.');
         const patch = {
           topic: v.topic,
           title: v.title.trim(),

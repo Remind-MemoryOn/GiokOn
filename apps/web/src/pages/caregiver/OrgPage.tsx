@@ -209,8 +209,9 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
       return;
     }
     if (w.kind === 'join') {
-      if (approve) approveJoin.mutate({ id: w.id }, { onSuccess: done('기관 합류를 승인했어요.'), onError: fail });
-      else rejectJoin.mutate({ id: w.id }, { onSuccess: done('합류 요청을 거절했어요.'), onError: fail });
+      // 목록 라벨과 같은 이름으로 알린다 — 'join' 은 어르신 담당 요청이다(직원 합류는 'staff').
+      if (approve) approveJoin.mutate({ id: w.id }, { onSuccess: done('담당 요청을 승인했어요.'), onError: fail });
+      else rejectJoin.mutate({ id: w.id }, { onSuccess: done('담당 요청을 거절했어요.'), onError: fail });
       return;
     }
     if (approve) {
@@ -226,7 +227,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
 
   function onSave() {
     if (!org.data) return;
-    if (!name.trim()) return toast('error', '기관 이름을 입력해주세요.');
+    if (!name.trim()) return toast('error', '기관 이름을 입력해 주세요.');
     save.mutate(
       { id: org.data.id, name: name.trim() },
       {

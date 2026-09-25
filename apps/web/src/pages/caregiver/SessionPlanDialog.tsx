@@ -122,8 +122,8 @@ export function SessionPlanDialog() {
       }}
       onSave={(v) => {
         if (!elderId) return;
-        if (!v.title.trim()) return toast('error', '세션 제목을 입력해주세요.');
-        if (!v.goal.trim()) return toast('error', '목표를 입력해주세요.');
+        if (!v.title.trim()) return toast('error', '세션 제목을 입력해 주세요.');
+        if (!v.goal.trim()) return toast('error', '목표를 입력해 주세요.');
         const patch = {
           title: v.title.trim(),
           goal: v.goal.trim(),

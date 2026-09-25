@@ -18,6 +18,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { uploadElderPhoto } from '../../lib/elderPhotos';
 import { useModalA11y } from '../../lib/modalA11y';
+import { CONSENT_DOCUMENT_PATH } from '../../lib/consentDocuments';
 
 const COL = { inputL: 88, labelL: 89, inputR: 551, labelR: 552 };
 const VALUE = 'text-w-sub leading-[21px] text-ink-900';
@@ -159,8 +160,8 @@ export function ElderRegisterDialog() {
 
   async function save() {
     if (savingRef.current) return;
-    if (!form.name.trim()) return toast('error', '이름을 입력해주세요.');
-    if (!isBirthDate(form.birthDate)) return toast('error', '생년월일을 선택해주세요.');
+    if (!form.name.trim()) return toast('error', '이름을 입력해 주세요.');
+    if (!isBirthDate(form.birthDate)) return toast('error', '생년월일을 선택해 주세요.');
     if (step === 'details') {
       setStep('consents');
       return;
@@ -232,15 +233,15 @@ export function ElderRegisterDialog() {
           rollbackFailed = true;
         }
       }
-      const message = err instanceof Error ? err.message : '어르신 등록에 실패했습니다.';
+      const message = err instanceof Error ? err.message : '어르신 등록에 실패했어요.';
       const friendly = message.includes('elder_privacy_required') && message.includes('consent_type')
-        ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았습니다.'
+        ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았어요.'
         : message;
       toast(
         'error',
         rollbackFailed
-          ? `${friendly} 생성된 어르신 정보를 자동 정리하지 못했으므로 관리자 확인이 필요합니다.`
-          : `${friendly} 등록 내용은 저장하지 않았습니다.`,
+          ? `${friendly} 생성된 어르신 정보를 자동 정리하지 못했으므로 관리자 확인이 필요해요.`
+          : `${friendly} 등록 내용은 저장하지 않았어요.`,
       );
     } finally {
       savingRef.current = false;
@@ -439,16 +440,12 @@ export function ElderRegisterDialog() {
             ) : null}
             <div className="mt-5 space-y-3">
               {elderConsentTypes.map((type) => {
-                const documentSlug: Record<ConsentType, string> = {
-                  terms_required: 'member-privacy', privacy_required: 'member-privacy', marketing_optional: 'member-privacy',
-                  elder_privacy_required: 'elder-privacy', sensitive_health_voice: 'elder-sensitive', cross_border_transfer: 'elder-cross-border', ai_processing: 'elder-ai',
-                };
                 return (
                   <div key={type} className="rounded-[10px] border border-line p-4">
                     <div className="flex items-start gap-3">
                       <input type="checkbox" checked={consentChecks[type]} onChange={(e) => setConsentChecks((current) => ({ ...current, [type]: e.target.checked }))} aria-label={CONSENT_CATALOG[type].label} className="mt-1 h-[17px] w-[17px] accent-accent" />
                       <div className="min-w-0 flex-1"><p className="font-semibold text-ink-900">{CONSENT_CATALOG[type].label}</p><p className="mt-1 text-w-label text-ink-500">{CONSENT_CATALOG[type].summary}</p></div>
-                      <a href={`/consents/${documentSlug[type]}`} target="_blank" rel="noreferrer" className="shrink-0 text-w-label text-accent underline">상세보기</a>
+                      <a href={CONSENT_DOCUMENT_PATH[type]} target="_blank" rel="noreferrer" className="shrink-0 text-w-label text-accent underline">상세보기</a>
                     </div>
                   </div>
                 );

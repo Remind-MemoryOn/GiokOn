@@ -78,7 +78,7 @@ function ConnectForm() {
 
   function submit() {
     const value = code.trim().toUpperCase();
-    if (!value) return toast('error', '연결 코드를 입력해주세요.');
+    if (!value) return toast('error', '연결 코드를 입력해 주세요.');
     if (!isConfigured) return toast('error', 'Supabase 연동 후 연결할 수 있어요.');
     link.mutate(
       { code: value },

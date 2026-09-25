@@ -50,7 +50,7 @@ function readNaverCallback(): NaverCallback | null {
   if (failed) return { ok: false, error: failed };
   const access = p.get('access_token');
   const refresh = p.get('refresh_token');
-  if (!access || !refresh) return { ok: false, error: '네이버 로그인 응답이 올바르지 않습니다.' };
+  if (!access || !refresh) return { ok: false, error: '네이버 로그인 응답이 올바르지 않아요.' };
   return { ok: true, access, refresh };
 }
 
@@ -89,7 +89,7 @@ export function LoginPage() {
         if (alive) navigate(routeForUser(row), { replace: true });
       } catch (err) {
         if (!alive) return;
-        toast('error', err instanceof Error ? err.message : '네이버 로그인에 실패했습니다.');
+        toast('error', err instanceof Error ? err.message : '네이버 로그인에 실패했어요.');
         setNaverReturning(false);
       }
     })();
@@ -103,11 +103,11 @@ export function LoginPage() {
 
   async function submit() {
     if (!isSupabaseConfigured) {
-      toast('error', 'Supabase가 설정되지 않아 로그인을 사용할 수 없습니다.');
+      toast('error', 'Supabase가 설정되지 않아 로그인을 사용할 수 없어요.');
       return;
     }
-    if (!email.trim()) return toast('error', '이메일을 입력해주세요.');
-    if (!password) return toast('error', '비밀번호를 입력해주세요.');
+    if (!email.trim()) return toast('error', '이메일을 입력해 주세요.');
+    if (!password) return toast('error', '비밀번호를 입력해 주세요.');
     setSubmitting(true);
     try {
       await signInWithEmail({ email, password });
@@ -122,7 +122,7 @@ export function LoginPage() {
       const row = await getCurrentUserRow();
       navigate(routeForUser(row), { replace: true });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '로그인에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : '로그인에 실패했어요.');
     } finally {
       setSubmitting(false);
     }
@@ -130,13 +130,13 @@ export function LoginPage() {
 
   async function social(key: (typeof SOCIAL)[number]['key']) {
     if (!isSupabaseConfigured) {
-      toast('error', 'Supabase가 설정되지 않아 소셜 로그인을 사용할 수 없습니다.');
+      toast('error', 'Supabase가 설정되지 않아 소셜 로그인을 사용할 수 없어요.');
       return;
     }
     setPending(key);
     try {
       if (key === 'naver') {
-        if (!supabaseUrl) throw new Error('서버 주소가 설정되지 않았습니다.');
+        if (!supabaseUrl) throw new Error('서버 주소가 설정되지 않았어요.');
         window.location.assign(buildNaverAuthUrl(supabaseUrl, `${window.location.origin}/login`));
         return;
       }
@@ -144,7 +144,7 @@ export function LoginPage() {
         redirectTo: `${window.location.origin}/login`,
       });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '로그인을 시작하지 못했습니다.');
+      toast('error', err instanceof Error ? err.message : '로그인을 시작하지 못했어요.');
       setPending(null);
     }
   }

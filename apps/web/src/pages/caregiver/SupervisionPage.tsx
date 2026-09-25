@@ -112,7 +112,7 @@ export function SupervisionPage() {
           toast(
             'success',
             action === 'pause'
-              ? '일시정지를 요청했어요. 어르신 화면이 곧 "잠시 쉬어요"로 바뀝니다.'
+              ? '일시정지를 요청했어요. 어르신 화면이 곧 "잠시 쉬어요"로 바뀌어요.'
               : action === 'resume'
                 ? '재개를 요청했어요.'
                 : '종료를 요청했어요. 요양보호사가 기기에서 저장해 주세요.',
@@ -137,15 +137,15 @@ export function SupervisionPage() {
 
       <main className="mx-auto w-full max-w-[1100px] px-4 pb-16 pt-8">
         <h1 className="text-w-section font-bold leading-[34px] text-ink-900">감독 화면</h1>
-        <p className="mt-2 text-w-sub leading-[26px] text-ink-500" style={{ wordBreak: 'keep-all' }}>
+        <p className="mt-2 text-w-sub leading-[26px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
           우리 기관에서 진행 중인 회상 대화입니다. 멈추면 어르신 화면이 "잠시 쉬어요"로 바뀌고 마이크가 꺼집니다.
           종료를 요청하면 대화가 멈추고, 저장은 기기를 가진 요양보호사가 합니다.
         </p>
 
         {!isConfigured && !sessions.data ? (
-          <p className="mt-10 text-w-sub text-ink-500">Supabase 를 연결하면 진행 중인 대화가 표시됩니다.</p>
+          <p className="mt-10 text-w-sub text-ink-700">Supabase 를 연결하면 진행 중인 대화가 표시됩니다.</p>
         ) : sessions.isPending ? (
-          <p className="mt-10 text-w-sub text-ink-500">진행 중인 대화를 확인하고 있어요.</p>
+          <p className="mt-10 text-w-sub text-ink-700">진행 중인 대화를 확인하고 있어요.</p>
         ) : sessions.isError ? (
           <div role="alert" className="mt-10 rounded-[10px] border border-alert bg-white p-5 text-w-sub text-ink-900">
             진행 중인 대화를 불러오지 못했어요. 화면이 비어 보여도 대화가 없다는 뜻은 아닙니다.
@@ -186,7 +186,9 @@ export function SupervisionPage() {
                         <p className="mt-2 text-w-label leading-[22px] text-ink-700">"{a.excerpt}"</p>
                       ) : null}
                       <div className="mt-3 flex items-center justify-between gap-3">
-                        <span className="text-w-label text-ink-500">{timeHM(a.created_at)} 감지 · 키워드 기반 안전장치</span>
+                        <span className="text-w-label text-ink-700">
+                          {timeHM(a.created_at)} 감지 · <span className="whitespace-nowrap">키워드 기반 안전장치</span>
+                        </span>
                         <button
                           type="button"
                           disabled={ack.isPending || !me.data?.id}
@@ -197,7 +199,7 @@ export function SupervisionPage() {
                               { onError: (e) => toast('error', e.message || '확인 처리하지 못했어요.') },
                             )
                           }
-                          className="shrink-0 rounded-[10px] border border-alert bg-white px-4 py-2 text-w-label font-semibold text-alert disabled:opacity-50"
+                          className="shrink-0 rounded-[10px] border-2 border-alert bg-white px-4 py-2 text-w-label font-semibold text-ink-900 disabled:opacity-50"
                         >
                           확인했어요
                         </button>
@@ -216,31 +218,47 @@ export function SupervisionPage() {
                     </div>
                     <span
                       className={cn(
-                        'shrink-0 rounded-pill px-3 py-1 text-w-label font-semibold',
-                        state === 'running' && 'bg-live-soft text-live',
-                        state === 'paused' && 'bg-accent-soft text-accent',
-                        state === 'ending' && 'bg-mute text-ink-700',
+                        'inline-flex shrink-0 items-center gap-2 rounded-pill px-3 py-1 text-w-label font-semibold text-ink-900',
+                        state === 'running' && 'bg-live-soft',
+                        state === 'paused' && 'bg-accent-soft',
+                        state === 'ending' && 'bg-mute',
                       )}
                     >
+                      {/* 상태 색은 점으로만 — 색 글자는 연한 배경 위 대비가 모자란다(감독 화면 대비 보정 2026-09-25) */}
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'h-2 w-2 rounded-full',
+                          state === 'running' && 'bg-live',
+                          state === 'paused' && 'bg-accent',
+                          state === 'ending' && 'bg-ink-400',
+                        )}
+                      />
                       {state === 'running' ? '진행 중' : state === 'paused' ? '일시정지' : '종료 요청됨'}
                     </span>
                   </header>
 
                   <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-[10px] bg-mute-pale px-2 py-3">
-                      <dt className="text-w-label text-ink-500">단계</dt>
+                      <dt className="text-w-label text-ink-700">단계</dt>
                       <dd className="mt-1 text-w-sub font-semibold text-ink-900">
                         {row.phase ? SESSION_PHASE_LABEL[row.phase] : '시작 전'}
                       </dd>
                     </div>
                     <div className="rounded-[10px] bg-mute-pale px-2 py-3">
-                      <dt className="text-w-label text-ink-500">경과</dt>
-                      <dd className={cn('mt-1 text-w-sub font-semibold tabular-nums', over ? 'text-alert' : 'text-ink-900')}>
+                      <dt className="text-w-label text-ink-700">경과</dt>
+                      <dd
+                        className={cn(
+                          'mt-1 text-w-sub font-semibold tabular-nums text-ink-900',
+                          over && 'underline decoration-alert decoration-2 underline-offset-4',
+                        )}
+                      >
                         {elapsed ?? '—'}
+                        {over ? <span className="sr-only"> (목표 시간 초과)</span> : null}
                       </dd>
                     </div>
                     <div className="rounded-[10px] bg-mute-pale px-2 py-3">
-                      <dt className="text-w-label text-ink-500">목표</dt>
+                      <dt className="text-w-label text-ink-700">목표</dt>
                       <dd className="mt-1 text-w-sub font-semibold text-ink-900">{target}분</dd>
                     </div>
                   </dl>
@@ -262,12 +280,12 @@ export function SupervisionPage() {
                         일시정지
                       </Button>
                     ) : state === 'paused' ? (
-                      <Button size="sm" className="flex-1" disabled={busy} onClick={() => send(row, 'resume')}>
+                      <Button size="sm" className="flex-1 !text-ink-900" disabled={busy} onClick={() => send(row, 'resume')}>
                         재개
                       </Button>
                     ) : null}
                     {state !== 'ending' ? (
-                      <Button size="sm" variant="danger" className="flex-1" disabled={busy} onClick={() => setEnding(row)}>
+                      <Button size="sm" variant="danger" className="flex-1 !text-ink-900" disabled={busy} onClick={() => setEnding(row)}>
                         종료
                       </Button>
                     ) : null}
@@ -287,7 +305,7 @@ export function SupervisionPage() {
             })}
           </section>
         )}
-        <p className="mt-8 text-w-label leading-[22px] text-ink-500">
+        <p className="mt-8 text-w-label leading-[22px] text-ink-700">
           위기 안내는 키워드 기반 안전장치이며 의학적 판단이 아닙니다. 요양보호사 한 명이 동시에 진행할 수 있는 대화는 최대 4개입니다.
         </p>
       </main>
@@ -304,6 +322,7 @@ export function SupervisionPage() {
               취소
             </Button>
             <Button
+              className="!text-ink-900"
               onClick={() => {
                 if (pausing) send(pausing, 'pause', pauseReason);
                 setPausing(null);

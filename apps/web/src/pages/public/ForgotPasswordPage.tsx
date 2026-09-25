@@ -14,11 +14,11 @@ export function ForgotPasswordPage() {
 
   async function submit() {
     if (!isSupabaseConfigured) {
-      toast('error', 'Supabase가 설정되지 않아 비밀번호 찾기를 사용할 수 없습니다.');
+      toast('error', 'Supabase가 설정되지 않아 비밀번호 찾기를 사용할 수 없어요.');
       return;
     }
     if (!email.trim()) {
-      toast('error', '가입한 이메일을 입력해주세요.');
+      toast('error', '가입한 이메일을 입력해 주세요.');
       return;
     }
     setSubmitting(true);
@@ -27,7 +27,7 @@ export function ForgotPasswordPage() {
       setSent(true);
       toast('success', '재설정 메일을 보냈어요. 메일의 링크로 새 비밀번호를 설정해 주세요.');
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '메일 발송에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : '메일 발송에 실패했어요.');
     } finally {
       setSubmitting(false);
     }

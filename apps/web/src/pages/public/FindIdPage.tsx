@@ -15,11 +15,11 @@ export function FindIdPage() {
 
   async function submit() {
     if (!isSupabaseConfigured) {
-      toast('error', 'Supabase가 설정되지 않아 아이디 찾기를 사용할 수 없습니다.');
+      toast('error', 'Supabase가 설정되지 않아 아이디 찾기를 사용할 수 없어요.');
       return;
     }
     if (!name.trim() || !phone.trim()) {
-      toast('error', '이름과 전화번호를 입력해주세요.');
+      toast('error', '이름과 전화번호를 입력해 주세요.');
       return;
     }
     setSubmitting(true);
@@ -28,7 +28,7 @@ export function FindIdPage() {
       const masked = await findLoginEmail(name, phone);
       setResult(masked ? { found: true, masked } : { found: false });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '조회에 실패했습니다.');
+      toast('error', err instanceof Error ? err.message : '조회에 실패했어요.');
     } finally {
       setSubmitting(false);
     }

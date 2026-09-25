@@ -77,7 +77,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
 
   function onSave() {
     if (!me) return;
-    if (!name.trim()) return toast('error', '이름을 입력해주세요.');
+    if (!name.trim()) return toast('error', '이름을 입력해 주세요.');
     rename.mutate(
       { id: me.id, name: name.trim() },
       {

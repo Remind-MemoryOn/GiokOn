@@ -51,7 +51,7 @@ export function LegalDocumentPage({ documentId }: { documentId: LegalDocumentId 
   const sourceTitle = cleanHwpText(rawTitle ?? PUBLIC_LEGAL_TITLES[documentId] ?? document.title);
   const sourceDate = cleanHwpText(rawDate ?? `작성일 : ${document.date}`);
   return (
-    <div className="min-h-screen bg-[#fbfbfb]">
+    <div className="min-h-screen bg-[#f8f8f8]">
       <PublicHeader />
       <main className="mx-auto w-full max-w-[1204px] px-6 py-20">
         <article className="rounded-[10px] bg-white px-8 py-12 shadow-card md:px-16 md:py-14">

@@ -4,13 +4,15 @@
 // approve_org_join 하기 전까지 기관 데이터는 0건이라, 요양보호사 화면으로 보내면 "기록이 없다"로 보인다.
 // 그래서 이 화면에만 머물게 한다(CaregiverGuard·routeForUser 가 보낸다).
 //
-// 시안이 없어 온보딩과 같은 공개 헤더·카드·글꼴·색으로 **끊긴 흐름을 잇는 최소 구현**만 한다
+// 시안이 없어 기존 카드·글꼴·색으로 **끊긴 흐름을 잇는 최소 구현**만 한다
 // (사용자 확정 2026-09-24 — 시안이 오면 이 화면만 교체).
+// 헤더는 감독 화면과 같은 단독 화면 헤더(워드마크 + 로그아웃)다 — 로그인한 사람에게 공개 헤더의
+// '로그인/회원가입'을 보이지 않고, 1440 절대좌표가 아니라 휴대폰 폭에서도 잘리지 않는다(2026-09-25).
 // ⚠️ 요청자는 기관 이름을 읽을 수 없다(organizations RLS = 소속 기관만). 이름을 지어 보여 주지 않는다.
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { isAwaitingOrgJoin, useCancelOrgJoin, useMyOrgJoinRequests, useRequestOrgJoin } from '@giokon/data';
-import { PublicHeader } from '../../components/shell/PublicHeader';
+import { asset } from '../../assets/ui';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../auth/AuthProvider';
@@ -88,14 +90,28 @@ export function JoinPendingPage() {
   const text = latest && latest.status !== 'approved' ? STATUS_TEXT[latest.status] : null;
 
   return (
-    <div className="min-h-screen bg-white">
-      <PublicHeader />
+    <div className="min-h-screen bg-[#f8f8f8]">
+      <header className="sticky top-0 z-10 bg-white shadow-topbar">
+        <div className="mx-auto flex h-[64px] w-full max-w-[1100px] items-center justify-between gap-4 px-4">
+          {/* 로그인 상태의 로고는 역할별 메인(웹 AGENTS §6.1) — 승인 대기 계정에게는 이 화면이다. */}
+          <Link to={routeForUser(userRow)} aria-label="기억온 홈">
+            <img src={asset.wordmark} alt="기억온" width={120} height={18} className="block" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => void signOut().then(() => navigate('/login', { replace: true }))}
+            className="text-w-label font-semibold text-ink-700 underline"
+          >
+            로그아웃
+          </button>
+        </div>
+      </header>
       <main className="mx-auto w-full max-w-[576px] px-4 pb-24 pt-[72px]">
         {!requests.data && !isConfigured ? (
           // Supabase 미설정(.env 없음)에서도 화면은 뜬다 — 상태를 지어내지 않고 안내만.
-          <p className="text-w-sub text-ink-500">Supabase 를 연결하면 합류 요청 상태가 표시됩니다.</p>
+          <p className="text-w-sub text-ink-700">Supabase 를 연결하면 합류 요청 상태가 표시됩니다.</p>
         ) : requests.isPending ? (
-          <p className="text-w-sub text-ink-500">합류 요청 상태를 확인하고 있어요.</p>
+          <p className="text-w-sub text-ink-700">합류 요청 상태를 확인하고 있어요.</p>
         ) : requests.isError ? (
           // 조회 실패를 '요청 없음'으로 보이지 않게 한다.
           <div role="alert" className="rounded-[10px] border border-alert p-6 text-w-sub text-ink-900">
@@ -109,7 +125,7 @@ export function JoinPendingPage() {
             <h1 className="text-w-section font-semibold leading-[30px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
               {text?.title ?? '기관 합류가 필요해요'}
             </h1>
-            <p className="mt-3 text-w-sub leading-[26px] text-ink-500" style={{ wordBreak: 'keep-all' }}>
+            <p className="mt-3 text-w-sub leading-[26px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
               {text?.body ?? '가입은 완료됐어요. 기관 관리자에게 받은 초대 코드로 합류를 요청해 주세요.'}
             </p>
 
@@ -158,14 +174,6 @@ export function JoinPendingPage() {
             )}
           </>
         )}
-
-        <button
-          type="button"
-          onClick={() => void signOut().then(() => navigate('/login', { replace: true }))}
-          className="mt-10 text-w-label text-[#8a8a8a] underline"
-        >
-          로그아웃
-        </button>
       </main>
 
       <ConfirmDialog
