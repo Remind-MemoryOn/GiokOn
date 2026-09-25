@@ -241,7 +241,7 @@
 
 | # | 내용 | 파일 | 상태 |
 |---|---|---|---|
-| **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 · 기존 수동 경로 `components/SessionJournalDialog.tsx`(세션 선택 → `session-report` → `renderSessionJournal`)는 기획 6-1 의 "현재"다 — **"다시 생성" 버튼으로 흡수하고 다이얼로그는 지운다** | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) | ⏳ |
+| **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 · 기존 수동 경로 `components/SessionJournalDialog.tsx`(세션 선택 → `session-report` → `renderSessionJournal`)는 기획 6-1 의 "현재"다 — **다이얼로그는 지운다.** ✅ 2026-09-25 사용자 확정: **"초안 생성" 버튼은 두지 않는다**(초안은 대화 종료 시 C4 워커가 자동 생성). "다시 생성"은 **`failed` 일지에만** 보이는 복구 버튼으로 `retry_journal_generation` RPC 를 부른다(`session-report` 아님) | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) | ⏳ |
 | **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 | ✅ 2026-09-25 웹(PR #18) — `/caregiver/supervision`(1440 셸 밖 반응형 단독 화면, 사이드바 맨 끝 '감독') · 기관의 진행 중 세션 카드(어르신·시작한 사람·단계·경과/목표·상태) · 원격 일시정지(선택 사유)·재개·종료(확인창 — 저장은 기기에서) · 위기 카드(서버 `caregiver_alert` 그대로 + 확인) · 개입 기록 3건 · Realtime `session_interventions` 등록. 계획과 다른 점: 세션에 기기 정보가 없어 '기기' 대신 '시작한 사람'. ⚠️ 위기 카드는 T21.4(중계 즉시 기록) 전에는 세션 종료 뒤에야 뜬다 |
 | **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` | ⏳ |
 | **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` | ⏳ |
@@ -303,11 +303,12 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 
 **C4. Edge Functions**
 - `session-report/handler.ts` 의 생성 로직을 `_shared/report-generation.ts` 로 추출(양쪽 공유)
-- ⚠️ **`REPORT_ALLOWED_USER_IDS` 데모 허용목록을 org 게이트로 교체** — 안 하면 파일럿 전원 403
+- ✅ 2026-09-25 **`REPORT_ALLOWED_USER_IDS` 데모 허용목록 폐기 → 기관 AI 스위치**(`org_settings.ai_drafts_enabled`, 기본 꺼짐, 운영자만 켬)
 - ⚠️ **`live-token` 중계 전용화** — 중계만 가진 자격(서버 시크릿 공유 비밀 헤더 등)을 사용자 JWT 에 **더해** 요구하고,
   없으면 403. 앱의 직접 호출 코드는 M1 에서 지운다. 배포 순서: 중계에 비밀 설정 → `live-token` 배포 → 비중계 호출 403 확인.
   이것이 들어가야 "검열되지 않은 AI 음성이 어르신에게 가는 경로가 없다"가 서버에서 참이 된다
-- `program-journal-draft/`(신규): 큐 소비 → 지수 백오프(30s→5m) → `attempts>5` 면 `failed`.
+- ✅ 2026-09-25 `program-journal-draft/`(신규): 큐 소비 → 지수 백오프(30s→5m) → `attempts>5` 면 `failed`. pg_cron 30초 + pg_net, DB 비밀값 인증.
+  **사용자 확정: 대화가 끝나면 자동 생성 — 웹에 "초안 생성" 버튼을 두지 않는다. "다시 생성"은 failed 일지 복구 전용**(W1).
   **`pending_review` 까지만 쓴다**
 - `push-dispatch/`(신규): `pushed_at is null` 소비 → Expo Push.
   ⚠️ **본문에 어르신 성함·발화 금지**(잠금화면 노출) — 고정 문구 + deep link 만
@@ -380,8 +381,8 @@ D3(직원 합류) → W9 온보딩 · W6 합류 승인 → 파일럿 개시 전 
 
 ### 블로커
 1. **`alter type ... add value` 트랜잭션 제약** — D1·D2를 단독 파일로. 합치면 CI 가 실패한다.
-2. **`REPORT_ALLOWED_USER_IDS` 데모 허용목록**(`session-report/index.ts:19`) — 교체하지 않으면
-   파일럿 전원 403.
+2. ~~**`REPORT_ALLOWED_USER_IDS` 데모 허용목록**(`session-report/index.ts:19`) — 교체하지 않으면
+   파일럿 전원 403.~~ ✅ 2026-09-25 기관 AI 스위치로 교체(C4).
 3. **`safety_events` 가 세션 종료 시 일괄 기록된다** — 실시간 안전 푸시가 구조적으로 불가능하다.
    중계 즉시 기록(C3)이 선결.
 4. **어르신 동의 철회 UI 부재**(W7) — AI 진행 프로그램이 제품 본체가 되는데 철회 경로가 화면에 없다.
