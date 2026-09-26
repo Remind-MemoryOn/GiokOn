@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capabilityAllows, DEFAULT_CAPABILITY_ROLES } from './hooks/programJournals'
+import { capabilityAllows, countByProfile, DEFAULT_CAPABILITY_ROLES } from './hooks/programJournals'
 
 describe('capabilityAllows — 위임 권한 UI 판정(서버 app.has_capability 와 같은 규칙)', () => {
   const member = (role: string) => ({ role, org_id: 'org-a' })
@@ -16,5 +16,12 @@ describe('capabilityAllows — 위임 권한 UI 판정(서버 app.has_capability
     expect(capabilityAllows(member('guardian'), ['guardian'])).toBe(false)
     expect(capabilityAllows({ role: 'org_admin', org_id: null }, ['org_admin'])).toBe(false)
     expect(capabilityAllows(null, ['org_admin'])).toBe(false)
+  })
+})
+
+describe('countByProfile — 어르신별 확인 대기 수', () => {
+  it('같은 어르신 행을 센다 · 없으면 빈 객체', () => {
+    expect(countByProfile([{ profile_id: 'a' }, { profile_id: 'b' }, { profile_id: 'a' }])).toEqual({ a: 2, b: 1 })
+    expect(countByProfile([])).toEqual({})
   })
 })

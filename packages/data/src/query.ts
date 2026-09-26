@@ -91,6 +91,8 @@ export const queryKeys = {
   orgSessionAnalyses: ['session_analyses', 'org'] as const,
   programJournals: (profileId: string) => ['program_journals', profileId] as const,
   orgProgramJournals: ['program_journals', 'org'] as const,
+  // 'program_journals' 로 시작해야 Realtime 무효화(접두어 일치)가 함께 새로 고친다.
+  pendingJournalCounts: ['program_journals', 'pending-counts'] as const,
   programJournalPhotos: (journalId: string) => ['program_journal_photos', journalId] as const,
   orgProgramJournalPhotos: ['program_journal_photos', 'org'] as const,
   journalRevisions: (journalId: string) => ['program_journal_revisions', journalId] as const,

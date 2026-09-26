@@ -82,7 +82,7 @@
 
 | 위치 | 삭제 | 신규·확장 | 유지(절대) |
 |---|---|---|---|
-| `packages/core/src` | ✅ `ai.ts`·`ai.test.ts`(규칙 기반 대화) · ✅ `voice-flow.ts`(호출처 0) · ⏳ `journal.ts` 의 `buildJournalDraft`(목업 — 웹이 아직 씀, W1 때) · ✅ `prompt.ts` 의 `RESPONSE_JSON_SCHEMA` | `session-phase.ts` · `program-journal.ts` · `generated-session.ts` 확장(공단 필드·보호자 문장·금지어) · `conversation.ts` `respondToUserTurn` → `evaluateUserTurn` 축소 · `prompt.ts` 단계 지시·`PROMPT_VERSION` 저장 | `safety.ts` 전체 · `analysis.ts` 의 `detectTurnTopic`·`recommendNextTopics` |
+| `packages/core/src` | ✅ `ai.ts`·`ai.test.ts`(규칙 기반 대화) · ✅ `voice-flow.ts`(호출처 0) · ✅ `journal.ts`(`buildJournalDraft`) — 2026-09-26 W1 에서 삭제 · ✅ `prompt.ts` 의 `RESPONSE_JSON_SCHEMA` | `session-phase.ts` · `program-journal.ts` · `generated-session.ts` 확장(공단 필드·보호자 문장·금지어) · `conversation.ts` `respondToUserTurn` → `evaluateUserTurn` 축소 · `prompt.ts` 단계 지시·`PROMPT_VERSION` 저장 | `safety.ts` 전체 · `analysis.ts` 의 `detectTurnTopic`·`recommendNextTopics` |
 | `packages/data/src/hooks` | `journals.ts`·`journalPhotos.ts`(→ 프로그램 일지 훅) · `analyses.ts` 의 `useUpsertSessionAnalysis`(dead code) | `programJournals.ts` · `supervision.ts` · `orgSettings.ts`(`useHasCapability` = UI 활성화의 단일 근거) · `pushTokens.ts` · `events.ts` · `realtime.ts` 등록 3곳 | 나머지 |
 | `apps/mobile` | ✅ 직접 모드 분기(`RELAY_MODE`)와 직접 UI · `expo-speech` | ✅ 어르신 표시 모드(`talk.tsx` 모드 전환 + `src/features/session/ElderView`) · ✅ 복귀 게이트(PIN) · ⏳ 원격 제어 수신 · ⏳ 푸시 토큰 등록 | `SESSION_BUSY`(기기 1대 = 세션 1개) |
 | `apps/web/src/pages` | `caregiver/Journal{List,Write,}Page.tsx`(요양일지) | `ProgramJournal{List,Detail}Page` · `SupervisionPage`(반응형) · 동의 부여·철회 라우트(✅ `ElderConsentsPage` — PR #17) · `OrgPage` 권한 매트릭스·역할 지정 · 보호자 페이지 표현 전환 | — |

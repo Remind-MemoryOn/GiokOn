@@ -163,7 +163,7 @@ const SCREENS = [
   [`${WEB}/src/components/shell/nav.ts`, '사이드바: 요양보호사 8항목 · 보호자 4항목(디자인 순서)', [
     /'\/caregiver', label: '대시보드'/, /'\/caregiver\/elders', label: '어르신 관리'/,
     /'\/caregiver\/sessions', label: '세션 기록'/, /'\/caregiver\/analysis', label: '분석'/,
-    /'\/caregiver\/journal', label: '요양일지'/, /'\/caregiver\/shares', label: '공개 관리'/,
+    /'\/caregiver\/journal', label: '프로그램 일지'/, /'\/caregiver\/shares', label: '공개 관리'/,
     /'\/caregiver\/org', label: '기관 관리'/, /'\/caregiver\/settings', label: '설정'/,
     /'\/guardian', label: '어르신 연결'/, /'\/guardian\/feed', label: '공개된 소식'/,
   ]],
@@ -722,10 +722,11 @@ const SCREENS = [
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
 
-  // ── 요양일지(어르신 고르기) 205:1039 ──────────────────────────────────
-  [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '요양일지: 설명 한 줄 w918 · 카드 3열 gap 33 · 3번째 줄은 기관명', [
+  // ── 프로그램 일지(어르신 고르기) — 틀 205:1039 ──────────────────────────
+  [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '프로그램 일지: 설명 한 줄 w918 · 카드 3열 gap 33 · 3번째 줄은 기관명 · 확인 대기 수는 상태로 직접 센다', [
     /descMax=\{918\}/, /gap-\[33px\]/, /<ElderPickerGrid/,
     /org\.data\?\.name \?\? '—'/,
+    /usePendingJournalCounts\(/, /확인 대기 \{pendingTotal\}건/,
   ]],
   // ── 공개 관리(어르신 고르기) 135:1288 ─────────────────────────────────
   [`${WEB}/src/pages/caregiver/SharesPage.tsx`, '공개 관리: 설명 한 줄 w723 · 카드 3열 gap 33 · 3번째 줄은 기관명', [
@@ -734,47 +735,39 @@ const SCREENS = [
     /org\.data\?\.name \?\? '—'/,
   ]],
 
-  // ── 요양일지 목록 207:1147 ────────────────────────────────────────────
-  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 카드 1057 @376 · 행 879×235.15 피치 259.164 · 배지 107×35 · 작성 버튼 185×57', [
+  // ── 프로그램 일지 목록 — 틀 207:1147 (파일럿 W1) ──────────────────────────
+  [`${WEB}/src/pages/caregiver/ProgramJournalListPage.tsx`, '프로그램 일지 목록: 카드 1057 @376 · 행 879×235.15 피치 259.164 · 상태 칩 107×35 자리 · 작성 버튼 185×57', [
     /const CARD_TOP = 376;/, /const ROW_TOP = 427\.27;/,
     /const ROW_H = 235\.15;/, /const ROW_PITCH = 259\.164;/,
     /left-\[410px\] w-\[879px\] rounded-\[10px\] border border-line bg-white/,
     /h-\[57px\] w-\[185px\][^"]*rounded-\[10px\] bg-accent/,
-    /tone="journal"[\s\S]{0,20}tag/,
+    /<JournalStatusChip/,
   ]],
-  [`${WEB}/src/pages/caregiver/JournalListPage.tsx`, '요양일지 목록: 삭제는 확인 후 · 값 없는 날짜는 만들지 않는다', [
+  // W1: 초안은 대화 종료 시 자동 — "초안 생성" 버튼 없이 **실패한 일지에만** 다시 생성(retry RPC).
+  [`${WEB}/src/pages/caregiver/ProgramJournalListPage.tsx`, '프로그램 일지 목록: 삭제는 확인 후 · 확인 대기 N건 최상단 · 다시 생성은 failed 에만', [
     /<ConfirmDialog$/m, /useDeleteProgramJournal/, { absent: /window\.confirm\(/ },
-    /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '요양일지';/,
+    /확인 대기 \{pendingCount\}건/,
+    /j\.status === 'failed' \? \(/, /useRetryJournalGeneration/,
+    { absent: /session-report|useGenerateSessionReport|SessionJournalDialog|buildJournalDraft/ },
+  ]],
+  [`${WEB}/src/lib/programJournal.ts`, '프로그램 일지 표기: 값 없는 날짜는 만들지 않는다 · 생성 중·실패는 상태를 말한다', [
+    /if \(Number\.isNaN\(d\.getTime\(\)\)\) return '프로그램 일지';/,
+    /j\.status === 'generating'/, /j\.status === 'failed'/,
   ]],
 
-  // ── 요양일지 작성 221:283 · 221:1060 · 221:1196 ────────────────────────
-  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: 카드 1057×928 @295 · 방식 탭 262/261/262×57 @583.45 · 저장 140×57', [
-    /h-\[928px\] w-\[1057px\] rounded-\[10px\] bg-white shadow-card/,
-    /top: 288\.45, width: m\.w/,
-    /key: 'typed'[\s\S]{0,140}left: 87/, /key: 'voice'[\s\S]{0,140}left: 396/, /key: 'photo'[\s\S]{0,140}left: 704/,
-    /h-\[57px\] w-\[140px\] rounded-\[10px\] border border-accent bg-white/,
-    /h-\[57px\] w-\[140px\] rounded-\[10px\] bg-accent/,
-    /const SLOT = \{ w: 187, h: 193, top: 363, xs: \[87, 318, 549, 780\] \}/,
-  ]],
-  // W-4: 음성 인식·AI 초안이 실제로 붙었다. 결과를 **만들어 내지 않는 것**은 그대로다 —
-  // 실패하면 이유를 말하고(조용한 실패 금지), 시각은 적은 만큼만 저장한다.
-  [`${WEB}/src/pages/caregiver/JournalWritePage.tsx`, '요양일지 작성: STT·AI 초안 배선 · 조용한 실패 금지 · 저장→업로드→첨부 순서', [
-    /transcribeAudio\(file, elderId\)/, /SttUnavailableError/,
-    /buildJournalDraft\(\{/,
-    /disabled=\{!content\.trim\(\) \|\| saving\}/,
+  // ── 프로그램 일지 상세 (파일럿 W1 · SCR-W16 — 시안 없음, 작성 화면 221:283 체계) ─────────────
+  [`${WEB}/src/pages/caregiver/ProgramJournalDetailPage.tsx`, '프로그램 일지 상세: 확정은 권한일 때만 · 확정 후 수정 사유 · 바꾼 칸만 · 다시 생성은 failed 에만 · 초안 생성 버튼 없음', [
+    /useHasCapability\('journal_finalize'/,
+    /disabled=\{saving \|\| !mayFinalize\}/,                     // 확정 버튼은 권한일 때만 활성
+    /patch\.edit_reason = reason\.trim\(\)/,                        // 확정 후 수정 사유
+    /if \(!existing \|\| after\[k\] !== before\[k\]\)/,          // 바꾼 칸만 보낸다(워커 칸을 지우지 않게)
+    /journal\.status === 'failed'/, /useRetryJournalGeneration/,
+    /guardian_text_approved_at = new Date\(\)\.toISOString\(\)/,
     /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
-    /await removeJournalPhotoFiles\(uploaded\)/,           // 첨부 실패 시 파일 되돌리기
-    /URL\.revokeObjectURL/,                                 // 미리보기 URL 해제
-    // D5(2026-09-24): 저장소가 program_journals 로 바뀌어 칸 이름만 operated_from/to — 규칙(적은 것만, 기본값 없음)은 같다.
-    /operated_from: from \|\| null/, /operated_to: to \|\| null/,
-    /const \[from, setFrom\] = useState\(''\);/,          // 시각 기본값을 지어내지 않는다
-    { absent: /AI 초안은 실 연동 후 제공됩니다/ },
-    { absent: /음성 인식 연동 전이라 아래 원문은 직접 적어 주세요/ },
-  ]],
-  [`${WEB}/src/lib/stt.ts`, '음성 인식: 서버 함수 경유 · 배포/키/권한 실패를 구분해 알린다', [
-    /functions\.invoke<\{/, /'stt-transcribe'/,
-    /status === 404/, /배포되지 않았어요/,
-    /음성에서 텍스트를 찾지 못했어요/,   // 빈 결과를 성공으로 취급하지 않는다
+    /await removeJournalPhotoFiles\(uploaded\)/,                   // 첨부 실패 시 파일 되돌리기
+    /URL\.revokeObjectURL/,                                          // 미리보기 URL 해제
+    /operated_from: '',/,                                              // 시각 기본값을 지어내지 않는다
+    { absent: /session-report|useGenerateSessionReport|SessionJournalDialog|buildJournalDraft|transcribeAudio/ },
   ]],
   [`${WEB}/src/lib/journalPhotos.ts`, '일지 사진: private 버킷 signed URL · 경로는 profile_id 로 시작 · 파일을 먼저 파기', [
     /const BUCKET = 'journal-photos'/, /createSignedUrls/,

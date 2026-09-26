@@ -6,6 +6,7 @@
 //
 // ⚠️ Figma 는 프레임마다 2·3번째 카드의 사진 x 를 710/1080 으로 흘려 놨다(1번째는 +18)
 //    → +18 로 통일한다.
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { elderAge, type ElderProfile } from '@giokon/core';
 import { Avatar } from './ui/Avatar';
@@ -31,9 +32,11 @@ interface Props {
   fx?: ElderCardFx[];
   /** 목록이 비었을 때 문구. */
   empty: string;
+  /** 카드 오른쪽 아래 표시(선택) — 프로그램 일지의 확인 대기 수. 없으면 그리지 않는다. */
+  badge?: (e: ElderProfile) => ReactNode;
 }
 
-export function ElderPickerGrid({ elders, photos, to, third, fx = [], empty }: Props) {
+export function ElderPickerGrid({ elders, photos, to, third, fx = [], empty, badge }: Props) {
   if (elders.length === 0) {
     return (
       <p className="w-full rounded-[10px] border border-line bg-white px-[52px] py-16 text-center text-w-body text-ink-500">
@@ -77,6 +80,7 @@ export function ElderPickerGrid({ elders, photos, to, third, fx = [], empty }: P
           >
             {third(e)}
           </div>
+          {badge ? <div className="absolute bottom-[10px] right-[12px]">{badge(e)}</div> : null}
         </Link>
       ))}
     </>

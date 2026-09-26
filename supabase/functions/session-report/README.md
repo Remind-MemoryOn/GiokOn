@@ -54,6 +54,6 @@ supabase secrets set REPORT_ALLOWED_USER_IDS="담당자-USER-UUID" --project-ref
 
 ## 검증
 
-`packages/data/src/session-report-{provider,handler,entrypoint}.test.ts`는 합성 인증·공급자·DB를 사용해 실제 소스의 실패 경로를 시험한다. `apps/web/scripts/report-flow-smoke.mjs`는 환경 파일 없이 브라우저에서 생성 요청·미리보기·명시적 적용·실패·재시도·취소 시 본문 보존을 시험한다. 둘 다 실제 Gemini 호출/실기기 성공을 대신하지 않는다.
+`packages/data/src/session-report-{provider,handler,entrypoint}.test.ts`는 합성 인증·공급자·DB를 사용해 실제 소스의 실패 경로를 시험한다. 웹의 수동 호출 화면(`SessionJournalDialog`)과 그 UI 시험(`report-flow-smoke.mjs`)은 파일럿 W1(2026-09-26)에서 삭제했다 — 웹 일지 초안은 대화 종료 시 워커(`program-journal-draft`)가 자동으로 만든다. 앱(`SessionReportPanel`)은 아직 이 함수를 쓴다. 둘 다 실제 Gemini 호출/실기기 성공을 대신하지 않는다.
 
 운영 배포 기록: 2026-09-14 서울 `session-report` v1 배포(verify_jwt=true), `GEMINI_REPORT_MODEL=gemini-2.5-flash`. 실제 공급자 호출·종단 리허설은 미검증이다(당시 구현 기록은 git 이력).

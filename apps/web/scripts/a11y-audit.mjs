@@ -76,6 +76,12 @@ const EXTRA_SCREENS = [
   { name: '기관 관리(관리 역할)', route: '/caregiver/org?audit-role=center_director', height: 1900 },
   // 파일럿 W2 — 감독 화면(셸 밖 반응형, 시안 없음)
   { name: '감독 화면', route: '/caregiver/supervision', height: 1200 },
+  // 파일럿 W1 — 프로그램 일지 상세(시안 없음, 작성 화면 체계): 확인 대기(AI 초안) · 생성 실패 · 확정(관리 역할) · 이력 · 수기 작성
+  { name: '프로그램 일지 상세(확인 대기)', route: '/caregiver/journal/e1/j1', height: 3600 },
+  { name: '프로그램 일지 상세(생성 실패)', route: '/caregiver/journal/e1/j3', height: 3600 },
+  { name: '프로그램 일지 상세(확정·관리 역할)', route: '/caregiver/journal/e1/j2?audit-role=social_worker', height: 3600 },
+  { name: '프로그램 일지 이력', route: '/caregiver/journal/e1/j2?tab=history', height: 1200 },
+  { name: '프로그램 일지 수기 작성', route: '/caregiver/journal/e1/new', height: 3600 },
 ];
 
 for (const s of [...SCREENS, ...EXTRA_SCREENS]) {

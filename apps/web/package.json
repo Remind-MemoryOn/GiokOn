@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
     "test:auth": "node scripts/auth-isolation.mjs",
+    "test:journal": "node scripts/journal-flow-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke": "node scripts/route-smoke.mjs",

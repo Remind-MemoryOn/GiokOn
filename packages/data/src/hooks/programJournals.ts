@@ -70,9 +70,36 @@ export function useOrgProgramJournals(options?: {
   })
 }
 
+/** 어르신별 개수 — `{ profile_id }` 행 목록을 `{ [profile_id]: n }` 으로. */
+export function countByProfile(rows: readonly { profile_id: string }[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const r of rows) out[r.profile_id] = (out[r.profile_id] ?? 0) + 1
+  return out
+}
+
+/**
+ * 어르신별 **확인 대기**(pending_review) 일지 수 — 목록 최상단 "확인 대기 N건"의 근거.
+ * 기관 최근 N건(useOrgProgramJournals)으로 세면 오래된 대기가 빠진다 → 상태로 직접 거른다.
+ */
+export function usePendingJournalCounts(options?: { enabled?: boolean }): UseQueryResult<Record<string, number>> {
+  return useQuery({
+    queryKey: queryKeys.pendingJournalCounts,
+    enabled: options?.enabled ?? true,
+    queryFn: async () => {
+      const { data, error } = await getGiokonClient()
+        .from('program_journals')
+        .select('profile_id')
+        .eq('status', 'pending_review')
+      if (error) throw new Error(error.message)
+      return countByProfile(data)
+    },
+  })
+}
+
 function invalidateJournals(qc: ReturnType<typeof useQueryClient>, profileId: string): void {
   void qc.invalidateQueries({ queryKey: queryKeys.programJournals(profileId) })
   void qc.invalidateQueries({ queryKey: queryKeys.orgProgramJournals })
+  void qc.invalidateQueries({ queryKey: queryKeys.pendingJournalCounts })
 }
 
 /** 수기 일지 작성(확인 대기 또는 — 위임 권한이 있으면 — 바로 확정). */

@@ -33,8 +33,8 @@ import { AnalysisElderPage } from './pages/caregiver/AnalysisElderPage';
 import { ConversationAnalysisListPage } from './pages/caregiver/ConversationAnalysisListPage';
 import { ConversationAnalysisPage } from './pages/caregiver/ConversationAnalysisPage';
 import { JournalPage } from './pages/caregiver/JournalPage';
-import { JournalListPage } from './pages/caregiver/JournalListPage';
-import { JournalWritePage } from './pages/caregiver/JournalWritePage';
+import { ProgramJournalListPage } from './pages/caregiver/ProgramJournalListPage';
+import { ProgramJournalDetailPage } from './pages/caregiver/ProgramJournalDetailPage';
 import { SharesPage } from './pages/caregiver/SharesPage';
 import { ShareItemsPage } from './pages/caregiver/ShareItemsPage';
 import { ShareHistoryPage } from './pages/caregiver/ShareHistoryPage';
@@ -56,7 +56,7 @@ import { SupervisionPage } from './pages/caregiver/SupervisionPage';
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
 // 화면↔노드 맵: docs/runbooks/figma-web-extraction.md
 //   공개      서비스 소개 · 이용안내 · 로그인 · 회원가입 · 아이디/비번 찾기 · 재설정
-//   요양보호사 대시보드 · 어르신 관리 · 세션 기록 · 분석 · 요양일지 · 공개 관리 · 기관 관리 · 설정
+//   요양보호사 대시보드 · 어르신 관리 · 세션 기록 · 분석 · 프로그램 일지 · 공개 관리 · 기관 관리 · 설정
 //   보호자    어르신 연결 · 공개된 소식 · 분석 · 설정
 
 function CaregiverGuard({ children }: { children: React.ReactNode }) {
@@ -153,10 +153,10 @@ function App() {
           <Route path="analysis/:elderId/sessions" element={<ConversationAnalysisListPage />} />
           <Route path="analysis/:elderId/sessions/:sessionId" element={<ConversationAnalysisPage />} />
           <Route path="journal" element={<JournalPage />} />
-          <Route path="journal/:elderId" element={<JournalListPage />} />
-          <Route path="journal/:elderId/new" element={<JournalWritePage />} />
-          {/* 목록의 연필 — 같은 화면을 수정 모드로 연다(서버 값을 한 번 심는다) */}
-          <Route path="journal/:elderId/:journalId" element={<JournalWritePage />} />
+          <Route path="journal/:elderId" element={<ProgramJournalListPage />} />
+          <Route path="journal/:elderId/new" element={<ProgramJournalDetailPage />} />
+          {/* 목록의 연필 — 같은 화면이 상세(확인·수정·확정·이력)다 */}
+          <Route path="journal/:elderId/:journalId" element={<ProgramJournalDetailPage />} />
           <Route path="shares" element={<SharesPage />} />
           <Route path="shares/:elderId" element={<ShareItemsPage />} />
           <Route path="shares/:elderId/history" element={<ShareHistoryPage />} />

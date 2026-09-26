@@ -32,7 +32,7 @@
 | T20.5 | ⚠️ `session-report` 의 `REPORT_ALLOWED_USER_IDS` 데모 허용목록 → org 게이트(안 하면 파일럿 전원 403) | C4 | — | ✅ 2026-09-25 — 허용목록 폐기 → 기관 AI 스위치 `org_settings.ai_drafts_enabled`(기본 꺼짐·**운영자만** 켬, 사용자 결정 1-C) · 운영 v6. ⏳ 파일럿 기관 스위치 켜기(사용자 지시 대기) |
 | T20.6 | 워커 `program-journal-draft`(큐 소비·지수 백오프·`attempts>5` 실패) — **`pending_review` 까지만** | C4 | T20.2, T20.5 | ✅ 2026-09-25 — `20260925000000` 운영 적용 · pg_cron 30초 + pg_net(결정 2-A) · 워커 v1(verify_jwt=false, DB 비밀값 인증) · 운영에서 401/202 확인. **대화 종료 시 자동 — 초안 생성 버튼 없음**(사용자 확정). ⏳ 실제 Gemini 종단은 기관 스위치를 켠 뒤 |
 | T20.7 | 앱 폴백 저장 순서 정리(세션 생성 → 턴·분석 → `ended`) | M7 | — | ✅ (2026-09-24) |
-| T20.8 | 웹 프로그램 일지 목록·상세·확정·이력·재시도 + 네비 이름 변경 | W1, W3 | T20.6 | ⏳ |
+| T20.8 | 웹 프로그램 일지 목록·상세·확정·이력·재시도 + 네비 이름 변경 | W1, W3 | T20.6 | ✅ 2026-09-26 (보호자 쪽 이름은 T20.9) |
 | T20.9 | 보호자 표현 전환(판정형→기술형·고정 문구·`guardian_text` 만 렌더) + `session_summary` 미렌더 버그 | W4 | T20.8 | ⏳ |
 
 ### M21 — 감독 화면 + 대화 단계 (머지 단위 ③) → `PLAN.md` M21·M22.1
@@ -53,7 +53,7 @@
 ### M23 — core 정리 + 어르신 표시 모드 (머지 단위 ④, **반드시 한 PR**) → `PLAN.md` M22.1·M23
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
-| T23.1 | `ai.ts`·`voice-flow.ts`·`buildJournalDraft` 삭제 · `respondToUserTurn` → `evaluateUserTurn` 축소 · **안전 계층 유지** | C1 | — | ✅ (2026-09-24 · `buildJournalDraft` 는 웹이 아직 써서 W1 때 삭제) |
+| T23.1 | `ai.ts`·`voice-flow.ts`·`buildJournalDraft` 삭제 · `respondToUserTurn` → `evaluateUserTurn` 축소 · **안전 계층 유지** | C1 | — | ✅ (2026-09-24 · `buildJournalDraft` 는 2026-09-26 W1 에서 삭제) |
 | T23.2 | 직접 모드 제거 — `RELAY_MODE` 분기 삭제, `EXPO_PUBLIC_VOICE_RELAY_URL` 필수화 | M1 | T23.1 | ✅ (2026-09-24) |
 | T23.3 | 어르신 표시 모드 분리(`elder.tsx`) + 어르신 화면에서 요양보호사 UI 제거 | M2, M3 | T23.2 | ✅ (2026-09-24 · 라우트 대신 `talk.tsx` 모드 전환) |
 | T23.4 | 복귀 게이트(숨김 제스처 또는 PIN) | M4 | T23.3 | ✅ (2026-09-24 · PIN) |

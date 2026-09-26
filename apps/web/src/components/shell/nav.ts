@@ -13,7 +13,7 @@ export const CAREGIVER_NAV: NavItem[] = [
   { to: '/caregiver/elders', label: '어르신 관리', icon: 'elders' },
   { to: '/caregiver/sessions', label: '세션 기록', icon: 'sessions' },
   { to: '/caregiver/analysis', label: '분석', icon: 'analysis' },
-  { to: '/caregiver/journal', label: '요양일지', icon: 'journal' },
+  { to: '/caregiver/journal', label: '프로그램 일지', icon: 'journal' },
   { to: '/caregiver/shares', label: '공개 관리', icon: 'shares' },
   { to: '/caregiver/org', label: '기관 관리', icon: 'org' },
   { to: '/caregiver/settings', label: '설정', icon: 'settings' },

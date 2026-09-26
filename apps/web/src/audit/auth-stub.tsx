@@ -311,56 +311,99 @@ function seedAnalyses(q: typeof queryClient) {
   q.setQueryData(queryKeys.sessionAnalyses(E1), rows.filter((r) => r.profile_id === E1));
 }
 
-/** 요양일지 목록(207:1147) 감사용 — 시안과 같은 4건. (D5: 저장소 program_journals 모양) */
+/** 프로그램 일지 목록(207:1147 틀)·상세(W1) 감사용 — 시안과 같은 날짜·본문 4건. (D5: 저장소 program_journals 모양)
+ *  목록은 네 상태를 한 번씩 보인다: 확인 대기(AI 초안) · 확정 · 생성 실패 · 확인 대기(수기). 첫 행은 시안 본문 그대로. */
 function seedJournals(q: typeof queryClient) {
   const p2 = window.location.pathname;
   if (!/\/caregiver\/journal\//.test(p2) && !/\/caregiver\/shares\//.test(p2)) return;
-  // 공개 관리는 확정 + 보호자 문장 승인 일지만 다룬다(서버 공개 게이트) → 그 화면에서는 확정본으로 심는다.
-  // 일지 목록은 확정 전 수기 일지(휴지통이 보이는 상태 — 시안)로 심는다.
+  // 공개 관리는 확정 + 보호자 문장 승인 일지만 다룬다(서버 공개 게이트) → 그 화면에서는 전부 확정본으로 심는다.
   const shares = /\/caregiver\/shares\//.test(p2);
-  const j = (id: string, date: string, content: string) => ({
-    id,
-    org_id: ORG.id,
-    profile_id: E1,
-    session_id: null,
-    status: shares ? ('final' as const) : ('pending_review' as const),
-    journal_date: date,
-    operated_from: null,
-    operated_to: null,
-    program_type: '인지활동 - 회상훈련',
-    location: null,
-    facilitator_user_id: USER.id,
-    participants: null,
-    goal: null,
-    activity_content: content,
-    participant_response: null,
-    opinion_collected: null,
-    overall_evaluation: null,
-    next_plan: null,
-    tool_used: null,
-    delivered: true,
-    non_delivery_reason: null,
-    guardian_text: shares ? content : null,
-    guardian_text_approved_by: shares ? USER.id : null,
-    guardian_text_approved_at: shares ? `${date}T03:00:00Z` : null,
-    finalized_by: shares ? USER.id : null,
-    finalized_at: shares ? `${date}T03:00:00Z` : null,
-    draft_generated_at: null,
-    generation_attempts: 0,
-    last_error: null,
-    edit_reason: null,
-    created_by: USER.id,
-    created_at: `${date}T02:00:00Z`,
-    updated_at: `${date}T02:00:00Z`,
+  type Extra = Partial<{
+    status: 'pending_review' | 'final' | 'failed' | 'generating';
+    session_id: string | null;
+    draft_generated_at: string | null;
+    last_error: string | null;
+    finalized: boolean;
+    participant_response: string | null;
+    guardian_text: string | null;
+  }>;
+  const j = (id: string, date: string, content: string | null, extra: Extra = {}) => {
+    const status = shares ? 'final' : (extra.status ?? 'pending_review');
+    if (shares) extra = {};
+    const final = status === 'final';
+    return {
+      id,
+      org_id: ORG.id,
+      profile_id: E1,
+      session_id: extra.session_id ?? null,
+      status,
+      journal_date: date,
+      operated_from: extra.session_id ? '10:00:00' : null,
+      operated_to: extra.session_id ? '10:12:00' : null,
+      program_type: '인지활동 - 회상훈련',
+      location: extra.session_id ? '2층 프로그램실' : null,
+      facilitator_user_id: USER.id,
+      participants: extra.session_id ? '김복순 어르신(1:1)' : null,
+      goal: null,
+      activity_content: content,
+      participant_response: extra.participant_response ?? null,
+      opinion_collected: null,
+      overall_evaluation: null,
+      next_plan: null,
+      tool_used: extra.session_id ? 'AI 대화 프로그램 보조' : null,
+      delivered: true,
+      non_delivery_reason: null,
+      guardian_text: shares ? content : (extra.guardian_text ?? null),
+      guardian_text_approved_by: shares || final ? USER.id : null,
+      guardian_text_approved_at: shares || final ? `${date}T03:00:00Z` : null,
+      finalized_by: final ? USER.id : null,
+      finalized_at: final ? `${date}T03:00:00Z` : null,
+      draft_generated_at: extra.draft_generated_at ?? null,
+      generation_attempts: status === 'failed' ? 3 : 0,
+      last_error: extra.last_error ?? null,
+      edit_reason: null,
+      created_by: extra.session_id ? null : USER.id,
+      created_at: `${date}T01:00:00Z`,
+      updated_at: `${date}T02:00:00Z`,
+    };
+  };
+  // 상세 화면이 확정 권한을 묻는다(심지 않으면 조회 실패 배너가 레이아웃을 민다). 요양보호사 기본값 = 권한 없음.
+  // ?audit-role=social_worker 등 관리 역할로 열면 기본 권한표대로 확정 권한이 있다.
+  const auditRole = new URLSearchParams(window.location.search).get('audit-role');
+  const role = auditRole ?? USER.role;
+  q.setQueryData([...queryKeys.orgCapabilities, 'journal_finalize', USER.id, role], role !== 'caregiver');
+  q.setQueryData(queryKeys.orgSettings, {
+    org_id: ORG.id, facility_type: 'nursing_home', target_minutes: 10, default_avoid_topics: [],
+    default_program_type: '인지활동 - 회상훈련', default_location: '2층 프로그램실',
+    ai_drafts_enabled: true, updated_at: '2026-09-01T00:00:00Z', updated_by: null,
   });
-  // 작성 화면이 확정 권한을 묻는다(심지 않으면 조회 실패 배너가 레이아웃을 민다). 요양보호사 기본값 = 권한 없음.
-  q.setQueryData([...queryKeys.orgCapabilities, 'journal_finalize', USER.id, USER.role], false);
   q.setQueryData(queryKeys.programJournals(E1), [
-    j('j1', '2026-07-30', '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.'),
-    j('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.'),
-    j('j3', '2026-07-21', '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.'),
+    j('j1', '2026-07-30', '오늘은 산책 후 가벼운 체조를 함께 했습니다. 식사도 잘 하셨고, 기분이 좋아 보이셨습니다.', {
+      session_id: 's1', draft_generated_at: '2026-07-30T01:20:00Z',
+      participant_response: '고향 이야기에서 발화가 많았고 웃음이 있었습니다.',
+      guardian_text: '오늘은 고향 이야기를 즐겁게 나누셨어요.',
+    }),
+    j('j2', '2026-07-28', '오전에는 실내에서 가벼운 스트레칭을 진행했습니다. 점심 식사 후에는 휴식을 취하며 편안하게 하루를 보내셨어요.', {
+      status: 'final', session_id: 's2', draft_generated_at: '2026-07-28T01:20:00Z',
+      guardian_text: '오늘은 편안하게 하루를 보내셨어요.',
+    }),
+    // 공개 관리 시안은 이 날짜에도 본문이 있다 — 그 화면에서는 확정본 본문으로 심는다.
+    j('j3', '2026-07-21', shares ? '날씨가 좋아 요양원 주변을 천천히 산책했습니다. 산책 중 주변 풍경을 바라보며 즐겁게 이야기를 나누셨어요.' : null, {
+      status: 'failed', session_id: 's3', last_error: 'AI 응답이 늦어 초안을 만들지 못했어요.',
+    }),
     j('j4', '2026-07-13', '오후에 꽃을 심고 꾸미는 원예 활동을 진행했습니다. 완성된 화분을 보며 매우 좋아하셨어요.'),
   ]);
+  q.setQueryData(queryKeys.journalRevisions('j2'), [
+    {
+      id: 'rev-1', journal_id: 'j2', org_id: ORG.id, profile_id: E1, changed_by: USER.id,
+      changed_at: '2026-07-29T05:10:00Z', reason: '운영 시간 오기 수정',
+      changes: { operated_to: { from: '10:30:00', to: '10:12:00' } },
+    },
+  ]);
+  for (const id of ['j1', 'j2', 'j3', 'j4']) {
+    q.setQueryData(queryKeys.journalRevisions(id), q.getQueryData(queryKeys.journalRevisions(id)) ?? []);
+    q.setQueryData(queryKeys.programJournalPhotos(id), []);
+  }
   // 공개 관리가 일지↔사진 지도를 만든다(W-2c: "비공개 전환" 이 사진 공개까지 함께 내린다).
   // 심어 두지 않으면 이 쿼리가 실패하고 셸의 오류 배너가 떠 레이아웃이 밀린다.
   q.setQueryData([...queryKeys.orgProgramJournalPhotos, ['j1', 'j2', 'j3', 'j4']], []);

@@ -203,7 +203,14 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
   "저장"은 확정 권한(`useHasCapability('journal_finalize')`)이 있을 때만 확정, 없으면 확인 대기로 저장하고 알린다.
   확정 일지는 수정 사유 칸이 없어 이 화면에서 고치지 않는다. 공개는 **확정 + 보호자 문장 승인** 일지만(서버 게이트),
   보호자 화면은 `get_my_shared_journals` 의 **보호자 문장만** 렌더한다. 서버 오류 코드는 `lib/journalErrors.ts` 가 문구로 바꾼다.
-- **요양일지 초안은 지금 두 경로다**(`JournalWritePage` — W1 이 프로그램 일지로 대체하기 전까지의 현재 코드).
+- ✅ **W1 완료(2026-09-26)** — 아래 "두 경로"는 **삭제됐다**(기록으로만 남긴다). 지금 화면:
+  `JournalPage`(어르신 고르기 · 틀 205:1039 · 확인 대기 수) → `ProgramJournalListPage`(틀 207:1147 · 상태 칩 · "확인 대기 N건" 필터 ·
+  실패 행 "다시 생성") → `ProgramJournalDetailPage`(시안 없음 · 작성 화면 221:283 카드 체계 · 공단 12칸 · 제공 여부 · 사진 · 보호자 문장+승인 ·
+  확정(권한) · 확정 후 수정 사유 · 이력 탭). 주소는 그대로 `/caregiver/journal/:elderId(/new|/:journalId)`.
+  ⚠️ 상세 저장은 **바꾼 칸만** 보낸다(생성 중에 열어 둔 화면이 워커가 채운 칸을 빈 값으로 지우지 않게) · 생성 중 저장은 상태를 바꾸지 않고,
+  실패 일지를 사람이 이어 쓰면 확인 대기로 · 'AI 초안' 표시는 워커가 채우는 4칸(진행 내용·수급자 반응·의견수렴·보호자 문장)에만
+  (DB 에 칸별 출처가 없다 — `draft_generated_at` 이 근거) · 상태 칩 글자는 본문색 + 색 점(대비).
+- ~~**요양일지 초안은 지금 두 경로다**~~(`JournalWritePage` — W1 에서 삭제).
   둘 다 **자동 저장·자동 공개하지 않는다** — 본문에 넣을 뿐이고, 저장·공개는 담당자 동작이다.
   · **규칙 기반** `AI 초안 만들기` → core `buildJournalDraft`(W1 때 삭제 — 루트 AGENTS C1 결정).
   · **실 LLM** `회상 대화에서 일지 초안`(2026-09-14, `components/SessionJournalDialog.tsx`) → `ended` 세션 선택 →
@@ -229,8 +236,8 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
     취소·폐기, 늦게 끝난 작업은 lease 의 `assertCurrent()` 가 막는다). ⛔ 전역 `queryClient` 하나로 되돌리지 말 것 —
     이전 계정의 캐시가 새 계정 화면에 보인다. 스토어도 `resetForAuth()` + **세대 번호**로 늦은 토스트를 버린다.
     회귀 = `pnpm -F @giokon/web test:auth`(§7 실행 주의).
-  · **R010 대상 동의 STT** — `transcribeAudio(file, profileId)` 가 `x-profile-id` 를 보내고 `stt-transcribe` 가 **그 어르신의
-    필수 동의 + 담당 권한**을 확인한다. **403 은 "동의·담당 확인" 으로 안내**한다(401 과 구분).
+  · ~~R010 대상 동의 STT~~ — 웹 음성 입력(`lib/stt.ts`)은 **W1(2026-09-26)에서 삭제**했다(기획 §5-1 "요양보호사 음성 자가기록" 삭제 대상).
+    Edge Function `stt-transcribe` 의 서버 검사(대상 어르신 필수 동의 + 담당 권한)는 그대로다. 웹에 음성 입력을 되살리면 이 규칙도 되살린다.
   · **R011 동의 증거 보존** — 온보딩은 **현행** 동의를 요구하고, 철회·재동의가 과거 증거를 덮지 않는다.
 
 ## 4. 카피 · 컴플라이언스 (CI 강제)
@@ -369,8 +376,9 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
   · 잉크 대조(`figma-ink.py`)는 **`numpy`·`Pillow`** 가 필요하다 → `pip install numpy Pillow`(없으면 `ModuleNotFoundError`).
   · 브라우저는 **`/opt/pw-browsers/chromium`**(`playwright install` 금지). figma·img·nav·a11y 검사는 `executablePath` 를 준다.
     ⚠️ **`test:auth`(`scripts/auth-isolation.mjs`)는 안 준다** — 원격에서는 실패한다(코드 결함 아님, 미수정).
-  · ⚠️ **`scripts/report-flow-smoke.mjs`(`session-report` 흐름 UI 시험)는 `channel:'msedge'`** — MS Edge 기기에서만 돌고
-    package.json·CI 에 연결돼 있지 않아 **게이트가 아니다**. 이 흐름의 회귀는 자동으로 지켜지지 않는다.
+  · **`pnpm -F @giokon/web test:journal`**(`scripts/journal-flow-smoke.mjs`, W1 2026-09-26) — 프로그램 일지 흐름 UI 회귀(합성 API):
+    초안 생성 버튼 없음 · 다시 생성은 실패 일지만 · **바꾼 칸만 저장** · 확정 권한 잠금 · 확정 후 수정 사유. `/opt/pw-browsers/chromium` 을 쓴다
+    (없으면 msedge). CI 에는 아직 연결하지 않았다. 이전 `report-flow-smoke.mjs`(`SessionJournalDialog` 흐름)는 다이얼로그와 함께 대체했다.
   · `smoke` 는 `dist` 가 있어야 한다 — 새 컨테이너에선 `pnpm web:smoke`(빌드 포함).
   · `check:figma-web` 은 `figma-audit.mjs` 에서 실패하면 **뒤의 잉크·이미지·사이드바 검사를 돌리지 않는다** — 첫 단계 통과가 전부가 아니다.
 - ⚠️ **`apps/web/supabase/config.toml`(`project_id = "web"`) 이 있다**(커밋 `20250e5`) — `apps/web` 에서 `supabase init` 을 돌린 흔적.

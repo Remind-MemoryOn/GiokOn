@@ -22,13 +22,15 @@ interface Props {
   value: string;
   onChange: (v: string) => void;
   label: string;
+  /** 읽기 전용(확정된 일지 등) — 두 select 를 함께 잠근다. */
+  disabled?: boolean;
   className?: string;
   style?: CSSProperties;
   /** Figma 노드 앵커 — 좌표 대조 게이트가 이 칸을 찾는다. */
   'data-fx'?: string;
 }
 
-export function TimeField({ value, onChange, label, className, style, ...rest }: Props) {
+export function TimeField({ value, onChange, label, disabled, className, style, ...rest }: Props) {
   const [h, m] = value ? value.split(':') : ['', ''];
   const set = (nh: string, nm: string) => {
     // 한쪽만 골랐으면 나머지는 00 으로 채운다 — 반쪽 값은 저장할 수 없다.
@@ -45,6 +47,7 @@ export function TimeField({ value, onChange, label, className, style, ...rest }:
       <select
         aria-label={`${label} (시)`}
         value={h}
+        disabled={disabled}
         onChange={(e) => set(e.target.value, m)}
         className={`${BARE} left-[20px] w-[34px]`}
       >
@@ -59,6 +62,7 @@ export function TimeField({ value, onChange, label, className, style, ...rest }:
       <select
         aria-label={`${label} (분)`}
         value={m}
+        disabled={disabled}
         onChange={(e) => set(h, e.target.value)}
         className={`${BARE} left-[54px] w-[34px]`}
       >
