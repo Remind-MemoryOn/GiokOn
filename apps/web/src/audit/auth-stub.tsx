@@ -652,6 +652,22 @@ function seedJoinPending(q: typeof queryClient) {
 }
 seedJoinPending(queryClient);
 
+/** 기관 관리 카드5·6(파일럿 W6 후반) — 권한표(일지 확정만 요양보호사까지 넓힌 기관) · 기관 설정. */
+function seedOrgConfig(q: typeof queryClient) {
+  if (!/^\/caregiver\/org/.test(window.location.pathname)) return;
+  q.setQueryData([...queryKeys.orgCapabilities, 'table'], {
+    journal_finalize: ['org_admin', 'center_director', 'social_worker', 'caregiver'],
+    share_revoke: ['org_admin', 'center_director', 'social_worker'],
+    guardian_link_approve: ['org_admin', 'center_director'],
+  });
+  q.setQueryData(queryKeys.orgSettings, {
+    org_id: ORG.id, facility_type: 'nursing_home', target_minutes: 10, default_avoid_topics: ['전쟁', '병원'],
+    default_program_type: '인지활동 - 회상훈련', default_location: '2층 프로그램실',
+    ai_drafts_enabled: true, updated_at: '2026-09-01T00:00:00Z', updated_by: null,
+  });
+}
+seedOrgConfig(queryClient);
+
 /** 기관 관리의 관리 역할 카드(?audit-role=…) — 직원 합류 요청 1건 + 초대 코드 1건. */
 function seedOrgManager(q: typeof queryClient) {
   const role = new URLSearchParams(window.location.search).get('audit-role');

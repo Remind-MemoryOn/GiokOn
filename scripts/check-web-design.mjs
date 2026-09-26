@@ -722,6 +722,20 @@ const SCREENS = [
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
 
+  // ── 기관 관리 카드5·6 — 권한 위임 · 기관 설정 (파일럿 W6 후반 · 시안 없음, 카드2 리듬) ─────────────
+  [`${WEB}/src/components/org-admin.tsx`, '권한 위임·기관 설정: 위임 3종 × 돌봄팀 역할 · 저장 버튼 · 비관리 역할은 읽기 전용 · AI 스위치 편집 UI 없음', [
+    /ORG_CAPABILITIES\.map/, /CARE_TEAM_ROLES\.map/,
+    /disabled=\{!isManager \|\| save\.isPending\}/,          // 관리 역할이 아니면 체크 잠금
+    /useUpdateOrgCapabilities/, /useUpdateOrgSettings/,
+    /ai_drafts_enabled \? '켜짐' : '꺼짐'/,                     // 상태만 보여 준다
+    { absent: /ai_drafts_enabled:/ },                            // 스위치를 쓰는 코드가 생기면 실패(운영자 전용)
+    /권한이 없다는 뜻은 아닙니다/,                                // 조회 실패를 빈 값으로 보이지 않게
+  ]],
+  [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 역할 변경은 관리 역할만 · 본인 제외 · 확인 후 set_member_role', [
+    /isManager && m\.id !== me\.data\?\.id && m\.role !== 'guardian'/,
+    /title="역할을 바꿀까요\?"/, /useSetMemberRole/,
+  ]],
+
   // ── 프로그램 일지(어르신 고르기) — 틀 205:1039 ──────────────────────────
   [`${WEB}/src/pages/caregiver/JournalPage.tsx`, '프로그램 일지: 설명 한 줄 w918 · 카드 3열 gap 33 · 3번째 줄은 기관명 · 확인 대기 수는 상태로 직접 센다', [
     /descMax=\{918\}/, /gap-\[33px\]/, /<ElderPickerGrid/,

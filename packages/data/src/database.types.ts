@@ -895,8 +895,9 @@ export type Database = {
         Relationships: []
       }
       // 파일럿 D3(20260924010000) — 기관 설정 1행. 쓰기는 org_admin·center_director, 읽기는 돌봄팀.
+      // ai_drafts_enabled(20260925000000) — 플랫폼 운영자만 켠다(트리거가 막는다). 클라이언트 쓰기 타입에 넣지 않는다.
       org_settings: {
-        Row: { org_id: string; facility_type: 'nursing_home' | 'day_care' | null; target_minutes: number; default_avoid_topics: string[]; default_program_type: string; default_location: string | null; updated_at: string; updated_by: string | null }
+        Row: { org_id: string; facility_type: 'nursing_home' | 'day_care' | null; target_minutes: number; default_avoid_topics: string[]; default_program_type: string; default_location: string | null; ai_drafts_enabled: boolean; updated_at: string; updated_by: string | null }
         Insert: { org_id: string; facility_type?: 'nursing_home' | 'day_care' | null; target_minutes?: number; default_avoid_topics?: string[]; default_program_type?: string; default_location?: string | null }
         Update: { facility_type?: 'nursing_home' | 'day_care' | null; target_minutes?: number; default_avoid_topics?: string[]; default_program_type?: string; default_location?: string | null }
         Relationships: []

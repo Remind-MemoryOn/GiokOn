@@ -22,6 +22,11 @@
 //    ② 카드4 "직원 초대 코드"(관리 역할만) — 발급(합류 후 역할·유효 기간)·복사·회수. 같은 카드 리듬.
 //    ③ 관리 역할 = 기관 관리자 + 센터장(서버 app.is_org_manager 와 같은 집합). 기관 이름 수정만은
 //       DB 정책(organizations_update_admin)대로 기관 관리자 한정이다. 판정의 최종 방어선은 RPC·RLS 다.
+//
+// 파일럿 W6 후반(2026-09-26, 사용자 결정) — ④ 구성원 행 **오른쪽 드롭다운**으로 역할 지정(관리 역할만 · 본인 제외 ·
+//    시안의 역할 배지는 그대로) — 바꾸기 전에 확인창. ⑤ 카드5 '권한 위임'(3종 × 역할 체크 · 저장 버튼) ·
+//    ⑥ 카드6 '기관 설정'(시설 유형·목표 시간·기본 프로그램 유형·장소·피할 주제 · AI 초안 상태는 읽기만) —
+//    둘 다 돌봄팀 전원에게 보이고 관리 역할이 아니면 **읽기 전용**(`components/org-admin.tsx`).
 import { useMemo, useState } from 'react';
 import {
   toElderProfile,
@@ -44,6 +49,8 @@ import {
   useRevokeOrgInvite,
   isOrgManagerRole,
   ORG_ROLE_LABEL,
+  CARE_TEAM_ROLES,
+  useSetMemberRole,
   type InvitableRole,
   type OrgInviteRow,
   type OrganizationRow,
@@ -59,6 +66,7 @@ import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 import { orgJoinErrorMessage } from '../../lib/orgJoinErrors';
 import { Y } from '../../lib/figmaY';
+import { CAPABILITIES_CARD_H, CapabilitiesCard, OrgSettingsCard, SETTINGS_CARD_H } from '../../components/org-admin';
 
 /** PageHeader(제목+설명) 블록이 끝나는 266 에서 첫 카드(315)까지의 간격. */
 const HEADER_GAP = 49;
@@ -227,6 +235,9 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
   /** 직원 합류 승인 확인 대상 — 승인하면 기관 전체 기록을 보게 된다. */
   const [approvingStaff, setApprovingStaff] = useState<Waiting | null>(null);
   const [revoking, setRevoking] = useState<OrgInviteRow | null>(null);
+  const setRole = useSetMemberRole();
+  /** 역할 변경 확인 대상 — 관리 역할이 되면 초대·승인·권한표·설정을 다룬다. */
+  const [roleChange, setRoleChange] = useState<{ member: UserRow; role: (typeof CARE_TEAM_ROLES)[number] } | null>(null);
 
   const [name, setName] = useState(orgRow?.name ?? '');
   /** 거절 확인 대상 — 되돌리려면 상대가 다시 요청해야 한다. */
@@ -247,7 +258,11 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
   const afterWaiting = waiting.length > 0 ? card3Top + card3Height : CARD2_TOP + card2Height;
   const card4Top = afterWaiting + CARD_GAP;
   const card4Height = MEMBER_TOP + Math.max(inviteRows.length, 1) * MEMBER_PITCH + 114;
-  const pageBottom = isManager ? card4Top + card4Height : afterWaiting;
+  const afterInvites = isManager ? card4Top + card4Height : afterWaiting;
+  // 카드5·6 — 돌봄팀 전원(관리 역할이 아니면 읽기 전용).
+  const card5Top = afterInvites + CARD_GAP;
+  const card6Top = card5Top + CAPABILITIES_CARD_H + CARD_GAP;
+  const pageBottom = card6Top + SETTINGS_CARD_H;
 
 
   // 복사는 권한·보안 컨텍스트 문제로 실패할 수 있다. `navigator.clipboard` 자체가 없는 환경(비보안 http 등)에서는
@@ -396,6 +411,39 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                   >
                     {m.email ?? '—'}
                   </span>
+                  {/* 역할 변경 — 관리 역할만 · 본인·보호자 제외. 공용 드롭다운 모양(r5 · h37.02 · 글자 16)을 행 오른쪽에,
+                      시안의 역할 배지(119×33 @+48)와 세로 가운데를 맞춘다(48 + 33/2 - 37.02/2). */}
+                  {isManager && m.id !== me.data?.id && m.role !== 'guardian' ? (
+                    <div
+                      className="absolute h-[37.02px] w-[170px] rounded-[5px] border border-line bg-white focus-within:border-accent"
+                      style={{ left: 988 - 170, top: top + 48 + 33 / 2 - 37.02 / 2 }}
+                    >
+                      <span className="pointer-events-none absolute left-[19px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[23px] text-ink-500">
+                        역할 변경
+                      </span>
+                      <img
+                        src={asset.iconChevronDownSm}
+                        alt=""
+                        width={12}
+                        height={7.81}
+                        className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
+                        style={{ left: 170 - 26 }}
+                      />
+                      <select
+                        aria-label={`${m.name ?? '구성원'} 역할 변경`}
+                        value={m.role}
+                        disabled={setRole.isPending || !isConfigured}
+                        onChange={(e) => setRoleChange({ member: m, role: e.target.value as (typeof CARE_TEAM_ROLES)[number] })}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                      >
+                        {CARE_TEAM_ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {ORG_ROLE_LABEL[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
                   {i < rows.length - 1 ? (
                     <div
                       data-fx={i === 0 ? '131:1006' : undefined}
@@ -643,8 +691,38 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
             )}
           </div>
         ) : null}
+
+        {/* 카드5 · 권한 위임 / 카드6 · 기관 설정 — Figma 에 없는 화면(카드2 리듬 그대로, components/org-admin.tsx) */}
+        <CapabilitiesCard top={Y(card5Top) - Y(315)} orgId={org.data?.id} isManager={isManager} enabled={isConfigured} />
+        <OrgSettingsCard top={Y(card6Top) - Y(315)} orgId={org.data?.id} isManager={isManager} enabled={isConfigured} />
       </div>
 
+      <ConfirmDialog
+        open={Boolean(roleChange)}
+        title="역할을 바꿀까요?"
+        description={
+          roleChange
+            ? `${roleChange.member.name ?? '이 구성원'} 님의 역할을 ${ORG_ROLE_LABEL[roleChange.member.role] ?? roleChange.member.role}에서 ${ORG_ROLE_LABEL[roleChange.role]}(으)로 바꿉니다.` +
+              (isOrgManagerRole(roleChange.role) && !isOrgManagerRole(roleChange.member.role)
+                ? ' 관리 역할이 되면 직원 초대·합류 승인·권한 위임·기관 설정을 다룰 수 있어요.'
+                : !isOrgManagerRole(roleChange.role) && isOrgManagerRole(roleChange.member.role)
+                  ? ' 관리 권한(직원 초대·합류 승인·권한 위임·기관 설정)이 사라져요.'
+                  : '')
+            : ''
+        }
+        confirmLabel="바꾸기"
+        onConfirm={() => {
+          if (!roleChange || roleChange.role === roleChange.member.role) return;
+          setRole.mutate(
+            { userId: roleChange.member.id, role: roleChange.role },
+            {
+              onSuccess: () => toast('success', '역할을 바꿨어요.'),
+              onError: (e) => toast('error', orgJoinErrorMessage(e, '역할을 바꾸지 못했어요.')),
+            },
+          );
+        }}
+        onClose={() => setRoleChange(null)}
+      />
       <ConfirmDialog
         open={Boolean(approvingStaff)}
         title="직원 합류를 승인할까요?"

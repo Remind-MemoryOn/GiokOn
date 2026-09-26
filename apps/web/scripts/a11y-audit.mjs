@@ -74,6 +74,7 @@ const EXTRA_SCREENS = [
   { name: '기관 합류 승인 대기', route: '/join-pending', height: 1024 },
   // 파일럿 W6 — 관리 역할(센터장)에게만 보이는 직원 합류 승인·초대 코드 카드
   { name: '기관 관리(관리 역할)', route: '/caregiver/org?audit-role=center_director', height: 1900 },
+  // 파일럿 W6 후반 — 기관 관리 카드5·6(권한 위임·기관 설정)은 위 두 기관 관리 화면(요양보호사=읽기 전용 · 센터장=편집)에 함께 그려진다.
   // 파일럿 W2 — 감독 화면(셸 밖 반응형, 시안 없음)
   { name: '감독 화면', route: '/caregiver/supervision', height: 1200 },
   // 파일럿 W1 — 프로그램 일지 상세(시안 없음, 작성 화면 체계): 확인 대기(AI 초안) · 생성 실패 · 확정(관리 역할) · 이력 · 수기 작성
