@@ -1,5 +1,5 @@
 import { WebSocket, type RawData } from 'ws'
-import type { ClovaCredentials } from './output'
+import type { GeminiTtsConfig } from './output'
 import { synthesizeValidated } from './output'
 import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, shouldAdvancePhase, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
 
@@ -37,7 +37,7 @@ export interface RelayDependencies {
   authorize(sessionId: string, accessToken: string): Promise<RelaySession>
   connectProvider(url: string): WebSocket
   synthesize?: typeof synthesizeValidated
-  clova: ClovaCredentials
+  geminiTts: GeminiTtsConfig
 }
 
 function buffer(raw: RawData): Buffer {
@@ -235,12 +235,12 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             clearTimeout(responseTimer); responseTimer = undefined
             if (!await allowed()) return close()
             let result: Awaited<ReturnType<typeof synthesizeValidated>>
-            try { result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.clova, abort.signal) }
+            try { result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.geminiTts, abort.signal) }
             catch (error) {
               if (!abort.signal.aborted) {
                 const code: VoiceFailureCode = error instanceof Error && error.message === 'OUTPUT_REJECTED' ? 'OUTPUT_REJECTED'
-                  : error instanceof Error && error.message === 'CLOVA_RATE_LIMIT' ? 'SYNTHESIS_LIMIT'
-                  : error instanceof Error && error.message === 'CLOVA_UNAVAILABLE' ? 'SYNTHESIS_UNAVAILABLE'
+                  : error instanceof Error && error.message === 'GEMINI_TTS_RATE_LIMIT' ? 'SYNTHESIS_LIMIT'
+                  : error instanceof Error && error.message === 'GEMINI_TTS_UNAVAILABLE' ? 'SYNTHESIS_UNAVAILABLE'
                   : error instanceof Error && error.name === 'TimeoutError' ? 'SYNTHESIS_TIMEOUT' : 'SYNTHESIS_FAILED'
                 send({relayError:{code}})
               }

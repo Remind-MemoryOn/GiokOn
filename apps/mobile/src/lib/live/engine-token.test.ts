@@ -241,7 +241,7 @@ describe('listening cancellation generations', () => {
 })
 
 describe('relay engine session binding', () => {
-  it.each(['completed', 'interrupted', 'empty'])('reports only completed Clova playback and closes on %s', async outcome => {
+  it.each(['completed', 'interrupted', 'empty'])('reports only completed Gemini TTS playback and closes on %s', async outcome => {
     const api = engineApi()
     api.playPcmTurn.mockResolvedValue(outcome)
     const engine = await api.exports.acquireLiveEngine('key', {}, 'session') as { playTurn: (chunks: string[]) => Promise<string>; client: { playbackTurnId: number | null } }

@@ -147,7 +147,7 @@ using (org_id = app.current_org_id() and app.is_care_team())
 
 1. 앱이 음성 중계에 인증된 연결을 요청한다. 중계가 세션·기관·배정·동의·상태·한도를 검사한다. ⚠️ 중계는 **사용자 JWT 로** `live-token` 을 불러 Gemini 토큰을 받는다 — 서버가 중계와 앱 직접 호출을 구분하지 못하므로 파일럿에서 `live-token` 을 중계 전용으로 잠근다(파일럿 계획 C4).
 2. 중계가 Gemini Live 입력과 연결 수명을 통제한다. ~~기존 앱 직접 연결 경로의 전환 정책도 필요하다.~~ → 직접 경로는 **폐기**(파일럿 계획 M1). 파일럿에서는 중계의 2초 권한 폴을 `session_tick` RPC 로 바꿔 단계·원격 제어를 함께 받는다(D6).
-3. Live 출력 전사 → 서버 검증·채택 → Clova 합성 → 앱 재생으로 연결한다. Live Structured Outputs를 전제하지 않는다.
+3. Live 출력 전사 → 서버 검증·채택 → Gemini 3.8 Flash TTS 합성 → 앱 재생으로 연결한다. Live Structured Outputs를 전제하지 않는다.
 4. 생성·채택·실제 재생과 전사/교정 출처를 구분하는 기록 계약을 설계한다. 기존 컬럼과 신규 필요 항목은 DB 작업에서 대조하며 고정 `audio_url` 반환을 전제하지 않는다. 상세: [음성 계획 §3.4](plans/voice-ai-personalization.md#34-서버-통제턴기록-계약-2026-09-13-승인-미구현) · 아래 "대화 기록 저장 계약".
 
 ## 대화 기록 저장 계약 (음성 경로)
@@ -198,8 +198,11 @@ Edge Functions 전용 비밀값은 Supabase secrets로 관리하고 클라이언
 # Edge Functions secrets (클라이언트 미노출)
 SUPABASE_SECRET_KEY="<secret-key>"             # 레거시 service_role key 대체
 OPENAI_API_KEY="sk-..."                        # 과거 공급자 예시; 초기 Live 필수 키가 아님
-NCP_CLOVA_CLIENT_ID="<X-NCP-APIGW-API-KEY-ID>"     # CLOVA Voice(TTS)/Speech(STT) — Client ID
-NCP_CLOVA_CLIENT_SECRET="<X-NCP-APIGW-API-KEY>"    # CLOVA — Client Secret (쌍으로 인증)
+GEMINI_API_KEY="AIza..."                       # Live 토큰 발급·중계 Gemini TTS 서버 전용
+GEMINI_LIVE_MODEL="gemini-3.8-live"
+GEMINI_TTS_MODEL="gemini-3.8-flash-tts"
+NCP_CLOVA_CLIENT_ID="<X-NCP-APIGW-API-KEY-ID>"     # 기존 웹 STT 보완용 Client ID
+NCP_CLOVA_CLIENT_SECRET="<X-NCP-APIGW-API-KEY>"    # 기존 웹 STT 보완용 Client Secret
 NAVER_CLIENT_ID="<...>"                         # 소셜 로그인(네이버, 커스텀 naver-auth)
 NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 ```

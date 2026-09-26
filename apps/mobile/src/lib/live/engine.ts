@@ -1,6 +1,6 @@
 // 음성 대화 엔진 — 중계 접속 → (전사 기반) 청취 → 확정 텍스트 턴 → 검증된 음성 재생.
 //
-// 경로는 **중계 단일**이다(계획 M1): 앱 ─▶ voice-relay ─▶ Gemini Live ─▶ 서버 검증 ─▶ Clova ─▶ 앱.
+// 경로는 **중계 단일**이다(계획 M1): 앱 ─▶ voice-relay ─▶ Gemini Live ─▶ 서버 검증 ─▶ Gemini TTS ─▶ 앱.
 // 앱은 Gemini 토큰을 받지 않고 모델·시스템 지시도 정하지 않는다 — 중계가 서버에서 만든다.
 // 직접 Gemini Live 경로·기기 TTS 폴백은 삭제했다(검열되지 않은 원본 오디오 경로).
 //
@@ -275,7 +275,7 @@ export class LiveConversationEngine {
       return result;
     } catch (e) {
       console.warn('[giokon] 음성 재생 실패', e);
-      this.callbacks.onError?.('CLOVA 음성을 재생하지 못했어요.');
+      this.callbacks.onError?.('AI 음성을 재생하지 못했어요.');
       await this.close();
       return 'interrupted';
     }

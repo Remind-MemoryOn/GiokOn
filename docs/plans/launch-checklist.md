@@ -79,7 +79,7 @@
 
 **음성 중계** (없으면 세션이 시작되지 않는다)
 - [ ] 중계 컨테이너 호스팅 · TLS · 공개 주소 `wss://호스트/voice` ([운영 런북](../runbooks/voice-relay-operations.md))
-- [ ] 중계 환경변수: `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` · `NCP_CLOVA_VOICE_CLIENT_ID/SECRET` · 중계 전용 자격
+- [ ] 중계 환경변수: `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` · 서버 전용 `GEMINI_API_KEY` · `GEMINI_TTS_MODEL=gemini-3.8-flash-tts` · 중계 전용 자격
 - [ ] `live-token`: `GEMINI_LIVE_MODEL=gemini-3.8-live` 시크릿 · 중계 전용 자격 검사 → 요양보호사 JWT 만으로 부르면 403 확인
 - [ ] `live-token` 한도 조정 — 사용자 분당 3 → 4 이상, 일 20 → 운영 시간 기준 재계산(최대 4대 × 10분 세션)
 - [ ] EAS 환경에 `EXPO_PUBLIC_VOICE_RELAY_URL` · 개발/내부 빌드(Expo Go 불가)

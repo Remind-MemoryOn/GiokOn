@@ -11,10 +11,13 @@ function wav(rate = 24000) {
   return b
 }
 
-describe('validated Clova output', () => {
-  it.each([[429,'CLOVA_RATE_LIMIT'],[503,'CLOVA_UNAVAILABLE'],[401,'CLOVA_FAILED']] as const)('rejects HTTP %s without retrying or reading its error text', async (status,code) => {
+const config = { apiKey: 'synthetic-key' }
+const response = (audio = wav()) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { data: audio.toString('base64'), mimeType: 'audio/wav' } }] } }] }), { headers: { 'content-type': 'application/json' } })
+
+describe('validated Gemini TTS output', () => {
+  it.each([[429,'GEMINI_TTS_RATE_LIMIT'],[503,'GEMINI_TTS_UNAVAILABLE'],[401,'GEMINI_TTS_FAILED']] as const)('rejects HTTP %s without retrying or reading its error text', async (status,code) => {
     const fetcher = vi.fn(async()=>new Response('provider diagnostic must not be exposed',{status}))
-    await expect(synthesizeValidated('안녕하세요.',{clientId:'synthetic',clientSecret:'synthetic'},new AbortController().signal,fetcher)).rejects.toThrow(code)
+    await expect(synthesizeValidated('안녕하세요.',config,new AbortController().signal,fetcher)).rejects.toThrow(code)
     expect(fetcher).toHaveBeenCalledOnce()
   })
   it('applies the request timeout to a stalled response body', async () => {
@@ -22,7 +25,7 @@ describe('validated Clova output', () => {
     const stub = vi.spyOn(AbortSignal,'timeout').mockReturnValue(timeout.signal)
     try {
       const fetcher = vi.fn(async()=>new Response(new ReadableStream<Uint8Array>()))
-      const pending = synthesizeValidated('안녕하세요.',{clientId:'synthetic',clientSecret:'synthetic'},new AbortController().signal,fetcher)
+      const pending = synthesizeValidated('안녕하세요.',config,new AbortController().signal,fetcher)
       const failed = expect(pending).rejects.toThrow('test timeout')
       await new Promise(resolve=>setTimeout(resolve,0))
       timeout.abort(new Error('test timeout'))
@@ -35,18 +38,18 @@ describe('validated Clova output', () => {
     let resolve!: (value: Response) => void
     const fetcher = vi.fn(() => new Promise<Response>(done => {resolve=done}))
     let error: unknown
-    const pending = synthesizeValidated('안녕하세요.', {clientId:'synthetic',clientSecret:'synthetic'}, abort.signal, fetcher).catch(e => {error=e})
+    const pending = synthesizeValidated('안녕하세요.', config, abort.signal, fetcher).catch(e => {error=e})
     abort.abort()
     await new Promise(done => setTimeout(done, 0))
     try { expect(error).toBeInstanceOf(Error) }
-    finally { resolve(new Response(new Uint8Array(wav()))); await pending }
+    finally { resolve(response()); await pending }
   })
   it('settles cancellation while reading a body whose read and cancel never settle', async () => {
     const abort = new AbortController()
     const body = new ReadableStream<Uint8Array>({cancel:()=>new Promise(()=>{})})
     const fetcher = vi.fn(async()=>new Response(body))
     let error: unknown
-    const pending = synthesizeValidated('안녕하세요.', {clientId:'synthetic',clientSecret:'synthetic'}, abort.signal, fetcher).catch(e => {error=e})
+    const pending = synthesizeValidated('안녕하세요.', config, abort.signal, fetcher).catch(e => {error=e})
     await new Promise(done => setTimeout(done, 0)); abort.abort()
     await new Promise(done => setTimeout(done, 0))
     expect(error).toBeInstanceOf(Error)
@@ -57,18 +60,23 @@ describe('validated Clova output', () => {
     b.writeUInt32LE(b.length-8,4)
     expect(()=>wavToPcm24k(b)).toThrow()
   })
-  it.each(['', '바보', '가'.repeat(201)])('does not call Clova for invalid output', async text => {
+  it.each(['', '바보', '가'.repeat(201)])('does not call Gemini TTS for invalid output', async text => {
     const fetcher = vi.fn()
-    await expect(synthesizeValidated(text, { clientId: 'synthetic', clientSecret: 'synthetic' }, new AbortController().signal, fetcher)).rejects.toThrow()
+    await expect(synthesizeValidated(text, config, new AbortController().signal, fetcher)).rejects.toThrow()
     expect(fetcher).not.toHaveBeenCalled()
   })
   it('requests WAV 24k and returns only its PCM, never Gemini audio', async () => {
-    const fetcher = vi.fn(async () => new Response(new Uint8Array(wav()), { headers: { 'content-type': 'audio/wav' } }))
-    const result = await synthesizeValidated('오늘 어떤 이야기를 나눌까요?', { clientId: 'synthetic-id', clientSecret: 'synthetic-secret' }, new AbortController().signal, fetcher)
+    const fetcher = vi.fn(async () => response())
+    const result = await synthesizeValidated('오늘 어떤 이야기를 나눌까요?', config, new AbortController().signal, fetcher)
     expect(result.pcm).toEqual(wav().subarray(44))
     const request = fetcher.mock.calls[0] as unknown as [string, RequestInit]
-    expect(String(request[1].body)).toContain('sampling-rate=24000')
-    expect(String(request[1].body)).toContain('format=wav')
+    expect(request[0]).toContain('/models/gemini-3.8-flash-tts:generateContent')
+    expect(request[1].headers).toEqual(expect.objectContaining({ 'x-goog-api-key': 'synthetic-key' }))
+    const body = JSON.parse(String(request[1].body))
+    expect(body.generationConfig.responseModalities).toEqual(['AUDIO'])
+    expect(body.generationConfig.responseFormat.audio).toEqual({ mimeType: 'AUDIO_WAV', sampleRate: 24000 })
+    expect(body.generationConfig.speechConfig).toEqual({ voiceConfig: { voice: 'Kore' }, languageCode: 'ko-KR' })
+    expect(body.contents[0].parts[0].text).toBe('오늘 어떤 이야기를 나눌까요?')
   })
   it.each([16000, 48000])('rejects unexpected sample rate %s', rate => {
     expect(() => wavToPcm24k(wav(rate))).toThrow()
@@ -79,7 +87,7 @@ describe('validated Clova output', () => {
   })
   it('does not return a late result after cancellation', async () => {
     const abort = new AbortController()
-    const fetcher = vi.fn(async () => { abort.abort(); return new Response(new Uint8Array(wav())) })
-    await expect(synthesizeValidated('안녕하세요.', { clientId: 'synthetic', clientSecret: 'synthetic' }, abort.signal, fetcher)).rejects.toThrow()
+    const fetcher = vi.fn(async () => { abort.abort(); return response() })
+    await expect(synthesizeValidated('안녕하세요.', config, abort.signal, fetcher)).rejects.toThrow()
   })
 })

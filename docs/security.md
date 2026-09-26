@@ -115,7 +115,7 @@ Live 자동 진행과 Clova 검증 출력 변경에서도 세션·기관·배정
 
 ### 인프라 9. 음성 AI 단계적 운영(2026-09-11, 신규 계획)
 
-- [음성 AI 전환 계획](plans/voice-ai-personalization.md) A0~A5를 따른다. 초기 Gemini Live 입력·대화와 검증 텍스트의 Clova 출력을 사용한다. 현재 단기 토큰 직접 연결의 R010 제한을 유지하며 서버가 매 전송·연결 수명을 통제할 중계 환경을 설계한다. Edge Functions가 긴 연결을 감당한다고 전제하지 않는다. 타임아웃·재시도·취소·턴 멱등성과 누적 청구 토큰을 검증한다.
+- [음성 AI 전환 계획](plans/voice-ai-personalization.md) A0~A5를 따른다. 초기 Gemini Live 입력·대화와 검증 텍스트의 Gemini TTS 출력을 사용한다. 서버가 매 전송·연결 수명을 통제하는 중계 환경을 유지하며 Edge Functions가 긴 연결을 감당한다고 전제하지 않는다. 타임아웃·재시도·취소·턴 멱등성과 누적 청구 토큰을 검증한다.
 - Whisper 학습과 공개 LLM SFT/LoRA는 별도 국내 GPU 작업이다. Ollama는 학습 후 추론 후보이며 인증 게이트웨이·큐·모델 버전·동시성·GPU 메모리·헬스체크·관측성을 갖춘 뒤 파일럿에 사용한다. 포트를 공개하지 않고 서비스 비밀값과 개인 전사는 로그에서 제외한다.
 - 국내 DB 위치와 해외 모델 처리 위치는 별도로 검증한다. 데이터셋·체크포인트의 국내 보관, 동의 철회 계보와 백업 복원 후 삭제 재적용을 포함한다.
 - Shadow 평가는 허용된 자료만 사용하고 이용자 응답에 영향을 주지 않는다. ASR/LLM을 독립적으로 제한 전환하며 품질·안전·지연 악화 시 승인된 이전 모델로 복귀한다. 대체 경로의 처리 국가·동의도 충족해야 한다.
@@ -129,7 +129,7 @@ Live 자동 진행과 Clova 검증 출력 변경에서도 세션·기관·배정
 | 구성 | 파일럿에 필요한 것 | 상태 |
 |---|---|---|
 | 음성 중계(`apps/voice-relay`) | 컨테이너 호스팅 · **TLS(`wss://호스트/voice`)** · `/readyz`·`/healthz` · SIGTERM 드레인 · 시크릿 주입(`NCP_CLOVA_VOICE_*` + `live-token` 중계 전용 자격) | 코드 구현·로컬 검증 완료, **호스팅 미정·이미지 빌드 미검증**([운영 런북](runbooks/voice-relay-operations.md)) |
-| `live-token` | `GEMINI_LIVE_MODEL=gemini-3.8-live` 시크릿 · 중계 전용 자격 검사 | 모델 시크릿 미설정 시 폴백 3.1 로 조용히 돈다 |
+| `live-token` | `GEMINI_LIVE_MODEL=gemini-3.8-live` 시크릿 · 중계 전용 자격 검사 | 코드 폴백도 3.8이지만 운영 시크릿·실제 응답 모델을 별도 확인한다 |
 | 워커(Edge Functions) | 일지 초안 생성·푸시 발송 — **30초 스케줄**(`pg_cron` 등). 지수 백오프(30초 → 5분), 5회 초과 시 실패 표시 | 신규 |
 | 푸시 | Expo Push — EAS 프로젝트 · FCM/APNs 자격증명(EAS 관리) · `expo-notifications` 포함 **재빌드** | 신규. Expo 는 국외 처리자 |
 | Realtime | `sessions`·`session_interventions`·`program_journals` publication · 감독 화면 두 브라우저 2초 반영 | publication 추가 + 클라이언트 3곳 등록 |

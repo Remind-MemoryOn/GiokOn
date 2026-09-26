@@ -11,7 +11,7 @@ it('starts the real entrypoint and runs its shutdown handler without provider ca
   const harness = "await import('./src/main.ts'); process.on('message', message => { if (message === 'shutdown') { process.emit('SIGTERM'); process.disconnect(); } });"
   const child = spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', harness], {
     cwd: process.cwd(), windowsHide: true,
-    env: { ...process.env, PORT: String(port), VOICE_RELAY_BIND: '127.0.0.1', SUPABASE_URL: 'https://synthetic.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'synthetic', NCP_CLOVA_VOICE_CLIENT_ID: 'synthetic', NCP_CLOVA_VOICE_CLIENT_SECRET: 'synthetic' },
+    env: { ...process.env, PORT: String(port), VOICE_RELAY_BIND: '127.0.0.1', SUPABASE_URL: 'https://synthetic.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'synthetic', GEMINI_API_KEY: 'synthetic' },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   })
   try {
