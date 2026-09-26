@@ -74,3 +74,5 @@ deliverables/
 
 # 로컬 작업용 임시 폴더(HWP 추출 도구 등) — 저장소에 넣지 않는다
 .tmp/
+
+.vercel
