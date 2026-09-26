@@ -33,7 +33,7 @@ async function fixture(respond = true) {
   const synthesize = vi.fn(async (text: string) => ({ text, pcm: Buffer.from([1, 0, 2, 0]) }))
   const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', tick, advancePhase, release }))
   const connectProvider = vi.fn(() => new WebSocket(`ws://127.0.0.1:${(provider.address() as AddressInfo).port}`))
-  const relay = createRelayServer({ authorize, connectProvider, synthesize, clova: { clientId: 'synthetic', clientSecret: 'synthetic' } })
+  const relay = createRelayServer({ authorize, connectProvider, synthesize, geminiTts: { apiKey: 'synthetic' } })
   relay.server.listen(0, '127.0.0.1'); await once(relay.server, 'listening')
   cleanup.push(relay.close)
   const app = new WebSocket(`ws://127.0.0.1:${(relay.server.address() as AddressInfo).port}/voice`)
@@ -106,8 +106,8 @@ describe('real local WebSocket relay', () => {
     expect(f.synthesize).not.toHaveBeenCalled();expect(f.release).toHaveBeenCalledOnce();
   })
   it.each([
-    [new Error('CLOVA_RATE_LIMIT'),'SYNTHESIS_LIMIT'],
-    [new Error('CLOVA_UNAVAILABLE'),'SYNTHESIS_UNAVAILABLE'],
+    [new Error('GEMINI_TTS_RATE_LIMIT'),'SYNTHESIS_LIMIT'],
+    [new Error('GEMINI_TTS_UNAVAILABLE'),'SYNTHESIS_UNAVAILABLE'],
     [new DOMException('private timeout detail','TimeoutError'),'SYNTHESIS_TIMEOUT'],
     [new Error('OUTPUT_REJECTED'),'OUTPUT_REJECTED'],
     [new Error('private response body and token'),'SYNTHESIS_FAILED'],
@@ -182,7 +182,7 @@ describe('real local WebSocket relay', () => {
     await closed
     expect(f.release).toHaveBeenCalledOnce()
   })
-  it('authenticates, relays microphone PCM and returns only synthesized Clova PCM', async () => {
+  it('authenticates, relays microphone PCM and returns only validated Gemini TTS PCM', async () => {
     const f = await fixture(); await f.start(); f.turn()
     await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
     expect(f.inputs[0].setup.systemInstruction.parts[0].text).toContain('server context')
@@ -203,7 +203,7 @@ describe('real local WebSocket relay', () => {
     f.send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic' } })
     await closed; expect(f.connectProvider).not.toHaveBeenCalled()
   })
-  it('does not return Clova results after permission withdrawal', async () => {
+  it('does not return Gemini TTS results after permission withdrawal', async () => {
     const f = await fixture(); await f.start()
     f.synthesize.mockImplementationOnce(async text => { f.allowed.mockResolvedValue(false); return { text, pcm: Buffer.from([1, 0]) } })
     const closed = once(f.app, 'close'); f.turn(); await closed

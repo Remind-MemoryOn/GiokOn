@@ -23,7 +23,7 @@
 │ Auth · Storage · Realtime       │   │   원격 제어 · 위기 이벤트 즉시 기록   │
 │ Edge Functions: live-token ·    │   │ Gemini Live(gemini-3.8-live)        │
 │   session-report · naver-auth · │   │   → 출력 검증(screenAiUtterance)    │
-│   [신규] 일지 초안 워커 ·         │   │   → Clova TTS → 앱                  │
+│   [신규] 일지 초안 워커 ·         │   │   → Gemini 3.8 Flash TTS → 앱       │
 │   [신규] 푸시 발송 워커           │   │ (Gemini 오디오 원본은 전달 안 함)    │
 └──────────────┬─────────────────┘   └────────────────────────────────────┘
                │ Expo Push (FCM/APNs 자격증명은 EAS 가 관리)
@@ -95,8 +95,8 @@
 
 | 영역 | 파일럿 기준 | 비고 |
 |---|---|---|
-| 음성 경로 | **중계 단일**: 앱 → `apps/voice-relay`(Node + ws, Docker) → Gemini Live → 출력 검증(`screenAiUtterance`) → CLOVA Voice → 앱 | 중계는 **코드 구현·로컬 검증 완료, 운영 호스팅 미정·실기기 미검증**. 앱 직접 모드는 폐기(M1) |
-| 대화 모델 | **`gemini-3.8-live`** | 모델은 `live-token` 이 `GEMINI_LIVE_MODEL` 시크릿으로 정해 돌려준다 — `.env` 는 런타임에 안 읽힌다. 폴백 상수 2곳이 아직 3.1(T24.5). 3.1 기준 제약(Structured Outputs·proactive/affective 미지원)은 3.8 에서 재확인 |
+| 음성 경로 | **중계 단일**: 앱 → `apps/voice-relay`(Node + ws, Docker) → Gemini Live → 출력 검증(`screenAiUtterance`) → Gemini 3.8 Flash TTS → 앱 | TTS 교체는 **2026-09-26 로컬 코드 구현, 자동 검증·운영 호스팅·실기기 미검증**. 앱 직접 모드는 폐기(M1) |
+| 대화 모델 | **`gemini-3.8-live`** | 모델은 `live-token` 이 `GEMINI_LIVE_MODEL` 시크릿으로 정해 돌려준다 — `.env` 는 런타임에 안 읽힌다. 코드 폴백도 3.8로 통일했으며 Structured Outputs에 의존하지 않는다 |
 | 토큰 발급 | `live-token` 을 **중계 전용**으로 잠근다 | 지금은 중계도 사용자 JWT 로 불러 서버가 직접 호출과 구분 못 한다(C4) |
 | 대화 통제 | 대화 정책(단계형 도입 → 회상 → 마무리·의견수렴)을 시스템 지시로 주입. 단계는 `sessions.phase`(서버 권위) | 중계의 2초 폴을 `session_tick` RPC 로 바꿔 단계·원격 제어를 함께 받는다. 규칙 기반 대화(`packages/core/src/ai.ts`)는 삭제 |
 | 안전 | 결정론 위기 감지 → **즉시 연결 종료**(유지) + `safety_events` 즉시 기록 + 감독 화면·푸시 | 위기 대응·출력 검열·진단표현 금지는 설정으로 끌 수 없다 |

@@ -38,7 +38,7 @@
 - `apps/mobile` (@giokon/mobile): **어르신 대화 앱 (Expo SDK 54 + expo-router 6 + NativeWind 4.2)**.
   Figma 19화면 + 설정·동의 확인 = 전 화면 구현. 요양보호사가 조작하는 세션 실행 도구.
   백엔드는 웹과 공용(core/data 재사용) — 프론트만 신규.
-  음성 경로는 **중계 단일**이다(2026-09-23 확정): 앱→voice-relay→Gemini Live→서버 검증→Clova→앱.
+  음성 경로는 **중계 단일**이다(2026-09-23 확정, 2026-09-26 TTS 교체): 앱→voice-relay→Gemini Live→서버 검증→Gemini TTS→앱.
   **직접 Gemini Live 모드는 폐기한다** — 검열되지 않은 원본 오디오 경로가 코드에 살아 있으면
   "AI 산출물이 사람 확인 없이 나가지 않는다"가 코드 레벨에서 거짓이 되고, 단계·원격 제어·
   안전 일시정지가 전부 서버 권위인데 직접 모드에는 서버가 없다.
@@ -46,7 +46,7 @@
   `apps/mobile/.env.example` 필수 3/3. ⏳ 서버 쪽 `live-token` 중계 전용화(T23.5)는 남았다.
 - `apps/voice-relay` (@giokon/voice-relay): **음성 중계 서버**(Node + ws, Docker).
   `src/{main,server,relay,output}.ts` — 세션 권한·연결 통제·턴 식별·안전 규칙 검증을 거친
-  응답만 Clova TTS 로 내보낸다. 검증 안 된 원문 재생·늦은 이전 응답 혼입을 서버가 막는다.
+  응답만 Gemini 3.8 Flash TTS 로 내보낸다. 검증 안 된 원문 재생·늦은 이전 응답 혼입을 서버가 막는다.
   ⚠️ `pnpm install --prefer-offline` 이 이 프로젝트의 node_modules 를 만들지 않는다 —
   새 세션에서 `pnpm install --filter @giokon/voice-relay` 를 먼저 실행할 것.
   안 하면 `pnpm -r typecheck` 가 TS2688 로, `pnpm -r test` 가 여기서 끊겨 모바일 테스트까지 안 돈다.
@@ -104,18 +104,17 @@
 - 서버상태 = **TanStack Query**, UI상태 = **Zustand**.
 - AI 스택 — **중계 단일 경로**(2026-09-23 확정):
   ```
-  앱 ──▶ voice-relay ──▶ Gemini Live ──▶ 서버 검증 ──▶ Clova TTS ──▶ 앱
+  앱 ──▶ voice-relay ──▶ Gemini Live ──▶ 서버 검증 ──▶ Gemini 3.8 Flash TTS ──▶ 앱
   ```
   - **모델 = `gemini-3.8-live`**(2026-09-22 사용자 확정). 키는 앱에 두지 않는다 —
     Edge Function **`live-token`** 이 Supabase JWT 를 검증해 ephemeral token 을 발급하고
     (자격·동의·사용량 검사 포함) **모델 ID 를 응답에 담아 돌려준다.** 앱·중계는 그 값을 따른다.
     ⚠️ **모델 교체는 `GEMINI_LIVE_MODEL` 시크릿으로만 한다** — `.env.example` 은 템플릿이라
     런타임에 읽히지 않는다. `supabase secrets set` 을 해야 실제로 바뀐다.
-    ⚠️ 코드의 `DEFAULT_MODEL` 폴백이 `live-token/index.ts` 에 아직 3.1 기준으로 남았다(앱 `engine.ts` 쪽은 2026-09-24 직접 모드와 함께 삭제).
-    3.1 에서 도출한 설정(proactivity/affective 미포함, 자동 VAD off, NO_INTERRUPTION)은 이제 **중계 `relay.ts` 의 setup** 에만 있다 —
-    **3.8 로 재검증 후 갱신 필요**(서버 파트).
+    ✅ 코드의 `DEFAULT_MODEL` 폴백도 2026-09-26 `gemini-3.8-live`로 맞췄다. 운영 시크릿은 별도 변경·검증이 필요하다.
+    자동 VAD off와 NO_INTERRUPTION 설정은 **중계 `relay.ts`의 setup**에만 있다.
   - **서버가 출력을 검증한다**: Gemini 의 `inlineData` 오디오는 **앱에 전달되지 않는다.**
-    `screenAiUtterance` 를 통과한 텍스트만 Clova 로 합성해 내보낸다(`voice-relay/output.ts`).
+    `screenAiUtterance` 를 통과한 텍스트만 `gemini-3.8-flash-tts`로 합성해 내보낸다(`voice-relay/output.ts`).
     턴 식별·재생 영수증 게이팅(v2)·복구 맥락(v3)도 중계가 소유한다.
   - **직접 Gemini Live 모드는 폐기**(2026-09-23). 구조 절 참조.
   - 분석·프롬프트·**안전 규칙**은 계속 core. 서버 키 보호·모델 버전 검증은 유지한다.
@@ -172,6 +171,14 @@
   연결이 간헐적일 수 있으니 **한 번의 쿼리에 검사를 모아 담는다**(union all 로 객체 존재 여부를
   한꺼번에). 실패하면 재시도보다 대시보드 SQL Editor 등 대안 사용.
   ⚠️ 조회는 읽기만 한다. 운영 DB 쓰기는 사용자 승인 없이 하지 않는다.
+
+## 현재 로컬 변경 (2026-09-26 — Gemini 3.8 모델·TTS 전환, 미배포)
+
+- 사용자 요청으로 원격 `main`을 건드리지 않도록 로컬 브랜치 `codex/gemini-38-local`에서만 작업한다. 커밋·푸시·배포·DB 변경 없음.
+- `live-token`의 코드 기본값을 `gemini-3.8-live`로 맞췄다. 실제 운영 모델은 계속 `GEMINI_LIVE_MODEL` 시크릿이 우선하므로 배포 시 별도 변경·확인이 필요하다.
+- 음성 중계의 Clova Voice 호출을 `gemini-3.8-flash-tts` GenerateContent 호출로 교체했다. 기본 음성은 `Kore`, 한국어, 24kHz WAV이며 서버가 RIFF/PCM 형식을 검증한 뒤 기존 PCM 계약으로 앱에 전달한다. 앱·DB 스키마 변경 없음.
+- 공식 Google 문서에서 두 모델 ID와 3.8 TTS의 기본 WAV/GenerateContent 형식을 확인했다. 실 API 호출·비용·지연·한국어 고령자 음질·운영 Secret 등록은 미검증이다.
+- 자동 검증은 저장소 `node_modules` 손상(TypeScript 실행 파일 EPERM, `@vitest/utils` 누락)으로 시작되지 못했다. 소스 문제로 통과했다고 기록하지 않는다.
 
 ## 현재 위치 — 웹 (2026-09-24 — 웹 파트 착수 준비 · `jinwoo` 브랜치 검토)
 

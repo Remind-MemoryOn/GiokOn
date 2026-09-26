@@ -296,7 +296,7 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 > ✅ **2026-09-24 1차 완료(T21.3)** — `session_tick` 폴·단계 지시 주입(턴 사이에만)·원격 일시정지/종료(`relayControl` → 2초 뒤 닫기). ⏳ 남음: `safety_events` 즉시 INSERT(T21.4), 휴식 요청 → 마무리 전환(T21.11), 수명 10분(T21.12). 배포 순서 = DB 마이그레이션 → 중계.
 - 2초 폴을 **`session_tick` RPC 로 교체** → `{allowed, phase, target_minutes, paused, control_request}` 일괄 수신(`target_minutes` 는 `coalesce(sessions.duration_minutes, org_settings.target_minutes)` 로 계산한 값이지 컬럼이 아니다)
 - 단계 전환 시 `forward({clientContent:{turns, turnComplete:false}})` 로 지시 주입 —
-  **`resumeContext` 주입과 완전히 같은 경로**다. 어르신에게 들리지 않고, 출력은 여전히 Clova 검증을 통과한다
+  **`resumeContext` 주입과 완전히 같은 경로**다. 어르신에게 들리지 않고, 출력은 여전히 서버 검증 후 Gemini TTS를 통과한다
 - `control_request` 처리: `pause`→입력 forward 차단 + `relayControl` 송신, `end`→`close()`
 - ⚠️ **`assessUtterance` 적중 시 `safety_events` 즉시 INSERT 추가** — 안전 푸시의 선결 조건
 - 타이머·턴 캡·수명·재생 영수증 게이팅은 **손대지 않는다**
@@ -405,7 +405,7 @@ D3(직원 합류) → W9 온보딩 · W6 합류 승인 → 파일럿 개시 전 
    강제하고 `tool_used`("AI 대화 프로그램 보조")를 별도 필드로 둔다.
 13. **위기 시 즉시 `close` 를 `paused` 로 약화시키지 말 것**(§9-4).
 14. **위임 대상은 3개뿐**(일지 확정·공개 철회·보호자 연결 승인). 위기 대응·출력 검열·진단표현 금지·
-    Clova 경유를 `org_capabilities` 에 넣는 순간 안전 구조가 설정 한 줄로 무력화된다.
+    Gemini TTS 경유를 `org_capabilities` 에 넣는 순간 안전 구조가 설정 한 줄로 무력화된다.
 15. 주간보호 출석 테이블을 만들지 말 것(기준 1).
 
 ---

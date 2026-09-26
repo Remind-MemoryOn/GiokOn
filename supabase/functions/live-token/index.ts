@@ -1,6 +1,6 @@
 // Edge Function: live-token — Gemini Live API **ephemeral token** 발급
 //
-// 대화 AI는 gemini-3.1-flash-live-preview(Live API, WebSocket)를 쓴다. 클라이언트가
+// 대화 AI는 gemini-3.8-live(Live API, WebSocket)를 쓴다. 클라이언트가
 // 본 API 키를 들고 있으면 유출 시 과금·대화 탈취로 이어지므로, Live API 정책상
 // 클라이언트 직결에는 단기 토큰(ephemeral token)이 필요하다. 이 함수가 그 발급 창구다.
 //
@@ -49,7 +49,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
 const AUTH_TOKENS_URL = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens'
-const DEFAULT_MODEL = 'gemini-3.1-flash-live-preview'
+const DEFAULT_MODEL = 'gemini-3.8-live'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

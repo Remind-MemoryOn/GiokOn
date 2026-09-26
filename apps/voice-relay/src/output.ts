@@ -1,6 +1,13 @@
 import { screenAiUtterance } from '@giokon/core'
 
-export interface ClovaCredentials { clientId: string; clientSecret: string }
+export const DEFAULT_GEMINI_TTS_MODEL = 'gemini-3.8-flash-tts'
+export const DEFAULT_GEMINI_TTS_VOICE = 'Kore'
+
+export interface GeminiTtsConfig {
+  apiKey: string
+  model?: string
+  voice?: string
+}
 
 function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -36,17 +43,61 @@ export function wavToPcm24k(b: Buffer): Buffer {
   return pcm
 }
 
-export async function synthesizeValidated(text: string, credentials: ClovaCredentials, signal: AbortSignal, fetcher: typeof fetch = fetch): Promise<{ text: string; pcm: Buffer }> {
-  // Initial integration gate: existing deterministic guard + bounded complete text.
-  // This is not a full semantic/factual validator. A rejected turn closes the relay
-  // rather than silently replacing speech and leaving Gemini's history divergent.
+async function readBoundedBody(response: Response, signal: AbortSignal): Promise<string> {
+  if (!response.body) throw new Error('GEMINI_TTS_FAILED')
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let text = ''
+  let size = 0
+  try {
+    while (true) {
+      const { done, value } = await untilAborted(reader.read(), signal)
+      signal.throwIfAborted()
+      if (done) break
+      size += value.byteLength
+      if (size > 3 * 1024 * 1024) throw new Error('AUDIO_TOO_LARGE')
+      text += decoder.decode(value, { stream: true })
+    }
+    return text + decoder.decode()
+  } finally { void reader.cancel().catch(() => {}) }
+}
+
+function audioFromResponse(body: string): Buffer {
+  let parsed: unknown
+  try { parsed = JSON.parse(body) } catch { throw new Error('GEMINI_TTS_FAILED') }
+  const part = (parsed as { candidates?: { content?: { parts?: { inlineData?: { data?: unknown; mimeType?: unknown } }[] } }[] })
+    .candidates?.[0]?.content?.parts?.find(item => item.inlineData)
+  const data = part?.inlineData?.data
+  const mimeType = part?.inlineData?.mimeType
+  if (typeof data !== 'string' || typeof mimeType !== 'string' || !/^audio\/wav(?:;|$)/i.test(mimeType) ||
+      data.length > 3 * 1024 * 1024 || data.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(data)) {
+    throw new Error('GEMINI_TTS_FAILED')
+  }
+  const wav = Buffer.from(data, 'base64')
+  if (wav.length > 2 * 1024 * 1024) throw new Error('AUDIO_TOO_LARGE')
+  return wav
+}
+
+export async function synthesizeValidated(text: string, config: GeminiTtsConfig, signal: AbortSignal, fetcher: typeof fetch = fetch): Promise<{ text: string; pcm: Buffer }> {
+  // Existing deterministic guard + bounded complete text. This is not a full
+  // semantic/factual validator. A rejected turn closes the relay rather than
+  // silently replacing speech and leaving Gemini's history divergent.
   if (!text.trim() || text.length > 200 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text) || !screenAiUtterance(text).allowed) throw new Error('OUTPUT_REJECTED')
   signal.throwIfAborted()
+  const model = config.model?.trim() || DEFAULT_GEMINI_TTS_MODEL
+  const voice = config.voice?.trim() || DEFAULT_GEMINI_TTS_VOICE
   const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(15000)])
-  const request = fetcher('https://naveropenapi.apigw.ntruss.com/tts-premium/v1/tts', {
+  const request = fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
-    headers: { 'X-NCP-APIGW-API-KEY-ID': credentials.clientId, 'X-NCP-APIGW-API-KEY': credentials.clientSecret, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ speaker: 'nara', speed: '0', volume: '0', pitch: '0', format: 'wav', 'sampling-rate': '24000', text }),
+    headers: { 'x-goog-api-key': config.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text, speech_metadata: { style: '따뜻하고 차분하며 또렷한 한국어 말투' } }] }],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        responseFormat: { audio: { mimeType: 'AUDIO_WAV', sampleRate: 24000 } },
+        speechConfig: { voiceConfig: { voice }, languageCode: 'ko-KR' },
+      },
+    }),
     signal: requestSignal,
   }).then(response => {
     if (requestSignal.aborted) {
@@ -56,22 +107,11 @@ export async function synthesizeValidated(text: string, credentials: ClovaCreden
     return response
   })
   const response = await untilAborted(request, requestSignal)
-  if (!response.ok || !response.body) {
+  if (!response.ok) {
     void response.body?.cancel().catch(() => {})
-    throw new Error(response.status === 429 ? 'CLOVA_RATE_LIMIT' : response.status >= 500 ? 'CLOVA_UNAVAILABLE' : 'CLOVA_FAILED')
+    throw new Error(response.status === 429 ? 'GEMINI_TTS_RATE_LIMIT' : response.status >= 500 ? 'GEMINI_TTS_UNAVAILABLE' : 'GEMINI_TTS_FAILED')
   }
-  const reader = response.body.getReader(), chunks: Buffer[] = []
-  let size = 0
-  try {
-    while (true) {
-      const { done, value } = await untilAborted(reader.read(), requestSignal)
-      requestSignal.throwIfAborted()
-      if (done) break
-      size += value.byteLength
-      if (size > 2 * 1024 * 1024) throw new Error('AUDIO_TOO_LARGE')
-      chunks.push(Buffer.from(value))
-    }
-  } finally { void reader.cancel().catch(() => {}) }
+  const body = await readBoundedBody(response, requestSignal)
   requestSignal.throwIfAborted()
-  return { text, pcm: wavToPcm24k(Buffer.concat(chunks)) }
+  return { text, pcm: wavToPcm24k(audioFromResponse(body)) }
 }

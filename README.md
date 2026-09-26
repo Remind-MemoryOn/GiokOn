@@ -54,7 +54,7 @@ giokon/
 기관 + 담당 배정이고, 파일럿에서 **기관 + 역할**(요양보호사·사회복지사·센터장·기관 관리자)로 바뀐다.
 보호자는 공개된 항목만 본다. 비밀 키는 Edge Function·중계 서버에만 둔다.
 
-**음성:** 앱 → `voice-relay` → Gemini Live → 출력 검증(`screenAiUtterance`) → CLOVA Voice → 앱. Gemini 가 만든
+**음성:** 앱 → `voice-relay` → Gemini Live → 출력 검증(`screenAiUtterance`) → Gemini 3.8 Flash TTS → 앱. Gemini Live가 만든
 오디오 원본은 어르신에게 전달하지 않는다. 앱이 Gemini 에 직접 붙는 경로는 **폐기**한다.
 
 | 영역 | 기술 |
@@ -65,7 +65,7 @@ giokon/
 | 공유 로직/상태 | TypeScript + Zustand + TanStack Query |
 | 데이터·인증 | Supabase 서울 (PostgreSQL · Auth · Storage · Realtime · Edge Functions) |
 | 대화 AI | Gemini Live `gemini-3.8-live` — 모델은 서버 시크릿 `GEMINI_LIVE_MODEL` 로만 바꾼다 |
-| 음성 출력 | CLOVA Voice (검증된 문장만) |
+| 음성 출력 | Gemini `gemini-3.8-flash-tts` (검증된 문장만) |
 | 푸시 | Expo Push (파일럿에서 추가) |
 | 디자인 | 웹 = Figma 단독 기준 |
 | 배포 | 웹: Vercel · 모바일: EAS Build |

@@ -4,6 +4,7 @@ import { toElderProfile, toChronicleEntry, toSession, type Database } from '@gio
 import { WebSocket } from 'ws'
 import { createRelayServer } from './server'
 import type { SessionTick } from './relay'
+import { DEFAULT_GEMINI_TTS_MODEL, DEFAULT_GEMINI_TTS_VOICE } from './output'
 
 // Process/secret-manager environment only. This entrypoint never loads .env files.
 function required(name: string) {
@@ -14,10 +15,14 @@ function required(name: string) {
 const supabaseUrl = required('SUPABASE_URL')
 if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(supabaseUrl)) throw new Error('Invalid SUPABASE_URL')
 const publishableKey = required('SUPABASE_PUBLISHABLE_KEY')
-const clova = { clientId: required('NCP_CLOVA_VOICE_CLIENT_ID'), clientSecret: required('NCP_CLOVA_VOICE_CLIENT_SECRET') }
+const geminiTts = {
+  apiKey: required('GEMINI_API_KEY'),
+  model: process.env.GEMINI_TTS_MODEL?.trim() || DEFAULT_GEMINI_TTS_MODEL,
+  voice: process.env.GEMINI_TTS_VOICE?.trim() || DEFAULT_GEMINI_TTS_VOICE,
+}
 const inUse = new Set<string>()
 const service = createRelayServer({
-  clova,
+  geminiTts,
   connectProvider: url => new WebSocket(url, { maxPayload: 1024 * 1024, perMessageDeflate: false }),
   authorize: async (sessionId, accessToken) => {
     if (inUse.has(sessionId)) throw new Error('SESSION_BUSY')

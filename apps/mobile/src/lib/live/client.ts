@@ -7,7 +7,7 @@
 //   - 인증은 첫 프레임(relayAuth)의 Supabase JWT 다. URL 에 토큰을 싣지 않는다.
 //   - 턴 경계는 앱이 소유한다(activityStart/End). 서버는 오디오도 처리하므로
 //     '확인 텍스트만 모델이 본다'고 가정하면 안 된다.
-//   - 출력은 중계가 검증·Clova 합성한 것만 온다. v2 는 재생 영수증, v3 는 복구 맥락.
+//   - 출력은 중계가 검증·Gemini TTS 합성한 것만 온다. v2 는 재생 영수증, v3 는 복구 맥락.
 
 import { voiceFailureMessage, parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { parseVoiceRelayUrl } from './relay-config';

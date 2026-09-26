@@ -9,7 +9,7 @@ afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup() })
 
 it('separates liveness from admission and refuses upgrades while draining', async () => {
   const authorize = vi.fn()
-  const service = createRelayServer({authorize, connectProvider:vi.fn(), clova:{clientId:'synthetic',clientSecret:'synthetic'}})
+  const service = createRelayServer({authorize, connectProvider:vi.fn(), geminiTts:{apiKey:'synthetic'}})
   cleanups.push(service.close)
   service.server.listen(0,'127.0.0.1'); await once(service.server,'listening')
   const base = `127.0.0.1:${(service.server.address() as AddressInfo).port}`
