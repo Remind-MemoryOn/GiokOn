@@ -60,3 +60,28 @@ end $$;
 -- 기본 권한을 걸어 둔다.
 alter default privileges in schema public grant all on tables to authenticated;
 alter default privileges in schema public grant all on sequences to authenticated;
+
+-- 실 Supabase Storage 의 최소 형태(storage.buckets · storage.objects, RLS 켜짐).
+-- ⚠️ 이게 없으면 사진 버킷 정책을 만드는 마이그레이션이 `storage 스키마 없음` 분기로 **정책을 통째로 건너뛰어**
+--    회귀가 정책을 한 번도 검사하지 못한다 — 그 공백 때문에 정책이 `profiles.name` 에 잘못 묶인 결함이
+--    운영까지 갔다(감사 2026-09-27 · T25.1). 정책이 쓰는 열(bucket_id·name)과 소유자·시각만 둔다.
+create schema if not exists storage;
+create table if not exists storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table if not exists storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text references storage.buckets(id),
+  name text,
+  owner uuid,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table storage.objects enable row level security;
+grant usage on schema storage to authenticated;
+grant select, insert, update, delete on storage.objects to authenticated;
+grant select on storage.buckets to authenticated;

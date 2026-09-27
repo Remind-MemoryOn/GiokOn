@@ -58,3 +58,4 @@ done
 "${PSQL[@]}" -f "$HERE/legal_consents.sql"
 "${PSQL[@]}" -f "$HERE/journal_worker.sql"
 "${PSQL[@]}" -f "$HERE/safety_push.sql"
+"${PSQL[@]}" -f "$HERE/storage_policies.sql"
