@@ -738,6 +738,18 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 장기요양등급은 프로필 카드 넷째 줄 · 값이 없으면 주간보호만 안내', [
     /careGrade \|\| gradeRequired \? \(/, /top: Y\(546\.32 \+ 48\.03\)/,
   ]],
+  // ── 어르신 정보 삭제하기(2026-09-27 사용자 신고 — 목록으로 이동만 하던 링크) ─────────────
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 삭제하기는 확인 뒤 실제로 파기한다(이동만 하는 링크 금지)', [
+    /const deleteProfile = useDeleteProfile\(\);/, /<ConfirmDialog\s+open=\{confirmingDelete\}/, /deleteProfile\.mutate\(elderId/,
+  ]],
+  // ── 화면 폭 모드(2026-09-27 사용자 결정 — PC 좁은 창은 가로 스크롤 · 휴대폰은 1440 축소 · 감독만 반응형) ─────────────
+  [`${WEB}/src/index.css`, '1440 캔버스: 좁은 창에서 줄어들지 않는다(줄바꿈 밀림 방지)', [
+    /html\[data-canvas='fixed'\] body \{\s*min-width: 1440px;/,
+  ]],
+  [`${WEB}/index.html`, '휴대폰: 뷰포트 1440 · 첫 화면 모드는 같은 출처 스크립트(CSP 가 인라인 금지)', [
+    /<meta name="viewport" content="width=1440" \/>/, /<script src="\/viewport-mode\.js"><\/script>/,
+  ]],
+  [`${WEB}/src/App.tsx`, '경로별 화면 폭 모드(SPA 이동 시 감독 화면만 반응형)', [/<ViewportMode \/>/]],
 
   // ── 보호자 리포트(파일럿 W3·W4, 2026-09-27) ─────────────────────────────────
   [`${WEB}/src/components/guardian-report-notice.tsx`, '보호자 리포트 고정 문구: 문장 그대로(계획 §7)', [

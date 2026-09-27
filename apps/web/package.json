@@ -12,6 +12,8 @@
     "test:org": "node scripts/org-admin-flow-smoke.mjs",
     "test:plan": "node scripts/session-plan-flow-smoke.mjs",
     "test:grade": "node scripts/elder-grade-flow-smoke.mjs",
+    "test:elder-delete": "node scripts/elder-delete-flow-smoke.mjs",
+    "test:viewport": "node scripts/viewport-mode-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke": "node scripts/route-smoke.mjs",

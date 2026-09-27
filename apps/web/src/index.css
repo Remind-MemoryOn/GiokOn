@@ -17,6 +17,11 @@
   html, body, #root {
     height: 100%;
   }
+  /* 1440 고정 캔버스 — 좁은 창에서 글자가 두 줄로 밀리지 않게 캔버스를 줄이지 않는다(가로 스크롤).
+     감독 화면만 `data-canvas="fluid"`(반응형). 규칙: src/lib/viewportMode.ts */
+  html[data-canvas='fixed'] body {
+    min-width: 1440px;
+  }
   body {
     /* 신규 디자인: 흰 배경 · 본문 #404040 (Figma 실측) */
     @apply bg-white text-ink-700 antialiased;

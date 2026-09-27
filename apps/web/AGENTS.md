@@ -169,6 +169,10 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 - 직원 합류 승인은 **기관 전체 어르신 기록 열람 권한을 주는 일**이라 확인창에서 그 사실을 먼저 알린다(`OrgPage`). 요청자 이메일은
   기관 밖 사람이라 읽을 수 없다 — `requester_name` 과 초대 역할만 보인다.
 - 감사 스텁의 `?audit-role=<역할>` 은 **접근성 감사 전용**이다(관리 역할 카드 렌더). Figma 좌표 감사는 쓰지 않는다.
+- **화면 폭 모드(2026-09-27 사용자 결정)** — 1440 캔버스는 **줄어들지 않는다**: `html[data-canvas=fixed] body { min-width:1440px }`
+  (PC 좁은 창은 가로 스크롤) · viewport `width=1440`(휴대폰은 브라우저가 전체를 축소해 보여 줌). **반응형 예외는 감독 화면뿐**이며 규칙은
+  `src/lib/viewportMode.ts`(`isFluidPath`)와 `public/viewport-mode.js`(첫 화면 — CSP 가 인라인 스크립트 금지) **두 곳**에 있다. 반응형 화면을 새로
+  만들면 두 곳을 함께 고친다. 회귀: `test:viewport`.
 - **감독 화면(`/caregiver/supervision`)은 1440 셸 밖의 반응형 단독 화면**이다(2026-09-25 — 휴대폰 브라우저가 기본). 셸 밖이라
   `useGiokonRealtime` 을 화면이 직접 연다. 원격 제어는 RPC `request_session_control` 만(직접 UPDATE 는 트리거가 거절),
   원격 종료는 기기를 멈출 뿐 저장은 기기에서 한다. 위기 카드 문구는 서버가 저장한 `caregiver_alert` 를 그대로 쓴다(새로 만들지 않는다).
