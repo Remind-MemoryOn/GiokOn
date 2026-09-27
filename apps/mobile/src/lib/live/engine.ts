@@ -36,6 +36,8 @@ export interface LiveEngineCallbacks {
    * onError 로 다시 알리지 않는다. 핸들러가 없으면 오류로 알리고 닫는다(조용히 멈추지 않게).
    */
   onRemoteControl?: (state: RelayControlState) => void;
+  /** 중계가 위험 발화를 즉시 기록한 safety_events 행 id(파일럿 T21.4) — 같은 사건을 다시 기록하지 않게. */
+  onSafetyRecorded?: (eventId: string) => void;
 }
 
 export class LiveConversationEngine {
@@ -133,6 +135,7 @@ export class LiveConversationEngine {
         this.endpoint?.transcript(performance.now());
       },
       onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
+      onSafetyRecorded: (eventId) => this.callbacks.onSafetyRecorded?.(eventId),
       onRemoteControl: (state) => {
         if (this.closing || this.remoteControl) return;
         this.remoteControl = state;

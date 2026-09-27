@@ -3,12 +3,12 @@ import { once } from 'node:events'
 import type { AddressInfo } from 'node:net'
 import { WebSocket, WebSocketServer } from 'ws'
 import { createRelayServer } from './server'
-import { CONTROL_CLOSE_GRACE_MS, type SessionTick } from './relay'
+import { CONTROL_CLOSE_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, type RelaySession, type SessionTick } from './relay'
 
 const cleanup: (() => void)[] = []
 afterEach(() => { vi.useRealTimers(); for (const close of cleanup.splice(0)) close() })
 
-async function fixture(respond = true) {
+async function fixture(respond = true, extra: Partial<RelaySession> = {}) {
   const provider = new WebSocketServer({ port: 0, host: '127.0.0.1' })
   await once(provider, 'listening')
   cleanup.push(() => { for (const s of provider.clients) s.terminate(); provider.close() })
@@ -31,7 +31,7 @@ async function fixture(respond = true) {
   const tick = vi.fn(async (): Promise<SessionTick> => ({ ...server, allowed: await allowed() }))
   const advancePhase = vi.fn(async (phase: NonNullable<SessionTick['phase']>) => { server.phase = phase; server.phaseElapsedSeconds = 0; return true })
   const synthesize = vi.fn(async (text: string) => ({ text, pcm: Buffer.from([1, 0, 2, 0]) }))
-  const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', tick, advancePhase, release }))
+  const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', tick, advancePhase, release, ...extra }))
   const connectProvider = vi.fn(() => new WebSocket(`ws://127.0.0.1:${(provider.address() as AddressInfo).port}`))
   const relay = createRelayServer({ authorize, connectProvider, synthesize, geminiTts: { apiKey: 'synthetic' } })
   relay.server.listen(0, '127.0.0.1'); await once(relay.server, 'listening')
@@ -283,4 +283,87 @@ describe('pilot C3 — server phases and remote control', () => {
     expect(f.connectProvider).not.toHaveBeenCalled()
     await once(f.app, 'close')
   }, CONTROL_CLOSE_GRACE_MS + 5000)
+})
+
+describe('T21.4 — 위험 발화 즉시 기록', () => {
+  const EVENT_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
+
+  it('records the safety event before stopping and hands its id to the app', async () => {
+    const recordSafety = vi.fn(async () => EVENT_ID)
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const closed = once(f.app, 'close')
+    // 조각으로 나뉘어 와도 감지 창(연결 단위)으로 잡는다 — "죽고 " + "싶어요"
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '요즘은 그냥 죽고 ' } } }))
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '싶어요' } } }))
+    await closed
+    expect(recordSafety).toHaveBeenCalledOnce()
+    const draft = (recordSafety.mock.calls[0] as unknown[])[0] as { level: string; categories: string[]; excerpt: string; caregiverAlert: string }
+    expect(draft.level).toBe('crisis')
+    expect(draft.categories).toContain('self_harm')
+    expect(draft.excerpt).toContain('죽고 싶어요')
+    expect(draft.caregiverAlert).toContain('109')
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID } })
+  })
+
+  it('stops without an id when recording fails — the app records it on save instead', async () => {
+    const recordSafety = vi.fn(async (): Promise<string> => { throw new Error('rls') })
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '숨이 안 쉬어져요' } } }))
+    await closed
+    expect(recordSafety).toHaveBeenCalledOnce()
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED' } })
+  })
+
+  it('does not wait longer than the recording timeout to stop', async () => {
+    const recordSafety = vi.fn(() => new Promise<string>(() => {}))
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const started = Date.now()
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
+    await closed
+    expect(Date.now() - started).toBeGreaterThanOrEqual(SAFETY_RECORD_TIMEOUT_MS - 100)
+    expect(Date.now() - started).toBeLessThan(SAFETY_RECORD_TIMEOUT_MS + 2000)
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED' } })
+  })
+
+  it('forwards nothing more to the model or the elder while recording', async () => {
+    let finish!: (id: string) => void
+    const recordSafety = vi.fn(() => new Promise<string>(resolve => { finish = resolve }))
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const before = f.inputs.length
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
+    await vi.waitFor(() => expect(recordSafety).toHaveBeenCalledOnce())
+    f.turn()
+    f.peer()!.send(JSON.stringify({ serverContent: { outputTranscription: { text: '늦은 응답' }, turnComplete: true } }))
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(f.inputs.length).toBe(before)
+    expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(false)
+    const closed = once(f.app, 'close')
+    finish(EVENT_ID); await closed
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID } })
+  })
+
+  it('records only once even when the risky phrase keeps arriving', async () => {
+    let finish!: (id: string) => void
+    const recordSafety = vi.fn(() => new Promise<string>(resolve => { finish = resolve }))
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: ' 정말 죽고 싶어요' } } }))
+    await vi.waitFor(() => expect(recordSafety).toHaveBeenCalledOnce())
+    const closed = once(f.app, 'close')
+    finish(EVENT_ID); await closed
+    expect(recordSafety).toHaveBeenCalledOnce()
+    expect(f.frames.filter(x => x.relayError)).toHaveLength(1)
+  })
+
+  it('does not record a plain rest request as a safety event (no risk) but still stops', async () => {
+    const recordSafety = vi.fn(async () => EVENT_ID)
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '그만할래요' } } }))
+    await closed
+    expect(recordSafety).not.toHaveBeenCalled()
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED' } })
+  })
 })

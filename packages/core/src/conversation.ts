@@ -134,6 +134,14 @@ function buildSafetyEventDraft(
   }
 }
 
+/**
+ * 발화 평가 → safety_events 초안(저장할 일이 아니면 null). 앱 평가(`evaluateUserTurn`)와
+ * 음성 중계의 즉시 기록(파일럿 T21.4)이 **같은 규칙**으로 기록하도록 공개한다.
+ */
+export function safetyEventDraftFor(assessment: UtteranceAssessment, utterance: string): SafetyEventDraft | null {
+  return buildSafetyEventDraft(assessment, utterance, buildCaregiverAlert(assessment))
+}
+
 // ─────────────────────────────────────────────────────────────
 // 발화 평가
 // ─────────────────────────────────────────────────────────────

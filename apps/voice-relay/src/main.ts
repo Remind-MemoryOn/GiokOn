@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { buildSystemPrompt, PROMPT_VERSION, type SessionPhase } from '@giokon/core'
+import { buildSystemPrompt, PROMPT_VERSION, type SafetyEventDraft, type SessionPhase } from '@giokon/core'
 import { toElderProfile, toChronicleEntry, toSession, type Database } from '@giokon/data'
 import { WebSocket } from 'ws'
 import { createRelayServer } from './server'
@@ -64,7 +64,17 @@ const service = createRelayServer({
       if (!tokenResponse.ok) throw new Error('TOKEN_FAILED')
       const token = await tokenResponse.json() as { token?: unknown; model?: unknown }
       if (typeof token.token !== 'string' || typeof token.model !== 'string') throw new Error('INVALID_TOKEN')
-      return { token: token.token, model: token.model, systemInstruction: buildSystemPrompt(toElderProfile(profile.data), chronicles.data.map(toChronicleEntry), toSession(session.data).design, 'speech'), tick, advancePhase, release }
+      // 파일럿 T21.4 — 위험 발화 즉시 기록(요양보호사 권한 · 앱과 같은 RLS·동의 가드). 기관은 트리거가 채운다.
+      const recordSafety = async (draft: SafetyEventDraft) => {
+        const result = await db.from('safety_events').insert({
+          profile_id: session.data.profile_id, session_id: sessionId, user_id: user.data.user.id,
+          level: draft.level, categories: draft.categories, matched_terms: draft.matchedTerms,
+          excerpt: draft.excerpt, caregiver_alert: draft.caregiverAlert,
+        }).select('id').single()
+        if (result.error || !result.data) throw new Error('SAFETY_RECORD_FAILED')
+        return result.data.id
+      }
+      return { token: token.token, model: token.model, systemInstruction: buildSystemPrompt(toElderProfile(profile.data), chronicles.data.map(toChronicleEntry), toSession(session.data).design, 'speech'), tick, advancePhase, recordSafety, release }
     } catch (e) { release(); throw e }
   },
 })

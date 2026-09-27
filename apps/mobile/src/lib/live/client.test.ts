@@ -41,6 +41,27 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     expect(onError.mock.calls[0]?.[0].message).not.toContain('untrusted');
     expect(client.isConnected).toBe(false);expect(await reply).toBe('timeout');
   });
+  it('hands the relay-recorded safety event id over before reporting the review stop (T21.4)', async () => {
+    const onError = vi.fn(), onSafetyRecorded = vi.fn(), order: string[] = [];
+    onError.mockImplementation(() => order.push('error'));
+    onSafetyRecorded.mockImplementation(() => order.push('safety'));
+    const client = new GeminiLiveClient({ onError, onSafetyRecorded }, RELAY);
+    const connecting = client.connect(); const socket = Socket.all[0];
+    socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' } });
+    expect(onSafetyRecorded).toHaveBeenCalledExactlyOnceWith('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+    expect(order).toEqual(['safety', 'error']);
+    expect(onError.mock.calls[0]?.[0].message).toContain('담당자 확인');
+  });
+  it.each([undefined, 'not-a-uuid', 12])('ignores a missing or malformed safety event id: %s', async (safetyEventId) => {
+    const onError = vi.fn(), onSafetyRecorded = vi.fn();
+    const client = new GeminiLiveClient({ onError, onSafetyRecorded }, RELAY);
+    const connecting = client.connect(); const socket = Socket.all[0];
+    socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId } });
+    expect(onSafetyRecorded).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledOnce();
+  });
   it('relay mode sends Supabase auth in the first frame, never the URL or a Gemini token', async () => {
     const client = new GeminiLiveClient({}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic-jwt' });
     const pending = client.connect();

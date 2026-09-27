@@ -1,7 +1,7 @@
 import { WebSocket, type RawData } from 'ws'
 import type { GeminiTtsConfig } from './output'
 import { synthesizeValidated } from './output'
-import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, shouldAdvancePhase, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
+import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, safetyEventDraftFor, shouldAdvancePhase, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
 
 /**
  * 서버(session_tick RPC) 한 번의 판정 — 파일럿 D6·C3. 2초 폴이 이 값 하나로 허용 여부·단계·원격 제어를 함께 받는다.
@@ -28,11 +28,20 @@ export interface RelaySession {
   tick(): Promise<SessionTick>
   /** 세션 시작자 권한으로 단계를 기록한다(advance_session_phase). 실패하면 false — 단계 지시를 넣지 않는다. */
   advancePhase?(phase: SessionPhase): Promise<boolean>
+  /**
+   * 위험 발화를 **감지 즉시** safety_events 에 기록한다(파일럿 T21.4 — 감독 화면·푸시 알림의 선결).
+   * 세션 시작자 권한(요양보호사 JWT)으로 쓴다 — 앱과 같은 RLS 경로. 기록한 행 id 를 돌려준다.
+   */
+  recordSafety?(draft: SafetyEventDraft): Promise<string>
   release(): void
 }
 
 /** 원격 일시정지·종료를 앱에 알린 뒤 연결을 닫기까지의 유예(ms) — 제어 메시지가 닫힘보다 먼저 닿게. */
 export const CONTROL_CLOSE_GRACE_MS = 2000
+/** 위험 발화 즉시 기록을 기다리는 상한(ms). 넘기면 기록 없이 멈춘다 — 앱이 종료 저장 때 기록한다. */
+export const SAFETY_RECORD_TIMEOUT_MS = 3000
+/** 안전 이벤트 발췌 길이 — 감지 창(여러 조각)의 끝부분을 남긴다(core 초안 규칙과 같은 120자). */
+const SAFETY_EXCERPT_WINDOW = 120
 export interface RelayDependencies {
   authorize(sessionId: string, accessToken: string): Promise<RelaySession>
   connectProvider(url: string): WebSocket
@@ -65,6 +74,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let advancing = false
   let phaseTurns = 0                      // 현재 단계에서 어르신이 **말한**(음성이 전달된) 턴 수
   let activityAudio = false
+  let reviewing = false                   // 위험 발화로 멈추는 중(기록 → 알림 → 닫기)
   const openedAt = Date.now()
   const setupTimer = setTimeout(() => close(), 30000)
   const lifetime = setTimeout(() => close(), 25 * 60 * 1000)
@@ -126,6 +136,30 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       }, () => { advancing = false })
     }
     flushDirective()
+  }
+  /**
+   * 위험 발화 → 멈춘다. 먼저 모델·앱으로의 전달을 끊고(controlled), 안전 이벤트를 즉시 기록한 뒤
+   * 기록 id 를 오류 알림에 실어 보내고 닫는다. 앱은 그 id 로 같은 사건을 다시 기록하지 않는다
+   * (id 를 모르는 구버전 앱은 알 수 없는 칸을 무시한다). 기록이 실패·지연돼도 멈춤은 늦추지 않는다(상한 3초).
+   */
+  async function stopForReview(draft: SafetyEventDraft | null) {
+    if (reviewing || abort.signal.aborted) return
+    reviewing = true
+    controlled = true
+    directive = null
+    clearTimeout(responseTimer); clearTimeout(playbackTimer)
+    let safetyEventId: string | undefined
+    if (draft && session?.recordSafety) {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      try {
+        safetyEventId = await Promise.race([
+          session.recordSafety(draft),
+          new Promise<undefined>(resolve => { timer = setTimeout(() => resolve(undefined), SAFETY_RECORD_TIMEOUT_MS) }),
+        ])
+      } catch { safetyEventId = undefined } finally { clearTimeout(timer) }
+    }
+    send({ relayError: { code: 'INPUT_REVIEW_REQUIRED', ...(safetyEventId ? { safetyEventId } : {}) } })
+    close()
   }
   /** 단계 지시는 **턴 사이**에만 넣는다 — 모델 생성·재생 대기·어르신 발화 중이면 다음 기회로 미룬다. */
   function flushDirective() {
@@ -200,8 +234,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               safetyInput = combinedInput.slice(-4000)
               if (assessment.escalate || assessment.hasDistressSignal ||
                   assessment.situation === 'rest_request' || assessment.situation === 'refusal') {
-                send({relayError:{code:'INPUT_REVIEW_REQUIRED'}})
-                return close()
+                void stopForReview(safetyEventDraftFor(assessment, combinedInput.slice(-SAFETY_EXCERPT_WINDOW)))
+                return
               }
             }
           } catch { return close() }

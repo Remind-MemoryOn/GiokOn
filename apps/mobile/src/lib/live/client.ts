@@ -35,7 +35,11 @@ type Handlers = {
   onClose?: () => void;
   /** 감독 화면의 원격 일시정지·종료(파일럿 M5). 중계는 이 알림 뒤 곧 연결을 닫는다. */
   onRemoteControl?: (state: RelayControlState) => void;
+  /** 중계가 위험 발화를 이미 safety_events 에 기록했다(파일럿 T21.4) — 그 행 id. 오류 알림보다 먼저 온다. */
+  onSafetyRecorded?: (eventId: string) => void;
 };
+
+const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 export type RelayControlState = 'paused' | 'ended';
 
@@ -152,7 +156,12 @@ export class GeminiLiveClient {
             }
             this.handleServerContent(msg['serverContent'] as never);
           }
-          if ('relayError' in msg) throw new Error(voiceFailureMessage((msg.relayError as {code?:unknown} | null)?.code));
+          if ('relayError' in msg) {
+            const relayError = msg.relayError as { code?: unknown; safetyEventId?: unknown } | null;
+            const eventId = relayError?.safetyEventId;
+            if (typeof eventId === 'string' && UUID.test(eventId)) this.handlers.onSafetyRecorded?.(eventId);
+            throw new Error(voiceFailureMessage(relayError?.code));
+          }
           if ('error' in msg) throw new Error('음성 중계가 요청을 거부했어요.');
         }).catch((e: unknown) => {
           if (this.ws !== ws) return;

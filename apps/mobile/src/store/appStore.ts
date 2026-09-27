@@ -160,7 +160,11 @@ interface AppState {
    */
   acceptOpener: (text: string) => boolean;
   acknowledgeSafety: () => void;
-  requireRelayReview: () => void;
+  /**
+   * 중계가 위험 발화로 멈췄다 — 요양보호사 확인 배너 + 안전 이벤트.
+   * `remoteId` = 중계가 이미 기록한 safety_events 행(T21.4). 있으면 다시 기록하지 않고 확인 시각만 반영한다.
+   */
+  requireRelayReview: (remoteId?: string) => void;
   cancelSession: () => void;
 
   // ── 진행 중 DB 동기화(영속화 계층이 호출) ──
@@ -311,13 +315,13 @@ export const useApp = create<AppState>((set, get) => ({
     return true;
   },
 
-  requireRelayReview: () => {
+  requireRelayReview: (remoteId) => {
     const a=get().active;
     // Keep an existing, more specific assessment and avoid duplicate stop events.
     if (!a || a.safety.caregiverAlert) return;
     const caregiverAlert=VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED;
     const event: SessionSafetyEvent = {level:'watch',categories:[],matchedTerms:[],excerpt:'',caregiverAlert,
-      acknowledgedAt:null,remoteId:null,ackSynced:false};
+      acknowledgedAt:null,remoteId:remoteId ?? null,ackSynced:false};
     set({active:{...a,events:[...a.events,event],safety:{...a.safety,caregiverAlert,
       level:'watch',recommendation:'end_session',acknowledged:false}}});
   },

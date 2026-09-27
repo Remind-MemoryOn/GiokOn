@@ -106,6 +106,16 @@ it('retains a relay review request without inventing a transcript or crisis cate
   useApp.getState().acknowledgeSafety();useApp.getState().finishSession();
   expect(useApp.getState().lastFinished!.events[0].acknowledgedAt).not.toBeNull();
 });
+it('links a relay-recorded safety event instead of recording it again (T21.4)',()=>{
+  const id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+  useApp.getState().requireRelayReview(id); useApp.getState().requireRelayReview();
+  const active=useApp.getState().active!;
+  expect(active.events).toHaveLength(1);
+  expect(active.events[0]).toMatchObject({remoteId:id,acknowledgedAt:null,ackSynced:false});
+  useApp.getState().acknowledgeSafety();
+  expect(useApp.getState().active!.events[0]).toMatchObject({remoteId:id,ackSynced:false});
+  expect(useApp.getState().active!.events[0].acknowledgedAt).not.toBeNull();
+});
 it('never replaces an existing crisis with a generic relay review',()=>{
   useApp.getState().adoptAutomaticInput('죽고 싶어요');
   const before=useApp.getState().active!;
