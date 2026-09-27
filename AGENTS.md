@@ -432,6 +432,23 @@ async + try/catch 로 실패 알림(어르신 코드 복사와 같은 방식). �
 - core: `generated-session` 선택 섹션(participantResponse·opinion·guardianText — 배포된 `session-report` 캐시와 호환) + 금지어(인지 저하·우울·정서 불안·진료 권유). `program-journal.ts`(매핑·칸 단위 차단·보호자 문장).
 - ~~⏳ 남은 것(서버 파트): C4 워커 · T20.5~~ → ✅ 아래 "C4 일지 초안 자동 생성".
 
+### 이어서 — 안전 알림 체인(2026-09-27, T21.4·T21.9 · 사용자 결정 "진행자 + 담당 배정자")
+
+- ✅ **T21.4 중계 즉시 기록**(코드 — ⏳ **중계 배포 후 반영**): 위험 발화 감지 → 모델·어르신 전달 차단 → `safety_events` 를 **요양보호사 JWT** 로 즉시 INSERT
+  (앱과 같은 RLS·동의 가드) → `relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId }` → 닫기. 앱은 그 id 를 이벤트 `remoteId` 로 받아
+  **다시 기록하지 않고** 확인 시각만 반영한다(구버전 앱은 모르는 칸을 무시 — 종전처럼 종료 때 기록). 기록 실패·3초 지연이어도 멈춤은 늦추지 않는다.
+  초안 규칙은 core `safetyEventDraftFor`(앱 평가와 같다) — 위험이 아닌 휴식 요청·거부는 기록하지 않는다(종전 앱 동작 유지).
+- ✅ 운영 적용 `20260927010000_safety_push_dispatch.sql`(이력 버전 정정):
+  · 안전 알림 수신자 = 담당 배정자 ∪ **세션 진행자**(같은 기관 돌봄팀만) — 파일럿은 배정 없는 어르신이 있어 진행자가 못 받던 구멍을 막았다.
+  · 푸시 큐 RPC `claim_push_notifications`·`revoke_dead_push_tokens`(service_role + 워커 비밀값 `push-dispatch`) — 안전 알림만 · 30분 이내 · **최대 한 번**.
+  · `app.kick_push_dispatch` + cron `push-dispatch` **10초**(보낼 것이 있을 때만) · 운영 주소 설정 완료.
+- ✅ Edge `push-dispatch` v1(verify_jwt=false) — Expo Push, **잠금화면 고정 문구**("안전 확인이 필요해요")·알림 id 만(성함·발화·위기 종류 없음),
+  `DeviceNotRegistered` 토큰 회수, 선택 시크릿 `EXPO_ACCESS_TOKEN`(Expo 강화 보안을 켤 때만). 운영에서 틀린/다른 워커 비밀값 401 · 맞는 값 202 확인.
+- 검증: `supabase/tests/safety_push.sql`(CI 추가) 변형 11종 중 10종 검출(나머지 1종 `union`→`union all` 은 유니크 인덱스로 등가) ·
+  중계 +6 · 앱 +3 · 워커 10 테스트. core 224 · data 201 · mobile 321 · relay 56. 보안 advisor 새 지적 없음.
+- ⏳ 남은 것: ① **중계 배포**(사용자 — 이 변경 포함) · ② EAS 재빌드(M6 토큰 등록이 실기기에 들어가야 푸시 수신) · ③ 알림 탭 딥링크(`data.type='safety'`, `notificationId`) ·
+  ④ T21.11(휴식 요청·거부 → 마무리 전환) · T21.12(10분) · T23.5.
+
 ### 이어서 — C4 일지 초안 자동 생성(2026-09-25, T20.5·T20.6 · 사용자 결정 1-C · 2-A · 기관 스위치는 **아직 켜지 않음**)
 
 > 사용자 확정: **"초안 생성" 버튼은 필요 없다 — 대화가 끝나자마자 AI 가 초안을 만든다.** 계획의 흐름(세션 종료 트리거 → 워커)과 같다.

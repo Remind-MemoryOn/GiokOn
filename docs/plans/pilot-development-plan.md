@@ -242,7 +242,7 @@
 | # | 내용 | 파일 | 상태 |
 |---|---|---|---|
 | **W1** | **프로그램 일지 화면** — 목록(상태 칩 · "확인 대기 N건" 최상단) + 상세(공단 서식 12필드 폼, AI 초안 배지, 확정 버튼은 `has_capability` 일 때만) + **확정 후 수정 시 사유 입력 필수** + 이력 탭 + 생성 실패 재시도 · 기존 수동 경로 `components/SessionJournalDialog.tsx`(세션 선택 → `session-report` → `renderSessionJournal`)는 기획 6-1 의 "현재"다 — **다이얼로그는 지운다.** ✅ 2026-09-25 사용자 확정: **"초안 생성" 버튼은 두지 않는다**(초안은 대화 종료 시 C4 워커가 자동 생성). "다시 생성"은 **`failed` 일지에만** 보이는 복구 버튼으로 `retry_journal_generation` RPC 를 부른다(`session-report` 아님) | `pages/caregiver/ProgramJournal{List,Detail}Page.tsx`(기존 `Journal*Page.tsx` 대체) | ✅ 2026-09-26 웹 — 목록은 기존 2단계(어르신 고르기 → 어르신별 목록, 각 최상단 "확인 대기 N건") · 상세 `ProgramJournalDetailPage`(작성 카드 체계 · 12칸 · 보호자 문장 승인 · 확정 · 수정 사유 · 이력 탭 · 실패만 다시 생성) · `JournalWritePage`·`SessionJournalDialog`·`buildJournalDraft`·웹 음성 입력 삭제. 계획과 다른 점: 파일명은 목록 `ProgramJournalListPage`·상세 `ProgramJournalDetailPage`, 어르신 고르기는 `JournalPage` 유지 · 'AI 초안'은 칸별 출처가 DB 에 없어 워커 4칸에 표시 |
-| **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 | ✅ 2026-09-25 웹(PR #18) — `/caregiver/supervision`(1440 셸 밖 반응형 단독 화면, 사이드바 맨 끝 '감독') · 기관의 진행 중 세션 카드(어르신·시작한 사람·단계·경과/목표·상태) · 원격 일시정지(선택 사유)·재개·종료(확인창 — 저장은 기기에서) · 위기 카드(서버 `caregiver_alert` 그대로 + 확인) · 개입 기록 3건 · Realtime `session_interventions` 등록. 계획과 다른 점: 세션에 기기 정보가 없어 '기기' 대신 '시작한 사람'. ⚠️ 위기 카드는 T21.4(중계 즉시 기록) 전에는 세션 종료 뒤에야 뜬다 |
+| **W2** | **감독 화면** — 기관 내 `status='active'` 세션 카드(어르신·기기·경과·**현재 단계**·상태) + 일시정지/재개/종료. **반응형 우선**(요양보호사 휴대폰 브라우저). 위기 발화 카드에 위기 안내(전화번호·대응 절차)를 둔다 — 어르신 화면에서 옮겨 온 것(M3) | `pages/caregiver/SupervisionPage.tsx` 신규 | ✅ 2026-09-25 웹(PR #18) — `/caregiver/supervision`(1440 셸 밖 반응형 단독 화면, 사이드바 맨 끝 '감독') · 기관의 진행 중 세션 카드(어르신·시작한 사람·단계·경과/목표·상태) · 원격 일시정지(선택 사유)·재개·종료(확인창 — 저장은 기기에서) · 위기 카드(서버 `caregiver_alert` 그대로 + 확인) · 개입 기록 3건 · Realtime `session_interventions` 등록. 계획과 다른 점: 세션에 기기 정보가 없어 '기기' 대신 '시작한 사람'. ⚠️ 위기 카드는 T21.4(중계 즉시 기록) 전에는 세션 종료 뒤에야 뜬다 — ✅ T21.4 코드 완료(2026-09-27), **중계 배포 후** 감지 즉시 뜬다 |
 | **W3** | 네비게이션 — 요양보호사 `요양일지`→`프로그램 일지`, **보호자** `분석`→`대화 관찰 리포트`(기획 6-5 는 보호자 메뉴 한정 — 요양보호사 `분석` 은 기관 내부 화면이라 이름 유지), 보호자 소식 필터 `요양일지`→`오늘의 이야기` | `components/shell/nav.ts` | ✅ 2026-09-27 — 요양보호사 '프로그램 일지'(09-26) · 보호자 소식 '오늘의 이야기' · 보호자 메뉴 '관찰 리포트'(사이드바 폭 — 화면에서는 '대화 관찰 리포트') |
 | **W4** | **보호자 표현 전환** — 판정형→기술형, 하단 고정 문구 공용 컴포넌트, 일지 상세는 **`guardian_text` 만** 렌더(공단 서식 직접 노출 금지). 함께: `session_summary` 가 생성돼도 렌더되지 않는 기존 버그 수정, 죽은 `'report'` item_type 정리 | `pages/guardian/*` | ✅ 2026-09-27 — 보호자 종합은 판정형 카드2 를 그리지 않음 · 고정 문구 공용 부품 · 일지 상세 `guardian_text` 만(기존) · `session_summary` 는 요약 전용 RPC `get_my_shared_summaries`(`20260927000000`, 운영 적용) · 죽은 `'report'` 화면 코드 삭제 |
 | **W5** | 세션 설계의 기존 "예상 소요 시간"(`duration_minutes`)을 **목표 시간**으로 쓴다 — 초기값을 지금의 고정 15분 대신 `org_settings.target_minutes` 에서 가져온다. 단계 미리보기·기관 기본 피할 주제 | `SessionPlanDialog.tsx` | ✅ 2026-09-27 — 라벨 '목표 시간' · 5~10분 · 기본값=기관 설정 · 단계 미리보기(core `phasePlan`) · 새 세션 피해갈 내용에 기관 기본값 미리 채움(서버 합침 없음) · 10분 초과 기존 설계는 10분으로 표시 |
@@ -293,7 +293,7 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 - `analysis.ts`: `opinionSignals?`·`baselineDeltas?` 추가 — 파일럿 범위 밖이지만 **데이터는 지금부터**
 
 **C3. `apps/voice-relay`**
-> ✅ **2026-09-24 1차 완료(T21.3)** — `session_tick` 폴·단계 지시 주입(턴 사이에만)·원격 일시정지/종료(`relayControl` → 2초 뒤 닫기). ⏳ 남음: `safety_events` 즉시 INSERT(T21.4), 휴식 요청 → 마무리 전환(T21.11), 수명 10분(T21.12). 배포 순서 = DB 마이그레이션 → 중계.
+> ✅ **2026-09-24 1차 완료(T21.3)** — `session_tick` 폴·단계 지시 주입(턴 사이에만)·원격 일시정지/종료(`relayControl` → 2초 뒤 닫기). ✅ `safety_events` 즉시 INSERT(T21.4, 2026-09-27 — 중계 배포 후 반영). ⏳ 남음: 휴식 요청 → 마무리 전환(T21.11), 수명 10분(T21.12). 배포 순서 = DB 마이그레이션 → 중계.
 - 2초 폴을 **`session_tick` RPC 로 교체** → `{allowed, phase, target_minutes, paused, control_request}` 일괄 수신(`target_minutes` 는 `coalesce(sessions.duration_minutes, org_settings.target_minutes)` 로 계산한 값이지 컬럼이 아니다)
 - 단계 전환 시 `forward({clientContent:{turns, turnComplete:false}})` 로 지시 주입 —
   **`resumeContext` 주입과 완전히 같은 경로**다. 어르신에게 들리지 않고, 출력은 여전히 서버 검증 후 Gemini TTS를 통과한다
@@ -310,7 +310,8 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 - ✅ 2026-09-25 `program-journal-draft/`(신규): 큐 소비 → 지수 백오프(30s→5m) → `attempts>5` 면 `failed`. pg_cron 30초 + pg_net, DB 비밀값 인증.
   **사용자 확정: 대화가 끝나면 자동 생성 — 웹에 "초안 생성" 버튼을 두지 않는다. "다시 생성"은 failed 일지 복구 전용**(W1).
   **`pending_review` 까지만 쓴다**
-- `push-dispatch/`(신규): `pushed_at is null` 소비 → Expo Push.
+- ✅ 2026-09-27 `push-dispatch/`(신규): `pushed_at is null` 소비 → Expo Push. pg_cron 10초 · 최대 한 번 · 30분 지난 알림 제외 · 무효 토큰 회수.
+  안전 알림 수신자 = 담당 배정자 ∪ **세션 진행자**(사용자 결정 2026-09-27 — 배정 없는 어르신도 진행자는 받는다).
   ⚠️ **본문에 어르신 성함·발화 금지**(잠금화면 노출) — 고정 문구 + deep link 만
 - 스케줄 30초. 두 워커를 한 함수에 합쳐도 무방
 

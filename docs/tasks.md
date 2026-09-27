@@ -41,7 +41,7 @@
 | T21.1 | `session_phase` + `sessions` 컬럼 7개 + `session_interventions` + RPC `session_tick`·`advance_session_phase`·`request_session_control`. 목표 시간은 **기존 `duration_minutes` 재사용**(새 컬럼 금지) | D6 | T22.3 | ✅ 2026-09-24 (로컬 검증 → ✅ 운영 적용 2026-09-24) |
 | T21.2 | `session-phase.ts` 신규(`buildPhaseDirective`·`shouldAdvancePhase`) + `prompt.ts` `PROMPT_VERSION='v2.0'` persist | C2 | — | ✅ 2026-09-24 core `session-phase.ts` + `PROMPT_VERSION='v2.0'`(저장은 중계가 `advance_session_phase` 로 — T21.3) |
 | T21.3 | 중계: 2초 폴 → `session_tick` · 단계 지시 주입(`resumeContext` 와 같은 경로) · 원격 제어 처리 | C3 | T21.1, T21.2 | ✅ 2026-09-24 중계 2초 폴=`session_tick` · 단계 전환(`advance_session_phase`, 시작자 권한) + 지시를 **턴 사이에만** 주입 · 원격 일시정지·종료 → `relayControl` 송신 후 2초 유예 닫기. ⚠️ 배포 순서: DB 마이그레이션 → 중계 |
-| T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ⏳ |
+| T21.4 | ⚠️ 중계: `assessUtterance` 적중 시 **`safety_events` 즉시 INSERT**(실시간 푸시의 선결) | C3 | T21.3 | ✅ 2026-09-27 — 감지 즉시 요양보호사 권한으로 기록 → `relayError.safetyEventId` 로 앱에 전달, 앱은 같은 사건을 다시 기록하지 않음(구버전 앱 호환). 기록 실패·3초 지연이어도 멈춤 유지. ⏳ **중계 배포 후 반영**(사용자) |
 | T21.5 | 웹 감독 화면(반응형) + 원격 일시정지·재개·종료 | W2 | T21.3 | ✅ 2026-09-25 웹(PR #18) — `/caregiver/supervision`(1440 셸 밖 반응형 단독 화면, 사이드바 맨 끝 '감독') · 기관의 진행 중 세션 카드(어르신·시작한 사람·단계·경과/목표·상태) · 원격 일시정지(선택 사유)·재개·종료(확인창 — 저장은 기기에서) · 위기 카드(서버 `caregiver_alert` 그대로 + 확인) · 개입 기록 3건 · Realtime `session_interventions` 등록. 계획과 다른 점: 세션에 기기 정보가 없어 '기기' 대신 '시작한 사람'. ⚠️ 위기 카드는 T21.4(중계 즉시 기록) 전에는 세션 종료 뒤에야 뜬다 |
 | T21.6 | 앱 원격 제어 수신("잠시 쉬어요" + 마이크 중단) | M5 | T21.3 | ✅ 2026-09-24 `relayControl` 수신 → 마이크·연결 즉시 닫고 어르신 화면 "잠시 쉬어요" · 멈춘 동안 2초마다 `session_tick` → 감독 화면 재개 시 자동으로 이어감(현장 재개 불가 — 사용자 확정) · 원격 종료 → 멈추고 요양보호사가 저장 |
 | T21.7 | 세션 설계: 목표 시간(기존 `duration_minutes`, 초기값을 고정 15분 대신 기관 설정에서) · 단계 미리보기 · 기관 기본 피할 주제 | W5 | T21.1 | ✅ 2026-09-27 (웹) |
@@ -63,7 +63,7 @@
 | ID | 작업 | 계획 | 의존 | 상태 |
 |---|---|---|---|---|
 | T21.8 | `push_tokens` + `notifications.pushed_at` + `notification_kind` 확장(단독 파일) | D2, D7 | — | ✅ 2026-09-24 로컬 — `20260924050000_push_tokens.sql`: `push_tokens`(본인 조회만, 쓰기는 `register_push_token`·`revoke_push_token` RPC — 돌봄팀만 등록, 기기 인계 시 주인 이동) + `notifications.pushed_at`(사용자 변경 불가). `notification_kind` 확장(D2)은 미포함 — 발송 워커와 함께 |
-| T21.9 | 워커 `push-dispatch`(Expo Push) — ⚠️ 본문에 어르신 성함·발화 금지 | C4 | T21.8, T21.4 | ⏳ |
+| T21.9 | 워커 `push-dispatch`(Expo Push) — ⚠️ 본문에 어르신 성함·발화 금지 | C4 | T21.8, T21.4 | ✅ 2026-09-27 — `20260927010000` 운영 적용 · pg_cron 10초 · 워커 v1(비밀값 인증, 운영 401/202 확인) · 고정 문구 · 최대 한 번 · 30분 지난 알림 제외 · 무효 토큰 회수. 안전 알림 수신자 = 담당 배정자 ∪ **세션 진행자**(사용자 결정). ⏳ 실기기 수신은 EAS 재빌드(M6) 후 · 알림 탭 딥링크 |
 | T21.10 | 앱 푸시 토큰 등록 — ⚠️ EAS 재빌드 필요 | M6 | T21.8 | ✅ 2026-09-24 `expo-notifications` — 돌봄팀 로그인 시 권한→토큰→등록, 로그아웃 전 회수(최대 3초). ⚠️ EAS 재빌드 필요 · 알림 탭 딥링크는 C4 발송 문구 확정 후 |
 
 ### 공통·선결
