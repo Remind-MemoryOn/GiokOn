@@ -22,6 +22,9 @@ import {
   useRotateElderCode,
   useSafetyEvents,
   useSessions,
+  CARE_GRADE_LABEL,
+  careGradeRequired,
+  useOrgSettings,
 } from '@giokon/data';
 import {
   CONSENT_CATALOG,
@@ -209,6 +212,9 @@ export function ElderDetailPage() {
   const toast = useStore((s) => s.toast);
   const profileQuery = useProfile(elderId);
   const org = useOrganization({ enabled: isConfigured });
+  const settings = useOrgSettings({ enabled: isConfigured });
+  const gradeRequired = careGradeRequired(settings.data?.facility_type);
+  const careGrade = profileQuery.data?.care_grade ?? null;
   const assignments = useProfileCaregivers(elderId);
   const consents = useConsents(elderId);
   const code = useElderCode(elderId);
@@ -348,6 +354,17 @@ export function ElderDetailPage() {
       >
         {val(org.data?.name)}
       </p>
+      {/* 장기요양등급(파일럿 W8, 사용자 확정 2026-09-27) — 프로필 카드 넷째 줄(피치 48 · 카드 끝 683 안). 다른 카드는 움직이지 않는다.
+          값이 없으면: 주간보호 기관은 입력하라고 알리고, 그 밖에는 줄을 그리지 않는다(없는 값을 만들지 않는다). */}
+      {careGrade || gradeRequired ? (
+        <p
+          // 미입력 안내는 한 단계 작게(20) — 24 로는 오른쪽 요약 박스(969)에 닿는다.
+          className={cn('absolute left-[620px] leading-[30px]', careGrade ? 'text-[24px] text-ink-700' : 'text-w-body font-semibold text-alert')}
+          style={{ top: Y(546.32 + 48.03) }}
+        >
+          {careGrade ? `장기요양등급 ${CARE_GRADE_LABEL[careGrade]}` : '장기요양등급 미입력 (주간보호 필수)'}
+        </p>
+      ) : null}
       {/* 우측 요약 박스 — accent 5% */}
       <div
         data-fx="161:590"

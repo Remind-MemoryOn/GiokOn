@@ -8,6 +8,8 @@
 // ⚠️ **특이사항**은 `profiles.note`(최대 500자)다 — 돌봄에서 참고할 메모(선호·주의할 점)이고
 //    **건강 상태를 적는 칸이 아니다**(비의료 포지셔닝).
 // ⚠️ **주요 기억**은 앱과 같은 방식으로 `chronicle_entries(topic='주요 기억')` 에 담는다.
+// ⚠️ 파일럿 W8(2026-09-27, 사용자 확정): **장기요양등급**을 사진 오른쪽 빈 자리(우열 873, 입력 아래끝 = 사진 아래끝 594)에
+//    둔다 — 시안 칸·버튼 좌표는 그대로다. 기관 시설 유형이 주간보호면 필수(별표 + 미입력 저장 막음).
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -15,9 +17,14 @@ import {
   useCreateChronicle,
   useDeleteChronicle,
   useCurrentUser,
+  useOrgSettings,
   useProfile,
   useUpdateProfile,
+  careGradeRequired,
+  toCareGrade,
+  type CareGrade,
 } from '@giokon/data';
+import { CareGradeSelect } from '../../components/CareGradeSelect';
 import { KEY_MEMORY_TOPIC, birthSlashLabel, isBirthDate, type ElderProfile } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
@@ -134,8 +141,11 @@ function Field({
 }
 
 /** 조회가 끝난 뒤에만 마운트한다(`key={elder.id}`) — 초기값을 props 에서 바로 잡는다. */
-function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
+function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: string; careGrade: CareGrade | null }) {
   const elderId = elder.id;
+  const { isConfigured } = useAuth();
+  const settings = useOrgSettings({ enabled: isConfigured });
+  const gradeRequired = careGradeRequired(settings.data?.facility_type);
   const toast = useStore((s) => s.toast);
   const navigate = useNavigate();
   const chronicles = useChronicles(elderId);
@@ -152,6 +162,7 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
     job: elder.job ?? '',
     hobbies: elder.hobbies ?? '',
     note: elder.note ?? '',
+    careGrade: careGrade ?? '',
   });
   const [memory, setMemory] = useState('');
 
@@ -163,6 +174,8 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
     if (!form.name.trim()) return toast('error', '이름을 입력해 주세요.');
     if (!form.birthDate || !isBirthDate(form.birthDate))
       return toast('error', '생년월일을 선택해 주세요.');
+    if (gradeRequired && !toCareGrade(form.careGrade))
+      return toast('error', '주간보호 기관은 장기요양등급을 입력해야 해요.');
     update.mutate(
       {
         id: elderId,
@@ -175,6 +188,7 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
           job: form.job.trim() || null,
           hobbies: form.hobbies.trim() || null,
           note: form.note.trim() || null,
+          care_grade: toCareGrade(form.careGrade),
         },
       },
       {
@@ -269,6 +283,12 @@ function EditForm({ elder, photo }: { elder: ElderProfile; photo?: string }) {
         className="absolute left-[554px] block"
         style={{ top: Y(551) }}
       />
+
+      {/* 장기요양등급 — 사진 오른쪽 빈 자리(파일럿 W8). 입력 아래끝을 사진 아래끝(401 + 193)에 맞춘다. */}
+      <Label left={873} top={594 - 57 - 35.03} starLeft={gradeRequired ? 980 : undefined} htmlFor="f-care-grade">
+        장기요양등급
+      </Label>
+      <CareGradeSelect id="f-care-grade" left={873} top={Y(594 - 57)} value={form.careGrade} onChange={set('careGrade')} required={gradeRequired} />
 
       {/* 좌열 */}
       <Label fx="194:132" left={410} top={617.4} starLeft={445} htmlFor="f-name">
@@ -444,6 +464,7 @@ export function ElderEditPage() {
     <EditForm
       key={elder.id}
       elder={elder}
+      careGrade={profileQuery.data?.care_grade ?? null}
       photo={elder.photoPath ? photos.data?.[elder.photoPath] : undefined}
     />
   );

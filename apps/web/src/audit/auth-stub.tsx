@@ -671,6 +671,18 @@ function seedJoinPending(q: typeof queryClient) {
 }
 seedJoinPending(queryClient);
 
+/** 장기요양등급 흐름 시험(?audit-grade=day_care, 파일럿 W8) — 주간보호 기관 설정. Figma 감사 경로에는 심지 않는다. */
+function seedCareGrade(q: typeof queryClient) {
+  const facility = new URLSearchParams(window.location.search).get('audit-grade');
+  if (!facility || !/^\/caregiver\/elders/.test(window.location.pathname)) return;
+  q.setQueryData(queryKeys.orgSettings, {
+    org_id: ORG.id, facility_type: facility, target_minutes: 10, default_avoid_topics: [],
+    default_program_type: '인지활동 - 회상훈련', default_location: null,
+    ai_drafts_enabled: false, updated_at: '2026-09-01T00:00:00Z', updated_by: null,
+  });
+}
+seedCareGrade(queryClient);
+
 /** 기관 관리 카드5·6(파일럿 W6 후반) — 권한표(일지 확정만 요양보호사까지 넓힌 기관) · 기관 설정. */
 function seedOrgConfig(q: typeof queryClient) {
   if (!/^\/caregiver\/org/.test(window.location.pathname)) return;

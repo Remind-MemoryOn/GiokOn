@@ -269,9 +269,20 @@
 | 5 | WT3b | W6 · T22.5 | 구성원 역할 지정 · 권한 매트릭스 · 기관 설정 | ✅ 2026-09-26 웹 — 아래 "W6 후반 완료" |
 | 6 | WT4 | W5 · T21.7 | 세션 설계 목표 시간 **10분 상한** · 기관 기본 피할 주제 · 단계 미리보기 | ✅ 2026-09-27 웹 — 아래 "W5 완료" |
 | 7 | WT6 | W3·W4 일부 · T20.9 | 보호자 `분석`→`대화 관찰 리포트` · 고정 문구 · `session_summary` 미렌더 버그 · 죽은 `'report'` | ✅ 2026-09-27 웹 + DB `20260927000000` 운영 적용 — 아래 "W3·W4 완료" |
-| 8 | WT8 ← 다음 | W8 · T24.3 | 어르신 `care_grade` | ⏳ |
+| 8 | WT8 | W8 · T24.3 | 어르신 `care_grade` | ✅ 2026-09-27 웹 — 아래 "W8 완료" |
 | — | WT1 | W7 · T24.1 | 어르신 동의 화면 | ✅ main 병합(2026-09-25) |
-| 후속 | — | D11 후속 | `terms_required` DB 필수화 — 운영 웹 배포 확인 뒤(DB 파트) | ⏳ |
+| 후속 ← 다음 | — | D11 후속 | `terms_required` DB 필수화 — 운영 웹 배포 확인 뒤(DB 파트) | ⏳ |
+
+#### ✅ 2026-09-27 W8(WT8) 완료 — 어르신 장기요양등급(`care_grade`)
+사용자 결정: ① **등록·수정·상세 모두** · ② 주간보호 기관(`org_settings.facility_type='day_care'`)은 등급 없이 **저장을 막는다**
+(DB 는 필수를 강제하지 않는다 — 화면이 막는다) · ③ 등록·수정 칸 = **사진 오른쪽 빈 자리**(기존 좌표 불변) · ④ 상세 = **프로필 카드 넷째 줄**.
+- data `careGrade.ts` — `CARE_GRADES`(1~5등급·인지지원등급) · `CARE_GRADE_LABEL` · `careGradeRequired(facilityType)`(주간보호만) · `toCareGrade`(테스트).
+- 웹 공용 부품 `components/CareGradeSelect.tsx`(필수면 빈 선택지 '등급을 골라 주세요(주간보호 필수)', 아니면 '선택 안 함') ·
+  `ElderRegisterDialog`(필수면 '다음' 막음 · 생성에 `care_grade`) · `ElderEditPage`(필수면 저장 막음 — "주간보호 기관은 장기요양등급을 입력해야 해요.") ·
+  `ElderDetailPage` 프로필 카드 넷째 줄(값이 있으면 `장기요양등급 N등급`, 주간보호인데 없으면 '장기요양등급 미입력 (주간보호 필수)', 그 밖엔 그리지 않음).
+- 검증: 흐름 스모크 **`pnpm -F @giokon/web test:grade`**(`scripts/elder-grade-flow-smoke.mjs`, 스텁 `?audit-grade=<facility>`) · data 191 ·
+  `check:design` 203 · Figma 1393 / 잉크 757 / 이미지 516 / 사이드바 150(새 편차 없음) · a11y 63화면 차단 0(대비 미달 293곳 — 증가 없음) · `web:smoke` 67/67 ·
+  `test:journal/org/plan`.
 
 #### ✅ 2026-09-27 W3·W4(WT6) 완료 — 보호자 대화 관찰 리포트·오늘의 이야기·요약 공개 버그
 사용자 결정: ① `session_summary` 버그 = **요약 전용 RPC + 운영 적용**(RLS 확장은 분석 행 전체가 열려 채택 안 함) ·

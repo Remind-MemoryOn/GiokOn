@@ -6,11 +6,14 @@
 // ⚠️ Figma 가 같은 폼의 x 를 87~90(좌)·550~553(우)로 흘려 놨다 → **입력 88/551 · 라벨
 //    89/552**(라벨이 1px 안쪽)로 통일한다. 실측 평균이라 어느 항목도 1px 을 넘지 않는다.
 // ⚠️ 등록 폼에는 **특이사항이 없다**(수정 폼에만 있다) — 디자인 그대로 둔다.
+// ⚠️ 파일럿 W8(2026-09-27, 사용자 확정): **장기요양등급**을 사진 오른쪽 빈 자리(우열 551, 입력 아래끝 = 사진 아래끝 299)에
+//    둔다 — 모달 높이·칸·버튼 좌표는 그대로다. 기관 시설 유형이 주간보호면 필수(별표 + 미입력이면 다음 단계로 못 감).
 // ⚠️ 사진은 프로필 행을 만든 **뒤에** 올린다. Storage 정책이 경로의 profile_id 로
 //    `profiles` 를 조회하기 때문이다(행이 없으면 업로드가 거부된다).
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCreateProfile, useCurrentUser, useDeleteProfile, useRecordConsent, useUpdateProfile } from '@giokon/data';
+import { careGradeRequired, toCareGrade, useCreateProfile, useCurrentUser, useDeleteProfile, useOrgSettings, useRecordConsent, useUpdateProfile } from '@giokon/data';
+import { CareGradeSelect } from '../../components/CareGradeSelect';
 import { CONSENT_CATALOG, CONSENT_SUBJECT_OPTIONS, KEY_MEMORY_TOPIC, birthSlashLabel, isBirthDate, requiredElderConsents, type ConsentSubjectType, type ConsentType } from '@giokon/core';
 import { useCreateChronicle } from '@giokon/data';
 import { asset } from '../../assets/ui';
@@ -33,7 +36,7 @@ function Label({
   htmlFor,
   children,
 }: {
-  fx: string;
+  fx?: string;
   left: number;
   top: number;
   star?: { left: number; top: number };
@@ -141,7 +144,10 @@ export function ElderRegisterDialog() {
     job: '',
     hobbies: '',
     memory: '',
+    careGrade: '',
   });
+  const settings = useOrgSettings({ enabled: isConfigured });
+  const gradeRequired = careGradeRequired(settings.data?.facility_type);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState<'details' | 'consents'>('details');
@@ -163,6 +169,7 @@ export function ElderRegisterDialog() {
     if (savingRef.current) return;
     if (!form.name.trim()) return toast('error', '이름을 입력해 주세요.');
     if (!isBirthDate(form.birthDate)) return toast('error', '생년월일을 선택해 주세요.');
+    if (gradeRequired && !toCareGrade(form.careGrade)) return toast('error', '주간보호 기관은 장기요양등급을 입력해야 해요.');
     if (step === 'details') {
       setStep('consents');
       return;
@@ -184,6 +191,7 @@ export function ElderRegisterDialog() {
         family: form.family.trim() || null,
         job: form.job.trim() || null,
         hobbies: form.hobbies.trim() || null,
+        care_grade: toCareGrade(form.careGrade),
       });
       createdProfileId = row.id;
       for (const consentType of elderConsentTypes) {
@@ -309,6 +317,12 @@ export function ElderRegisterDialog() {
         />
 
         {/* 좌열 */}
+        {/* 장기요양등급 — 사진 오른쪽 빈 자리(파일럿 W8). 입력 아래끝을 사진 아래끝(106 + 193)에 맞춘다. */}
+        <Label left={COL.labelR} top={299 - 57 - 35} star={gradeRequired ? { left: 657, top: 299 - 57 - 35 - 7 } : undefined} htmlFor="r-care-grade">
+          장기요양등급
+        </Label>
+        <CareGradeSelect id="r-care-grade" left={COL.inputR} top={299 - 57} value={form.careGrade} onChange={set('careGrade')} required={gradeRequired} />
+
         <Label fx="172:127" left={COL.labelL} top={322} star={{ left: 123, top: 313 }} htmlFor="r-name">
           이름
         </Label>

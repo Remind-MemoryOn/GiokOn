@@ -11,6 +11,7 @@
     "test:journal": "node scripts/journal-flow-smoke.mjs",
     "test:org": "node scripts/org-admin-flow-smoke.mjs",
     "test:plan": "node scripts/session-plan-flow-smoke.mjs",
+    "test:grade": "node scripts/elder-grade-flow-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke": "node scripts/route-smoke.mjs",

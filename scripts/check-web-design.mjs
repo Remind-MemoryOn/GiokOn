@@ -726,6 +726,19 @@ const SCREENS = [
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
 
+  // ── 장기요양등급(파일럿 W8, 2026-09-27) — 사진 오른쪽 빈 자리 · 주간보호 필수 · 상세 넷째 줄 ─────────────
+  [`${WEB}/src/pages/caregiver/ElderEditPage.tsx`, '어르신 수정: 장기요양등급(사진 오른쪽 · 주간보호 필수 저장 막음)', [
+    /<CareGradeSelect id="f-care-grade" left=\{873\} top=\{Y\(594 - 57\)\}/,
+    /if \(gradeRequired && !toCareGrade\(form\.careGrade\)\)/, /care_grade: toCareGrade\(form\.careGrade\)/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderRegisterDialog.tsx`, '어르신 등록: 장기요양등급(사진 오른쪽 · 모달 높이 불변 · 주간보호 필수)', [
+    /<CareGradeSelect id="r-care-grade" left=\{COL\.inputR\} top=\{299 - 57\}/, /relative h-\[886px\] w-\[1054px\]/,
+    /if \(gradeRequired && !toCareGrade\(form\.careGrade\)\)/,
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 장기요양등급은 프로필 카드 넷째 줄 · 값이 없으면 주간보호만 안내', [
+    /careGrade \|\| gradeRequired \? \(/, /top: Y\(546\.32 \+ 48\.03\)/,
+  ]],
+
   // ── 보호자 리포트(파일럿 W3·W4, 2026-09-27) ─────────────────────────────────
   [`${WEB}/src/components/guardian-report-notice.tsx`, '보호자 리포트 고정 문구: 문장 그대로(계획 §7)', [
     /본 리포트는 대화 기록 요약이며 진단·평가 목적이 아닙니다\./,
