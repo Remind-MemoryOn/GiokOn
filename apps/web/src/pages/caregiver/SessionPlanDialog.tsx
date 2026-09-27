@@ -10,14 +10,23 @@
 // ⚠️ 시안은 내용·피해갈 내용 상자를 한 줄(57)로 그렸지만 각각 500자를 받는다 →
 //    **연대기 모달과 같은 이유로 여러 줄 상자**로 만든다(높이는 아래 표에서 계산).
 // ⚠️ 필수 표시(✱)는 시안 그대로 **세션 제목·목표 둘뿐**이다.
+//
+// 파일럿 W5(2026-09-26, 사용자 결정) — ① '예상 소요 시간' → **'목표 시간'**, 선택지 5~10분(서버 상한 10분 —
+//    `app.session_target_minutes`). 새 세션 기본값 = 기관 설정 목표 시간. 10분을 넘게 설계된 기존 세션은
+//    **10분으로 맞춰 보여 주고**(서버도 10분에서 자른다) 그렇다고 알린다. ② 기록일 오른쪽 빈 자리에
+//    **단계 미리보기**(도입·회상·마무리 — core `phasePlan`, 중계와 같은 규칙) · ③ 새 세션의 '피해갈 내용'에
+//    **기관 기본 피할 주제를 미리 채운다**(고칠 수 있다 · 기존 세션은 건드리지 않는다).
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   useCreateSession,
   useCurrentUser,
+  useOrgSettings,
   useSessions,
   useUpdateSession,
 } from '@giokon/data';
+import { phasePlan, SESSION_MAX_MINUTES } from '@giokon/core';
+import { useAuth } from '../../auth/AuthProvider';
 import { asset } from '../../assets/ui';
 import { useStore } from '../../store/store';
 import { useModalA11y } from '../../lib/modalA11y';
@@ -28,8 +37,15 @@ const CONTENT_MAX = 500;
 const AVOID_MAX = 500;
 /** 카운터는 길이가 변해도 오른끝 935 에 붙는다(0/50·0/200·0/500 공통). */
 const COUNTER_RIGHT = 1054 - 935;
-/** 예상 소요 시간 드롭다운 — DB 제약(5~120분) 안의 실제 회상 대화 길이. */
-const DURATIONS = [10, 15, 20, 30, 40];
+/** 목표 시간 드롭다운 — 5분 ~ 서버 상한(10분). */
+const DURATIONS = Array.from({ length: SESSION_MAX_MINUTES - 4 }, (_, i) => i + 5);
+
+/** `450` → `7분 30초` · `60` → `1분`. */
+function mmss(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return s ? `${m}분 ${s}초` : `${m}분`;
+}
 
 /**
  * 여러 줄로 늘린 상자만큼 아래 요소가 내려간다.
@@ -97,6 +113,8 @@ export function SessionPlanDialog() {
   const toast = useStore((s) => s.toast);
   const sessions = useSessions(elderId);
   const currentUser = useCurrentUser();
+  const { isConfigured } = useAuth();
+  const settings = useOrgSettings({ enabled: isConfigured });
   const create = useCreateSession();
   const update = useUpdateSession();
 
@@ -105,19 +123,25 @@ export function SessionPlanDialog() {
     [sessions.data, sessionId],
   );
   const close = () => navigate(`/caregiver/sessions/${elderId ?? ''}`);
+  // 새 세션 기본값은 기관 설정에서 — 설정이 늦게 도착하면 새 세션 폼을 한 번 다시 심는다(키).
+  const orgTarget = settings.data?.target_minutes ?? SESSION_MAX_MINUTES;
+  const saved = row?.duration_minutes ?? null;
 
   return (
     <Form
-      key={row?.id ?? 'new'}
+      // 기존 세션은 기관 설정을 쓰지 않으니 다시 심지 않는다(고치던 값을 지우지 않게).
+      key={row ? row.id : `new:${settings.data ? 'org' : 'none'}`}
       pending={create.isPending || update.isPending}
       onClose={close}
+      clampedFrom={saved !== null && saved > SESSION_MAX_MINUTES ? saved : null}
       initial={{
         title: row?.title ?? '',
         goal: row?.goal ?? '',
-        minutes: row?.duration_minutes ?? 15,
+        minutes: Math.min(SESSION_MAX_MINUTES, Math.max(5, saved ?? orgTarget)),
         plannedDate: row?.planned_date ?? new Date().toISOString().slice(0, 10),
         content: row?.content ?? '',
-        avoid: row?.avoid_topics ?? '',
+        // 기존 세션은 저장된 값 그대로 · 새 세션은 기관 기본 피할 주제로 시작(고칠 수 있다).
+        avoid: row ? (row.avoid_topics ?? '') : (settings.data?.default_avoid_topics ?? []).join(', ').slice(0, AVOID_MAX),
         keywords: row?.keywords ?? [],
       }}
       onSave={(v) => {
@@ -152,15 +176,19 @@ export function SessionPlanDialog() {
 function Form({
   initial,
   pending,
+  clampedFrom,
   onSave,
   onClose,
 }: {
   initial: Values;
   pending: boolean;
+  /** 10분을 넘게 설계돼 있던 값(맞춰 보여 준다는 안내용). */
+  clampedFrom: number | null;
   onSave: (v: Values) => void;
   onClose: () => void;
 }) {
   const [v, setV] = useState(initial);
+  const plan = phasePlan(v.minutes);
   const [kw, setKw] = useState('');
   // 시안 치수를 직접 그린 모달이라 공용 Dialog 를 쓰지 않는다 — 키보드 동작만 공유한다.
   const panel = useModalA11y(true, onClose);
@@ -243,7 +271,7 @@ function Form({
         </span>
 
         <Label fx="195:365" left={88} top={333.36} htmlFor="p-minutes">
-          예상 소요 시간
+          목표 시간
         </Label>
         <div
           data-fx="195:366"
@@ -302,6 +330,29 @@ function Form({
             onClick={(e) => e.currentTarget.showPicker?.()}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           />
+        </div>
+
+        {/* 단계 미리보기 — 시안에 없는 읽기 전용 칸(기록일 오른쪽 빈 자리, 같은 줄 · 입력 칸 높이). */}
+        <span
+          className="absolute whitespace-nowrap text-w-body font-medium leading-[24px] text-ink-900"
+          style={{ left: 511, top: 333.36 }}
+        >
+          진행 단계
+        </span>
+        <div
+          aria-label="진행 단계 미리보기"
+          role="note"
+          className="absolute flex flex-col justify-center rounded-[10px] bg-mute-pale px-[20px]"
+          style={{ left: 510, top: 368.4, width: 456, height: 57.06 }}
+        >
+          <span className="whitespace-nowrap text-[16px] leading-[22px] text-ink-900">
+            도입 ~{mmss(plan.introSeconds)} → 회상 ~{mmss(plan.reminiscenceSeconds)} → 마무리 {mmss(plan.closingSeconds)}
+          </span>
+          {clampedFrom ? (
+            <span className="whitespace-nowrap text-[14px] leading-[20px] text-ink-700">
+              기존 설계 {clampedFrom}분 → 최대 {SESSION_MAX_MINUTES}분으로 진행돼요.
+            </span>
+          ) : null}
         </div>
 
         <Label fx="195:369" left={89} top={443.48} htmlFor="p-content">

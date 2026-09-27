@@ -376,6 +376,7 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
   · 잉크 대조(`figma-ink.py`)는 **`numpy`·`Pillow`** 가 필요하다 → `pip install numpy Pillow`(없으면 `ModuleNotFoundError`).
   · 브라우저는 **`/opt/pw-browsers/chromium`**(`playwright install` 금지). figma·img·nav·a11y 검사는 `executablePath` 를 준다.
     ⚠️ **`test:auth`(`scripts/auth-isolation.mjs`)는 안 준다** — 원격에서는 실패한다(코드 결함 아님, 미수정).
+  · 흐름 스모크(합성 API · 스텁 빌드): **`test:plan`**(세션 설계 W5, `?audit-plan=1`) · **`test:org`**(기관 관리 W6) · 아래 `test:journal` — 셋 다 CI 미연결.
   · **`pnpm -F @giokon/web test:journal`**(`scripts/journal-flow-smoke.mjs`, W1 2026-09-26) — 프로그램 일지 흐름 UI 회귀(합성 API):
     초안 생성 버튼 없음 · 다시 생성은 실패 일지만 · **바꾼 칸만 저장** · 확정 권한 잠금 · 확정 후 수정 사유. `/opt/pw-browsers/chromium` 을 쓴다
     (없으면 msedge). CI 에는 아직 연결하지 않았다. 이전 `report-flow-smoke.mjs`(`SessionJournalDialog` 흐름)는 다이얼로그와 함께 대체했다.

@@ -187,7 +187,19 @@ function seedSessionList(q: typeof queryClient) {
     { ...session('s1', E1, 14, 'ended', '2026-07-30T03:00:00Z'), title: '어린 시절 집 이야기' },
     { ...session('s2', E1, 12, 'ended', '2026-07-19T03:00:00Z'), title: '어머니와 함께했던 기억' },
     { ...session('s3', E1, 9, analysisList ? 'ended' : 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
+    // 세션 설계 흐름 시험(?audit-plan=1, 파일럿 W5) — 10분을 넘게 설계돼 있던 예정 세션 1건.
+    ...(new URLSearchParams(window.location.search).get('audit-plan')
+      ? [{ ...session('sp-old', E1, 0, 'planned', '2026-07-31T03:00:00Z'), title: '옛 설계', goal: '고향 이야기', duration_minutes: 30, avoid_topics: '병원' }]
+      : []),
   ]);
+  // 같은 시험 — 기관 설정(목표 8분 · 기본 피할 주제 2개). Figma 감사 경로에는 심지 않는다(시안 상태 불변).
+  if (new URLSearchParams(window.location.search).get('audit-plan')) {
+    q.setQueryData(queryKeys.orgSettings, {
+      org_id: ORG.id, facility_type: 'nursing_home', target_minutes: 8, default_avoid_topics: ['전쟁', '돌아가신 가족'],
+      default_program_type: '인지활동 - 회상훈련', default_location: null,
+      ai_drafts_enabled: true, updated_at: '2026-09-01T00:00:00Z', updated_by: null,
+    });
+  }
 }
 
 /**

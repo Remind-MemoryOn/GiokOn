@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPhaseDirective,
   closingStartsAt,
+  phasePlan,
   CLOSING_RESERVE_SECONDS,
   INTRO_MAX_SECONDS,
   shouldAdvancePhase,
@@ -53,5 +54,23 @@ describe('buildPhaseDirective — 내부 지시문', () => {
     expect(buildPhaseDirective('closing', 'time')).toContain('어떠셨어요')
     expect(buildPhaseDirective('closing', 'rest_request')).not.toContain('어떠셨어요')
     expect(buildPhaseDirective('closing', 'rest_request')).toContain('한 문장')
+  })
+})
+
+describe('phasePlan — 세션 설계의 단계 미리보기(shouldAdvancePhase 와 같은 규칙)', () => {
+  it('10분: 도입 1분 · 회상 7분 30초 · 마무리 1분 30초', () => {
+    expect(phasePlan(10)).toEqual({ targetMinutes: 10, introSeconds: 60, reminiscenceSeconds: 450, closingSeconds: 90 })
+  })
+  it('5분: 마무리는 여전히 90초', () => {
+    expect(phasePlan(5)).toEqual({ targetMinutes: 5, introSeconds: 60, reminiscenceSeconds: 150, closingSeconds: 90 })
+  })
+  it('10분을 넘으면 10분으로 자른다 · 합은 목표 시간', () => {
+    const p = phasePlan(30)
+    expect(p.targetMinutes).toBe(10)
+    expect(p.introSeconds + p.reminiscenceSeconds + p.closingSeconds).toBe(600)
+  })
+  it('마무리 진입 시각이 shouldAdvancePhase 와 같다', () => {
+    const p = phasePlan(8)
+    expect(closingStartsAt(8)).toBe(p.introSeconds + p.reminiscenceSeconds)
   })
 })

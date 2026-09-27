@@ -71,3 +71,31 @@ export function buildPhaseDirective(phase: SessionPhase, reason: ClosingReason =
         : '(내부 지시) 이제 마무리 단계입니다. 새 주제를 꺼내지 말고, 오늘 나눈 이야기에 고마움을 전한 뒤 "오늘 이야기 어떠셨어요?"처럼 소감을 한 번만 여쭤보세요. 대답을 들으면 짧게 인사하고 마칩니다.'
   }
 }
+
+/** 단계별 예상 시간(초) — 웹 세션 설계의 "단계 미리보기"용. */
+export interface PhasePlan {
+  /** 목표 시간(분) — 상한 10분을 건 값. */
+  targetMinutes: number
+  /** 도입 최대(첫 대답이 오면 더 일찍 회상으로 넘어간다). */
+  introSeconds: number
+  /** 회상(도입이 빨리 끝나면 그만큼 길어진다). */
+  reminiscenceSeconds: number
+  /** 마무리·의견수렴. */
+  closingSeconds: number
+}
+
+/**
+ * 목표 시간 → 단계별 예상 시간(순수). shouldAdvancePhase 와 **같은 규칙**이다 —
+ * 도입은 최대 INTRO_MAX_SECONDS, 마무리는 closingStartsAt 부터 목표 시간까지.
+ */
+export function phasePlan(targetMinutes: number): PhasePlan {
+  const minutes = Math.min(SESSION_MAX_MINUTES, Math.max(1, Math.floor(Number.isFinite(targetMinutes) ? targetMinutes : SESSION_MAX_MINUTES)))
+  const closingAt = closingStartsAt(minutes)
+  const intro = Math.min(INTRO_MAX_SECONDS, closingAt)
+  return {
+    targetMinutes: minutes,
+    introSeconds: intro,
+    reminiscenceSeconds: closingAt - intro,
+    closingSeconds: minutes * 60 - closingAt,
+  }
+}

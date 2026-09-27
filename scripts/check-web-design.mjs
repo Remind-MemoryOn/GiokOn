@@ -595,7 +595,11 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 카운터 오른끝 935 · 제목50/목표200/내용500 · 소요 시간 선택지', [
     /const COUNTER_RIGHT = 1054 - 935;/,
     /const TITLE_MAX = 50;/, /const GOAL_MAX = 200;/, /const CONTENT_MAX = 500;/,
-    /const DURATIONS = \[10, 15, 20, 30, 40\];/,
+    // W5(2026-09-26): 목표 시간 5~10분(서버 상한 = core SESSION_MAX_MINUTES) · 새 세션 기본값은 기관 설정 ·
+    // 단계 미리보기는 core phasePlan(중계와 같은 규칙) · 새 세션 피해갈 내용 = 기관 기본 피할 주제.
+    /const DURATIONS = Array\.from\(\{ length: SESSION_MAX_MINUTES - 4 \}/, { absent: /\[10, 15, 20, 30, 40\]/ },
+    /settings\.data\?\.target_minutes \?\? SESSION_MAX_MINUTES/, /phasePlan\(v\.minutes\)/,
+    /settings\.data\?\.default_avoid_topics/,
   ]],
   [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 저장하면 planned 세션이 된다(앱이 받는다)', [
     /status: 'planned'/, /avoid_topics:/, /planned_date:/, /duration_minutes:/,
