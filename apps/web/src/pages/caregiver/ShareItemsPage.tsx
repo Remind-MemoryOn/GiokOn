@@ -60,7 +60,7 @@ const ROW_PITCH = 271.165;
 /** 탭 — 라벨 x·밑줄 폭은 Figma 실측. */
 const TABS = [
   { key: 'all', label: '전체', left: 426, w: 39, fx: '140:211' },
-  { key: 'journal', label: '프로그램 일지', left: 589, w: 132, fx: '140:212' },
+  { key: 'journal', label: '프로그램 일지', left: 589, w: 119, fx: '140:212' },
   { key: 'analysis', label: 'AI 회상 대화 요약', left: 769, w: 151, fx: '140:213' },
 ] as const;
 type Tab = (typeof TABS)[number]['key'];

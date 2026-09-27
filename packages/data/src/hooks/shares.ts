@@ -170,10 +170,25 @@ export interface SharedJournal {
   finalized_at: string | null
 }
 
+/**
+ * 보호자에게 '대화 요약'만 공개된 항목(session_summary) — **요약 문장·첫 주제·날짜만**(get_my_shared_summaries).
+ * id 는 분석 행 id 다(요약과 분석은 같은 원본을 가리키는 서로 다른 공개).
+ */
+export interface SharedSummary {
+  id: string
+  session_id: string
+  profile_id: string
+  summary: string | null
+  first_topic: string | null
+  created_at: string
+}
+
 export interface MySharedContent {
   shares: GuardianShareRow[]
   journals: SharedJournal[]
   analyses: SessionAnalysisRow[]
+  /** 대화 요약만 공개된 것(분석 세부 없음). 분석도 공개됐으면 analyses 에 함께 온다. */
+  summaries: SharedSummary[]
   /** `photo` 로 공개된 일지 사진(보호자 공유 사진 갤러리 — 신규 디자인 55:2035). */
   photos: ProgramJournalPhotoRow[]
 }
@@ -202,8 +217,9 @@ export function useMySharedContent(options?: {
       const journalIds = idsOf('journal')
       const analysisIds = idsOf('analysis')
       const photoIds = idsOf('photo')
+      const summaryIds = idsOf('session_summary')
 
-      const [journalsRes, analysesRes, photosRes] = await Promise.all([
+      const [journalsRes, analysesRes, photosRes, summariesRes] = await Promise.all([
         journalIds.length > 0
           ? client.rpc('get_my_shared_journals')
           : Promise.resolve({ data: [] as SharedJournal[], error: null }),
@@ -213,16 +229,21 @@ export function useMySharedContent(options?: {
         photoIds.length > 0
           ? client.from('program_journal_photos').select('*').in('id', photoIds)
           : Promise.resolve({ data: [] as ProgramJournalPhotoRow[], error: null }),
+        summaryIds.length > 0
+          ? client.rpc('get_my_shared_summaries')
+          : Promise.resolve({ data: [] as SharedSummary[], error: null }),
       ])
       if (journalsRes.error) throw new Error(journalsRes.error.message)
       if (analysesRes.error) throw new Error(analysesRes.error.message)
       if (photosRes.error) throw new Error(photosRes.error.message)
+      if (summariesRes.error) throw new Error(summariesRes.error.message)
 
       return {
         shares: shares ?? [],
         journals: (journalsRes.data ?? []) as SharedJournal[],
         analyses: analysesRes.data ?? [],
         photos: photosRes.data ?? [],
+        summaries: (summariesRes.data ?? []) as SharedSummary[],
       }
     },
   })

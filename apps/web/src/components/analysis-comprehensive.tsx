@@ -36,6 +36,7 @@ import {
 import { webPalette } from '@giokon/theme';
 import { asset } from '../assets/ui';
 import { useAuth } from '../auth/AuthProvider';
+import { GuardianReportNotice } from './guardian-report-notice';
 import { LineChart, RadarChart } from './charts';
 import { cn } from '../lib/utils';
 import { Y, type Months } from '../lib/analysis';
@@ -94,8 +95,18 @@ function StatValue({ parts }: { parts: { n: string; unit: string }[] }) {
   );
 }
 
-/** 카드 2장(참여도·TOP5·AI 의견 / 인지 지표)만 그린다 — 머리(제목·탭·기간)는 화면마다 다르다. */
-export function ElderAnalysisCards({ elderId, months }: { elderId?: string; months: Months }) {
+/** 보호자 화면(파일럿 W4)에서 카드1 이 끝나는 y — 그 아래 고정 문구·AI 고지를 둔다. */
+export const GUARDIAN_CARDS_BOTTOM = C1 + 1143;
+
+/**
+ * 카드 2장(참여도·TOP5·AI 의견 / 인지 지표)만 그린다 — 머리(제목·탭·기간)는 화면마다 다르다.
+ * ⚠️ `audience="guardian"`(보호자 '대화 관찰 리포트', 사용자 확정 2026-09-27): 판정형 카드2(인지 효과 지표·향상률·
+ *    종합 평가·기관 평균 대비)를 **그리지 않는다** — 보호자 표현 규칙(계획 §7 W4). 카드1(참여 횟수·시간·주제 TOP5·
+ *    AI 의견)은 관찰 사실이라 그대로 두고, 하단에 보호자 고정 문구를 붙인다. 요양보호사 화면은 시안 그대로다.
+ */
+export function ElderAnalysisCards({ elderId, months, audience = 'caregiver' }: {
+  elderId?: string; months: Months; audience?: 'caregiver' | 'guardian';
+}) {
   const { isConfigured } = useAuth();
 
   const profileQuery = useProfile(elderId);
@@ -300,6 +311,18 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
         </p>
       </div>
 
+      {audience === 'guardian' ? (
+        <>
+          <GuardianReportNotice top={GUARDIAN_CARDS_BOTTOM + 24} />
+          <p
+            className="absolute left-[322px] w-[1054px] text-w-label leading-[28px] text-ink-500"
+            style={{ top: Y(GUARDIAN_CARDS_BOTTOM + 24 + 36), wordBreak: 'keep-all' }}
+          >
+            대화에서 직접 관찰된 내용입니다. AI가 만든 요약이며, 의학적 판단이 아닙니다.
+          </p>
+        </>
+      ) : (
+      <>
       {/* ── 카드 2 ─────────────────────────────────────────────────────── */}
       <div
         data-fx="228:4178"
@@ -503,6 +526,8 @@ export function ElderAnalysisCards({ elderId, months }: { elderId?: string; mont
         대화에서 직접 관찰된 지표입니다(효능·향상 판정이 아닙니다). AI가 만든 요약이며,
         의학적 판단이 아닙니다.
       </p>
+      </>
+      )}
     </>
   );
 }

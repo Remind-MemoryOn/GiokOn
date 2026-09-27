@@ -95,8 +95,9 @@ Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 
 모든 리포트 하단 고정 문구: *"본 리포트는 대화 기록 요약이며 진단·평가 목적이 아닙니다."*
 보호자 일지 상세는 **`guardian_text` 만** 렌더한다 — **공단 서식 필드를 보호자에게 직접 노출하지 않는다.**
 
-**함께 고칠 기존 버그**: `session_summary` 공개 행이 생성되지만 `useMySharedContent` 가 해석하지 않아
-**보호자 피드에 렌더되지 않는다.** `'report'` item_type 은 생산자가 없는 죽은 값이다.
+✅ **2026-09-27 고침**(W3·W4): ~~`session_summary` 공개 행이 보호자 피드에 렌더되지 않는다~~ → 요약 전용 RPC `get_my_shared_summaries`
+(요약 문장·첫 주제·날짜만) + `MySharedContent.summaries` · 보호자 종합은 판정형 카드2 를 그리지 않음(`ElderAnalysisCards audience="guardian"`) ·
+보호자 리포트 고정 문구 = `components/guardian-report-notice.tsx` · 보호자 메뉴는 사이드바 폭 때문에 '관찰 리포트' · 죽은 `'report'` 화면 코드 삭제(DB enum 값만 남음).
 
 ### 기존 델타 (2026-09-23 이전 — 위와 충돌하면 위를 따른다)
 

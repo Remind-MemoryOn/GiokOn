@@ -524,6 +524,7 @@ function seedGuardian(q: typeof queryClient) {
   const A0 = detail
     ? '어르신은 어린 시절 살던 집과 가족들에 대한 추억을 이야기하셨습니다.\n특히 집 앞마당에 있던 감나무에 대한 기억을 자세히 떠올리셨으며, 가을이 되면 가족들과 함께 감을 따던 이야기를 들려주셨습니다.\n\n어린 시절 함께 지냈던 가족과 집 주변의 모습에 대해서도 자연스럽게 이야기를 이어가셨습니다.'
     : '어르신이 어릴 적 살던 집과 가족들에 대한 추억을 이야기 하셨습니다. 특히 마당에 있던 감나무에 대한 추억을 오래 기억하셨어요.';
+  const summaryOnly = new URLSearchParams(window.location.search).get('audit-summary') === '1';
   q.setQueryData(queryKeys.myShares, {
     shares: [
       shareRow('ms1', 'journal', 'j1', '2026-07-30T10:00:00Z'),
@@ -536,6 +537,8 @@ function seedGuardian(q: typeof queryClient) {
       shareRow('ms8', 'photo', 'p2', '2026-07-09T07:00:00Z'),
       shareRow('ms9', 'photo', 'p3', '2026-07-08T07:00:00Z'),
       shareRow('ms10', 'photo', 'p4', '2026-07-07T07:00:00Z'),
+      // 대화 요약만 공개(파일럿 W4 버그 수정 확인용 · ?audit-summary=1) — Figma 감사 경로에는 심지 않는다.
+      ...(summaryOnly ? [shareRow('ms11', 'session_summary', 'a9', '2026-07-31T02:00:00Z')] : []),
     ],
     journals: [
       journal('j1', '2026-07-30', J1),
@@ -569,6 +572,10 @@ function seedGuardian(q: typeof queryClient) {
       photo('p3', 'j1', 'walk2.jpg', '오늘 오전 산책 활동 중 찍은 사진입니다. 공원 주변을 천천히 산책하셨어요.', '2026-07-30T07:00:00Z'),
       photo('p4', 'j1', 'gym.jpg', '가벼운 스트레칭과 체조를 진행하였습니다. 즐겁게 동작을 따라 하셨어요.', '2026-07-30T06:00:00Z'),
     ],
+    // get_my_shared_summaries — 요약 문장·첫 주제·날짜만(분석 세부 없음).
+    summaries: summaryOnly
+      ? [{ id: 'a9', session_id: 's9', profile_id: E1, summary: '고향 마을 우물가에서 친구들과 놀던 이야기를 즐겁게 들려주셨어요.', first_topic: '고향', created_at: '2026-07-31T01:30:00Z' }]
+      : [],
   });
 }
 

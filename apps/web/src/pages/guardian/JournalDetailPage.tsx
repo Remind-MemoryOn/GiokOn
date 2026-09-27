@@ -4,6 +4,8 @@
 //   오늘의 활동 @(408,479) → 값 @(408,543.41) · 요양일지 @(408,607) → 본문 690 @(408,671.51)
 //   오늘의 활동 사진 @(408,903) → 사진 281×177 @(408/708/1009, 972)
 //
+// 파일럿 W3(2026-09-27): 보호자 쪽 이름 '요양일지' → '오늘의 이야기'(배지 폭 107 → 130 · 섹션 제목) — 확정된 프로그램 일지의
+//    보호자 문장만 보여 준다(공단 서식은 서버가 보내지 않는다).
 // 섹션 간격은 이 화면 실측(본문 끝 → 다음 제목 상자 35.35)을 쓴다 — 본문 줄 수가
 // 데이터마다 달라도 리듬이 유지되도록 흐름 배치로 그린다.
 import { useMemo } from 'react';
@@ -46,17 +48,17 @@ export function JournalDetailPage() {
 
   const d = journal ? new Date(journal.journal_date) : null;
   const title = d && !Number.isNaN(d.getTime())
-    ? `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`
-    : '요양일지';
+    ? `${d.getMonth() + 1}월 ${d.getDate()}일 오늘의 이야기`
+    : '오늘의 이야기';
 
   return (
     <div className="relative -ml-[323px] w-[1440px]" style={{ minHeight: Y(1324) }}>
       <BackLink to="/guardian/feed?tab=journal" />
       <DetailHead
         fx={{ badge: '50:1074', label: '50:1075', at: '50:1076', title: '50:1073', author: '50:1077' }}
-        badge="요양일지"
+        badge="오늘의 이야기"
         tone="journal"
-        badgeW={107}
+        badgeW={130}
         at={share?.shared_at ?? journal?.finalized_at ?? ''}
         title={title}
       />
@@ -77,7 +79,7 @@ export function JournalDetailPage() {
             : '—'}
         </SectionBody>
 
-        <SectionTitle fx="50:1088" gap={SEC_GAP}>요양일지</SectionTitle>
+        <SectionTitle fx="50:1088" gap={SEC_GAP}>오늘의 이야기</SectionTitle>
         <SectionBody fx="50:1089" under pre width={690}>
           {/* D5: 보호자에게는 승인된 보호자 문장만(공단 서식 칸은 서버가 보내지 않는다 — 계획 W4). */}
           {journal?.guardian_text ?? '—'}

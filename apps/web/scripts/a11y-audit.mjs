@@ -83,6 +83,8 @@ const EXTRA_SCREENS = [
   { name: '프로그램 일지 상세(확정·관리 역할)', route: '/caregiver/journal/e1/j2?audit-role=social_worker', height: 3600 },
   { name: '프로그램 일지 이력', route: '/caregiver/journal/e1/j2?tab=history', height: 1200 },
   { name: '프로그램 일지 수기 작성', route: '/caregiver/journal/e1/new', height: 3600 },
+  // 파일럿 W4 — 보호자에게 대화 요약만 공개된 기록(요약 상세·소식 목록)
+  { name: '보호자 대화 요약만 공개(상세)', route: '/guardian/feed/summary/a9?state=connected&audit-summary=1', height: 1400 },
 ];
 
 for (const s of [...SCREENS, ...EXTRA_SCREENS]) {

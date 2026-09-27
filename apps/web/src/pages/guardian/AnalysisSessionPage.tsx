@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { asset } from '../../assets/ui';
 import { SessionAnalysisCard } from '../../components/analysis-session';
 import { Y } from '../../lib/analysis';
+import { GuardianReportNotice } from '../../components/guardian-report-notice';
 
 export function AnalysisSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -30,6 +31,8 @@ export function AnalysisSessionPage() {
       />
 
       <SessionAnalysisCard sessionId={sessionId} />
+      {/* 보호자 리포트 하단 고정 문구(파일럿 W4) — 카드 끝 259.15 + 1347.8 아래. */}
+      <GuardianReportNotice top={259.15 + 1347.8 + 24} />
     </div>
   );
 }

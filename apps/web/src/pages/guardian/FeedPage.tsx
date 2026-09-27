@@ -19,8 +19,9 @@
 //    흘려 놨다 → 388/407 · +67.27 로 통일한다.
 // ⚠️ 자세히 보기 옆 화살표는 반전 노드라 metadata x(1287.99)가 렌더 위치가 아니다 —
 //    프레임 오른끝 − 폭 = 1275.8 이 실제 위치(잉크 실측 1276.0~1288.0 확인).
-// ⚠️ 공개 항목 유형 매핑: journal=요양일지 · analysis=AI 회상 대화 요약 · photo=공유 사진 ·
-//    report=관찰 포인트. 원본이 없는 공개는 그리지 않는다(없는 소식을 만들지 않는다).
+// ⚠️ 공개 항목 유형 매핑: journal=오늘의 이야기(W3, 구 '요양일지') · analysis=AI 회상 대화 요약 · photo=공유 사진 ·
+//    session_summary=요약만 공개된 대화(AI 요약 탭 — 분석도 공개됐으면 분석 줄 하나로). 'report' 는 만드는 쪽이 없는
+//    죽은 값이라 그리지 않는다(W4 정리). 원본이 없는 공개는 그리지 않는다(없는 소식을 만들지 않는다).
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -61,8 +62,8 @@ const G = {
 const TABS = [
   { key: 'all', label: '전체', left: 426, w: 39, fx: '50:825',
     subtitle: '오늘도 어르신의 소중한 하루를 확인해보세요.' },
-  { key: 'journal', label: '요양일지', left: 589, w: 77, fx: '50:826',
-    subtitle: '오늘도 어르신의 요양일지를 확인해보세요.' },
+  { key: 'journal', label: '오늘의 이야기', left: 589, w: 119, fx: '50:826',
+    subtitle: '오늘도 어르신의 이야기를 확인해보세요.' },
   { key: 'analysis', label: 'AI 회상 대화 요약', left: 769, w: 151, fx: '50:827',
     subtitle: '오늘도 어르신의 AI 회상 대화 요약을 확인해보세요.' },
   { key: 'photo', label: '공유 사진', left: 1012, w: 82, fx: '50:828',
@@ -72,10 +73,9 @@ type Tab = (typeof TABS)[number]['key'];
 
 /** 공개 항목 유형 → 배지(라벨·폭·톤). 디자인 실측. */
 const KIND: Partial<Record<ShareItemType, { label: string; w: number; tone: BadgeTone }>> = {
-  journal: { label: '요양일지', w: 107, tone: 'journal' },
+  journal: { label: '오늘의 이야기', w: 130, tone: 'journal' },
   analysis: { label: 'AI 회상 대화 요약', w: 175, tone: 'accent' },
   photo: { label: '공유 사진', w: 113, tone: 'chronicle' },
-  report: { label: '관찰 포인트', w: 128, tone: 'info' },
 };
 
 type FeedItem = {
@@ -117,6 +117,11 @@ export function FeedPage() {
     const journals = new Map((shared.data?.journals ?? []).map((j) => [j.id, j]));
     const analyses = new Map((shared.data?.analyses ?? []).map((a) => [a.id, a]));
     const photos = new Map((shared.data?.photos ?? []).map((p) => [p.id, p]));
+    const summaries = new Map((shared.data?.summaries ?? []).map((m) => [m.id, m]));
+    /** 분석도 공개된 원본 — 요약만 따로 한 줄 더 그리지 않는다(분석 줄이 요약을 담는다). */
+    const analysisShared = new Set(
+      (shared.data?.shares ?? []).filter((s) => s.item_type === 'analysis' && !s.revoked_at).map((s) => s.item_id),
+    );
     const out: FeedItem[] = [];
     for (const s of shared.data?.shares ?? []) {
       if (s.revoked_at) continue;
@@ -126,7 +131,7 @@ export function FeedPage() {
         const d = new Date(j.journal_date);
         out.push({
           key: s.id, kind: 'journal', at: s.shared_at, on: j.journal_date,
-          title: Number.isNaN(d.getTime()) ? '요양일지' : `${d.getMonth() + 1}월 ${d.getDate()}일 요양일지`,
+          title: Number.isNaN(d.getTime()) ? '오늘의 이야기' : `${d.getMonth() + 1}월 ${d.getDate()}일 오늘의 이야기`,
           // D5: 보호자에게는 승인된 **보호자 문장**만 온다(공단 서식은 서버가 보내지 않는다).
           body: j.guardian_text ?? '', to: `/guardian/feed/journal/${j.id}`,
         });
@@ -139,6 +144,16 @@ export function FeedPage() {
           key: s.id, kind: 'analysis', at: s.shared_at, on: row.created_at,
           title: a.topicsEngaged[0] ? `${a.topicsEngaged[0]} 이야기` : 'AI 회상 대화 요약',
           body: a.summary, to: `/guardian/feed/summary/${s.item_id}`,
+        });
+      } else if (s.item_type === 'session_summary') {
+        // 대화 요약만 공개(W4 버그 수정) — 요약 문장·첫 주제만 온다(get_my_shared_summaries). 분석도 공개됐으면 위 줄이 대신한다.
+        if (analysisShared.has(s.item_id)) continue;
+        const m = summaries.get(s.item_id);
+        if (!m?.summary) continue;
+        out.push({
+          key: s.id, kind: 'analysis', at: s.shared_at, on: m.created_at,
+          title: m.first_topic ? `${m.first_topic} 이야기` : 'AI 회상 대화 요약',
+          body: m.summary, to: `/guardian/feed/summary/${s.item_id}`,
         });
       } else if (s.item_type === 'photo') {
         const p = photos.get(s.item_id);
@@ -293,7 +308,7 @@ export function FeedPage() {
                 className="absolute block w-[136px] text-right text-w-body font-semibold leading-[25.5px] text-ink-700"
                 style={{ left: 1125, top: Y(top + 67.27) }}
               >
-                {item.kind === 'report' ? 'AI 분석 보기' : '자세히 보기'}
+                자세히 보기
                 <img
                   data-fx={i === 0 ? '50:966' : undefined}
                   src={asset.iconChevronRightSm}

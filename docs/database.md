@@ -230,3 +230,5 @@ NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 `20260722100000`), `org_capabilities`, `program_journals`(공단 필드는 **jsonb 가 아니라 개별 컬럼**),
 `care_grade`, `push_tokens`. ⚠️ `care_journals`·`journal_photos` 는 **삭제**(데이터 포함, 사용자 확정).
 ⚠️ 출석 테이블은 만들지 않는다(ERP 영역) — 제공 여부는 `program_journals` 행 유무 + `delivered` 로 표현한다.
+
+- **2026-09-27 `20260927000000_guardian_shared_summaries`**(운영 적용): `public.get_my_shared_summaries()` — 보호자에게 **대화 요약만** 공개(`session_summary`)된 분석의 요약 문장·첫 주제·날짜만 돌려준다(security definer · `app.is_shared_to_me('session_summary', id)`). 분석 세부는 `analysis` 공개(RLS)로만 열린다. 이전에는 요약만 공개하면 보호자가 분석 행을 못 읽어 요약이 보이지 않았다.

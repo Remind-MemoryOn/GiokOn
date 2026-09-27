@@ -788,6 +788,52 @@ do $$ begin
 end $$;
 reset role;
 
+-- ── 5.10a) 대화 요약만 공개(session_summary, 20260927000000) — 요약 문장만 RPC 로 ──────────
+-- 요약은 분석 행과 같은 id 를 가리킨다. 보호자는 get_my_shared_summaries() 로 요약 문장·첫 주제만 받는다.
+set role authenticated;
+set test.uid = '33333333-3333-3333-3333-333333333333';
+do $$
+declare
+  aid uuid := (select id from public.session_analyses limit 1);
+  pid uuid := (select id from public.profiles where name = 'C어르신');
+begin
+  insert into public.guardian_shares (shared_by, profile_id, item_type, item_id)
+    values ('33333333-3333-3333-3333-333333333333', pid, 'session_summary', aid);
+end $$;
+
+set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인)
+do $$ begin
+  assert (select count(*) from public.get_my_shared_summaries()) = 1,
+    '보호자는 공개된 대화 요약을 받을 수 있어야 함(기대 1)';
+  assert (select summary from public.get_my_shared_summaries() limit 1) is not null,
+    '요약 문장이 와야 함';
+end $$;
+
+set test.uid = '44444444-4444-4444-4444-444444444444';  -- 연결 없는 보호자 G
+do $$ begin
+  assert (select count(*) from public.get_my_shared_summaries()) = 0,
+    '연결되지 않은 보호자는 대화 요약을 받을 수 없어야 함';
+end $$;
+set test.uid = '22222222-2222-2222-2222-222222222222';  -- 다른 기관 B
+do $$ begin
+  assert (select count(*) from public.get_my_shared_summaries()) = 0,
+    '다른 기관은 대화 요약을 받을 수 없어야 함';
+end $$;
+
+-- 요약 철회 → 즉시 사라진다. 따로 공개한 분석은 그대로다(두 공개는 독립).
+set test.uid = '33333333-3333-3333-3333-333333333333';
+update public.guardian_shares
+  set revoked_at = now(), revoked_by = '33333333-3333-3333-3333-333333333333'
+  where item_type = 'session_summary';
+set test.uid = '55555555-5555-5555-5555-555555555555';
+do $$ begin
+  assert (select count(*) from public.get_my_shared_summaries()) = 0,
+    '철회한 대화 요약은 보호자에게 가면 안 됨';
+  assert (select count(*) from public.session_analyses) = 1,
+    '요약 철회가 분석 공개까지 거두면 안 됨';
+end $$;
+reset role;
+
 -- ── 5.10b) 보호자 확인 영수증: 보호자만 남길 수 있고, 열은 함수로만 바뀐다 ──
 set role authenticated;
 set test.uid = '55555555-5555-5555-5555-555555555555';  -- 보호자 H(연결 승인)

@@ -1048,6 +1048,18 @@ export type Database = {
           finalized_at: string | null
         }[]
       }
+      // 파일럿 W4(20260927000000) — 대화 요약만 공개(session_summary)한 보호자: 요약 문장·첫 주제·날짜만.
+      get_my_shared_summaries: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          session_id: string
+          profile_id: string
+          summary: string | null
+          first_topic: string | null
+          created_at: string
+        }[]
+      }
       register_push_token: {
         Args: { p_token: string; p_platform: 'ios' | 'android' }
         Returns: undefined
@@ -1087,6 +1099,7 @@ export type Database = {
       program_journal_status: 'generating' | 'pending_review' | 'final' | 'failed'
       journal_non_delivery_reason: 'absent' | 'unwell' | 'refused' | 'other'
       care_grade: 'grade_1' | 'grade_2' | 'grade_3' | 'grade_4' | 'grade_5' | 'cognitive_support'
+      // ⚠️ 'report' 는 DB enum 에만 남은 값이다 — 만드는 쪽이 없다(파일럿 W4 에서 화면 코드 정리 · enum 값은 Postgres 에서 지우기 어려워 둔다).
       share_item_type: 'journal' | 'analysis' | 'session_summary' | 'report' | 'photo'
       inquiry_visibility: 'public' | 'private'
       inquiry_status: 'waiting' | 'answered'

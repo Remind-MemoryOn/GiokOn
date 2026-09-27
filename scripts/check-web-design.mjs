@@ -726,6 +726,24 @@ const SCREENS = [
     /대화에서 직접 관찰된 지표입니다\(효능·향상 판정이 아닙니다\)/,
   ]],
 
+  // ── 보호자 리포트(파일럿 W3·W4, 2026-09-27) ─────────────────────────────────
+  [`${WEB}/src/components/guardian-report-notice.tsx`, '보호자 리포트 고정 문구: 문장 그대로(계획 §7)', [
+    /본 리포트는 대화 기록 요약이며 진단·평가 목적이 아닙니다\./,
+  ]],
+  [`${WEB}/src/components/analysis-comprehensive.tsx`, '보호자 대화 관찰 리포트: 판정형 카드2 를 보호자에게 그리지 않는다 · 고정 문구', [
+    /audience === 'guardian' \? \(/, /<GuardianReportNotice top=\{GUARDIAN_CARDS_BOTTOM \+ 24\} \/>/,
+  ]],
+  [`${WEB}/src/pages/guardian/FeedPage.tsx`, '보호자 소식: 요약만 공개(session_summary)도 그린다 · 분석과 겹치면 한 줄 · 죽은 report 없음', [
+    /s\.item_type === 'session_summary'/, /analysisShared\.has\(s\.item_id\)/,
+    { absent: /report: \{ label:/ }, { absent: /item\.kind === 'report'/ },
+  ]],
+  [`${WEB}/src/pages/guardian/SummaryDetailPage.tsx`, '보호자 요약 상세: 요약만 공개된 경우 세부를 지어내지 않는다 · 고정 문구', [
+    /live\('analysis'\) \?\? live\('session_summary'\)/, /<GuardianReportNotice \/>/,
+  ]],
+  [`${WEB}/src/components/shell/nav.ts`, '보호자 메뉴 이름: 관찰 리포트(대화 관찰 리포트 — 사이드바 폭) · 요양보호사 분석은 그대로', [
+    /'\/guardian\/analysis', label: '관찰 리포트'/, /'\/caregiver\/analysis', label: '분석'/,
+  ]],
+
   // ── 기관 관리 카드5·6 — 권한 위임 · 기관 설정 (파일럿 W6 후반 · 시안 없음, 카드2 리듬) ─────────────
   [`${WEB}/src/components/org-admin.tsx`, '권한 위임·기관 설정: 위임 3종 × 돌봄팀 역할 · 저장 버튼 · 비관리 역할은 읽기 전용 · AI 스위치 편집 UI 없음', [
     /ORG_CAPABILITIES\.map/, /CARE_TEAM_ROLES\.map/,
@@ -891,13 +909,13 @@ const SCREENS = [
     /h-\[50\.03px\] w-\[213px\]/,
   ]],
   [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식: 유형 매핑 · 원본이 없으면 그리지 않는다 · 메시지는 단방향', [
-    /journal: \{ label: '요양일지'/, /analysis: \{ label: 'AI 회상 대화 요약'/,
-    /photo: \{ label: '공유 사진'/, /report: \{ label: '관찰 포인트'/,
+    /journal: \{ label: '오늘의 이야기'/, /analysis: \{ label: 'AI 회상 대화 요약'/,
+    /photo: \{ label: '공유 사진'/,
     /if \(!j\) continue;/, /메시지는 보호자 → 요양보호사 단방향이다/,
     /아직 공개된 소식이 없어요/,
   ]],
   [`${WEB}/src/pages/guardian/FeedPage.tsx`, '공개된 소식 탭: 부제·담당 카드는 탭마다 다르고 공유 사진은 2열 격자(394×486 · x 407/890 · 피치 536)', [
-    /오늘도 어르신의 요양일지를 확인해보세요\./,
+    /오늘도 어르신의 이야기를 확인해보세요\./,
     /오늘도 어르신의 AI 회상 대화 요약을 확인해보세요\./,
     /오늘도 어르신의 활동 사진을 확인해보세요\./,
     /cols: \[407, 890\]/, /w: 394,\n  h: 486,/, /rowPitch: 536/, /photoH: 246/,
@@ -960,7 +978,7 @@ const SCREENS = [
   [`${WEB}/src/pages/guardian/AnalysisPage.tsx`, '보호자 종합 분석: 탭 426/598 · 밑줄 81 @341 · 기간 pill 1249', [
     /left: 426, top: Y\(301\)/, /left: 598, top: Y\(301\)/,
     /h-\[3px\] w-\[81px\] bg-accent/,
-    /<ElderAnalysisCards elderId=\{approvedLink\?\.profile_id\} months=\{months\} \/>/,
+    /<ElderAnalysisCards elderId=\{approvedLink\?\.profile_id\} months=\{months\} audience="guardian" \/>/,
     /useGuardianElder\(\)/,,
   ]],
   [`${WEB}/src/pages/guardian/AnalysisSessionsPage.tsx`, '보호자 대화 분석 목록: 카드 343 · 행 458 피치 180 · 끝난 대화만', [

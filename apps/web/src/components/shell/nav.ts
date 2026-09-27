@@ -24,6 +24,7 @@ export const CAREGIVER_NAV: NavItem[] = [
 export const GUARDIAN_NAV: NavItem[] = [
   { to: '/guardian', label: '어르신 연결', icon: 'elders', end: true },
   { to: '/guardian/feed', label: '공개된 소식', icon: 'shares' },
-  { to: '/guardian/analysis', label: '분석', icon: 'analysis' },
+  // 파일럿 W3: 보호자 메뉴 = '대화 관찰 리포트'. 사이드바 폭(활성 208)에 한 줄로 들어가지 않아 메뉴 글자만 줄였다(사용자 확정 2026-09-27).
+  { to: '/guardian/analysis', label: '관찰 리포트', icon: 'analysis' },
   { to: '/guardian/settings', label: '설정', icon: 'settings' },
 ];
