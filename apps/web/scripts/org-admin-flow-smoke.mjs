@@ -9,6 +9,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
+import { selectValue } from './select-control.mjs';
 
 const outDir = await mkdtemp(join(tmpdir(), 'giokon-org-ui-'));
 await build({ envDir: false, mode: 'figma', plugins: [{ name: 'org-test-auth', enforce: 'pre', transform(code, id) {
@@ -59,7 +60,7 @@ try {
   // ② 센터장 — 본인 행에는 역할 변경이 없고, 다른 구성원은 확인 후 set_member_role
   await go('/caregiver/org?audit-role=center_director');
   assert.equal(await page.getByLabel('이지은 역할 변경').count(), 0);
-  await page.getByLabel('김요양 역할 변경').selectOption('social_worker');
+  await selectValue(page, '김요양 역할 변경', 'social_worker');
   await page.getByRole('dialog').getByRole('button', { name: '바꾸기' }).click();
   await page.getByText('역할을 바꿨어요.').waitFor();
   assert.deepEqual(calls.filter((c) => c.kind === 'role').map((c) => c.body), [{ p_target: 'u-kim', p_role: 'social_worker' }]);
@@ -81,7 +82,7 @@ try {
 
   // ④ 기관 설정 — 목표 시간·피할 주제(쉼표 구분 → 배열)
   const settingsCard = page.locator('div', { has: page.getByRole('heading', { name: '기관 설정' }) }).last();
-  await page.getByLabel('목표 시간').selectOption('8');
+  await selectValue(page, '목표 시간', '8');
   await page.getByLabel('기본 피할 주제').fill('전쟁, 병원 , 전쟁, 가족사');
   await settingsCard.getByRole('button', { name: '저장' }).click();
   await page.getByText('기관 설정을 저장했어요.').waitFor();

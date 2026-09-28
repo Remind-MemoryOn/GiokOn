@@ -101,7 +101,7 @@ export function SignUpPage() {
       onSubmit={submit}
       submitting={submitting}
       disabled={!isSupabaseConfigured}
-      footerLink={{ to: '/login', label: '이미 계정이 있으신가요? 로그인' }}
+      footerLink={{ to: '/login', prefix: '이미 계정이 있으신가요?', label: '로그인' }}
     >
       {/* 마지막 입력(689+57) 과 CTA(801) 사이 — 결과 안내만 들어간다. */}
       {sentTo ? (

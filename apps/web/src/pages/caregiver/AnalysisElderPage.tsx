@@ -1,3 +1,4 @@
+import { PeriodSelect } from '../../components/ui/PeriodSelect';
 // 분석 — 개인별 종합 (Figma 228:4091 — 1440×3624)
 //   제목 @(322,186) · 부제 @(322,236.13) · 목록으로 @(1285,187.1) ·
 //   탭 @301(활성=종합 분석, 밑줄 81×3 @341) · 기간 pill 127×30 @(1249,292)
@@ -7,7 +8,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useProfile } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { ElderAnalysisCards } from '../../components/analysis-comprehensive';
-import { PERIODS, Y, type Months } from '../../lib/analysis';
+import { Y, type Months } from '../../lib/analysis';
 import { useElderProfile } from '../../lib/elderProfile';
 
 export function AnalysisElderPage() {
@@ -71,37 +72,7 @@ export function AnalysisElderPage() {
       </Link>
 
       {/* 기간 — 시안은 '최근 3개월' 하나지만 실제로는 고를 수 있어야 한다 */}
-      <div
-        data-fx="228:4172"
-        className="absolute h-[30px] w-[127px] rounded-[5px] border border-ink-500/30 bg-ink-500/[0.03]"
-        style={{ left: 1249, top: Y(292) }}
-      >
-        <span
-          data-fx="228:4174"
-          className="pointer-events-none absolute left-[19px] whitespace-nowrap text-[16px] leading-[23px] text-ink-500"
-        >
-          최근 {months}개월
-        </span>
-        <img
-          src={asset.iconChevronDownSm}
-          alt=""
-          width={12}
-          height={7.81}
-          className="pointer-events-none absolute left-[109px] top-1/2 block -translate-y-1/2"
-        />
-        <select
-          aria-label="분석 기간"
-          value={months}
-          onChange={(e) => setMonths(Number(e.target.value) as (typeof PERIODS)[number])}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        >
-          {PERIODS.map((m) => (
-            <option key={m} value={m}>
-              최근 {m}개월
-            </option>
-          ))}
-        </select>
-      </div>
+      <PeriodSelect months={months} onChange={setMonths} fxBox="228:4172" fxLabel="228:4174" />
 
       <ElderAnalysisCards elderId={elderId} months={months} />
     </div>

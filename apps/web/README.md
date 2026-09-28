@@ -60,3 +60,8 @@ pnpm check:a11y                   # 대비 등 접근성 감사 (대비는 현�
 
 권한 판단은 화면마다 역할 문자열을 비교하지 않고 `useHasCapability`(`packages/data`) 하나로 한다.
 `= 'caregiver'` 비교는 새 역할(사회복지사·센터장)을 조용히 빼 버린다.
+
+### ✅ 2026-09-28 — 웹 디자인 수정사항 반영
+- 사용자 제공 `디자인 수정사항.txt`: 보호자 날짜 필터·연결 어르신 선택·화살표 정렬, 가입 하단 로그인 링크, 읽은 알림 숨김·긴 텍스트 말줄임을 구현했다.
+- 웹 전체 선택 메뉴를 공통 `Select`로 통일했다. 기간 선택은 `PeriodSelect`, 세션/보호자 날짜 필터는 `DateFilter`를 공유한다. 사용자 요청으로 달라진 정렬은 Figma 검사에 사유를 기록했다.
+- 검증: `pnpm -F @giokon/web test:design-feedback` 및 `test:org`·`test:plan`·`test:grade` 통과. 운영 배포는 별도다. 구현 규칙은 `apps/web/AGENTS.md`의 같은 날짜 기록을 따른다.

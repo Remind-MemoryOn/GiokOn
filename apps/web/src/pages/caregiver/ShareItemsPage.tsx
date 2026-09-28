@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/Select';
 // 공개 관리 — 항목 목록 (Figma 140:121 전체 · 146:429 요양일지 · 146:824 AI 회상 대화 요약)
 //   한 화면의 세 탭이다 — `?tab=journal|analysis` 로 고른다(기본 전체).
 //   제목 @(322,186) · 부제 @(322,236.14) · 목록으로 @(1285,197.12) ·
@@ -339,7 +340,7 @@ export function ShareItemsPage() {
           height={7.81}
           className="pointer-events-none absolute left-[90px] top-1/2 block -translate-y-1/2"
         />
-        <select
+        <Select
           aria-label="목록 정렬"
           value={order}
           onChange={(e) => setOrder(e.target.value as 'desc' | 'asc')}
@@ -347,7 +348,7 @@ export function ShareItemsPage() {
         >
           <option value="desc">최신순</option>
           <option value="asc">오래된순</option>
-        </select>
+        </Select>
       </div>
 
       <div

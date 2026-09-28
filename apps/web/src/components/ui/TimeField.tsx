@@ -1,3 +1,4 @@
+import { Select } from './Select';
 import type { CSSProperties } from 'react';
 import { asset } from '../../assets/ui';
 
@@ -6,7 +7,7 @@ import { asset } from '../../assets/ui';
 // 왜 네이티브 `<input type="time">` 을 쓰지 않나(2026-09-11 사용자 신고):
 //   ① 브라우저가 **자체 시계 아이콘**을 그려서 시안 아이콘과 **두 개**로 보였다.
 //   ② 한국어 로캘에서 크롬이 **오전/오후**로 쪼개 보여 준다 — 24시간제를 강제할 방법이 없다.
-// 그래서 `<select>` 두 개로 직접 만든다. 값 형식은 그대로 `HH:MM` 이라 저장·불러오기는
+// 그래서 `<Select>` 두 개로 직접 만든다. 값 형식은 그대로 `HH:MM` 이라 저장·불러오기는
 // 바뀌지 않는다(`session`/`program_journals.operated_from` 이 time 컬럼).
 //
 // 분은 5분 단위다 — 요양일지의 활동 시간은 분 단위 정밀도를 요구하지 않고,
@@ -44,7 +45,7 @@ export function TimeField({ value, onChange, label, disabled, className, style, 
         {value ? `${h}:${m}` : <span className="text-ink-500">--:--</span>}
       </span>
       {/* 시 */}
-      <select
+      <Select
         aria-label={`${label} (시)`}
         value={h}
         disabled={disabled}
@@ -57,9 +58,9 @@ export function TimeField({ value, onChange, label, disabled, className, style, 
             {v}시
           </option>
         ))}
-      </select>
+      </Select>
       {/* 분 */}
-      <select
+      <Select
         aria-label={`${label} (분)`}
         value={m}
         disabled={disabled}
@@ -72,7 +73,7 @@ export function TimeField({ value, onChange, label, disabled, className, style, 
             {v}분
           </option>
         ))}
-      </select>
+      </Select>
       <img
         src={asset.iconClockField}
         alt=""

@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/Select';
 // 회상 세션 설계 (Figma 196:272 — 카드 1054×919, 세션 목록 위에 뜨는 모달)
 //   제목 Bold 25/70 @(87,27) · 세션 제목* 879×57 @(87,139.15) + 0/50
 //   목표* 879×57 @(87,252.27) + 0/200 · 예상 소요 시간 142×57 @(87,368.40)
@@ -288,7 +289,7 @@ function Form({
             height={13.02}
             className="pointer-events-none absolute left-[97.13px] top-1/2 block -translate-y-1/2"
           />
-          <select
+          <Select
             id="p-minutes"
             value={v.minutes}
             onChange={(e) => set('minutes', Number(e.target.value))}
@@ -299,7 +300,7 @@ function Form({
                 {m}분
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <Label fx="195:406" left={264} top={333.36} htmlFor="p-date">

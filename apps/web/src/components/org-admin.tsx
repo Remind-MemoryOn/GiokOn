@@ -1,3 +1,4 @@
+import { Select } from './ui/Select';
 // 기관 관리 — 권한 위임 · 기관 설정 카드 (파일럿 W6 후반 · SCR-W18 — Figma 시안 없음)
 //
 // 시안이 없는 카드라 기관 관리의 **카드2(구성원) 리듬을 그대로** 쓴다(계획 §7 디자인 결정 2026-09-24):
@@ -69,7 +70,7 @@ function FieldSelect({ id, value, onChange, disabled, left, top, width, children
 }) {
   return (
     <div className="absolute" style={{ left, top, width, height: 57.05 }}>
-      <select
+      <Select
         id={id}
         value={value}
         disabled={disabled}
@@ -77,7 +78,7 @@ function FieldSelect({ id, value, onChange, disabled, left, top, width, children
         className={cn(INPUT, 'left-0 top-0 w-full cursor-pointer appearance-none pr-[56px] disabled:cursor-not-allowed')}
       >
         {children}
-      </select>
+      </Select>
       <img
         src={asset.iconChevronDownLg}
         alt=""

@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { useProfile, useSessions } from '@giokon/data';
 import { asset } from '../../assets/ui';
+import { DateFilter } from '../../components/ui/DateFilter';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
 import { Y } from '../../lib/figmaY';
@@ -75,41 +76,7 @@ export function SessionListPage() {
         돌아가기
       </Link>
 
-      {/* 날짜 선택 — 여는 화면이 디자인에 없어 네이티브 날짜 선택기를 투명하게 덮는다 */}
-      <div
-        data-fx="178:1031"
-        className="absolute left-[1203px] h-[37.04px] w-[170px] rounded-[5px] border border-line bg-white focus-within:border-accent"
-        style={{ top: Y(256.25) }}
-      >
-        <img
-          src={asset.iconCalendarSm}
-          alt=""
-          width={22}
-          height={22}
-          className="pointer-events-none absolute left-[13px] top-1/2 block -translate-y-1/2"
-        />
-        <span
-          data-fx="178:1032"
-          className="pointer-events-none absolute left-[47px] top-1/2 -translate-y-1/2 whitespace-nowrap text-[16px] leading-[30px] text-ink-500"
-        >
-          {day ? day.replace(/-/g, '.') : '날짜 선택하기'}
-        </span>
-        <img
-          src={asset.iconChevronDownSm}
-          alt=""
-          width={12}
-          height={7.81}
-          className="pointer-events-none absolute left-[144px] top-1/2 block -translate-y-1/2"
-        />
-        <input
-          type="date"
-          aria-label="세션 날짜로 거르기"
-          value={day}
-          onChange={(e) => setDay(e.target.value)}
-          onClick={(e) => e.currentTarget.showPicker?.()}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        />
-      </div>
+      <DateFilter value={day} onChange={setDay} label="세션 날짜로 거르기" fxBox="178:1031" fxLabel="178:1032" style={{ top: Y(256.25) }} />
 
       <div
         data-fx="178:745"

@@ -9,6 +9,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
+import { selectField, selectValue } from './select-control.mjs';
 
 const outDir = await mkdtemp(join(tmpdir(), 'giokon-plan-ui-'));
 await build({ envDir: false, mode: 'figma', plugins: [{ name: 'plan-test-auth', enforce: 'pre', transform(code, id) {
@@ -44,13 +45,13 @@ try {
 
   // ① ② ③ 새 세션
   await open('/caregiver/sessions/e1/new?audit-plan=1');
-  const minutes = page.getByLabel('목표 시간');
+  const minutes = selectField(page, '목표 시간');
   assert.deepEqual(await minutes.locator('option').evaluateAll((os) => os.map((o) => o.value)), ['5', '6', '7', '8', '9', '10']);
   assert.equal(await minutes.inputValue(), '8');
   assert.equal(await page.getByLabel('피해갈 내용').inputValue(), '전쟁, 돌아가신 가족');
   const preview = page.getByRole('note', { name: '진행 단계 미리보기' });
   assert.match(await preview.innerText(), /도입 ~1분 → 회상 ~5분 30초 → 마무리 1분 30초/);
-  await minutes.selectOption('10');
+  await selectValue(page, '목표 시간', '10');
   assert.match(await preview.innerText(), /회상 ~7분 30초/);
   await page.getByLabel('세션 제목').fill('고향 이야기');
   await page.getByLabel('목표', { exact: true }).fill('고향 집을 떠올린다');
@@ -65,7 +66,7 @@ try {
 
   // ④ 30분으로 설계돼 있던 세션 — 10분으로 보이고 안내가 뜨며, 기존 피해갈 내용은 그대로
   await open('/caregiver/sessions/e1/plan/sp-old?audit-plan=1');
-  assert.equal(await page.getByLabel('목표 시간').inputValue(), '10');
+  assert.equal(await selectField(page, '목표 시간').inputValue(), '10');
   assert.match(await page.getByRole('note', { name: '진행 단계 미리보기' }).innerText(), /기존 설계 30분 → 최대 10분으로 진행돼요/);
   assert.equal(await page.getByLabel('피해갈 내용').inputValue(), '병원');
   await page.getByRole('button', { name: '저장' }).click();

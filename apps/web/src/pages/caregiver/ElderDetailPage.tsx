@@ -200,7 +200,8 @@ function InfoRow({ fx, top, label, value }: { fx: string; top: number; label: st
       </span>
       <span
         data-fx={fx}
-        className="absolute left-[485px] text-w-body font-medium leading-[28px] text-ink-900"
+        className="absolute left-[485px] max-w-[231px] truncate text-w-body font-medium leading-[28px] text-ink-900"
+        title={value}
         style={{ top: Y(top) }}
       >
         {value}

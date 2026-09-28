@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/Select';
 // 기관 관리 (Figma 131:959 — 1440×1238)
 //   제목 @169 · 부제 w547 @236.19
 //   카드1 1054×360 @(322,315) — 기관 정보
@@ -429,7 +430,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                         className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
                         style={{ left: 170 - 26 }}
                       />
-                      <select
+                      <Select
                         aria-label={`${m.name ?? '구성원'} 역할 변경`}
                         value={m.role}
                         disabled={setRole.isPending || !isConfigured}
@@ -441,7 +442,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                             {ORG_ROLE_LABEL[r]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                   ) : null}
                   {i < rows.length - 1 ? (
@@ -594,7 +595,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                   className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
                   style={{ left: dd.width - 26 }}
                 />
-                <select
+                <Select
                   id={dd.id}
                   aria-label={dd.label}
                   value={dd.value}
@@ -606,7 +607,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             ))}
             <button

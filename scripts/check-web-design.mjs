@@ -642,7 +642,14 @@ const SCREENS = [
     /h-\[1885px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
     /h-\[1780px\] w-\[1054px\] rounded-\[10px\] bg-white shadow-card/,
     /text-w-nav font-semibold leading-\[30px\] text-accent/,
+    /<PeriodSelect months=\{months\} onChange=\{setMonths\}/,
+  ]],
+  // 2026-09-28 사용자 요청: 네 분석 화면의 기간 선택을 공통화. 기존 치수 검사는 부품으로 이동한다.
+  [`${WEB}/src/components/ui/PeriodSelect.tsx`, '공통 분석 기간: 기존 127×30 유지 · 글자와 화살표 중앙 정렬', [
     /h-\[30px\] w-\[127px\] rounded-\[5px\] border border-ink-500\/30/,
+    /left-\[19px\] top-1\/2 -translate-y-1\/2/,
+    /left-\[97px\] top-1\/2 block -translate-y-1\/2/,
+    /<Select aria-label="분석 기간"/,
   ]],
   [`${WEB}/src/pages/caregiver/AnalysisPage.tsx`, '분석: 틴트 카드(accent 3% + 30% 테두리 r5) · TOP5 트랙 707×12 · 축 카드 156×176', [
     /const TINT = 'absolute rounded-\[5px\] border border-accent\/30 bg-accent\/\[0\.03\]'/,

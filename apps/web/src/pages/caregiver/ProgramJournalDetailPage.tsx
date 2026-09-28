@@ -1,3 +1,4 @@
+import { Select as StyledSelect } from '../../components/ui/Select';
 // 프로그램 일지 상세·작성 (파일럿 W1 · SCR-W16 — Figma 시안 없음)
 //
 // 시안이 없는 화면이라 기존 요양일지 작성(221:283) 체계를 그대로 쓴다(계획 §7 디자인 결정 2026-09-24):
@@ -210,7 +211,7 @@ function Select({ id, value, onChange, disabled, children, label }: {
 }) {
   return (
     <div className="relative">
-      <select
+      <StyledSelect
         id={id}
         aria-label={label}
         value={value}
@@ -219,7 +220,7 @@ function Select({ id, value, onChange, disabled, children, label }: {
         className={cn(INPUT, 'cursor-pointer appearance-none pr-[56px] disabled:cursor-not-allowed')}
       >
         {children}
-      </select>
+      </StyledSelect>
       <img
         src={asset.iconChevronDownLg}
         alt=""
