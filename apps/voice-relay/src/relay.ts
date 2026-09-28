@@ -1,7 +1,7 @@
 import { WebSocket, type RawData } from 'ws'
 import type { GeminiTtsConfig } from './output'
 import { synthesizeValidated } from './output'
-import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, safetyEventDraftFor, shouldAdvancePhase, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
+import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, relaySafetySummary, safetyEventDraftFor, shouldAdvancePhase, type RelaySafetySummary, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
 
 /**
  * 서버(session_tick RPC) 한 번의 판정 — 파일럿 D6·C3. 2초 폴이 이 값 하나로 허용 여부·단계·원격 제어를 함께 받는다.
@@ -141,8 +141,9 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
    * 위험 발화 → 멈춘다. 먼저 모델·앱으로의 전달을 끊고(controlled), 안전 이벤트를 즉시 기록한 뒤
    * 기록 id 를 오류 알림에 실어 보내고 닫는다. 앱은 그 id 로 같은 사건을 다시 기록하지 않는다
    * (id 를 모르는 구버전 앱은 알 수 없는 칸을 무시한다). 기록이 실패·지연돼도 멈춤은 늦추지 않는다(상한 3초).
+   * 판정 요약(`safety` — 수준·분류·알림 종류, 원문 없음)도 함께 보내 현장 요양보호사 화면이 위기 종류별 안내를 띄운다(T25.14).
    */
-  async function stopForReview(draft: SafetyEventDraft | null) {
+  async function stopForReview(draft: SafetyEventDraft | null, summary: RelaySafetySummary | null) {
     if (reviewing || abort.signal.aborted) return
     reviewing = true
     controlled = true
@@ -158,7 +159,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         ])
       } catch { safetyEventId = undefined } finally { clearTimeout(timer) }
     }
-    send({ relayError: { code: 'INPUT_REVIEW_REQUIRED', ...(safetyEventId ? { safetyEventId } : {}) } })
+    send({ relayError: { code: 'INPUT_REVIEW_REQUIRED', ...(safetyEventId ? { safetyEventId } : {}), ...(summary ? { safety: summary } : {}) } })
     close()
   }
   /** 단계 지시는 **턴 사이**에만 넣는다 — 모델 생성·재생 대기·어르신 발화 중이면 다음 기회로 미룬다. */
@@ -234,7 +235,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               safetyInput = combinedInput.slice(-4000)
               if (assessment.escalate || assessment.hasDistressSignal ||
                   assessment.situation === 'rest_request' || assessment.situation === 'refusal') {
-                void stopForReview(safetyEventDraftFor(assessment, combinedInput.slice(-SAFETY_EXCERPT_WINDOW)))
+                void stopForReview(safetyEventDraftFor(assessment, combinedInput.slice(-SAFETY_EXCERPT_WINDOW)), relaySafetySummary(assessment))
                 return
               }
             }

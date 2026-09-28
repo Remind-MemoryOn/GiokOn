@@ -79,12 +79,12 @@ describe('real local WebSocket relay', () => {
     await new Promise(resolve=>setTimeout(resolve,10));
     expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(false);
   })
-  it.each(['그만할래요','죽고 싶어요'])('ends even an idle playback wait when late input requires intervention: %s',async text=>{
+  it.each([['그만할래요',undefined],['죽고 싶어요',{ level: 'crisis', categories: ['self_harm'], alert: 'self_harm' }]] as const)('ends even an idle playback wait when late input requires intervention: %s',async (text,safety)=>{
     const f=await fixture();await f.start(2);f.turn();
     await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
     const closed=once(f.app,'close');
     f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text}}}));await closed;
-    expect(f.frames.at(-1)).toEqual({relayError:{code:'INPUT_REVIEW_REQUIRED'}});
+    expect(f.frames.at(-1)).toEqual({relayError:{code:'INPUT_REVIEW_REQUIRED',...(safety ? {safety} : {})}});
     expect(f.release).toHaveBeenCalledOnce();
   })
   it('clears the response deadline once the completed turn enters playback',async()=>{
@@ -302,7 +302,9 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     expect(draft.categories).toContain('self_harm')
     expect(draft.excerpt).toContain('죽고 싶어요')
     expect(draft.caregiverAlert).toContain('109')
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID } })
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID, safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
+    // 원문·발췌·매칭 단어는 앱으로 가지 않는다(기록에만 남는다).
+    expect(JSON.stringify(f.frames.at(-1))).not.toContain('죽고')
   })
 
   it('stops without an id when recording fails — the app records it on save instead', async () => {
@@ -312,7 +314,8 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '숨이 안 쉬어져요' } } }))
     await closed
     expect(recordSafety).toHaveBeenCalledOnce()
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED' } })
+    // 기록이 실패해도 판정 요약은 간다 — 앱이 같은 수준·분류로 대신 기록한다.
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safety: { level: 'crisis', categories: ['medical_emergency'], alert: 'medical_emergency' } } })
   })
 
   it('does not wait longer than the recording timeout to stop', async () => {
@@ -324,7 +327,7 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     await closed
     expect(Date.now() - started).toBeGreaterThanOrEqual(SAFETY_RECORD_TIMEOUT_MS - 100)
     expect(Date.now() - started).toBeLessThan(SAFETY_RECORD_TIMEOUT_MS + 2000)
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED' } })
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
   })
 
   it('forwards nothing more to the model or the elder while recording', async () => {
@@ -341,7 +344,7 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(false)
     const closed = once(f.app, 'close')
     finish(EVENT_ID); await closed
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID } })
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID, safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
   })
 
   it('records only once even when the risky phrase keeps arriving', async () => {
@@ -355,6 +358,15 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     finish(EVENT_ID); await closed
     expect(recordSafety).toHaveBeenCalledOnce()
     expect(f.frames.filter(x => x.relayError)).toHaveLength(1)
+  })
+
+  it('sends a watch-level summary for a distress signal', async () => {
+    const recordSafety = vi.fn(async () => EVENT_ID)
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '자식들한테 짐만 되는 것 같아' } } }))
+    await closed
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID, safety: { level: 'watch', categories: [], alert: 'distress' } } })
   })
 
   it('does not record a plain rest request as a safety event (no risk) but still stops', async () => {

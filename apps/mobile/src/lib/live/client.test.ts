@@ -41,25 +41,51 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     expect(onError.mock.calls[0]?.[0].message).not.toContain('untrusted');
     expect(client.isConnected).toBe(false);expect(await reply).toBe('timeout');
   });
-  it('hands the relay-recorded safety event id over before reporting the review stop (T21.4)', async () => {
-    const onError = vi.fn(), onSafetyRecorded = vi.fn(), order: string[] = [];
+  it('hands the relay-recorded safety event id and verdict over before reporting the review stop (T21.4 · T25.14)', async () => {
+    const onError = vi.fn(), onRelayReview = vi.fn(), order: string[] = [];
     onError.mockImplementation(() => order.push('error'));
-    onSafetyRecorded.mockImplementation(() => order.push('safety'));
-    const client = new GeminiLiveClient({ onError, onSafetyRecorded }, RELAY);
+    onRelayReview.mockImplementation(() => order.push('safety'));
+    const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);
     const connecting = client.connect(); const socket = Socket.all[0];
     socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
-    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' } });
-    expect(onSafetyRecorded).toHaveBeenCalledExactlyOnceWith('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+    const safety = { level: 'crisis', categories: ['abuse'], alert: 'abuse' };
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', safety } });
+    expect(onRelayReview).toHaveBeenCalledExactlyOnceWith({ eventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', safety });
     expect(order).toEqual(['safety', 'error']);
     expect(onError.mock.calls[0]?.[0].message).toContain('담당자 확인');
   });
-  it.each([undefined, 'not-a-uuid', 12])('ignores a missing or malformed safety event id: %s', async (safetyEventId) => {
-    const onError = vi.fn(), onSafetyRecorded = vi.fn();
-    const client = new GeminiLiveClient({ onError, onSafetyRecorded }, RELAY);
+  it('passes the verdict even when the relay could not record the event (T25.14)', async () => {
+    const onError = vi.fn(), onRelayReview = vi.fn();
+    const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);
     const connecting = client.connect(); const socket = Socket.all[0];
     socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
-    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId } });
-    expect(onSafetyRecorded).not.toHaveBeenCalled();
+    const safety = { level: 'watch', categories: [], alert: 'distress' };
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safety } });
+    expect(onRelayReview).toHaveBeenCalledExactlyOnceWith({ safety });
+    expect(onError).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ['no id and no verdict', {}],
+    ['malformed id', { safetyEventId: 'not-a-uuid' }],
+    ['numeric id', { safetyEventId: 12 }],
+    ['unknown verdict', { safety: { level: 'crisis', categories: ['theft'], alert: 'self_harm' } }],
+    ['verdict carrying raw text', { safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm', excerpt: 'raw' } }],
+  ])('ignores %s but still reports the stop', async (_, extra) => {
+    const onError = vi.fn(), onRelayReview = vi.fn();
+    const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);
+    const connecting = client.connect(); const socket = Socket.all[0];
+    socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', ...extra } });
+    expect(onRelayReview).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledOnce();
+  });
+  it('does not treat other relay errors as a review stop', async () => {
+    const onError = vi.fn(), onRelayReview = vi.fn();
+    const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);
+    const connecting = client.connect(); const socket = Socket.all[0];
+    socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+    await socket.receive({ relayError: { code: 'RESPONSE_TIMEOUT', safetyEventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' } });
+    expect(onRelayReview).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledOnce();
   });
   it('relay mode sends Supabase auth in the first frame, never the URL or a Gemini token', async () => {

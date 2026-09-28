@@ -303,14 +303,29 @@ export const CRISIS_CAREGIVER_ALERT: Record<CrisisCategory, string> = {
 export const DISTRESS_CAREGIVER_NOTE =
   '⚠️ 정서적으로 힘들다는 표현이 있었어요. 세션 후 어르신 상태를 살펴봐 주세요. (진단 아님)'
 
+/**
+ * 요양보호사 알림의 종류 — 문구는 이 키 하나로 정해진다. 음성 중계는 원문 대신 이 키를 앱에 보내고(파일럿 T25.14),
+ * 앱은 `caregiverAlertText` 로 DB `caregiver_alert` 와 같은 문구를 만든다.
+ */
+export type CaregiverAlertKind = CrisisCategory | 'distress'
+export const CAREGIVER_ALERT_KINDS: readonly CaregiverAlertKind[] = ['self_harm', 'medical_emergency', 'abuse', 'distress']
+
+/** 상황 평가 → 알림 종류(알림 불필요 시 null). */
+export function caregiverAlertKind(a: UtteranceAssessment): CaregiverAlertKind | null {
+  if (a.situation === 'crisis' && a.crisisCategories.length > 0) return a.crisisCategories[0]
+  // 중단 요청과 겹친 고통 신호도 알림은 유지한다(존중과 관찰을 둘 다).
+  if (a.situation === 'distress' || a.hasDistressSignal) return 'distress'
+  return null
+}
+
+export function caregiverAlertText(kind: CaregiverAlertKind): string {
+  return kind === 'distress' ? DISTRESS_CAREGIVER_NOTE : CRISIS_CAREGIVER_ALERT[kind]
+}
+
 /** 상황 평가로부터 보호자 알림 문구를 만든다(알림 불필요 시 null). */
 export function buildCaregiverAlert(a: UtteranceAssessment): string | null {
-  if (a.situation === 'crisis' && a.crisisCategories.length > 0) {
-    return CRISIS_CAREGIVER_ALERT[a.crisisCategories[0]]
-  }
-  // 중단 요청과 겹친 고통 신호도 알림은 유지한다(존중과 관찰을 둘 다).
-  if (a.situation === 'distress' || a.hasDistressSignal) return DISTRESS_CAREGIVER_NOTE
-  return null
+  const kind = caregiverAlertKind(a)
+  return kind ? caregiverAlertText(kind) : null
 }
 
 // ─────────────────────────────────────────────────────────────
