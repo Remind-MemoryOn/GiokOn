@@ -135,7 +135,7 @@
 ## Supabase
 - **운영 프로젝트 = `MemoryOn`(ref `ufkbzpdjomtmxjipmwub`, 서울 ap-northeast-2)** — 앱·웹이 함께
   쓰는 실 DB다. 데이터 국내 보관 요건 충족. (구 도쿄 `GiokOn`/`xilmtqnotomuyjifenmo` 는 이전 완료로 사용하지 않는다.)
-- 마이그레이션 **63종 전부 운영 적용**(2026-09-24 D5 `20260924070000` + 법률 동의 `20260924080000`·`090000` 포함 — 뒤 2건은 `jinwoo` 브랜치(PR #17)에 있고 main 병합 대기)(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것). ✅ **2026-09-24 사용자 지시로 미적용 8건 적용**: 전사 출처(`20260919175923`) + 파일럿 `20260924000000`~`060000`(060000 은 적용 직후 보안 advisor 가 잡은 `app.default_capability_roles` search_path 고정). MCP 적용 후 이력 버전을 **파일명으로 정정** — 저장소에만 있는 버전 0건. 라이브에만 있는 이력 2건: `20260903002002`(아래 ℹ️) · `20260921000000_backfill_orphan_auth_users`(누군가 SQL 로 직접 넣은 데이터 보정 — 저장소 파일 없음, 그대로 둔다). 적용 전 점검: `chronicle_entries` 기관 불일치 0 · 활성 세션 0 · ALTER POLICY 대상 29개 존재. advisor 잔여 경고는 기존 유형(authenticated 가 부르는 definer RPC = 설계, `find_login_email` = 의도, `list_inquiries`·`rls_auto_enable` anon 실행 = 적용 전부터 — 후자는 저장소에 없는 대시보드 생성 함수).
+- 마이그레이션 **63종 전부 운영 적용**(2026-09-24 D5 `20260924070000` + 법률 동의 `20260924080000`·`090000` 포함 — 뒤 2건은 `jinwoo` 브랜치(PR #17)에 있고 main 병합 대기)(`supabase/migrations/*.sql` 파일 수 기준 — 세는 법을 바꾸지 말 것). ✅ **2026-09-24 사용자 지시로 미적용 8건 적용**: 전사 출처(`20260919175923`) + 파일럿 `20260924000000`~`060000`(060000 은 적용 직후 보안 advisor 가 잡은 `app.default_capability_roles` search_path 고정). MCP 적용 후 이력 버전을 **파일명으로 정정** — 저장소에만 있는 버전 0건. 라이브에만 있던 이력 2건: `20260903002002`(아래 ℹ️) · `20260921000000_backfill_orphan_auth_users`(누군가 SQL 로 직접 넣은 데이터 보정) → ✅ 2026-09-28 저장소에 **빈 파일**로 맞춤(운영 이력은 그대로). 적용 전 점검: `chronicle_entries` 기관 불일치 0 · 활성 세션 0 · ALTER POLICY 대상 29개 존재. advisor 잔여 경고는 기존 유형(authenticated 가 부르는 definer RPC = 설계, `find_login_email` = 의도, `list_inquiries`·`rls_auto_enable` anon 실행 = 적용 전부터 — 후자는 저장소에 없는 대시보드 생성 함수).
   16+ 테이블·RLS·가입 트리거 `handle_new_user`→`public.users`·org RBAC·감사 로그 +
   2026-09 보안 하드닝 R002·R005·R007·R010~R012).
 - ✅ **마이그레이션 이력 정합 완료(2026-09-13, 사용자 승인 후 적용)**. 그전까지는 이력이
@@ -271,8 +271,8 @@
 | 7 | WT6 | W3·W4 일부 · T20.9 | 보호자 `분석`→`대화 관찰 리포트` · 고정 문구 · `session_summary` 미렌더 버그 · 죽은 `'report'` | ✅ 2026-09-27 웹 + DB `20260927000000` 운영 적용 — 아래 "W3·W4 완료" |
 | 8 | WT8 | W8 · T24.3 | 어르신 `care_grade` | ✅ 2026-09-27 웹 — 아래 "W8 완료" |
 | — | WT1 | W7 · T24.1 | 어르신 동의 화면 | ✅ main 병합(2026-09-25) |
-| 9 | 감사 ← 지금 | T25.1 | 🔴 Storage 사진 정책 교정(운영 사진 전부 거부 + UUID 이름 우회) — DB | 🔶 코드·로컬 회귀 ✅ · 운영 적용 승인 대기 |
-| 10 | 감사 | T25.2 | 일지 사진 부분 실패·새 일지 중복 — 웹 | ⏳ |
+| 9 | 감사 | T25.1 | 🔴 Storage 사진 정책 교정(운영 사진 전부 거부 + UUID 이름 우회) — DB | ✅ 2026-09-28 운영 적용 · ⏳ 실사용 사진 확인 |
+| 10 | 감사 ← 다음 | T25.2 | 일지 사진 부분 실패·새 일지 중복 — 웹 | ⏳ |
 | 11 | 감사 | T25.3 | 일지 승인·확정 버전 충돌(`updated_at` 조건) — 웹·data | ⏳ |
 | 12 | 감사 | T25.4 | 권한 위임 표 `share_revoke`·`guardian_link_approve` DB 강제 — DB·웹 | ⏳ |
 | 13 | 감사 | T25.5 | AI 초안 워커 동의 철회 재확인 — DB·Edge | ⏳ |
@@ -292,14 +292,19 @@
 | 21 | 감사 | T25.13 | 유출 비밀번호 보호 켜기(사용자 · 낮음) | ⏳ 사용자 |
 | 후속 | — | D11 후속 | `terms_required` DB 필수화 — 운영 웹 배포(T25.9) 확인 뒤(DB 파트) | ⏳ |
 
-#### 🔶 2026-09-28 T25.1 Storage 사진 정책 교정 — 코드 완료 · 운영 적용 대기
+#### ✅ 2026-09-28 T25.1 Storage 사진 정책 교정 — 운영 적용
 - 마이그레이션 `20260928000000_storage_photo_policy_fix.sql`: 경로 판정을 **인자로 경로를 받는 함수** `app.storage_path_in_my_org(p_object_name)`
   (돌봄팀 + 경로 첫 구간 어르신이 내 기관) 하나로 모으고 `elder_photos_*`·`journal_photos_*` 8개를 재생성 — 정책 안에서는 `objects.name` 을 인자로 넘긴다.
   수정(UPDATE)은 USING·WITH CHECK 둘 다 → 다른 기관 폴더로 옮기기 거부. 판정 기준을 `current_org_role() <> 'guardian'` → `app.is_care_team()`.
 - ⚠️ **회귀 공백 해소**: `supabase/tests/_supabase_shims.sql` 에 `storage.buckets`·`storage.objects` 최소 스텁(RLS 켜짐) — 이게 없어 사진 정책
   마이그레이션이 통째로 건너뛰어졌었다. 새 회귀 `storage_policies.sql`(두 버킷 × 자기 기관 CRUD · 타 기관 0건/거부 · 보호자 불가 ·
   UUID 이름 우회 · 경로 이동 거부 · 정책 정의). **교정 마이그레이션을 빼고 돌리면 실패**(정의 단언 + 동작 단언 각각 확인).
-- ⏳ 운영 적용은 사용자 승인 후. 적용 뒤: 정책 8개 정의 재확인(읽기) · 웹에서 어르신 사진 업로드·표시 확인.
+- ✅ **운영 적용 2026-09-28**(사용자 승인) — MCP 적용 후 이력 버전을 `20260928000000` 으로 맞춤 · 읽기 확인: 정책 8개 모두 `storage_path_in_my_org` 사용 ·
+  `p.name` 참조 0 · INSERT/UPDATE WITH CHECK 있음 · anon 실행 불가/authenticated 가능. ⏳ 실제 사진 업로드·표시(웹·앱)는 사용자 확인.
+- ✅ **운영 전용 이력 2건을 저장소에 빈 파일로 맞춤(2026-09-28 사용자 결정)** — `20260903002002_inquiries_revoke_anon_history.sql` ·
+  `20260921000000_backfill_orphan_auth_users_history.sql`(둘 다 `select 1;` — 본문을 넣지 말 것). 운영 이력은 그대로(지우지 않음).
+  이유: Supabase Preview 체크가 "Remote migration versions not found in local migrations directory" 로 **마이그레이션이 바뀌는 모든 PR 에서 실패**했다(PR #26·#29).
+  이제 **저장소 ↔ 운영 버전 차이 0건**.
 
 #### 2026-09-27 감사 보고서 검증 — 최종 반영(사용자 검토 반영)
 외부 감사 보고서(2026-09-27, 기준 `ecb04fc`)를 **웹·Supabase·마이그레이션·작업 예약·Edge·Storage·AI 초안·Vercel** 범위에서 코드·운영 카탈로그(읽기 전용)로 대조했고,
