@@ -19,7 +19,8 @@ import { queryScope } from '../../src/lib/supabase';
 import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
-import { useElder, useChronicles, useDuePlannedRow } from '../../src/data/reads';
+import { useElder, useChronicles, useDuePlannedFetcher } from '../../src/data/reads';
+import { PLAN_UNAVAILABLE_ALERT, resolveStartPlan } from '../../src/features/session/plannedStart';
 import { useSessionPersistence } from '../../src/data/session-persistence';
 import { VOICE_RELAY_MISSING_MESSAGE, voiceRelayUrl } from '../../src/lib/live/relay-config';
 
@@ -29,7 +30,7 @@ export default function SessionStart() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const elder = useElder(id);
   const chronicles = useChronicles(id);
-  const duePlanned = useDuePlannedRow(id);
+  const fetchDuePlanned = useDuePlannedFetcher(id);
   const begin = useApp((s) => s.beginSession);
   const { openRemoteSession, adoptPlannedSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
@@ -58,7 +59,14 @@ export default function SessionStart() {
         router.replace(`/consent/${id}`);
         return;
       }
-      await startSession();
+      // 오늘의 설계는 여기서 새로 조회한 결과로만 정한다(T25.15) — 조회 실패를 '설계 없음'으로 보지 않는다.
+      const plan = await resolveStartPlan(fetchDuePlanned);
+      if (!lease.current()) return;
+      if (plan.kind === 'unavailable') {
+        Alert.alert(PLAN_UNAVAILABLE_ALERT.title, PLAN_UNAVAILABLE_ALERT.body);
+        return;
+      }
+      await startSession(plan.kind === 'planned' ? plan.row : null);
     } catch {
       if (lease.current()) Alert.alert('동의 확인 실패', '동의와 이용 권한을 확인하지 못했어요. 다시 시도해 주세요.');
     } finally {
@@ -67,7 +75,7 @@ export default function SessionStart() {
     }
   };
 
-  const startSession = async () => {
+  const startSession = async (duePlanned: Awaited<ReturnType<typeof fetchDuePlanned>>) => {
     // 웹 설계(planned) 채택 — 설계 값(goal/content/avoid_topics/keywords)이 그대로
     // 이번 대화의 진행 입력이 된다(B1-a·B1-b). 근거가 없는 필드는 넣지 않는다.
     let design: SessionDesign | undefined;
