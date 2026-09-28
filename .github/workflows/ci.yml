@@ -91,6 +91,8 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/journal_worker.sql
       - name: 위험 발화 알림·푸시 큐 회귀 테스트
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/safety_push.sql
+      - name: 안전 이벤트 판정·근거 보호 회귀 테스트
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/safety_evidence.sql
 
   security-audit:
     runs-on: ubuntu-latest

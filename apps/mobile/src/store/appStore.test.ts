@@ -128,6 +128,10 @@ it.each([
   expect(active.safety).toMatchObject({level:'crisis',caregiverAlert:CRISIS_CAREGIVER_ALERT.self_harm,recommendation:'end_session',acknowledged:false});
   expect(active.safety.caregiverAlert).toContain('109');
 });
+it('keeps the relay event id to record under when the relay has not confirmed it yet (T25.17)',()=>{
+  useApp.getState().requireRelayReview({pendingId:'cccccccc-cccc-cccc-cccc-cccccccccccc',safety:{level:'crisis',categories:['abuse'],alert:'abuse'}});
+  expect(useApp.getState().active!.events[0]).toMatchObject({remoteId:null,reservedId:'cccccccc-cccc-cccc-cccc-cccccccccccc',level:'crisis',categories:['abuse']});
+});
 it('shows the distress note at watch level for a relay distress summary (T25.14)',()=>{
   useApp.getState().requireRelayReview({safety:{level:'watch',categories:[],alert:'distress'}});
   expect(useApp.getState().active!.safety).toMatchObject({level:'watch',caregiverAlert:DISTRESS_CAREGIVER_NOTE});

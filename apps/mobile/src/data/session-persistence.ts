@@ -103,29 +103,44 @@ async function writeSafetyEvents(
   for (const ev of events) {
     let next = ev;
     if (next.remoteId === null) {
-      const row = await withRetry(lease, async () => {
-        const { data, error } = await client
-          .from('safety_events')
-          .insert({
-            profile_id: ids.profileId,
-            session_id: ids.sessionId,
-            user_id: ids.userId,
-            level: next.level,
-            categories: next.categories as string[],
-            matched_terms: next.matchedTerms,
-            excerpt: next.excerpt,
-            caregiver_alert: next.caregiverAlert,
-            // DB 제약 safety_events_ack_pair_check: at/by 는 둘 다 또는 둘 다 없음
-            acknowledged_at: next.acknowledgedAt,
-            acknowledged_by: next.acknowledgedAt ? ids.userId : null,
-          })
-          .select('id')
-          .single();
-        if (error) throw new Error(error.message);
-        return data;
-      });
-      next = { ...next, remoteId: row.id, ackSynced: next.acknowledgedAt !== null };
-    } else if (next.acknowledgedAt !== null && !next.ackSynced) {
+      const insert = {
+        profile_id: ids.profileId,
+        session_id: ids.sessionId,
+        user_id: ids.userId,
+        level: next.level,
+        categories: next.categories as string[],
+        matched_terms: next.matchedTerms,
+        excerpt: next.excerpt,
+        caregiver_alert: next.caregiverAlert,
+        // DB 제약 safety_events_ack_pair_check: at/by 는 둘 다 또는 둘 다 없음
+        acknowledged_at: next.acknowledgedAt,
+        acknowledged_by: next.acknowledgedAt ? ids.userId : null,
+      };
+      const reservedId = next.reservedId;
+      if (reservedId) {
+        // T25.17 — 중계가 만든 사건 id 로 '없을 때만' 넣는다. 중계 재시도가 먼저 들어갔으면 아무것도 하지 않는다
+        // (그 행이 근거까지 가진 원본이다). 어느 쪽이 먼저든 사건은 1건 — 확인 시각은 아래에서 따로 반영한다.
+        await withRetry(lease, async () => {
+          const { error } = await client
+            .from('safety_events')
+            .upsert({ ...insert, id: reservedId }, { onConflict: 'id', ignoreDuplicates: true });
+          if (error) throw new Error(error.message);
+        });
+        next = { ...next, remoteId: reservedId, reservedId: null, ackSynced: false };
+      } else {
+        const row = await withRetry(lease, async () => {
+          const { data, error } = await client
+            .from('safety_events')
+            .insert(insert)
+            .select('id')
+            .single();
+          if (error) throw new Error(error.message);
+          return data;
+        });
+        next = { ...next, remoteId: row.id, ackSynced: next.acknowledgedAt !== null };
+      }
+    }
+    if (next.remoteId !== null && next.acknowledgedAt !== null && !next.ackSynced) {
       await withRetry(lease, async () => {
         const { error } = await client
           .from('safety_events')

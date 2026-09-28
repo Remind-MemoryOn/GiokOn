@@ -79,6 +79,23 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     expect(onRelayReview).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledOnce();
   });
+  it('passes a pending relay event id so the app records under the same id (T25.17)', async () => {
+    const onError = vi.fn(), onRelayReview = vi.fn();
+    const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);
+    const connecting = client.connect(); const socket = Socket.all[0];
+    socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+    const safety = { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' };
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', pendingSafetyEventId: 'cccccccc-cccc-cccc-cccc-cccccccccccc', safety } });
+    expect(onRelayReview).toHaveBeenCalledExactlyOnceWith({ pendingEventId: 'cccccccc-cccc-cccc-cccc-cccccccccccc', safety });
+  });
+  it('prefers a confirmed id over a pending one', async () => {
+    const onError = vi.fn(), onRelayReview = vi.fn();
+    const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);
+    const connecting = client.connect(); const socket = Socket.all[0];
+    socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+    await socket.receive({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', pendingSafetyEventId: 'cccccccc-cccc-cccc-cccc-cccccccccccc' } });
+    expect(onRelayReview).toHaveBeenCalledExactlyOnceWith({ eventId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' });
+  });
   it('does not treat other relay errors as a review stop', async () => {
     const onError = vi.fn(), onRelayReview = vi.fn();
     const client = new GeminiLiveClient({ onError, onRelayReview }, RELAY);

@@ -3,12 +3,14 @@ import { once } from 'node:events'
 import type { AddressInfo } from 'node:net'
 import { WebSocket, WebSocketServer } from 'ws'
 import { createRelayServer } from './server'
-import { CONTROL_CLOSE_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, type RelaySession, type SessionTick } from './relay'
+import { CONTROL_CLOSE_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, type RelayDependencies, type RelaySession, type SessionTick } from './relay'
+
+const EVENT_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
 const cleanup: (() => void)[] = []
 afterEach(() => { vi.useRealTimers(); for (const close of cleanup.splice(0)) close() })
 
-async function fixture(respond = true, extra: Partial<RelaySession> = {}) {
+async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsExtra: Partial<RelayDependencies> = {}) {
   const provider = new WebSocketServer({ port: 0, host: '127.0.0.1' })
   await once(provider, 'listening')
   cleanup.push(() => { for (const s of provider.clients) s.terminate(); provider.close() })
@@ -33,7 +35,8 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}) {
   const synthesize = vi.fn(async (text: string) => ({ text, pcm: Buffer.from([1, 0, 2, 0]) }))
   const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', tick, advancePhase, release, ...extra }))
   const connectProvider = vi.fn(() => new WebSocket(`ws://127.0.0.1:${(provider.address() as AddressInfo).port}`))
-  const relay = createRelayServer({ authorize, connectProvider, synthesize, geminiTts: { apiKey: 'synthetic' } })
+  const relay = createRelayServer({ authorize, connectProvider, synthesize, geminiTts: { apiKey: 'synthetic' },
+    newSafetyEventId: () => EVENT_ID, safetyRetry: { attempts: 3, baseDelayMs: 20 }, ...depsExtra })
   relay.server.listen(0, '127.0.0.1'); await once(relay.server, 'listening')
   cleanup.push(relay.close)
   const app = new WebSocket(`ws://127.0.0.1:${(relay.server.address() as AddressInfo).port}/voice`)
@@ -285,11 +288,9 @@ describe('pilot C3 — server phases and remote control', () => {
   }, CONTROL_CLOSE_GRACE_MS + 5000)
 })
 
-describe('T21.4 — 위험 발화 즉시 기록', () => {
-  const EVENT_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
-
-  it('records the safety event before stopping and hands its id to the app', async () => {
-    const recordSafety = vi.fn(async () => EVENT_ID)
+describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시도', () => {
+  it('records the safety event under the relay-made event id before stopping and hands the id to the app', async () => {
+    const recordSafety = vi.fn(async () => {})
     const f = await fixture(true, { recordSafety }); await f.start(2)
     const closed = once(f.app, 'close')
     // 조각으로 나뉘어 와도 감지 창(연결 단위)으로 잡는다 — "죽고 " + "싶어요"
@@ -297,7 +298,8 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '싶어요' } } }))
     await closed
     expect(recordSafety).toHaveBeenCalledOnce()
-    const draft = (recordSafety.mock.calls[0] as unknown[])[0] as { level: string; categories: string[]; excerpt: string; caregiverAlert: string }
+    const [draft, eventId] = recordSafety.mock.calls[0] as unknown as [{ level: string; categories: string[]; excerpt: string; caregiverAlert: string }, string]
+    expect(eventId).toBe(EVENT_ID)
     expect(draft.level).toBe('crisis')
     expect(draft.categories).toContain('self_harm')
     expect(draft.excerpt).toContain('죽고 싶어요')
@@ -307,19 +309,39 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     expect(JSON.stringify(f.frames.at(-1))).not.toContain('죽고')
   })
 
-  it('stops without an id when recording fails — the app records it on save instead', async () => {
-    const recordSafety = vi.fn(async (): Promise<string> => { throw new Error('rls') })
+  it('retries with the same event id and reports it recorded when a later attempt succeeds in time', async () => {
+    let calls = 0
+    const recordSafety = vi.fn(async () => { if (calls++ === 0) throw new Error('network') })
+    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
+    await closed
+    expect(recordSafety).toHaveBeenCalledTimes(2)
+    expect(recordSafety.mock.calls.map(c => (c as unknown[])[1])).toEqual([EVENT_ID, EVENT_ID])
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID, safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
+  })
+
+  it('gives up after the retry limit, hands over a pending id and logs no raw speech', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const recordSafety = vi.fn(async (): Promise<void> => { throw new Error('rls') })
     const f = await fixture(true, { recordSafety }); await f.start(2)
     const closed = once(f.app, 'close')
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '숨이 안 쉬어져요' } } }))
     await closed
-    expect(recordSafety).toHaveBeenCalledOnce()
-    // 기록이 실패해도 판정 요약은 간다 — 앱이 같은 수준·분류로 대신 기록한다.
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safety: { level: 'crisis', categories: ['medical_emergency'], alert: 'medical_emergency' } } })
+    expect(recordSafety).toHaveBeenCalledTimes(3)
+    // 기록이 안 됐으니 app 은 같은 id 로 대체 기록을 넣는다(판정 요약은 그대로 간다).
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', pendingSafetyEventId: EVENT_ID, safety: { level: 'crisis', categories: ['medical_emergency'], alert: 'medical_emergency' } } })
+    await vi.waitFor(() => expect(warn).toHaveBeenCalled())
+    expect(JSON.stringify(warn.mock.calls)).toContain(EVENT_ID)
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('숨이')
+    warn.mockRestore()
   })
 
-  it('does not wait longer than the recording timeout to stop', async () => {
-    const recordSafety = vi.fn(() => new Promise<string>(() => {}))
+  it('does not wait longer than the recording timeout to stop and keeps retrying after closing', async () => {
+    let calls = 0
+    const recordSafety = vi.fn(() => calls++ === 0
+      ? new Promise<void>((_, reject) => setTimeout(() => reject(new Error('timeout')), SAFETY_RECORD_TIMEOUT_MS + 200))
+      : Promise.resolve())
     const f = await fixture(true, { recordSafety }); await f.start(2)
     const started = Date.now()
     const closed = once(f.app, 'close')
@@ -327,12 +349,15 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     await closed
     expect(Date.now() - started).toBeGreaterThanOrEqual(SAFETY_RECORD_TIMEOUT_MS - 100)
     expect(Date.now() - started).toBeLessThan(SAFETY_RECORD_TIMEOUT_MS + 2000)
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
-  })
+    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', pendingSafetyEventId: EVENT_ID, safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
+    // 앱 연결을 닫은 뒤에도 같은 id 로 다시 시도해 근거를 남긴다.
+    await vi.waitFor(() => expect(recordSafety).toHaveBeenCalledTimes(2), { timeout: 2000 })
+    expect((recordSafety.mock.calls[1] as unknown[])[1]).toBe(EVENT_ID)
+  }, SAFETY_RECORD_TIMEOUT_MS + 6000)
 
   it('forwards nothing more to the model or the elder while recording', async () => {
-    let finish!: (id: string) => void
-    const recordSafety = vi.fn(() => new Promise<string>(resolve => { finish = resolve }))
+    let finish!: () => void
+    const recordSafety = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
     const f = await fixture(true, { recordSafety }); await f.start(2)
     const before = f.inputs.length
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
@@ -343,25 +368,25 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
     expect(f.inputs.length).toBe(before)
     expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(false)
     const closed = once(f.app, 'close')
-    finish(EVENT_ID); await closed
+    finish(); await closed
     expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID, safety: { level: 'crisis', categories: ['self_harm'], alert: 'self_harm' } } })
   })
 
   it('records only once even when the risky phrase keeps arriving', async () => {
-    let finish!: (id: string) => void
-    const recordSafety = vi.fn(() => new Promise<string>(resolve => { finish = resolve }))
+    let finish!: () => void
+    const recordSafety = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
     const f = await fixture(true, { recordSafety }); await f.start(2)
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: ' 정말 죽고 싶어요' } } }))
     await vi.waitFor(() => expect(recordSafety).toHaveBeenCalledOnce())
     const closed = once(f.app, 'close')
-    finish(EVENT_ID); await closed
+    finish(); await closed
     expect(recordSafety).toHaveBeenCalledOnce()
     expect(f.frames.filter(x => x.relayError)).toHaveLength(1)
   })
 
   it('sends a watch-level summary for a distress signal', async () => {
-    const recordSafety = vi.fn(async () => EVENT_ID)
+    const recordSafety = vi.fn(async () => {})
     const f = await fixture(true, { recordSafety }); await f.start(2)
     const closed = once(f.app, 'close')
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '자식들한테 짐만 되는 것 같아' } } }))
@@ -370,7 +395,7 @@ describe('T21.4 — 위험 발화 즉시 기록', () => {
   })
 
   it('does not record a plain rest request as a safety event (no risk) but still stops', async () => {
-    const recordSafety = vi.fn(async () => EVENT_ID)
+    const recordSafety = vi.fn(async () => {})
     const f = await fixture(true, { recordSafety }); await f.start(2)
     const closed = once(f.app, 'close')
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '그만할래요' } } }))

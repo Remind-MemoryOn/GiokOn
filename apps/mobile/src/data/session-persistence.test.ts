@@ -97,6 +97,20 @@ it('writes a relay review event with no fabricated excerpt or categories',async(
   expect(f.state.markSynced).toHaveBeenCalledWith(expect.objectContaining({events:[expect.objectContaining({remoteId:'remote'})]}));
 });
 
+it('records a relay-pending event under the relay event id only if absent, then syncs the acknowledgement (T25.17)',async()=>{
+  const f=fixture();f.ready();
+  f.state.active.events.push({level:'crisis',categories:['self_harm'],matchedTerms:[],excerpt:'',caregiverAlert:'위기 안내',
+    acknowledgedAt:'synthetic-ack',remoteId:null,reservedId:'cccccccc-cccc-cccc-cccc-cccccccccccc',ackSynced:false});
+  expect(await f.api().syncProgress()).toBe(true);
+  expect(f.builder.insert).not.toHaveBeenCalledWith(expect.objectContaining({caregiver_alert:'위기 안내'}));
+  expect(f.builder.upsert).toHaveBeenCalledWith(
+    expect.objectContaining({id:'cccccccc-cccc-cccc-cccc-cccccccccccc',session_id:'remote',level:'crisis',categories:['self_harm'],excerpt:'',matched_terms:[]}),
+    {onConflict:'id',ignoreDuplicates:true});
+  // 중계 재시도가 먼저 넣었다면 upsert 는 아무것도 안 하므로 확인 시각은 따로 쓴다.
+  expect(f.builder.update).toHaveBeenCalledWith({acknowledged_at:'synthetic-ack',acknowledged_by:'a'});
+  expect(f.state.markSynced).toHaveBeenCalledWith(expect.objectContaining({events:[expect.objectContaining({remoteId:'cccccccc-cccc-cccc-cccc-cccccccccccc',reservedId:null,ackSynced:true})]}));
+});
+
 describe('fallback save without a remote session (M7)', () => {
   const bundle = (events: SessionSafetyEvent[] = []) => ({ logId: 'log', elder: { id: 'elder-a' },
     turns: [{ id: 't1', speaker: 'AI', text: '질문', timestamp: 'synthetic-date' }],

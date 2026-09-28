@@ -55,9 +55,10 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
             if (message === VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED) useApp.getState().requireRelayReview();
             onFailure(message);
           },onProcessingDenied:onFailure,
-          onRelayReview: ({ eventId, safety }) => {
+          onRelayReview: ({ eventId, pendingEventId, safety }) => {
             if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id)
-              useApp.getState().requireRelayReview({ ...(eventId ? { remoteId: eventId } : {}), ...(safety ? { safety } : {}) });
+              useApp.getState().requireRelayReview({ ...(eventId ? { remoteId: eventId } : {}),
+                ...(pendingEventId ? { pendingId: pendingEventId } : {}), ...(safety ? { safety } : {}) });
           },
           onRemoteControl: state => {
             if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id) onRemote?.(state);

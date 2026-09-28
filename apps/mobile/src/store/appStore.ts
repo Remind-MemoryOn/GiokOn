@@ -54,6 +54,11 @@ export interface SessionSafetyEvent extends SafetyEventDraft {
   acknowledgedAt: string | null;
   /** DB safety_events.id — 아직 기록 전이면 null. */
   remoteId: string | null;
+  /**
+   * 중계가 감지 때 만들었지만 아직 기록을 확정하지 못한 사건 id(T25.17). 앱이 대신 기록할 때 **이 id 로 '없을 때만'** 넣어
+   * 중계의 뒤늦은 재시도와 합쳐도 사건이 1건이 되게 한다(중계는 비어 있는 근거만 채운다).
+   */
+  reservedId?: string | null;
   /** 확인 시각까지 DB 에 반영됐는지(중복 update 방지). */
   ackSynced: boolean;
 }
@@ -170,7 +175,7 @@ interface AppState {
    * 중계가 위험 발화로 멈췄다. `remoteId` = 중계가 이미 기록한 safety_events id(T21.4 — 다시 기록하지 않는다),
    * `safety` = 중계의 판정 요약(T25.14 — 있으면 위기 종류별 안내·수준으로, 없으면 일반 확인 안내로).
    */
-  requireRelayReview: (detail?: { remoteId?: string; safety?: RelaySafetySummary }) => void;
+  requireRelayReview: (detail?: { remoteId?: string; pendingId?: string; safety?: RelaySafetySummary }) => void;
   cancelSession: () => void;
 
   // ── 진행 중 DB 동기화(영속화 계층이 호출) ──
@@ -331,7 +336,7 @@ export const useApp = create<AppState>((set, get) => ({
     const caregiverAlert=safety ? caregiverAlertText(safety.alert) : VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED;
     const level=safety?.level ?? 'watch';
     const event: SessionSafetyEvent = {level,categories:safety ? [...safety.categories] : [],matchedTerms:[],excerpt:'',caregiverAlert,
-      acknowledgedAt:null,remoteId:detail?.remoteId ?? null,ackSynced:false};
+      acknowledgedAt:null,remoteId:detail?.remoteId ?? null,reservedId:detail?.remoteId ? null : detail?.pendingId ?? null,ackSynced:false};
     set({active:{...a,events:[...a.events,event],safety:{...a.safety,caregiverAlert,
       level,recommendation:'end_session',acknowledged:false}}});
   },
