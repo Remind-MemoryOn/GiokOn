@@ -257,9 +257,12 @@ const SCREENS = [
     /roleHonorific\(userRow\?\.role\)/,
   ]],
   [`${WEB}/src/pages/caregiver/SupervisionPage.tsx`, '감독 화면(W2): RPC 원격 제어 · 종료는 확인 후 · 위기 안내는 서버 문구 · 조회 실패 ≠ 대화 없음', [
-    /useRequestSessionControl/, /<ConfirmDialog/, /a\.caregiver_alert/, /role="alert" aria-live="assertive"/,
+    /useRequestSessionControl/, /<ConfirmDialog/, /alert\.caregiver_alert/, /role="alert" aria-live="assertive"/,
     /대화가 없다는 뜻은 아닙니다/, /의학적 판단이 아닙니다/, { absent: /window\.confirm\(/ },
     { absent: /from\('sessions'\)\.update/ },
+    // T25.6: 미확인 위기는 세션 상태와 무관하게 확인까지 · 안전 조회 실패 ≠ 알림 없음
+    /aria-label="확인하지 않은 안전 알림"/, /!sessionsKnown \|\| !e\.session_id \|\| !activeIds\.has\(e\.session_id\)/,
+    /safety\.isError/, /알림이 없다는 뜻이 아닙니다/, /safety\.dataUpdatedAt/,
   ]],
   [`${WEB}/src/components/shell/nav.ts`, '사이드바: 감독 메뉴는 맨 끝(시안 항목 좌표 불변)', [
     /label: '설정', icon: 'settings' \},\n  \/\/[^\n]*\n  \{ to: '\/caregiver\/supervision', label: '감독'/,

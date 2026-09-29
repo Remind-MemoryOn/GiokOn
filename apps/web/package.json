@@ -14,6 +14,7 @@
     "test:grade": "node scripts/elder-grade-flow-smoke.mjs",
     "test:elder-delete": "node scripts/elder-delete-flow-smoke.mjs",
     "test:viewport": "node scripts/viewport-mode-smoke.mjs",
+    "test:supervision": "node scripts/supervision-flow-smoke.mjs",
     "test:design-feedback": "node scripts/design-feedback-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",

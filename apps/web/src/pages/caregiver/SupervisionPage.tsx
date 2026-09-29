@@ -10,6 +10,9 @@
 // ⚠️ 위기 카드의 안내(전화번호·비의료 고지)는 safety_events.caregiver_alert 에 서버가 저장한
 //    문구를 그대로 쓴다 — 어르신 화면에서 옮겨 온 것이다(M3). 여기서 새 문구를 만들지 않는다.
 // ⚠️ 세션에는 기기 정보가 없다 — 기기 이름을 지어내지 않고 '시작한 사람'을 보인다(읽을 수 있을 때만).
+// ⚠️ 미확인 위기는 **세션 상태와 무관하게 확인할 때까지** 남긴다(T25.6) — 진행 중 세션의 위기는 그 카드 안에,
+//    끝난(또는 세션이 없는) 위기는 위쪽 '확인하지 않은 안전 알림'에. 세션이 저장돼 카드가 사라져도 확인 버튼이 남는다.
+// ⚠️ 안전 알림 조회가 실패하면 '알림 없음'처럼 보이지 않게 따로 알린다(셸 밖이라 공용 조회 실패 배너가 없다).
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -74,6 +77,43 @@ function useNow(ms = 1000): number {
   return now;
 }
 
+/** 위기 카드 한 장 — 서버가 저장한 요양보호사 알림 문구(전화번호·비의료 고지 포함)를 그대로. */
+function SafetyAlert({
+  alert,
+  context,
+  ackDisabled,
+  onAcknowledge,
+}: {
+  alert: SafetyEventRow;
+  /** 카드 밖(끝난 대화)에 그릴 때 누구의 어떤 대화였는지. 세션 카드 안에서는 비운다. */
+  context?: string;
+  ackDisabled: boolean;
+  onAcknowledge: (alertId: string) => void;
+}) {
+  return (
+    <div role="alert" aria-live="assertive" className="rounded-[10px] border-l-4 border-alert bg-alert/10 p-4">
+      {context ? <p className="mb-1 text-w-label font-semibold text-ink-900">{context}</p> : null}
+      <p className="text-w-sub font-semibold leading-[26px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
+        {alert.caregiver_alert}
+      </p>
+      {alert.excerpt ? <p className="mt-2 text-w-label leading-[22px] text-ink-700">"{alert.excerpt}"</p> : null}
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="text-w-label text-ink-700">
+          {timeHM(alert.created_at)} 감지 · <span className="whitespace-nowrap">키워드 기반 안전장치</span>
+        </span>
+        <button
+          type="button"
+          disabled={ackDisabled}
+          onClick={() => onAcknowledge(alert.id)}
+          className="shrink-0 rounded-[10px] border-2 border-alert bg-white px-4 py-2 text-w-label font-semibold text-ink-900 disabled:opacity-50"
+        >
+          확인했어요
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** 진행 중인 세션 한 장 — 위기 카드 · 어르신/시작한 사람 · 상태 · 단계/경과/목표 · 제어 버튼 · 개입 기록. */
 function SessionCard({
   row,
@@ -118,28 +158,10 @@ function SessionCard({
         alerts.length > 0 && 'ring-2 ring-alert',
       )}
     >
-      {/* 위기 카드 — 서버가 저장한 요양보호사 알림 문구(전화번호·비의료 고지 포함)를 그대로 */}
+      {/* 위기 카드 — 진행 중인 이 대화의 미확인 위기 */}
       {alerts.map((a) => (
-        <div key={a.id} role="alert" aria-live="assertive" className="mb-4 rounded-[10px] border-l-4 border-alert bg-alert/10 p-4">
-          <p className="text-w-sub font-semibold leading-[26px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
-            {a.caregiver_alert}
-          </p>
-          {a.excerpt ? (
-            <p className="mt-2 text-w-label leading-[22px] text-ink-700">"{a.excerpt}"</p>
-          ) : null}
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <span className="text-w-label text-ink-700">
-              {timeHM(a.created_at)} 감지 · <span className="whitespace-nowrap">키워드 기반 안전장치</span>
-            </span>
-            <button
-              type="button"
-              disabled={ackDisabled}
-              onClick={() => onAcknowledge(a.id)}
-              className="shrink-0 rounded-[10px] border-2 border-alert bg-white px-4 py-2 text-w-label font-semibold text-ink-900 disabled:opacity-50"
-            >
-              확인했어요
-            </button>
-          </div>
+        <div key={a.id} className="mb-4">
+          <SafetyAlert alert={a} ackDisabled={ackDisabled} onAcknowledge={onAcknowledge} />
         </div>
       ))}
 
@@ -258,6 +280,15 @@ export function SupervisionPage() {
   const control = useRequestSessionControl();
   const ack = useAcknowledgeSafetyEvent();
 
+  /** 진행 중 카드에 붙지 않는 미확인 위기 — 대화가 끝났거나(저장됨) 세션이 없는 것. 확인할 때까지 남긴다. */
+  const activeIds = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
+  // 진행 중 목록을 못 읽었으면(대기·실패) 어느 대화가 끝났는지 모른다 → 전부 위에 두고 '끝났다'고 말하지 않는다.
+  const sessionsKnown = sessions.isSuccess;
+  const detachedAlerts = useMemo(
+    () => (safety.data ?? []).filter((e) => !sessionsKnown || !e.session_id || !activeIds.has(e.session_id)),
+    [safety.data, activeIds, sessionsKnown],
+  );
+
   const [pausing, setPausing] = useState<SessionRow | null>(null);
   const [pauseReason, setPauseReason] = useState('');
   const [ending, setEnding] = useState<SessionRow | null>(null);
@@ -316,6 +347,51 @@ export function SupervisionPage() {
           우리 기관에서 진행 중인 회상 대화입니다. 멈추면 어르신 화면이 "잠시 쉬어요"로 바뀌고 마이크가 꺼집니다.
           종료를 요청하면 대화가 멈추고, 저장은 기기를 가진 요양보호사가 합니다.
         </p>
+
+        {/* 안전 알림 조회 실패 — 알림이 없다는 뜻이 아니다(세션 목록과 따로 알린다). */}
+        {safety.isError ? (
+          <div role="alert" className="mt-8 rounded-[10px] border-2 border-alert bg-white p-5 text-w-sub text-ink-900">
+            <p className="font-semibold" style={{ wordBreak: 'keep-all' }}>
+              안전 알림을 확인하지 못했어요. 알림이 없다는 뜻이 아닙니다.
+            </p>
+            <p className="mt-1 text-w-label text-ink-700">
+              {safety.dataUpdatedAt > 0
+                ? `마지막으로 확인한 시각 ${new Date(safety.dataUpdatedAt).toLocaleTimeString('ko-KR')}`
+                : '아직 한 번도 확인하지 못했어요.'}
+              {' · '}
+              <button
+                type="button"
+                className="font-semibold text-accent underline"
+                disabled={safety.isFetching}
+                onClick={() => void safety.refetch()}
+              >
+                {safety.isFetching ? '확인하는 중…' : '안전 알림 다시 확인'}
+              </button>
+            </p>
+          </div>
+        ) : null}
+
+        {detachedAlerts.length > 0 ? (
+          <section aria-label="확인하지 않은 안전 알림" className="mt-8">
+            <h2 className="text-w-nav font-bold leading-[30px] text-ink-900">확인하지 않은 안전 알림</h2>
+            <p className="mt-1 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
+              {sessionsKnown
+                ? '대화는 끝났지만 아직 아무도 확인하지 않은 알림이에요. 확인할 때까지 여기에 남아요.'
+                : '아직 아무도 확인하지 않은 알림이에요. 확인할 때까지 여기에 남아요.'}
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {detachedAlerts.map((a) => (
+                <SafetyAlert
+                  key={a.id}
+                  alert={a}
+                  context={`${elderName.get(a.profile_id) ?? '어르신'}${sessionsKnown ? (a.session_id ? ' · 끝난 대화' : ' · 대화 밖 기록') : ''}`}
+                  ackDisabled={ack.isPending || !me.data?.id}
+                  onAcknowledge={acknowledge}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {!isConfigured && !sessions.data ? (
           <p className="mt-10 text-w-sub text-ink-700">Supabase 를 연결하면 진행 중인 대화가 표시됩니다.</p>
