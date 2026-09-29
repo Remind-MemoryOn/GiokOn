@@ -774,6 +774,7 @@ export type Database = {
           shared_at: string
           revoked_at: string | null
           revoked_by: string | null
+          revoke_reason: string | null
           viewed_at: string | null
           viewed_by: string | null
           view_count: number
@@ -792,6 +793,7 @@ export type Database = {
           shared_at?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          revoke_reason?: string | null
           viewed_at?: string | null
           viewed_by?: string | null
           view_count?: number
@@ -810,6 +812,7 @@ export type Database = {
           shared_at?: string
           revoked_at?: string | null
           revoked_by?: string | null
+          revoke_reason?: string | null
           viewed_at?: string | null
           viewed_by?: string | null
           view_count?: number

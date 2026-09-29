@@ -298,8 +298,10 @@ export function ShareHistoryPage() {
                 tag
                 className="absolute -translate-x-1/2 -translate-y-1/2"
                 style={{ left: COLS.stateCenter, top: Y(mid), width: 100 }}
+                title={s.revoke_reason === 'content_changed' ? '공개한 뒤 내용이 바뀌어 자동으로 공개가 해제됐어요. 확인 후 다시 공개해 주세요.' : undefined}
               >
-                {live ? '공개중' : '미공개'}
+                {/* T25.12: 공개한 뒤 보호자에게 보이는 내용이 바뀌면 자동 해제 — 사람이 누른 철회와 구분한다 */}
+                {live ? '공개중' : s.revoke_reason === 'content_changed' ? '내용 변경' : '미공개'}
               </Badge>
               <span
                 data-fx={i === 0 ? '146:1307' : undefined}
