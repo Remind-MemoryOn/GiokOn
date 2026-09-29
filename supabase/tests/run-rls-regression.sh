@@ -60,4 +60,5 @@ done
 "${PSQL[@]}" -f "$HERE/safety_push.sql"
 "${PSQL[@]}" -f "$HERE/safety_evidence.sql"
 "${PSQL[@]}" -f "$HERE/session_start.sql"
+"${PSQL[@]}" -f "$HERE/audit_retention.sql"
 "${PSQL[@]}" -f "$HERE/storage_policies.sql"
