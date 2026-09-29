@@ -826,7 +826,7 @@ const SCREENS = [
   // ── 프로그램 일지 상세 (파일럿 W1 · SCR-W16 — 시안 없음, 작성 화면 221:283 체계) ─────────────
   [`${WEB}/src/pages/caregiver/ProgramJournalDetailPage.tsx`, '프로그램 일지 상세: 확정은 권한일 때만 · 확정 후 수정 사유 · 바꾼 칸만 · 다시 생성은 failed 에만 · 초안 생성 버튼 없음', [
     /useHasCapability\('journal_finalize'/,
-    /disabled=\{saving \|\| !mayFinalize\}/,                     // 확정 버튼은 권한일 때만 활성
+    /disabled=\{saving \|\| conflict \|\| !mayFinalize\}/,       // 확정 버튼은 권한일 때만 활성(충돌 중에는 잠김)
     /patch\.edit_reason = reason\.trim\(\)/,                        // 확정 후 수정 사유
     /if \(!existing \|\| after\[k\] !== before\[k\]\)/,          // 바꾼 칸만 보낸다(워커 칸을 지우지 않게)
     /journal\.status === 'failed'/, /useRetryJournalGeneration/,
@@ -835,6 +835,8 @@ const SCREENS = [
     /await removeJournalPhotoFiles\(\[path\]\)/,                  // 첨부 실패 시 **그 파일만** 되돌리기(T25.2)
     /pendingPhotos: pending/,                                          // 새 일지는 만든 일지로 옮겨 남은 사진만 이어서(중복 생성 방지)
     { absent: /removeJournalPhotoFiles\(uploaded\)/ },                // 이미 붙은 사진까지 지우던 옛 정리(T25.2)
+    /expectedUpdatedAt: seed\.updatedAt/,                              // 저장·승인·확정은 화면이 읽은 버전일 때만(T25.3)
+    /e\.message === JOURNAL_VERSION_CONFLICT/, /최신 내용 불러오기/,     // 충돌 시 거절 → 최신 불러오기(내 칸 유지)
     /URL\.revokeObjectURL/,                                          // 미리보기 URL 해제
     /operated_from: '',/,                                              // 시각 기본값을 지어내지 않는다
     { absent: /session-report|useGenerateSessionReport|SessionJournalDialog|buildJournalDraft|transcribeAudio/ },

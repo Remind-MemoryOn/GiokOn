@@ -28,6 +28,7 @@ import {
   useProgramJournals,
   useRetryJournalGeneration,
   useUpdateProgramJournal,
+  JOURNAL_VERSION_CONFLICT,
   type JournalNonDeliveryReason,
   type ProgramJournalRevisionRow,
   type ProgramJournalRow,
@@ -280,14 +281,17 @@ function ProgramJournalDetailForm() {
   const [approve, setApprove] = useState(baselineApproved);
   /** 폼을 심은 그때의 서버 값 — "바꾼 칸"의 비교 기준. 손댄 뒤 서버가 바뀌어도(워커 완료) 이 값은 그대로라
    *  사용자가 건드리지 않은 칸을 옛 값(빈 값)으로 보내 워커가 채운 내용을 지우지 않는다. */
-  const [seed, setSeed] = useState({ form: baseline, approved: baselineApproved });
+  const [seed, setSeed] = useState({ form: baseline, approved: baselineApproved, updatedAt: existing?.updated_at });
+  /** 저장·승인·확정이 버전 충돌로 거절됐다(T25.3) — 최신 내용을 불러와 다시 확인하게 한다. */
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [reason, setReason] = useState('');
   const touched = useRef(false);
   useEffect(() => {
     if (touched.current) return;
     setForm(baseline);
     setApprove(baselineApproved);
-    setSeed({ form: baseline, approved: baselineApproved });
+    setSeed({ form: baseline, approved: baselineApproved, updatedAt: existing?.updated_at });
     // baselineKey 가 baseline·baselineApproved 를 대표한다(객체 동일성으로 다시 심지 않게).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baselineKey]);
@@ -368,7 +372,7 @@ function ProgramJournalDetailForm() {
       row =
         existing && journalId
           ? Object.keys(patch).length > 0
-            ? await updateJournal.mutateAsync({ id: journalId, patch })
+            ? await updateJournal.mutateAsync({ id: journalId, patch, expectedUpdatedAt: seed.updatedAt })
             : existing
           : await createJournal.mutateAsync({
               ...(patch as Required<typeof after>),
@@ -398,7 +402,11 @@ function ProgramJournalDetailForm() {
       );
       navigate(`/caregiver/journal/${elderId}`);
     } catch (e) {
-      if (!row) {
+      if (!row && e instanceof Error && e.message === JOURNAL_VERSION_CONFLICT) {
+        // 화면이 읽은 뒤 다른 곳(워커·다른 직원)에서 일지가 바뀌었다 — 보지 않은 내용을 승인·확정하지 않는다.
+        setConflict(true);
+        toast('error', '다른 곳에서 이 일지가 바뀌었어요. 최신 내용을 불러와 확인한 뒤 다시 저장해 주세요.');
+      } else if (!row) {
         toast('error', journalErrorMessage(e));
       } else {
         // 일지는 저장됐고 사진 일부만 못 붙였다 — 남은 사진만 다시 올리면 된다.
@@ -414,6 +422,29 @@ function ProgramJournalDetailForm() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** 최신 일지를 불러와 폼에 다시 심는다 — **내가 바꾼 칸은 유지**하고 나머지는 서버 값으로.
+   *  보호자 문장 승인은 새 문장을 보고 다시 체크하게 서버 상태로 되돌린다(내가 문장을 고쳤으면 해제). */
+  async function reloadLatest() {
+    setReloading(true);
+    try {
+      const fresh = await journals.refetch();
+      const row = (fresh.data ?? []).find((j) => j.id === journalId);
+      if (!row) return toast('error', '일지를 다시 불러오지 못했어요.');
+      const latest = fromRow(row);
+      const merged = { ...latest };
+      for (const k of Object.keys(latest) as (keyof Form)[]) {
+        if (form[k] !== seed.form[k]) Object.assign(merged, { [k]: form[k] });
+      }
+      const latestApproved = Boolean(row.guardian_text_approved_at);
+      setForm(merged);
+      setApprove(latestApproved && merged.guardian_text === latest.guardian_text);
+      setSeed({ form: latest, approved: latestApproved, updatedAt: row.updated_at });
+      setConflict(false);
+    } finally {
+      setReloading(false);
     }
   }
 
@@ -739,6 +770,25 @@ function ProgramJournalDetailForm() {
                   </div>
                 ) : null}
 
+                {conflict ? (
+                  <div
+                    role="alert"
+                    className="mt-[44px] flex items-center gap-[24px] rounded-[10px] bg-alert-soft px-[28px] py-[18px]"
+                  >
+                    <p className="mr-auto text-w-sub leading-[30px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
+                      다른 곳에서 이 일지가 바뀌어 저장하지 않았어요. 최신 내용을 불러오면 내가 고친 칸은 그대로 두고 나머지를 새로 채워요.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={reloading}
+                      onClick={() => void reloadLatest()}
+                      className="h-[57px] shrink-0 whitespace-nowrap rounded-[10px] border border-accent bg-white px-[24px] text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-60"
+                    >
+                      최신 내용 불러오기
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className="mt-[44px] flex items-center justify-end gap-[30px]">
                   {!isFinal && !mayFinalize ? (
                     <p className="mr-auto text-[16px] leading-[24px] text-ink-500" style={{ wordBreak: 'keep-all' }}>
@@ -748,7 +798,7 @@ function ProgramJournalDetailForm() {
                   {isFinal ? (
                     <button
                       type="button"
-                      disabled={saving || !dirty}
+                      disabled={saving || conflict || !dirty}
                       onClick={() => void save('save')}
                       className="h-[57px] w-[140px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-60"
                     >
@@ -758,7 +808,7 @@ function ProgramJournalDetailForm() {
                     <>
                       <button
                         type="button"
-                        disabled={saving || (editing && !dirty && status !== 'failed')}
+                        disabled={saving || conflict || (editing && !dirty && status !== 'failed')}
                         onClick={() => void save('save')}
                         className="h-[57px] w-[140px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-60"
                       >
@@ -766,7 +816,7 @@ function ProgramJournalDetailForm() {
                       </button>
                       <button
                         type="button"
-                        disabled={saving || !mayFinalize}
+                        disabled={saving || conflict || !mayFinalize}
                         onClick={() => void save('finalize')}
                         className="h-[57px] w-[140px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-60"
                       >
