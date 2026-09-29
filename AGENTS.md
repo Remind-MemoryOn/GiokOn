@@ -118,8 +118,8 @@
 - **워커 패턴**(일지 초안·푸시): `app.worker_config(name, endpoint, secret)` — 비밀값은 DB 가 만들고 API 에 노출하지 않는다 · 워커 RPC 는 service_role 전용 +
   `app.verify_worker_secret` · `app.kick_*()` 가 할 일이 있을 때만 `net.http_post` · pg_cron 이 호출 · Edge 는 `verify_jwt=false` + `x-worker-secret` 헤더 인증 →
   202 후 `EdgeRuntime.waitUntil`. 운영 `endpoint` 는 SQL 로 설정한다.
-- **운영 상태(2026-09-28 기준)**:
-  - 마이그레이션: 저장소 71개(빈 이력 파일 2 포함) · 운영 이력 70 — `20260928020000_safety_evidence_guard`(T25.17)만 **운영 적용 승인 대기**. T25.1 `20260928000000` 적용됨(정책 8개 교정 확인 — 앱·웹 실제 사진 업로드·표시 확인은 남음).
+- **운영 상태(2026-09-29 기준)**:
+  - 마이그레이션: 저장소 73개(빈 이력 파일 2 포함) · 운영 이력 71 — `20260928020000_safety_evidence_guard`(T25.17) 적용 확인(트리거·함수 대조 2026-09-29). **운영 적용 승인 대기**: `20260929000000_session_status_recording` → `20260929010000_session_start_integrity`(T25.11·T25.18·T25.19 — 이 순서로 따로, 새 앱 빌드보다 먼저). T25.1 `20260928000000` 적용됨(정책 8개 교정 확인 — 앱·웹 실제 사진 업로드·표시 확인은 남음).
   - 확장: pg_cron 1.6.4 · pg_net 0.20.4. cron: `program-journal-draft`(30초) · `push-dispatch`(10초). 감사 로그 파기 예약은 없음(T25.8).
   - Edge: `live-token` · `naver-auth` · `stt-transcribe` · `session-report`(기관 AI 스위치 검사) · `program-journal-draft` · `push-dispatch`.
   - 기관 1곳(선문대학교 — 2026-09-25 중복 기관 병합) · **AI 초안 스위치 꺼짐** · 살아 있는 푸시 토큰 0개.
@@ -137,6 +137,7 @@
   테스트 심에 storage 스텁이 없으면 정책 마이그레이션이 통째로 건너뛰어진다.
 - **폴백 저장**(`persistWholeSession`): 세션을 만들고 턴·분석·이벤트를 쓴 뒤 **마지막에** `ended`(바로 `ended` 로 넣으면 일지 초안이 발화 없이 잡힌다).
   `safety_events.session_id` 는 `on delete set null` 이라 롤백으로 안 지워진다 → 이벤트는 쓰기 단계 맨 뒤.
+  2026-09-29 부터 폴백은 `recording`(실행 불가 기록 전용)으로 넣는다 — `active` 삽입은 DB 가 `started_at` 을 서버 시각으로 덮는다(구버전 앱의 폴백 기록은 시작 시각이 저장 시각이 된다).
 - **RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(항상 `'/'`) → 중계 주소는 `relay-config.ts` 정규식으로 판정. Node 테스트는 통과하니 속지 말 것.
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
@@ -150,15 +151,15 @@
 - `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 네이버 로그인 함수 주소 파생에만 쓰인다(`social.ts`).
 - "현재 화면에서 호출하지 않는다" ≠ "서버가 허용해도 된다" — 권한 있는 사용자의 직접 API 요청으로 가능한 경로는 서버 계약 결함으로 다룬다.
 
-## 현재 위치 (2026-09-28)
+## 현재 위치 (2026-09-29)
 
 **완료된 큰 묶음**(상세·날짜는 `docs/tasks.md`): 권한 재설계(기관 단위·역할·합류) · 대화 단계·원격 제어·동시 4대 · 앱 직접 모드 제거·어르신 표시 모드·PIN ·
 프로그램 일지(D5) + 자동 초안 워커(C4) · 안전 알림 체인(중계 즉시 기록 T21.4 · 푸시 T21.9) · 웹 W1~W9 · 앱·웹 리팩토링 · 웹 선택 메뉴 통일(2026-09-28 사용자 디자인 수정).
 
 **다음 할 일 — 2026-09-27 감사 반영 T25.x**(각 항목의 방향·완료 조건은 `docs/tasks.md` "감사 반영" 두 절):
-- DB: T25.11(설계자≠진행자 시작 RPC) + T25.18(시작 시각 서버 기준) + T25.19(어르신당 실행 세션 1개)를 **한 마이그레이션 묶음**으로 ·
+- DB: ~~T25.11 · T25.18 · T25.19~~(✅ 2026-09-29 코드 — 시작 RPC `start_planned_session` · `planned_by` · `recording` 상태 · 서버 시작 시각 · 어르신당 1세션. 운영 적용 승인 대기 · 직접 `planned→active` UPDATE 차단은 새 앱이 파일럿 기기 전부에 깔린 뒤 별도 마이그레이션) ·
   T25.4 · T25.5 · T25.8 · T25.12.
-- 앱·중계: ~~T25.15~~ → ~~T25.14~~ → ~~T25.17~~(✅ 2026-09-28 코드 — DB `20260928020000` 운영 적용 승인 대기 · 중계 배포 후 반영 · 웹 '근거 저장 실패' 표시는 웹 파트) · T25.11 앱 전환은 RPC 배포 뒤 · T21.11 · T21.12 · T23.5(중계 전용 토큰).
+- 앱·중계: ~~T25.15~~ → ~~T25.14~~ → ~~T25.17~~(✅ 2026-09-28 코드 — DB `20260928020000` 운영 적용 승인 대기 · 중계 배포 후 반영 · 웹 '근거 저장 실패' 표시는 웹 파트) · ~~T25.11 앱 전환~~(같은 묶음 — 운영 DB 적용 뒤 빌드) · T21.11 · T21.12 · T23.5(중계 전용 토큰).
 - 웹: T25.2 · T25.3 · T25.6 · T25.7(core·data 포함).
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 

@@ -215,6 +215,8 @@ export type Database = {
           keywords: string[]
           duration_minutes: number | null
           planned_date: string | null
+          /** 설계한 직원(T25.11) — user_id 는 실제 진행자. 사용자가 쓰지 못한다(DB 가 정한다). */
+          planned_by: string | null
           started_at: string
           ended_at: string | null
           updated_at: string
@@ -1022,6 +1024,11 @@ export type Database = {
       cancel_org_join: { Args: Record<string, never>; Returns: undefined }
       approve_org_join: { Args: { p_request_id: string }; Returns: undefined }
       reject_org_join: { Args: { p_request_id: string }; Returns: undefined }
+      // 파일럿 T25.11 — 설계 세션 시작(진행자 = 호출자 · 서버 시각 · 같은 사람 재호출은 같은 값).
+      start_planned_session: {
+        Args: { p_session_id: string }
+        Returns: { session_id: string; started_at: string }
+      }
       // 파일럿 D6 — 중계가 2초마다(사용자 JWT). allowed=false 면 다른 값은 없다.
       session_tick: {
         Args: { p_session_id: string }
@@ -1079,7 +1086,8 @@ export type Database = {
     }
     Enums: {
       chronicle_source: 'caregiver' | 'ai'
-      session_status: 'planned' | 'active' | 'ended'
+      /** recording = 종료 후 일괄 기록 중(T25.18 — 실행 중이 아니다, ended 로만 간다). */
+      session_status: 'planned' | 'active' | 'recording' | 'ended'
       session_log_role: 'ai' | 'user'
       elder_gender: 'female' | 'male'
       org_role: 'org_admin' | 'caregiver' | 'guardian' | 'social_worker' | 'center_director'

@@ -193,6 +193,7 @@ describe('toConversationLog', () => {
     keywords: [],
     duration_minutes: null,
     planned_date: null,
+    planned_by: null,
     phase: null, phase_started_at: null, paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: null,
     ended_at: '2026-01-04T00:10:00Z',
     updated_at: '2026-01-04T00:10:00Z',
@@ -226,6 +227,12 @@ describe('toConversationLog', () => {
     })
     expect(conv.turns).toHaveLength(2)
     expect(conv.turns.map((t) => t.speaker)).toEqual(['AI', 'Elderly'])
+  })
+
+  it('종료 후 일괄 기록 중(recording)인 세션은 아직 끝나지 않은 기록으로 본다(T25.18)', () => {
+    const conv = toConversationLog({ ...session, status: 'recording', ended_at: null }, logs)
+    expect(conv.status).toBe('active')
+    expect(conv.endedAt).toBeUndefined()
   })
 
   it('ended_at이 null이면 endedAt은 undefined', () => {
@@ -293,6 +300,7 @@ describe('toSession', () => {
     keywords: [],
     duration_minutes: null,
     planned_date: null,
+    planned_by: null,
     phase: null, phase_started_at: null, paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: null,
     ended_at: '2026-01-04T00:10:00Z',
     updated_at: '2026-01-04T00:10:00Z',
