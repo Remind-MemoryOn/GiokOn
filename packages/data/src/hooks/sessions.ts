@@ -12,6 +12,7 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query'
+import { seoulDate } from '@giokon/core'
 import { getGiokonClient } from '../client'
 import { queryKeys } from '../query'
 import { fetchAllPages } from '../paging'
@@ -82,7 +83,8 @@ export function useSession(id: string | undefined): UseQueryResult<SessionRow | 
 export function useDuePlannedSession(
   profileId: string | undefined,
 ): UseQueryResult<SessionRow | null> {
-  const today = new Date().toISOString().slice(0, 10)
+  // 한국 날짜 기준 — UTC 로 자르면 한국 오전(00:00~08:59)에 오늘 설계가 빠진다(T25.7).
+  const today = seoulDate()
   return useQuery({
     queryKey: [...queryKeys.sessions(profileId ?? 'none'), 'due-planned'],
     enabled: Boolean(profileId),

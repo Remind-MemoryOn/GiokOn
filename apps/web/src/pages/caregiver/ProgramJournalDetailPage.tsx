@@ -35,7 +35,7 @@ import {
   type ProgramJournalUpdate,
   type UserRow,
 } from '@giokon/data';
-import { dateDot } from '@giokon/core';
+import { dateDot, seoulDate } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
@@ -99,11 +99,6 @@ const LONG_FIELDS: { key: TextKey; max: number; placeholder: string }[] = [
 ];
 
 /** 오늘 날짜(로컬) — `2026-07-30`. */
-function today(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 function fromRow(j: ProgramJournalRow): Form {
   return {
@@ -133,7 +128,7 @@ function fromRow(j: ProgramJournalRow): Form {
  */
 function blankForm(settings: { default_program_type: string; default_location: string | null } | null | undefined, meId: string | undefined): Form {
   return {
-    journal_date: today(),
+    journal_date: seoulDate(), // 운영일 기본값 = 한국 날짜(기기 시간대 무관 · DB 와 같은 기준, T25.7)
     operated_from: '',
     operated_to: '',
     program_type: settings?.default_program_type ?? '인지활동 - 회상훈련',

@@ -139,6 +139,7 @@
   `safety_events.session_id` 는 `on delete set null` 이라 롤백으로 안 지워진다 → 이벤트는 쓰기 단계 맨 뒤.
   2026-09-29 부터 폴백은 `recording`(실행 불가 기록 전용)으로 넣는다 — `active` 삽입은 DB 가 `started_at` 을 서버 시각으로 덮는다(구버전 앱의 폴백 기록은 시작 시각이 저장 시각이 된다).
 - **RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(항상 `'/'`) → 중계 주소는 `relay-config.ts` 정규식으로 판정. Node 테스트는 통과하니 속지 말 것.
+- **"오늘" 날짜는 `seoulDate()`(core)** — `new Date().toISOString().slice(0, 10)` 은 UTC 라 한국 00:00~08:59 에 전날이 된다(T25.7). 기기 시간대와도 무관하게 한국 날짜.
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
 - **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 ·
@@ -160,7 +161,7 @@
 - DB: ~~T25.11 · T25.18 · T25.19~~(✅ 2026-09-29 코드 — 시작 RPC `start_planned_session` · `planned_by` · `recording` 상태 · 서버 시작 시각 · 어르신당 1세션. 운영 적용 2026-09-29 · 직접 `planned→active` UPDATE 차단은 새 앱이 파일럿 기기 전부에 깔린 뒤 별도 마이그레이션) ·
   T25.4 · T25.5 · T25.8 · T25.12.
 - 앱·중계: ~~T25.15~~ → ~~T25.14~~ → ~~T25.17~~(✅ 2026-09-28 코드 — DB `20260928020000` 운영 적용됨 · 중계 배포 후 반영 · 웹 '근거 저장 실패' 표시는 웹 파트) · ~~T25.11 앱 전환~~(같은 묶음 — 운영 DB 적용됨 · 새 EAS 빌드에 싣는다) · T21.11 · T21.12 · T23.5(중계 전용 토큰).
-- 웹: ~~T25.2~~(✅ 2026-09-29 — 첨부 실패 시 그 파일만 삭제 · 새 일지는 만든 일지로 옮겨 남은 사진만 이어서 · `test:journal` ⑥) · ~~T25.3~~(✅ 2026-09-29 — 일지 저장·승인·확정은 화면이 읽은 `updated_at` 일 때만 · 충돌 시 "최신 내용 불러오기") · ~~T25.6~~(✅ 2026-09-29 — 감독 화면: 끝난 대화의 미확인 위기 유지 · 안전 조회 실패 표시 · `test:supervision`) · T25.7(core·data 포함).
+- 웹: ~~T25.2~~(✅ 2026-09-29 — 첨부 실패 시 그 파일만 삭제 · 새 일지는 만든 일지로 옮겨 남은 사진만 이어서 · `test:journal` ⑥) · ~~T25.3~~(✅ 2026-09-29 — 일지 저장·승인·확정은 화면이 읽은 `updated_at` 일 때만 · 충돌 시 "최신 내용 불러오기") · ~~T25.6~~(✅ 2026-09-29 — 감독 화면: 끝난 대화의 미확인 위기 유지 · 안전 조회 실패 표시 · `test:supervision`) · ~~T25.7~~(✅ 2026-09-29 — core `seoulDate()` 로 "오늘"을 한국 날짜로 통일: 설계 세션 조회·세션 설계·일지 기본값). 남은 웹: T25.17 웹 파트(감독 화면 '근거 저장 실패' 표시).
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
 **사용자 작업 대기**: 중계 배포(T21.4 포함) · EAS 재빌드(푸시 토큰·알림 수신) · Vercel 운영 배포 설정(T25.9) ·

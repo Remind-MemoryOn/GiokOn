@@ -12,6 +12,18 @@ export function nowIso(): string {
   return new Date().toISOString()
 }
 
+/**
+ * 서비스 기준 날짜 `YYYY-MM-DD` — **한국 시간(Asia/Seoul)** 의 오늘(T25.7).
+ *
+ * `new Date().toISOString().slice(0, 10)` 은 UTC 날짜라 한국 00:00~08:59 에 **전날**이 된다
+ * (오늘 설계한 세션이 조회에서 빠지고, 세션 설계·일지의 기본 날짜가 어제로 채워졌다).
+ * 기기 시간대와도 무관해야 한다 — DB 도 일지 날짜를 `Asia/Seoul` 로 정한다(enqueue_program_journal).
+ * 한국은 일광절약시간이 없어 UTC+9 고정으로 계산한다(Intl 시간대 지원이 없는 런타임에서도 같게).
+ */
+export function seoulDate(now: Date = new Date()): string {
+  return new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
 export function formatKoreanDate(iso: string): string {
   const d = new Date(iso)
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`

@@ -11,6 +11,7 @@
 // ⚠️ 다운로드는 지금 화면이 이미 받은 데이터(계정·담당 어르신 연대기·동의)를 JSON 으로 묶는다.
 //    받지 못한 항목은 넣지 않는다(빈 배열) — 없는 데이터를 만들지 않는다.
 import { useMemo } from 'react';
+import { seoulDate } from '@giokon/core';
 import {
   toElderProfile,
   useCurrentUser,
@@ -89,7 +90,7 @@ function SettingsBody({ me }: { me: UserRow | null }) {
     );
     const a = document.createElement('a');
     a.href = url;
-    a.download = `giokon-내데이터-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `giokon-내데이터-${seoulDate()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast('success', 'JSON 파일을 내려받았어요.');
