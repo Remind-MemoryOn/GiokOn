@@ -831,8 +831,10 @@ const SCREENS = [
     /if \(!existing \|\| after\[k\] !== before\[k\]\)/,          // 바꾼 칸만 보낸다(워커 칸을 지우지 않게)
     /journal\.status === 'failed'/, /useRetryJournalGeneration/,
     /guardian_text_approved_at = new Date\(\)\.toISOString\(\)/,
-    /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
-    /await removeJournalPhotoFiles\(uploaded\)/,                   // 첨부 실패 시 파일 되돌리기
+    /uploadJournalPhoto\(elderId, pending\[0\]\)/, /addPhoto\.mutateAsync/,
+    /await removeJournalPhotoFiles\(\[path\]\)/,                  // 첨부 실패 시 **그 파일만** 되돌리기(T25.2)
+    /pendingPhotos: pending/,                                          // 새 일지는 만든 일지로 옮겨 남은 사진만 이어서(중복 생성 방지)
+    { absent: /removeJournalPhotoFiles\(uploaded\)/ },                // 이미 붙은 사진까지 지우던 옛 정리(T25.2)
     /URL\.revokeObjectURL/,                                          // 미리보기 URL 해제
     /operated_from: '',/,                                              // 시각 기본값을 지어내지 않는다
     { absent: /session-report|useGenerateSessionReport|SessionJournalDialog|buildJournalDraft|transcribeAudio/ },

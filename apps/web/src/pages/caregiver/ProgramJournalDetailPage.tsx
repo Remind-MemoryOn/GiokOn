@@ -14,7 +14,7 @@ import { Select as StyledSelect } from '../../components/ui/Select';
 // ⚠️ 워커가 도는 동안(generating)에도 고칠 수 있다 — 워커는 사람이 먼저 쓴 칸을 덮어쓰지 않는다.
 //    그래서 **바꾼 칸만** 보낸다(열어 본 뒤 워커가 채운 칸을 빈 값으로 지우지 않게).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   useAddProgramJournalPhoto,
   useCreateProgramJournal,
@@ -231,8 +231,18 @@ function Select({ id, value, onChange, disabled, children, label }: {
   );
 }
 
+/** 새 일지를 만든 뒤 사진 일부가 실패하면 그 일지의 편집 화면으로 옮기면서 **아직 붙지 않은 사진**을 넘긴다(T25.2). */
+type JournalNavState = { pendingPhotos?: File[] } | null;
+
+/** 일지 ID 가 바뀌면(새 일지 → 만들어진 일지) 폼을 새로 심는다 — 손댄 표시·비교 기준이 다른 일지로 넘어가지 않게. */
 export function ProgramJournalDetailPage() {
+  const { journalId } = useParams<{ journalId: string }>();
+  return <ProgramJournalDetailForm key={journalId ?? 'new'} />;
+}
+
+function ProgramJournalDetailForm() {
   const { elderId, journalId } = useParams<{ elderId: string; journalId: string }>();
+  const location = useLocation();
   const [search, setSearch] = useSearchParams();
   const navigate = useNavigate();
   const { isConfigured } = useAuth();
@@ -287,7 +297,7 @@ export function ProgramJournalDetailPage() {
   };
 
   /** 아직 올리지 않은 사진(저장 시 일지 행을 만든 뒤 올린다). */
-  const [photos, setPhotos] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<File[]>(() => (location.state as JournalNavState)?.pendingPhotos ?? []);
   const previews = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
   // 미리보기 URL 은 해제하지 않으면 파일이 메모리에 계속 남는다.
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
@@ -349,10 +359,13 @@ export function ProgramJournalDetailPage() {
     if (isFinal && changedTracked.length > 0) patch.edit_reason = reason.trim();
 
     setSaving(true);
-    // 업로드는 성공했는데 첨부 행이 실패하면 Storage 에 주인 없는 파일이 남는다 → 되돌린다.
-    const uploaded: string[] = [];
+    // 저장 → 업로드 → 첨부 행 순서(일지 행이 있어야 첨부 행 정책을 통과한다).
+    // ⚠️ 부분 실패(T25.2): 이미 붙은 사진은 그대로 두고, **붙지 못한 그 파일만** 지운다.
+    //    새 일지는 만들어진 뒤라면 그 일지로 옮겨 이어서 저장하게 한다(다시 저장해도 일지가 둘이 되지 않게).
+    let row: ProgramJournalRow | null = null;
+    const pending = [...photos];
     try {
-      const row =
+      row =
         existing && journalId
           ? Object.keys(patch).length > 0
             ? await updateJournal.mutateAsync({ id: journalId, patch })
@@ -362,11 +375,18 @@ export function ProgramJournalDetailPage() {
               status: finalizing ? 'final' : 'pending_review',
               profile_id: elderId,
             });
-      // 일지 행이 생긴 뒤에야 Storage 정책을 통과한다 → 저장 → 업로드 → 첨부 행 순서.
-      for (const [i, file] of photos.entries()) {
-        const path = await uploadJournalPhoto(elderId, file);
-        uploaded.push(path);
-        await addPhoto.mutateAsync({ journal_id: row.id, path, sort: attached.length + i });
+      let sort = attached.length;
+      while (pending.length > 0) {
+        const path = await uploadJournalPhoto(elderId, pending[0]);
+        try {
+          await addPhoto.mutateAsync({ journal_id: row.id, path, sort });
+        } catch (e) {
+          // 이 파일만 주인이 없다 — 지운다(정리 실패가 원래 오류를 덮지 않게).
+          await removeJournalPhotoFiles([path]).catch(() => {});
+          throw e;
+        }
+        pending.shift();
+        sort += 1;
       }
       toast(
         'success',
@@ -378,9 +398,20 @@ export function ProgramJournalDetailPage() {
       );
       navigate(`/caregiver/journal/${elderId}`);
     } catch (e) {
-      // 붙지 못한 파일은 지운다(정리에 실패해도 원래 오류를 덮지 않는다).
-      if (uploaded.length) await removeJournalPhotoFiles(uploaded).catch(() => {});
-      toast('error', journalErrorMessage(e));
+      if (!row) {
+        toast('error', journalErrorMessage(e));
+      } else {
+        // 일지는 저장됐고 사진 일부만 못 붙였다 — 남은 사진만 다시 올리면 된다.
+        toast('error', `일지는 저장했어요. 사진 ${pending.length}장을 붙이지 못했어요 — 다시 저장하면 남은 사진만 올려요.`);
+        if (!existing) {
+          const state: JournalNavState = { pendingPhotos: pending };
+          navigate(`/caregiver/journal/${elderId}/${row.id}`, { replace: true, state });
+        } else {
+          setPhotos(pending);
+          // 저장된 값으로 폼을 다시 심게 한다(같은 칸을 "바뀐 칸"으로 또 보내지 않게).
+          touched.current = false;
+        }
+      }
     } finally {
       setSaving(false);
     }
