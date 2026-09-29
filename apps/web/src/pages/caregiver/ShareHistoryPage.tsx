@@ -20,8 +20,11 @@ import {
   useGuardianShares,
   useProfile,
   useRevokeGuardianShare,
+  useHasCapability,
   useSessionAnalyses,
 } from '@giokon/data';
+import { journalErrorMessage } from '../../lib/journalErrors';
+import { useAuth } from '../../auth/AuthProvider';
 import { birthLabel, elderAge } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -68,6 +71,9 @@ export function ShareHistoryPage() {
   const analyses = useSessionAnalyses(elderId);
   const me = useCurrentUser();
   const revoke = useRevokeGuardianShare();
+  const { isConfigured } = useAuth();
+  // 공개 철회는 권한 위임 표를 따른다(T25.4 — DB 가 강제). 권한이 없으면 버튼을 잠근다.
+  const noRevoke = useHasCapability('share_revoke', { enabled: isConfigured }).data === false;
   const guardians = useGuardianLinks(elderId);
   // 공개 이력 상세(153:1811) — 한 공개 건의 공개 정보 + 보호자 확인 정보.
   // `?receipt=<공개 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
@@ -145,7 +151,7 @@ export function ShareHistoryPage() {
       { id, userId: me.data.id },
       {
         onSuccess: () => toast('success', '공개를 취소했어요.'),
-        onError: (e) => toast('error', e.message),
+        onError: (e) => toast('error', journalErrorMessage(e, '공개를 취소하지 못했어요.')),
       },
     );
   }
@@ -317,7 +323,9 @@ export function ShareHistoryPage() {
                   type="button"
                   data-fx={i === 0 ? '146:1310' : undefined}
                   onClick={() => setRevoking(s.id)}
-                  className="absolute h-[39px] w-[117px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
+                  disabled={noRevoke}
+                  title={noRevoke ? '공개 철회 권한이 없어요(기관 권한 위임 표)' : undefined}
+                  className="absolute h-[39px] w-[117px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-50"
                   style={{ left: COLS.actionLeft, top: Y(mid + 24.5) }}
                 >
                   공개 취소

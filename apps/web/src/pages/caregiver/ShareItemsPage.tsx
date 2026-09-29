@@ -25,12 +25,14 @@ import {
   useGuardianShares,
   useProfile,
   useRevokeGuardianShare,
+  useHasCapability,
   useSessionAnalyses,
   useSetShareNotifyOnView,
   type GuardianShareRow,
   type ProgramJournalPhotoRow,
   type ShareItemType,
 } from '@giokon/data';
+import { useAuth } from '../../auth/AuthProvider';
 import { dateDot } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { Badge } from '../../components/ui/Badge';
@@ -98,6 +100,9 @@ export function ShareItemsPage() {
   const me = useCurrentUser();
   const publish = useCreateGuardianShare();
   const revoke = useRevokeGuardianShare();
+  const { isConfigured: capsReady } = useAuth();
+  // 공개 철회는 권한 위임 표를 따른다(T25.4 — DB 가 강제). 권한이 없으면 버튼을 잠근다.
+  const noRevoke = useHasCapability('share_revoke', { enabled: capsReady }).data === false;
   const setNotifyOnView = useSetShareNotifyOnView();
   // 공개 기록 설정 모달(146:422) — 항목 단위로 무엇을 공개할지 고른다.
   // `?settings=<항목 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
@@ -261,7 +266,7 @@ export function ShareItemsPage() {
       for (const row of rows) await revoke.mutateAsync({ id: row.id, userId: me.data.id });
       toast('success', '비공개로 전환했어요.');
     } catch (e) {
-      toast('error', e instanceof Error ? e.message : '전환하지 못했어요.');
+      toast('error', journalErrorMessage(e, '전환하지 못했어요.'));
     }
   }
 
@@ -421,7 +426,9 @@ export function ShareItemsPage() {
                     type="button"
                     data-fx={i === 0 ? '142:791' : undefined}
                     onClick={() => setRevoking(item)}
-                    className="absolute h-[57px] w-[152px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent"
+                    disabled={noRevoke}
+                    title={noRevoke ? '공개 철회 권한이 없어요(기관 권한 위임 표)' : undefined}
+                    className="absolute h-[57px] w-[152px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-50"
                     style={{ left: 909, top: Y(top + 145.76) }}
                   >
                     비공개로 전환

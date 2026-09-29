@@ -7,6 +7,7 @@
 -- 지키는 것:
 --   ① 구조: 트리거로 쓰이는 invoker 함수는 본문에서 app.* 를 부르지 않는다(허용 목록 제외)
 --   ② 일지: 요양보호사 저장(진행자 포함) · 관리자 확정 · 확정 후 사유와 함께 수정(이력) — 운영 권한에서 성공
+--   ③ 공개 철회·보호자 연결 승인(T25.4): 권한 표 밖 역할은 코드 오류로 거부 · 권한 표 안 역할은 성공 — 운영 권한에서
 
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
@@ -50,6 +51,61 @@ do $$ begin
     '운영 권한에서 일지 저장·확정·확정 후 수정이 되어야 함';
   assert exists (select 1 from public.program_journal_revisions r join public.program_journals j on j.id = r.journal_id
                   where j.activity_content = '운영 권한 경로 확인'), '확정 후 수정 이력이 남아야 함';
+end $$;
+
+-- ③ 공개 철회 · 보호자 연결 승인 — 기본 권한 표(관리자·사회복지사·센터장)
+insert into public.org_capabilities (org_id, capability, allowed_roles)
+select (select org from pp), c.cap::public.org_capability, array['org_admin','social_worker','center_director']::public.org_role[]
+  from unnest(array['share_revoke', 'guardian_link_approve']) c(cap)
+on conflict (org_id, capability) do update set allowed_roles = excluded.allowed_roles;
+-- 공개할 대상(분석)은 픽스처라 트리거 없이 만든다(앞 파일이 이 기관 어르신의 처리 동의를 철회했다 — 세션 생성 가드와 무관한 검사).
+set local session_replication_role = replica;
+create temp table pp_share on commit drop as
+with s as (
+  insert into public.sessions (profile_id, org_id, status, started_at, ended_at)
+  values ((select pid from pp), (select org from pp), 'ended', now() - interval '10 minutes', now()) returning id),
+a as (
+  insert into public.session_analyses (profile_id, org_id, session_id, analysis, version)
+  select (select pid from pp), (select org from pp), s.id, '{"summary":"운영 권한 확인"}', 'test' from s returning id),
+sh as (
+  insert into public.guardian_shares (profile_id, org_id, item_type, item_id)
+  select (select pid from pp), (select org from pp), 'analysis', a.id from a returning id)
+select id as share_id from sh;
+set local session_replication_role = origin;
+grant select on pp_share to authenticated;
+delete from public.profile_guardians where profile_id = (select pid from pp) and guardian_user_id = 'a0000000-0000-0000-0000-000000000004';
+insert into public.profile_guardians (org_id, profile_id, guardian_user_id, status)
+values ((select org from pp), (select pid from pp), 'a0000000-0000-0000-0000-000000000004', 'pending');
+
+do $$
+declare blocked text; n int;
+begin
+  set local role authenticated;
+  -- 요양보호사(권한 표 밖) — 코드 오류로 거부(권한 오류 'schema app' 이 아니라)
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  blocked := null;
+  begin
+    update public.guardian_shares set revoked_at = now(), revoked_by = auth.uid() where id = (select share_id from pp_share);
+  exception when insufficient_privilege then blocked := sqlerrm;
+  end;
+  assert blocked = 'SHARE_REVOKE_FORBIDDEN', '권한 표 밖 역할의 공개 철회는 SHARE_REVOKE_FORBIDDEN 이어야 함: ' || coalesce(blocked, '허용됨');
+  blocked := null;
+  begin
+    update public.profile_guardians set status = 'approved', approved_by = auth.uid(), approved_at = now()
+     where profile_id = (select pid from pp) and status = 'pending';
+  exception when insufficient_privilege then blocked := sqlerrm;
+  end;
+  assert blocked = 'GUARDIAN_LINK_APPROVE_FORBIDDEN', '권한 표 밖 역할의 연결 승인은 거부돼야 함: ' || coalesce(blocked, '허용됨');
+  -- 관리자(권한 표 안) — 성공
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000001', true);
+  update public.guardian_shares set revoked_at = now(), revoked_by = auth.uid() where id = (select share_id from pp_share);
+  get diagnostics n = row_count;
+  assert n = 1, '권한 표 안 역할은 공개를 철회할 수 있어야 함';
+  update public.profile_guardians set status = 'approved', approved_by = auth.uid(), approved_at = now()
+   where profile_id = (select pid from pp) and status = 'pending';
+  get diagnostics n = row_count;
+  assert n = 1, '권한 표 안 역할은 연결을 승인할 수 있어야 함';
+  reset role;
 end $$;
 
 select 'prod privilege path assertions passed';
