@@ -4,6 +4,7 @@
 //   ① 진행 중 대화의 미확인 위기는 그 카드 안에, 끝난 대화의 미확인 위기는 '확인하지 않은 안전 알림'에 — 둘 다 확인 버튼이 있다.
 //   ② 대화가 저장돼 진행 목록에서 사라져도 미확인 위기와 확인 버튼은 남는다(확인하면 그 알림만 확인 처리).
 //   ③ 안전 알림 조회만 실패하면 '알림 없음'처럼 보이지 않고 실패를 알린다 · 다시 확인하면 사라진다.
+//   ④ 발화 근거(발췌)가 비어 있으면 감지 직후는 '저장하는 중', 2분이 지나면 '저장 실패'라고 그대로 알린다(T25.17 — 안내 문구로 덮지 않는다).
 import { build, preview } from 'vite';
 import { chromium } from 'playwright';
 import { existsSync } from 'node:fs';
@@ -32,16 +33,21 @@ const session = (id, profileId) => ({
   planned_date: null, started_at: at(5), ended_at: null, updated_at: at(0), phase: 'reminiscence', phase_started_at: at(4),
   paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: 'v2.0',
 });
-const event = (id, sessionId, excerpt) => ({
+const event = (id, sessionId, excerpt, minutesAgo = 1) => ({
   id, org_id: 'o1', user_id: 'u1', profile_id: 'e1', session_id: sessionId, level: 'escalate', categories: ['self_harm'],
   matched_terms: [], excerpt, caregiver_alert: '위기 신호가 감지됐어요. 어르신 곁에서 상태를 확인해 주세요.',
-  acknowledged_at: null, acknowledged_by: null, created_at: at(1), updated_at: at(1),
+  acknowledged_at: null, acknowledged_by: null, created_at: at(minutesAgo), updated_at: at(minutesAgo),
 });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
   const state = {
     sessions: [session('s-live', 'e1')],
-    events: [event('ev-live', 's-live', '진행 중 대화 발췌'), event('ev-ended', 's-old', '끝난 대화 발췌')],
+    events: [
+      event('ev-live', 's-live', '진행 중 대화 발췌'),
+      event('ev-ended', 's-old', '끝난 대화 발췌'),
+      event('ev-lost', 's-old2', null, 10), // 재시도 창(2분)이 지났는데 근거가 없다 → 저장 실패
+      event('ev-saving', 's-old3', null, 0.2), // 방금 감지 · 근거 아직 없음 → 저장하는 중
+    ],
     safetyFails: false,
   };
   const acks = [];
@@ -75,19 +81,23 @@ try {
   await card.getByText('진행 중 대화 발췌', { exact: false }).waitFor(SLOW);
   assert.equal(await detached.getByText('진행 중 대화 발췌', { exact: false }).count(), 0, '진행 중 위기는 카드 안에만');
   assert.equal(await detached.getByText('끝난 대화', { exact: false }).count() > 0, true);
-  assert.equal(await detached.getByRole('button', { name: '확인했어요' }).count(), 1);
+  assert.equal(await detached.getByRole('button', { name: '확인했어요' }).count(), 3);
   assert.equal(await card.getByRole('button', { name: '확인했어요' }).count(), 1);
+  // ④ 빈 발췌 — 안내 문구로 덮지 않고 근거 상태를 그대로
+  await detached.getByRole('alert').filter({ hasText: '발화 근거 저장 실패' }).waitFor();
+  await detached.getByRole('alert').filter({ hasText: '발화 근거를 저장하는 중이에요.' }).waitFor();
+  assert.equal(await detached.getByText('발화 근거 저장 실패', { exact: false }).count(), 1, '재시도 창이 지난 1건만 저장 실패');
 
   // ② 대화가 저장돼 진행 목록에서 사라져도 미확인 위기와 확인 버튼은 남는다
   state.sessions = [];
   await page.reload();
   await page.getByText('지금 진행 중인 대화가 없어요.').waitFor(SLOW);
   await detached.getByText('진행 중 대화 발췌', { exact: false }).waitFor(SLOW);
-  assert.equal(await detached.getByRole('button', { name: '확인했어요' }).count(), 2, '끝난 대화의 미확인 위기 2건 모두 확인 버튼이 남아야 함');
+  assert.equal(await detached.getByRole('button', { name: '확인했어요' }).count(), 4, '끝난 대화의 미확인 위기 4건 모두 확인 버튼이 남아야 함');
   await detached.getByRole('alert').filter({ hasText: '끝난 대화 발췌' }).getByRole('button', { name: '확인했어요' }).click();
   await detached.getByText('끝난 대화 발췌', { exact: false }).waitFor({ state: 'detached' });
   assert.deepEqual(acks, ['ev-ended']);
-  assert.equal(await detached.getByRole('button', { name: '확인했어요' }).count(), 1);
+  assert.equal(await detached.getByRole('button', { name: '확인했어요' }).count(), 3);
 
   // ③ 안전 알림 조회만 실패 — 실패를 알리고, 다시 확인하면 사라진다
   state.safetyFails = true;
@@ -97,7 +107,7 @@ try {
   await page.getByRole('button', { name: '안전 알림 다시 확인' }).click();
   await page.getByText('안전 알림을 확인하지 못했어요.', { exact: false }).waitFor({ state: 'detached', ...SLOW });
 
-  console.log('PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인. 합성 API 만 사용.');
+  console.log('PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인 · 빈 발췌는 저장 중/저장 실패로 표시. 합성 API 만 사용.');
 } finally {
   await browser.close();
   await new Promise((resolve) => server.httpServer.close(resolve));

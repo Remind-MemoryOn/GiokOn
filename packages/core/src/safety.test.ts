@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SAFETY_EVIDENCE_PENDING_MS,
+  safetyEvidenceState,
   AI_DISCLOSURE,
   AI_GENERATED_LABEL,
   assessEngagement,
@@ -199,5 +201,24 @@ describe('투명성 고지 상수', () => {
   it('AI 이용 고지·생성물 라벨을 제공한다', () => {
     expect(AI_DISCLOSURE).toContain('AI')
     expect(AI_GENERATED_LABEL).toContain('AI')
+  })
+})
+
+describe('safetyEvidenceState (T25.17 — 빈 발췌 표시)', () => {
+  const at = '2026-09-29T10:00:00.000Z'
+  const t = Date.parse(at)
+  it('발췌가 있으면 present', () => {
+    expect(safetyEvidenceState('숨이 안 쉬어져요', at, t + 10 * 60_000)).toBe('present')
+  })
+  it('비어 있으면 감지 후 2분 동안은 저장 중(중계 재시도 창)', () => {
+    expect(safetyEvidenceState(null, at, t + 30_000)).toBe('pending')
+    expect(safetyEvidenceState('  ', at, t + SAFETY_EVIDENCE_PENDING_MS - 1)).toBe('pending')
+  })
+  it('창을 넘기면 저장 실패 — 근거를 지어내지 않는다', () => {
+    expect(safetyEvidenceState(null, at, t + SAFETY_EVIDENCE_PENDING_MS)).toBe('missing')
+    expect(safetyEvidenceState('', at, t + 60 * 60_000)).toBe('missing')
+  })
+  it('시각을 읽지 못하면 실패로 본다', () => {
+    expect(safetyEvidenceState(null, 'not-a-date', t)).toBe('missing')
   })
 })

@@ -44,6 +44,8 @@ import { Dialog } from '../../components/ui/Dialog';
 import { useStore } from '../../store/store';
 import { cn } from '../../lib/utils';
 import { serverErrorMessage } from '../../lib/serverErrors';
+import { safetyEvidenceText } from '../../lib/safetyEvidence';
+import { safetyEvidenceState } from '@giokon/core';
 
 const ACTION_LABEL: Record<string, string> = {
   pause: '일시정지',
@@ -81,10 +83,13 @@ function useNow(ms = 1000): number {
 function SafetyAlert({
   alert,
   context,
+  now,
   ackDisabled,
   onAcknowledge,
 }: {
   alert: SafetyEventRow;
+  /** 1초 시계 — 저장 중 → 저장 실패로 넘어가는 순간을 다시 그린다. */
+  now: number;
   /** 카드 밖(끝난 대화)에 그릴 때 누구의 어떤 대화였는지. 세션 카드 안에서는 비운다. */
   context?: string;
   ackDisabled: boolean;
@@ -96,7 +101,15 @@ function SafetyAlert({
       <p className="text-w-sub font-semibold leading-[26px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
         {alert.caregiver_alert}
       </p>
-      {alert.excerpt ? <p className="mt-2 text-w-label leading-[22px] text-ink-700">"{alert.excerpt}"</p> : null}
+      {/* 발화 근거 — 비어 있으면 저장 중/저장 실패를 그대로 알린다(근거를 지어내지 않는다, T25.17) */}
+      <p
+        className={cn(
+          'mt-2 text-w-label leading-[22px] text-ink-700',
+          safetyEvidenceState(alert.excerpt, alert.created_at, now) === 'missing' && 'font-semibold text-ink-900',
+        )}
+      >
+        {safetyEvidenceText(alert, now)}
+      </p>
       <div className="mt-3 flex items-center justify-between gap-3">
         <span className="text-w-label text-ink-700">
           {timeHM(alert.created_at)} 감지 · <span className="whitespace-nowrap">키워드 기반 안전장치</span>
@@ -161,7 +174,7 @@ function SessionCard({
       {/* 위기 카드 — 진행 중인 이 대화의 미확인 위기 */}
       {alerts.map((a) => (
         <div key={a.id} className="mb-4">
-          <SafetyAlert alert={a} ackDisabled={ackDisabled} onAcknowledge={onAcknowledge} />
+          <SafetyAlert alert={a} now={now} ackDisabled={ackDisabled} onAcknowledge={onAcknowledge} />
         </div>
       ))}
 
@@ -384,6 +397,7 @@ export function SupervisionPage() {
                 <SafetyAlert
                   key={a.id}
                   alert={a}
+                  now={now}
                   context={`${elderName.get(a.profile_id) ?? '어르신'}${sessionsKnown ? (a.session_id ? ' · 끝난 대화' : ' · 대화 밖 기록') : ''}`}
                   ackDisabled={ack.isPending || !me.data?.id}
                   onAcknowledge={acknowledge}

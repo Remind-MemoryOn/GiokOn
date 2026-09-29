@@ -263,6 +263,14 @@ const SCREENS = [
     // T25.6: 미확인 위기는 세션 상태와 무관하게 확인까지 · 안전 조회 실패 ≠ 알림 없음
     /aria-label="확인하지 않은 안전 알림"/, /!sessionsKnown \|\| !e\.session_id \|\| !activeIds\.has\(e\.session_id\)/,
     /safety\.isError/, /알림이 없다는 뜻이 아닙니다/, /safety\.dataUpdatedAt/,
+    /safetyEvidenceText\(alert, now\)/,                                // T25.17: 빈 발췌 = 저장 중/저장 실패(근거를 지어내지 않음)
+  ]],
+  // ── 위기 근거 표시(T25.17 웹) — 빈 발췌를 안내 문구로 덮지 않는다 ─────────────
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 안전 알림 발화 근거 상태', [
+    /safetyEvidenceText\(ev\)/, { absent: /ev\.excerpt \? `발화: “\$\{ev\.excerpt\}”` : ev\.caregiver_alert/ },
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 안전 이벤트 발화 근거 상태', [
+    /safetyEvidenceText\(ev\)/, { absent: /ev\.excerpt \? `발화: “\$\{ev\.excerpt\}”` : ev\.caregiver_alert/ },
   ]],
   // ── 한국 날짜 기준(T25.7) — UTC 로 자르면 한국 00:00~08:59 에 전날이 된다 ─────────────
   [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 기록일 기본값 = 한국 날짜', [/planned_date \?\? seoulDate\(\)/]],

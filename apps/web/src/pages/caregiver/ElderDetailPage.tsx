@@ -44,6 +44,7 @@ import { cn, relativeDay } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
 import { useElderProfile } from '../../lib/elderProfile';
 import { currentConsentOf } from '../../lib/consents';
+import { safetyEvidenceText } from '../../lib/safetyEvidence';
 
 /** 동의 행 세로 피치 — 시안 92(3행) → 4행이 카드 안에 들어가도록 74. */
 const CONSENT_PITCH = 74;
@@ -807,7 +808,7 @@ export function ElderDetailPage() {
               className="absolute left-[379px] w-[700px] text-w-body leading-[28px] text-ink-700"
               style={{ top: Y(3180.86) }}
             >
-              {ev.excerpt ? `발화: “${ev.excerpt}”` : ev.caregiver_alert}
+              {safetyEvidenceText(ev)}
             </p>
             <Pill
               fx="198:484"

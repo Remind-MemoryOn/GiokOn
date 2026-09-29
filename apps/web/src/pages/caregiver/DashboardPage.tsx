@@ -24,6 +24,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
 import { cn, relativeDay } from '../../lib/utils';
+import { safetyEvidenceText } from '../../lib/safetyEvidence';
 
 export function DashboardPage() {
   const { isConfigured } = useAuth();
@@ -111,7 +112,7 @@ export function DashboardPage() {
                     data-fx={i === 0 ? '216:249' : undefined}
                     className="mt-[8px] text-w-body leading-[28px] text-ink-700"
                   >
-                    {ev.excerpt ? `발화: “${ev.excerpt}”` : ev.caregiver_alert}
+                    {safetyEvidenceText(ev)}
                   </p>
                 </div>
                 <button
