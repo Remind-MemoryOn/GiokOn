@@ -64,3 +64,5 @@ done
 "${PSQL[@]}" -f "$HERE/storage_policies.sql"
 # ⚠️ 처리 동의를 철회한다 — 반드시 맨 마지막.
 "${PSQL[@]}" -f "$HERE/journal_worker_consent.sql"
+# 운영 권한 그대로(app 스키마 USAGE 없음)의 사용자 경로 — 트랜잭션 안에서 회수하고 되돌린다.
+"${PSQL[@]}" -f "$HERE/prod_privileges.sql"
