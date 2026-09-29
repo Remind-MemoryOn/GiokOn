@@ -6,7 +6,7 @@
 --   analysis 공개 = 분석 전체('version' 키 제외) + 그 세션 원문(내용·원문·화자·순서·주제·음성 주소, 줄 추가·삭제)
 --   session_summary 공개 = 요약 문장 + 첫 주제
 -- 지키는 것: ① 같은 내용 재저장·기술 키만 바뀜 → 유지 ② 분석 내용 변경 → analysis 공개만 해제(요약은 유지)
---   ③ 요약 변경 → 둘 다 해제 ④ 원문 변경·추가 → analysis 공개 해제 · 원문 기술 칸(발화 길이 등)만 바뀜 → 유지
+--   ③ 요약 변경 → 둘 다 해제 ④ 원문 변경·추가·음성 교체 → analysis 공개 해제 · 원문 기술 칸(발화 길이 등)·음성 만료 삭제 → 유지
 --   ⑤ 해제는 같은 트랜잭션 · 사유 content_changed · 보호자에게 즉시 닫힘 · 명시적 재공개하면 다시 보임
 --   ⑥ 공개 철회 권한(T25.4)이 없는 직원이 고쳐도 자동 해제는 된다 · 클라이언트는 사유를 쓸 수 없다
 
@@ -127,6 +127,16 @@ values ((select sid from sa_x), (select pid from sa), 'a0000000-0000-0000-0000-0
 do $$ begin
   assert not pg_temp.active('analysis'), '원문 줄이 추가되면 analysis 공개 해제';
 end $$;
+
+-- ④ 음성: 새 음성이 붙거나 교체되면 해제 · 보존기한 만료로 지우는 것(→ null)은 유지
+select pg_temp.share('analysis');
+update public.session_logs set audio_url = 'audio/a.m4a' where session_id = (select sid from sa_x) and turn_index = 2;
+do $$ begin assert not pg_temp.active('analysis'), '음성이 새로 붙으면 analysis 공개 해제'; end $$;
+select pg_temp.share('analysis');
+update public.session_logs set audio_url = null where session_id = (select sid from sa_x) and turn_index = 2;
+do $$ begin assert pg_temp.active('analysis'), '음성 만료 삭제(→ null)는 공개를 유지해야 함'; end $$;
+update public.session_logs set audio_url = 'audio/b.m4a' where session_id = (select sid from sa_x) and turn_index = 2;
+do $$ begin assert not pg_temp.active('analysis'), '음성이 교체되면 analysis 공개 해제'; end $$;
 
 -- ⑥ 클라이언트는 해제 사유를 쓸 수 없다 · 사람이 누른 철회는 사유가 비어 있다
 select pg_temp.share('analysis');

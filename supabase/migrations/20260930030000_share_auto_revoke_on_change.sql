@@ -98,8 +98,11 @@ as $$
 declare
   sid uuid := coalesce(new.session_id, old.session_id);
 begin
+  -- 음성 보존기한 만료로 audio_url 을 지우는 것(→ null)은 보호자에게 보이는 대화가 바뀐 게 아니다 —
+  -- 다른 음성으로 **교체**될 때만 변경으로 본다.
   if tg_op = 'UPDATE' and (old.content, old.original_content, old.role, old.turn_index, old.topic, old.audio_url)
-       is not distinct from (new.content, new.original_content, new.role, new.turn_index, new.topic, new.audio_url) then
+       is not distinct from (new.content, new.original_content, new.role, new.turn_index, new.topic,
+                             coalesce(new.audio_url, old.audio_url)) then
     return null;
   end if;
   perform app.auto_revoke_shares(array(
