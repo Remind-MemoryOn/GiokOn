@@ -11,7 +11,8 @@
 //    법률 문서 확정본(2026-09-24)으로 4종이 되어 같은 카드(높이 419.25) 안에 들어가도록 74 로 줄였다.
 //    첫 행의 좌표(시안 실측)는 그대로다.
 // ⚠️ 특이사항(profiles.note)은 없을 수 있다 → 값을 만들지 않고 `—`(Figma 도 "-").
-import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   useChronicles,
   useConsents,
@@ -22,6 +23,7 @@ import {
   useRotateElderCode,
   useSafetyEvents,
   useSessions,
+  useDeleteProfile,
   CARE_GRADE_LABEL,
   careGradeRequired,
   useOrgSettings,
@@ -34,6 +36,7 @@ import {
   requiredConsents,
 } from '@giokon/core';
 import { asset } from '../../assets/ui';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
 import { useElderPhotoUrls } from '../../lib/elderPhotos';
@@ -41,6 +44,7 @@ import { cn, relativeDay } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
 import { useElderProfile } from '../../lib/elderProfile';
 import { currentConsentOf } from '../../lib/consents';
+import { safetyEvidenceText } from '../../lib/safetyEvidence';
 
 /** 동의 행 세로 피치 — 시안 92(3행) → 4행이 카드 안에 들어가도록 74. */
 const CONSENT_PITCH = 74;
@@ -197,7 +201,8 @@ function InfoRow({ fx, top, label, value }: { fx: string; top: number; label: st
       </span>
       <span
         data-fx={fx}
-        className="absolute left-[485px] text-w-body font-medium leading-[28px] text-ink-900"
+        className="absolute left-[485px] max-w-[231px] truncate text-w-body font-medium leading-[28px] text-ink-900"
+        title={value}
         style={{ top: Y(top) }}
       >
         {value}
@@ -210,6 +215,10 @@ export function ElderDetailPage() {
   const { elderId } = useParams<{ elderId: string }>();
   const { isConfigured } = useAuth();
   const toast = useStore((s) => s.toast);
+  const navigate = useNavigate();
+  const deleteProfile = useDeleteProfile();
+  /** 삭제 확인 — 되돌릴 수 없고 사진·기록이 함께 파기돼 확인을 받는다(네이티브 confirm 금지). */
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const profileQuery = useProfile(elderId);
   const org = useOrganization({ enabled: isConfigured });
   const settings = useOrgSettings({ enabled: isConfigured });
@@ -799,7 +808,7 @@ export function ElderDetailPage() {
               className="absolute left-[379px] w-[700px] text-w-body leading-[28px] text-ink-700"
               style={{ top: Y(3180.86) }}
             >
-              {ev.excerpt ? `발화: “${ev.excerpt}”` : ev.caregiver_alert}
+              {safetyEvidenceText(ev)}
             </p>
             <Pill
               fx="198:484"
@@ -815,10 +824,12 @@ export function ElderDetailPage() {
         ))
       )}
 
-      {/* 삭제 — 실제 삭제는 확인 다이얼로그가 있는 목록/설정에서 (여기서는 이동만) */}
-      <Link
-        to="/caregiver/elders"
-        className="absolute flex items-center gap-[10px] text-w-nav font-semibold leading-[30px] text-ink-500"
+      {/* 삭제 — 확인 뒤 Storage 파일 → 프로필 행 순서로 파기(useDeleteProfile). 연대기·세션·일지 등은 DB cascade. */}
+      <button
+        type="button"
+        onClick={() => setConfirmingDelete(true)}
+        disabled={deleteProfile.isPending}
+        className="absolute flex items-center gap-[10px] text-w-nav font-semibold leading-[30px] text-ink-500 disabled:opacity-60"
         style={{ left: 1147, top: Y(3295) }}
       >
         <img
@@ -827,8 +838,26 @@ export function ElderDetailPage() {
           className="block object-contain"
           style={{ width: 30, height: 30 }}
         />
-        <span data-fx="196:140">어르신 정보 삭제하기</span>
-      </Link>
+        <span data-fx="196:140">{deleteProfile.isPending ? '삭제하는 중…' : '어르신 정보 삭제하기'}</span>
+      </button>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="어르신 정보를 삭제할까요?"
+        description={`${profileQuery.data?.name ?? ''} 어르신의 사진·연대기·대화 기록·프로그램 일지·동의 기록이 모두 함께 삭제됩니다. 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        onConfirm={() => {
+          if (!elderId) return;
+          deleteProfile.mutate(elderId, {
+            onSuccess: () => {
+              toast('success', '어르신 정보를 삭제했어요.');
+              navigate('/caregiver/elders', { replace: true });
+            },
+            onError: (err) => toast('error', err.message),
+          });
+        }}
+        onClose={() => setConfirmingDelete(false)}
+      />
     </div>
   );
 }

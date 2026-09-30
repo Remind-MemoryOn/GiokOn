@@ -760,6 +760,13 @@ function seedSupervision(q: typeof queryClient) {
       caregiver_alert: CRISIS_CAREGIVER_ALERT.medical_emergency, // 서버가 저장하는 것과 같은 core 문구
       acknowledged_at: null, acknowledged_by: null, created_at: at(0.5), updated_at: at(0.5),
     },
+    // 이미 끝난(저장된) 대화의 미확인 위기 — 진행 중 카드가 없어도 '확인하지 않은 안전 알림'에 남는다(T25.6).
+    {
+      id: 'se-ended', org_id: ORG.id, user_id: USER.id, profile_id: 'e3', session_id: 'sv-old', level: 'escalate',
+      categories: ['self_harm'], matched_terms: [], excerpt: '요즘은 다 귀찮아',
+      caregiver_alert: CRISIS_CAREGIVER_ALERT.self_harm,
+      acknowledged_at: null, acknowledged_by: null, created_at: at(20), updated_at: at(20),
+    },
   ]);
 }
 seedSupervision(queryClient);

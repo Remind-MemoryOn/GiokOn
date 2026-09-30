@@ -1,403 +1,167 @@
 # apps/web — 요양보호사·보호자 관리 웹 (작업 지침)
 
-> ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
->
-> 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
-> **"인지활동 프로그램을 AI가 진행하고, 그 결과가 공단 형식 프로그램 일지 초안으로 자동으로
-> 남는 도구"** 로 바뀌었다. 요양보호사는 계획하고 감독하며 확인한다.
->
-> **"무엇을 만들지"의 SoT = [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md)**.
-> 이 문서에서 **요양일지·per-caregiver 격리·규칙 기반 대화·직접 Gemini Live** 를 전제한 서술은
-> 낡았다. 새 계획과 충돌하면 새 계획을 따른다.
-
-> 📌 **웹 작업 지침의 단일 소스(SoT)다.** 웹(`apps/web`) 파일을 건드리면 이 문서를 읽는다.
-> 옆의 `apps/web/CLAUDE.md` 는 여기를 가리키는 **포인터 스텁**이다 — 거기에 내용을 쓰지 말 것.
-> (2026-09-11: 예전엔 `CLAUDE.md` 한 벌뿐이라 Claude 계열만 자동 로드했다. 다른 에이전트는
-> 이 규칙들을 모른 채 웹을 고칠 수 있었다 — 루트에서 고친 것과 같은 문제라 같은 방식으로 푼다.)
-
-루트 메모리 **[`AGENTS.md`](../../AGENTS.md)** 와 함께 적용되며, 충돌 시 더 구체적인 이 문서를 따른다.
-제품 사실·아키텍처·현재 위치는 루트에 있다. 여기에는 **웹에만 해당하는 규칙**만 둔다.
+> 📌 **웹 작업 지침의 단일 소스(SoT)다.** 웹(`apps/web`) 파일을 건드리면 이 문서를 읽는다. 옆의 `apps/web/CLAUDE.md` 는 포인터 스텁이다.
+> 루트 **[`AGENTS.md`](../../AGENTS.md)** 와 함께 적용되며, 충돌 시 더 구체적인 이 문서를 따른다. 제품 사실·현재 위치는 루트에, 무엇을 만들지는
+> [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §7, 테스크 상태는 `docs/tasks.md` 에 있다. 여기에는 **웹에만 해당하는 규칙**만 둔다.
+> (2026-09-28 압축 — 날짜별 완료 기록·지난 전환기 설명은 git 이력에 있다.)
 
 ## 0. 이 앱의 경계
 
-- **요양보호사·기관 관리자·보호자용 관리 웹**. React 19 + Vite + Tailwind v3.4 + react-router 7 +
-  TanStack Query + Zustand.
-- **어르신 음성 대화(TTS/STT) 화면은 없다** — 모바일 앱(`apps/mobile`) 담당. 웹에 대화 화면을 만드는
-  방향은 아키텍처 확정 사항에 반한다.
-- 백엔드는 앱과 공용: 도메인 `@giokon/core`, 데이터·인증 `@giokon/data`, 토큰 `@giokon/theme`.
-  도메인 규칙을 웹에서 새로 구현하지 말고 core 를 쓴다.
-- **2026-09-23 기획 변경 이후 웹의 역할**: 제품이 "인지활동 프로그램 + 공단 형식 프로그램 일지
-  자동화"로 바뀌면서 웹은 **① 프로그램 일지 확인·확정·공개 ② 감독 화면(진행 중 세션 원격 제어)
-  ③ 기관 설정·권한 매트릭스** 의 주 무대가 된다. **감독 화면은 웹에만 만든다**(사용자 확정 —
-  세션 중 태블릿은 어르신이 들고 있으므로 감독은 다른 기기여야 하고, 웹이면 휴대폰 브라우저로도
-  열린다). 실행 계획: `docs/plans/pilot-development-plan.md` §7(웹 파트).
+- **요양보호사·기관 관리자·보호자용 관리 웹**. React 19 + Vite + Tailwind v3.4 + react-router 7 + TanStack Query + Zustand.
+- **어르신 음성 대화 화면은 없다** — 모바일 앱 담당. 웹에 대화 화면을 만들지 않는다.
+- 백엔드는 앱과 공용(`@giokon/core`·`@giokon/data`·`@giokon/theme`). 도메인 규칙을 웹에서 새로 구현하지 말고 core 를 쓴다.
+- 웹의 주 무대: ① 프로그램 일지 확인·확정·공개 ② **감독 화면**(진행 중 세션 원격 제어 — **웹에만** 만든다: 세션 중 태블릿은 어르신이 들고 있다)
+  ③ 기관 설정·권한 매트릭스·구성원 관리.
 
-## 1. ⛔ 디자인 기준 = 신규 Figma **단독**
+## 1. ⛔ 디자인 기준 = Figma **단독**
 
-- **SoT**: Figma `4iU6Zw4MhLAMZWlnPFgsCI` "기억온 웹" (1440px 데스크톱, 화면 48종).
-  화면↔노드 맵·절차는 **`docs/runbooks/figma-web-extraction.md`**.
-- **렌더 에셋**: `apps/web/assets/figma/*.png`(화면) · `components/*.png`(모달·부품).
-  컨테이너에서 `www.figma.com` 이 막히므로 **눈 대조는 이 PNG 로** 한다.
-- **구 디자인(2026-08 이전)은 폐기**됐다. 구 스펙 문서(`docs/require/기억온_웹_디자인.md`)는 삭제됐고,
-  구 화면·구 토큰·구 카피를 근거로 삼지 않는다. git 이력에만 남는다.
-- 새 디자인에 **없는 기능은 제거**하고, **있는 기능은 추가**한다. 임의 재디자인은 하지 않는다.
-- **검사 2단**:
-  - `pnpm check:design` — 소스 정규식 상시 게이트(브라우저 없이 빠르게, CI 포함).
-  - `pnpm check:figma-web` — **DOM 좌표 + 잉크 위치를 Figma 와 ±1.5px 로 대조**(Chromium + export PNG).
-    재는 요소에 `data-fx="<노드id>"` 를 달고 `apps/web/scripts/figma-audit.spec.mjs` 에 실측을 적는다.
-- 화면을 옮길 때마다 두 표에 항목을 추가한다(런북 §절차).
-- ✅ **이관 완료(2026-09-03)**: Figma 파일의 **이름 붙은 1440 화면 45종 + 모달 4종이 전부 이관**됐고
-  `check:figma-web` 이 52화면 1511 프로브 + 잉크 810 으로 지킨다. 파일 전체를 훑어 확인했다
-  (`get_metadata` 로 300px 이상 명명 프레임 전수 대조 — 미이관 0건). 남은 유일한 명명 노드는
-  캔버스 밖에 떠 있는 컴포넌트 인스턴스 `314:374 Calendar`(318×308)인데 **어느 화면에도 배치돼
-  있지 않다** — 시안의 날짜 칸은 평범한 입력 필드라 웹은 네이티브 `<input type="date">` 를 쓰고
-  그 상태로 프로브가 통과한다. 앞으로 화면이 늘면 그때 표를 키운다.
-  ⚠️ 이관이 끝나 `pages/Pending.tsx` 는 삭제했다(자기 주석대로). 다시 만들지 말 것 —
-  미구현 화면은 자리표시자를 세우지 말고 라우트를 아예 두지 않는다.
-- ⚠️ **좌표 함정**(런북 §좌표 함정): `get_metadata` 의 텍스트 `h` 는 라인박스가 아니다 ·
-  반전/회전 노드는 metadata 좌표가 렌더 위치가 아니다 · Figma 는 lineHeight 를 대부분 auto(≈1.2)로
-  두므로 토큰 기본 라인높이(28/30/35)를 쓰면 **잉크가 2~3px 내려간다** → 실측 `leading-[…]` 명시.
+- **SoT**: Figma `4iU6Zw4MhLAMZWlnPFgsCI` "기억온 웹"(1440px). 화면↔노드 맵·절차·좌표 함정은 **`docs/runbooks/figma-web-extraction.md`**.
+- **렌더 에셋**: `apps/web/assets/figma/*.png`(화면) · `components/*.png`(모달·부품). 컨테이너에서 `www.figma.com` 이 막히므로 **눈 대조는 이 PNG 로**.
+- 구 디자인(2026-08 이전)·구 스펙 문서는 폐기됐다 — 근거로 삼지 않는다. 새 디자인에 **없는 기능은 제거**, 있는 기능은 추가. **임의 재디자인 금지.**
+- 시안이 없는 화면(감독·프로그램 일지 상세·권한 매트릭스·동의 등)은 사용자 확정 계획을 근거로 **기존 디자인 언어로 최소 구현**하고, 시안이 오면 그 화면만 교체한다.
+  사용자가 직접 준 디자인 수정 지시(예: 2026-09-28 `디자인 수정사항.txt`)는 해당 부분에서 Figma 보다 우선한다 — 바뀐 프로브는 지우지 말고 `accept` 로 사유를 남긴다.
+- 미구현 화면은 자리표시자를 세우지 말고 라우트를 두지 않는다(`pages/Pending.tsx` 되살리지 말 것).
+- **검사 2단**: `pnpm check:design`(소스 정규식 상시 게이트, CI) · `pnpm check:figma-web`(DOM 좌표 + 잉크를 Figma 와 ±1.5px 대조 + 이미지 비율 + 사이드바 클릭).
+  재는 요소에 `data-fx="<노드id>"` 를 달고 `scripts/figma-audit.spec.mjs` 에 실측을 적는다. 화면을 옮기면 두 표에 항목을 추가한다.
+- ⚠️ **좌표 함정**: `get_metadata` 의 텍스트 `h` 는 라인박스가 아니다 · 반전/회전 노드는 metadata 좌표가 렌더 위치가 아니다 ·
+  Figma lineHeight 는 대부분 auto(≈1.2) → 토큰 기본 라인높이를 쓰면 **잉크가 2~3px 내려간다** → 실측 `leading-[…]` 명시.
+- **자리표시자 금지**: Figma 의 이름·수치·예시 분석문은 데모 값이다. 실데이터에 바인딩하고, 근거가 없으면 `null`/빈 배열 → 빈 상태 문구. `0` 과 `null` 을 구분한다.
 
-### 자리표시자 금지(실서비스 원칙)
-Figma 의 어르신 이름(김복순 등)·수치·예시 분석문은 **데모 값**이다. 실데이터에 바인딩하고, 근거가
-없으면 값을 만들지 말고 `null`/빈 배열 → 빈 상태 문구로 표시한다. `0`(관찰 0회)과 `null`(측정 불가)을 구분한다.
+## 2. 기능 규칙
 
-## 2. 기능 델타 (구현 시 기준)
+**이름**: `프로그램 일지`(구 요양일지) · 보호자 `대화 관찰 리포트`(요양보호사 화면은 `분석` 유지 · 보호자 사이드바만 폭 때문에 '관찰 리포트') ·
+보호자 소식 필터 `오늘의 이야기`(확정 일지를 보호자용 문장으로).
 
-### 2026-09-23 기획 변경 — 아래 기존 델타보다 우선한다
+**프로그램 일지**(`JournalPage` → `ProgramJournalListPage` → `ProgramJournalDetailPage`, 주소 `/caregiver/journal/:elderId(/new|/:journalId)`)
+- 🟠 **초안은 자동이다 — "초안 생성" 버튼을 만들지 않는다.** 세션 종료 → DB 트리거 → 워커가 AI 초안을 채워 확인 대기로. 사람은 확인·수정·확정만.
+  **"다시 생성"은 `status='failed'` 일지에만**(`useRetryJournalGeneration` → RPC `retry_journal_generation`, `session-report` 를 부르지 않는다).
+- 상태: `generating`("AI 가 초안을 만들고 있어요" — 수정 가능, 워커는 사람이 먼저 쓴 칸을 덮어쓰지 않는다) · `pending_review`(`draft_generated_at` 있으면 AI 초안 배지,
+  `last_error` 가 있으면 AI 를 건너뛴 사유 안내) · `failed`(`last_error` + 다시 생성) · `final`. 전환은 Realtime `program_journals`.
+- 기관 AI 스위치(`org_settings.ai_drafts_enabled`)가 꺼진 기관은 세션 종료 즉시 빈 초안(직접 작성). **스위치를 켜는 UI 를 만들지 않는다**(운영자 전용 — DB 가 막는다, 읽기 표시만).
+- 상세 저장은 **바꾼 칸만** 보낸다(워커가 채운 칸을 빈 값으로 지우지 않게) · 생성 중 저장은 상태 불변 · 실패 일지를 사람이 이어 쓰면 확인 대기 ·
+  'AI 초안' 표시는 워커가 채우는 4칸(진행 내용·수급자 반응·의견수렴·보호자 문장)에만 · 상태 칩은 본문색 글자 + 색 점(대비).
+- **확정은 `useHasCapability('journal_finalize')` 일 때만** · 확정 후 공단 칸 수정은 **사유 필수** · 이력 탭 · 서버 오류 코드 → 문구는 `lib/journalErrors.ts`.
+- 공개는 **확정 + 보호자 문장 승인** 일지만(서버 게이트). **보호자 화면은 `guardian_text` 만** 렌더한다(`get_my_shared_journals`) — 공단 서식 칸을 보호자에게 보이지 않는다.
 
-**이름 변경**: `요양일지` → **`프로그램 일지`** · **보호자** `분석` → **`대화 관찰 리포트`**(요양보호사 `분석` 은 기관 내부 화면이라 유지) ·
-보호자 소식 필터 `요양일지` → **`오늘의 이야기`**(확정된 프로그램 일지를 보호자용 문장으로 다시 보여 주는 뷰).
+**감독 화면**(`/caregiver/supervision`) — 1440 셸 밖의 **반응형 단독 화면**(휴대폰 브라우저 기본). 셸 밖이라 `useGiokonRealtime` 을 화면이 직접 연다.
+원격 제어는 RPC `request_session_control` 만(직접 UPDATE 는 트리거가 거절), 원격 종료는 기기를 멈출 뿐 저장은 기기에서. 위기 카드 문구는 서버가 저장한
+`caregiver_alert` 그대로(새로 만들지 않는다). 세션에 기기 정보가 없어 '시작한 사람'을 보인다(기기 이름을 지어내지 않는다).
 
-**제거**
-- **요양일지 작성 3경로**(사진·타이핑·음성)와 **규칙 기반 초안**(`buildJournalDraft`, 명시적 목업) —
-  프로그램 일지로 대체. 음성 입력은 "요양보호사 음성 자가기록"(기획서 §5-1 삭제 대상)에 해당한다.
-- 기존 `care_journals`·`journal_photos` **데이터 포함 삭제**(사용자 확정). 사진 첨부 기능은 프로그램 일지로 옮겨 유지.
+**기관·구성원**
+- ⛔ **요양보호사는 초대 코드로만 가입**한다(기관명 입력이 같은 기관을 둘로 갈랐다). 온보딩의 '소속 기관명' 자리는 **초대 코드** 칸이다. 기관을 만드는 UI 를 되살리지 않는다.
+- 기관 없는 가입 계정(`onboarded_at` 있고 `org_id` NULL)은 `isAwaitingOrgJoin()` → `/join-pending`. 요청자는 기관 이름을 못 읽는다(RLS) — 지어 보여 주지 않는다.
+- 직원 합류 승인 = **기관 전체 어르신 기록 열람 권한**을 주는 일 → 확인창에서 먼저 알린다. 요청자 이메일은 읽을 수 없다(`requester_name`·초대 역할만).
+- **역할은 이름으로 직접 비교하지 않는다**: 관리 역할 `isOrgManagerRole()`(관리자+센터장) · 이름 `ORG_ROLE_LABEL` · 호칭 `roleHonorific()` ·
+  UI 활성 근거는 `useHasCapability()` 하나. `role === 'org_admin'` 은 DB 정책이 정확히 그 역할만 허용하는 곳(기관 이름 수정)에만.
+- 권한 매트릭스(위임 3종 × 돌봄팀 4역할)·기관 설정·구성원 역할 지정은 관리 역할만 쓰고, 나머지에게는 **읽기 전용**으로 보인다. 회귀 `test:org`.
 
-**동결(제거 아님)**: 보호자 → 요양보호사 **메시지**. 이번 범위 밖이다 — 코드는 두되 확장하지 않는다.
+**어르신**
+- 동의 부여·철회는 웹에서도 한다(`ElderConsentsPage` · 등록 동의 단계, 필수 4종). ⛔ **화면의 '완료' 판정 = DB 세션 처리 판정(`app.has_processing_consent`)** —
+  `lib/consents` `currentConsentOf` 하나로 판정한다(다른 행을 대신 인정하면 화면은 완료인데 세션이 막힌다).
+- `care_grade`: 필수 판정은 data `careGradeRequired`(주간보호만) 한 곳 · 주간보호면 등급 없이 저장을 막는다(DB 는 강제하지 않음).
+- 동의 모달의 **의사능력 기록·대리동의·법적 한계 고지**는 시안보다 더해서 유지한다(컴플라이언스).
+- ⛔ **법률 문서(`src/content/legalDocuments.ts`)는 수정하지 않는다**(변호사 검토본 — 오탈자·깨진 문자·연락처 포함). 비의료 검사는 파일 첫머리 `nonmedical-ok-file` 로 이 파일만 면제.
 
-**추가**(계획 §7 W1~W8)
-- **프로그램 일지 목록·상세** — 상태 칩(`생성 중`/`확인 대기`/`확정`/`생성 실패`) · "확인 대기 N건" 최상단 ·
-  공단 서식 12필드 폼 · AI 초안 배지 · **확정은 `has_capability('journal_finalize')` 일 때만** ·
-  **확정 후 수정은 사유 입력 필수** · 이력 탭 · 생성 실패 재시도.
-- **감독 화면**(`SupervisionPage`) — 기관 내 진행 중 세션 · 현재 단계 · 원격 일시정지/재개/종료. **반응형 우선.**
-- ✅ **권한 매트릭스**(일지 확정 · 공개 철회 · 보호자 연결 승인 × 역할) + 기관 설정(시설 유형 · 목표 시간 · 기본 피할 주제) + 구성원 역할 지정(2026-09-26, 기관 관리 카드5·6 + 구성원 행 드롭다운 — `components/org-admin.tsx`). 비관리 역할에겐 읽기 전용 · AI 초안 스위치는 읽기만(운영자 전용) · 회귀 `pnpm -F @giokon/web test:org`.
-- ✅ **어르신 동의 부여/철회 화면**(2026-09-24, `jinwoo` · PR #17) — `/caregiver/elders/:id/consents`(`ElderConsentsPage`) +
-  어르신 등록(`ElderRegisterDialog`)의 동의 단계. **웹도 동의를 부여한다**(사용자 결정 — 앱과 둘 다). 필수 동의 **4종**
-  (`elder_privacy_required` 추가). ⛔ **화면의 '완료' 판정은 DB 의 세션 처리 판정(`app.has_processing_consent`)과 같은 기준**이다 —
-  다른 종류의 행을 대신 인정하면 화면은 '완료'인데 세션이 막힌다. 어르신 상세 동의 카드는 4행이 카드에 들어가도록 피치 92→74.
-- ⛔ **법률 문서(`src/content/legalDocuments.ts`)는 수정하지 않는다** — 변호사 검토본(사용자 확정 2026-09-24). 오탈자·깨진 문자·연락처도
-  손대지 않는다. 비의료 검사는 파일 첫머리 `nonmedical-ok-file` 표식으로 이 파일만 면제된다(`check-nonmedical-copy.mjs`).
-- ✅ **어르신 `care_grade`**(2026-09-27) — 등록·수정 `CareGradeSelect`(사진 오른쪽) · 필수 판정은 data `careGradeRequired`(주간보호만) 한 곳 ·
-  주간보호면 등급 없이 저장 막음(DB 는 강제하지 않음) · 상세 프로필 카드 넷째 줄.
+**보호자**
+- **보호자 표현**: 판정형 금지("인지 기능 저하 의심"·"우울 경향"·점수·등급·향상률·기관 평균 대비) → 기술형. "병원 진료 권장"은 넣지 않는다.
+  모든 리포트 하단 고정 문구 = `components/guardian-report-notice.tsx`("본 리포트는 대화 기록 요약이며 진단·평가 목적이 아닙니다.").
+  보호자 종합은 판정형 카드2 를 그리지 않는다(`ElderAnalysisCards audience="guardian"`).
+- 요약만 공개된 기록은 RPC `get_my_shared_summaries`(요약 문장·첫 주제·날짜만)로 읽는다 — 없는 대화 시간·인용·키워드를 지어내지 않는다.
+- 보호자는 **공개된 분석에 매달린 세션만** 읽는다(`app.is_session_shared_to_me`) — 보호자 화면에서 무언가 안 보이면 **공개 상태를 먼저 본다**.
+- ⛔ **공개 항목의 신원은 `(item_type, item_id)` 복합키**다. `session_summary` 와 `analysis` 는 같은 분석 행 id 를 쓴다 — `item_id` 만으로 Map 을 만들면 서로 덮는다.
+  사진은 일지 id 가 아니라 사진 id 로 공개된다(`program_journal_photos` 를 거쳐 찾는다).
+- "지금 보는 어르신"은 `lib/guardianElder.ts`(URL `?elder=` → localStorage → 첫 연결)가 정하고 **승인 목록의 id 만** 받는다. 화면마다 `links.find(approved)` 로 되돌아가지 말 것.
+- 메시지(보호자 → 요양보호사 단방향)는 **동결** — 코드는 두되 확장하지 않는다. 알림은 탑바 벨 배지·드롭다운이 소비처(사람은 알림을 만들 수 없다).
 
-**보호자 표현 규칙**(계획 §7): 판정형 금지("인지 기능 저하 의심"·"우울 경향"·점수·등급) → 기술형
-("이번 달 대화 시간 추이"·"긍정 표현이 많았던 주제 Top 3"). "병원 진료 권장"은 보호자용에 넣지 않는다.
-모든 리포트 하단 고정 문구: *"본 리포트는 대화 기록 요약이며 진단·평가 목적이 아닙니다."*
-보호자 일지 상세는 **`guardian_text` 만** 렌더한다 — **공단 서식 필드를 보호자에게 직접 노출하지 않는다.**
-
-✅ **2026-09-27 고침**(W3·W4): ~~`session_summary` 공개 행이 보호자 피드에 렌더되지 않는다~~ → 요약 전용 RPC `get_my_shared_summaries`
-(요약 문장·첫 주제·날짜만) + `MySharedContent.summaries` · 보호자 종합은 판정형 카드2 를 그리지 않음(`ElderAnalysisCards audience="guardian"`) ·
-보호자 리포트 고정 문구 = `components/guardian-report-notice.tsx` · 보호자 메뉴는 사이드바 폭 때문에 '관찰 리포트' · 죽은 `'report'` 화면 코드 삭제(DB enum 값만 남음).
-
-### 기존 델타 (2026-09-23 이전 — 위와 충돌하면 위를 따른다)
-
-**제거** — 새 디자인에 없다
-- **AI 도우미(AgentPanel)** — 사람 간 메시지가 대체. `core/agent.ts` 포함 제거.
-- **세션 활동 종류**(회상 대화/인지자극/옛 노래/풍경) — 세션 설계에서 사라짐(`therapyType` 폐기).
-- **시연·프로토타입 안내** — 랜딩 "프로토타입" 배지, 대시보드 태블릿 권장 카드.
-
-**추가** — 백엔드까지 구현
-- **TopBar**: 워드마크 · 어르신 검색 · 알림 벨(배지) · 사용자 메뉴 드롭다운.
-- **알림**(완료 — `notifications` + 트리거 파생. 전용 알림 화면은 디자인에 없어 **탑바 벨
-  배지와 드롭다운까지**가 소비처다. 사람은 알림을 만들 수 없다: INSERT 정책 없음) /
-  **메시지**(완료 — `messages`, 보호자 → 담당 요양보호사 **단방향** · append-only ·
-  수신은 알림으로. ⚠️ **작성 폼은 Figma 에 없다** — 시안은 이용 안내 모달까지만 그렸다) /
-  **공유 사진**(~~요양일지~~ **프로그램 일지** 첨부 사진을 날짜순 갤러리로 보호자 공개 — **웹에서만 업로드**, 완료) /
-  **보호자 확인(읽음)** + 확인 알림 토글(완료 — `guardian_shares.viewed_at`/`view_count`/
-  `notify_on_view` + 서버 함수 `mark_share_viewed`) / **항목 단위 공개**(완료).
-- **보호자도 사이드바 다중 페이지**(어르신 연결 · 공개된 소식 · ~~분석~~ **대화 관찰 리포트** · 설정).
-- **문의사항 게시판**(2026-09-02 신설, **Figma 에 없는 사용자 승인 기능**): `/inquiries` 목록·
-  등록·수정 + 운영자 답변. `users.is_site_admin` 이 운영자다(스스로 못 켠다 — 트리거가 막는다).
-  ⛔ **비공개 규약**: 비공개 문의의 **제목·작성자·본문**은 작성자와 운영자만 본다.
-  목록은 `security definer` 함수 `list_inquiries()` 가 판정해 잠금 문구로 바꿔 보내고
-  (`locked`), 본문은 RLS 가 막는다(anon 은 테이블 권한 자체가 없다). **화면에서 다시 판정하지
-  말고 서버가 준 값을 그대로 쓴다.** 회귀는 `rls_regression.sql` §5.12.
-- **`/privacy`·`/terms` 단독 라우트**(2026-09-02 확정). 공개 화면 하단 `PublicFooter` 가 두 곳을
-  가리킨다. 법인명·보호책임자·수탁자는 **미확정이라 적지 않는다**.
-- **이용안내는 법률 전문을 담지 않는다**(2026-09-03 "C안" 확정). Figma `1:17` 은 처리방침·약관
-  전문을 이 화면에 넣어 뒀지만 단독 페이지로 분리되면서 중복이라 **내용을 웹·앱 사용 흐름
-  안내로 교체**했다. ⛔ **치수·색·타이포·좌표 체계는 Figma `1:17` 그대로**다 — `GuidePage.tsx`
-  상단 상수(`CARD_X` 118 · `CARD_W` 1204 · `COL_X` 190 · `COL_W` 1055 · `TITLE_DY` 71 ·
-  `LEAD_DY` 120.32 · `FIRST_DY` 218 · `CARD_PAD_B` 71 · `CARD_GAP` 72)가 그 실측이고
-  `check:design` 이 고정한다. 카드 높이와 2·3번 카드의 y 는 **내용에서 계산**되므로
-  `figma-audit.spec.mjs` 의 해당 프로브는 어느 쪽이 Figma 실측이고 어느 쪽이 파생인지
-  주석으로 갈라 뒀다(파생 y 는 잉크 대조가 불가능해 `acceptInk`).
-
-**디자인에 더해서 살리는 것**(사용자 확정): 동의 모달의 **의사능력 기록·대리동의(성년후견인/가족
-보호자)·법적 한계 고지** — 컴플라이언스 근거라 유지한다.
+**문의·공개 페이지**
+- 문의 게시판(`/inquiries`, Figma 밖 사용자 승인 기능): 운영자 = `users.is_site_admin`(스스로 못 켠다). ⛔ 비공개 문의의 제목·작성자·본문은 작성자·운영자만 —
+  목록은 `list_inquiries()` 가 잠금 문구로 바꿔 보낸다. **화면에서 다시 판정하지 말고 서버 값을 그대로 쓴다.**
+- `/privacy`·`/terms` 단독 라우트. 법인명·보호책임자·수탁자는 미확정이라 적지 않는다.
+- 이용안내(`GuidePage`)는 법률 전문 대신 사용 흐름 안내 — 치수·좌표 체계는 Figma `1:17` 그대로(상단 상수를 `check:design` 이 고정). AI 투명성·안전장치 고지를 빼지 않는다.
 
 ## 3. 상태·데이터 규칙
 
-- **서버 상태 = TanStack Query**(`@giokon/data` 훅), **UI 상태 = Zustand**. 서버 데이터를 스토어에 복제하지 않는다.
-- **Supabase 미설정(.env 없음)에서도 앱은 떠야 한다.** `useAuth().isConfigured` 로 분기해 훅을
-  `enabled: isConfigured` 로 끄고 안내를 렌더한다. 이 폴백을 깨지 말 것.
-- 앱↔웹 실시간은 `useGiokonRealtime`. 추가 예정: `program_journals`(생성 중 → 확인 대기 전환)·
-  `session_interventions`(감독 개입 기록). ⚠️ **새 테이블은 `RealtimeTable`·`DEFAULT_TABLES`·
-  `invalidateFor` 세 곳에 모두 등록한다** — publication 에만 넣으면 아무도 듣지 않는다
-  (2026-09-04 `journal_photos` 에서 실제로 겪었다).
-- 어르신 접근은 ~~**배정 모델**(`profile_caregivers`)~~ → **기관 단위 + 역할 기반으로 전환한다**
-  (2026-09-23 기획 변경 — 교대근무라 오후 담당자가 오전 담당자의 세션 기록을 봐야 한다).
-  역할에 `social_worker`(사회복지사)·`center_director`(센터장)가 추가되고, 기관별 위임은
-  `org_capabilities` 가 정한다. **UI 활성·비활성의 근거는 `useHasCapability()` 하나로 둔다**
-  (역할 이름을 화면에서 직접 비교하지 말 것 — `= 'caregiver'` 비교가 새 역할을 조용히 빼 버린다).
-  배정(`profile_caregivers`)은 사라지지 않고 **알림 타깃팅·"내 담당" 필터**로 의미가 축소된다.
-  **보호자 격리는 그대로다.** 영속 어르신 코드(`elder_codes`)도 유지.
-- **세션 상태 3종을 구분한다**: `planned`(웹에서 설계, 아직 일어나지 않음) · `active`(앱에서
-  진행 중) · `ended`(끝남). "대화 이력"·"대화 분석 목록" 에 `planned` 를 세우지 않는다
-  (분석은 `ended` 에만 있다). 앱은 `planned` 를 받아 그대로 진행하고, 시작할 때 **그 행을
-  active 로 바꾼다**(새로 만들면 설계가 유령으로 남는다).
-- **기관 없는 가입 계정은 요양보호사 화면에 들이지 않는다**(파일럿 W9, 2026-09-25): 초대 코드로 가입하면 `onboarded_at` 은 있고
-  `org_id` 는 승인 전까지 NULL 이다 → 기관 데이터 0건. `@giokon/data` `isAwaitingOrgJoin()` 하나로 판정하고 `routeForUser`·
-  `CaregiverGuard` 가 `/join-pending`(승인 대기)으로 보낸다. 요청자는 기관 이름을 읽을 수 없다(organizations RLS) — 지어 보여 주지 않는다.
-  ⛔ **요양보호사는 초대 코드로만 가입한다**(A안, 사용자 확정 2026-09-25 — 기관명 입력이 같은 기관을 둘로 갈랐다). 기관은 운영자가
-  `app.provision_org` 로 만들고, 운영자 **관리자 코드**로 가입하면 즉시 기관 관리자, 기관이 준 **직원 코드**면 승인 대기. 온보딩의
-  798 칸은 시안의 '소속 기관명' 자리·치수 그대로 **초대 코드** 칸이다(시안과 다름 — 사용자 확정). 기관명으로 새 기관을 만드는 UI 를 되살리지 않는다.
-- **역할은 이름으로 직접 비교하지 않는다**(2026-09-25): 관리 역할 판정 = `@giokon/data` `isOrgManagerRole()`(관리자+센터장, 서버
-  `app.is_org_manager` 와 같은 집합), 역할 이름 = `ORG_ROLE_LABEL`, 상단 바 호칭 = `roleHonorific()`. `role === 'org_admin'` 은
-  **DB 정책이 정확히 그 역할만 허용하는 곳**(기관 이름 수정 `organizations_update_admin`)에만 남긴다.
-- 직원 합류 승인은 **기관 전체 어르신 기록 열람 권한을 주는 일**이라 확인창에서 그 사실을 먼저 알린다(`OrgPage`). 요청자 이메일은
-  기관 밖 사람이라 읽을 수 없다 — `requester_name` 과 초대 역할만 보인다.
-- 감사 스텁의 `?audit-role=<역할>` 은 **접근성 감사 전용**이다(관리 역할 카드 렌더). Figma 좌표 감사는 쓰지 않는다.
-- **감독 화면(`/caregiver/supervision`)은 1440 셸 밖의 반응형 단독 화면**이다(2026-09-25 — 휴대폰 브라우저가 기본). 셸 밖이라
-  `useGiokonRealtime` 을 화면이 직접 연다. 원격 제어는 RPC `request_session_control` 만(직접 UPDATE 는 트리거가 거절),
-  원격 종료는 기기를 멈출 뿐 저장은 기기에서 한다. 위기 카드 문구는 서버가 저장한 `caregiver_alert` 를 그대로 쓴다(새로 만들지 않는다).
-  ✅ 2026-09-27 T21.4: 중계가 위험 발화를 **감지 즉시** `safety_events` 에 기록한다(중계 배포 후) — 위기 카드·벨 알림이 세션 종료를 기다리지 않는다.
-  안전 알림(`notifications.kind='safety'`) 수신자 = 담당 배정자 ∪ **세션 진행자**(같은 기관 돌봄팀). 웹 벨 쿼리는 바꿀 것 없음(본인 알림만 RLS).
-  세션에 기기 정보가 없어 기기 이름을 지어내지 않는다. **시안에 없는 사이드바 메뉴는 맨 끝에만 붙인다**(중간 삽입 = 시안 항목 좌표 이동).
-- **시안 밖 단독 화면의 공통 체계**(2026-09-25 D1~D11): 배경 `#f8f8f8`(문의·법률·감독·승인 대기) · 로그인한 사람의 단독 화면은
-  워드마크(→ 역할별 메인) + 오른쪽 동작 하나의 **단독 헤더**(감독·승인 대기 — 공개 헤더의 '로그인/회원가입'을 보이지 않는다) ·
-  버튼은 공용 `Button`(되돌릴 수 없는 동작 = `danger`) · 누를 수 없는 상태 표시는 컨트롤 모양(라디오·체크)을 쓰지 않는다.
-  **시안 밖 화면의 명도대비는 우리가 정하는 색이라 보정한다**(감독 화면: 색 글자 대신 `ink-900`/`ink-700` + 색 점, 주황·빨강 버튼 글자
-  `!text-ink-900`) — 공용 `Button`·시안 화면의 색은 여전히 디자인 결정 대기다. 배경을 바꾸면 그 위 보조 글자 대비부터 다시 본다.
-- **알림(toast) 문구는 해요체 + '해 주세요'**(2026-09-25 사용자 확정). Figma 문구(placeholder 등)와 서버 원문(`e.message`)은 대상이 아니다.
-- 동의서 전문 경로는 `lib/consentDocuments.ts` `CONSENT_DOCUMENT_PATH` 하나를 쓴다(화면마다 표를 두다 값이 어긋났다).
-- 시안에 없는 사이드바 메뉴의 아이콘은 새로 그리지 않고 **시안 글리프를 다시 칠해** 만든다(`scripts/crop-web-figma-assets.py` `RECOLOR` — 감독 = 눈).
-- **공용 모듈(2026-09-25 리팩토링) — 같은 일을 화면에서 다시 짜지 말고 이것을 쓴다**:
-  `lib/figmaY` `Y`(Figma 절대 y → 본문 좌표) · `lib/format` `dayKey`·`secondsParts` · `lib/elderProfile` `useElderProfile` ·
-  `lib/shareViewed` `useMarkShareViewedOnce`(보호자 열람 1회) · `lib/serverErrors` `serverErrorMessage`(오류 코드 → 문구 본체) ·
-  `lib/myName` `useMyNameForm` · `lib/consents` `currentConsentOf`(⛔ 동의 완료 판정은 여기 하나 — DB 판정과 같아야 한다)·
-  `elderConsentGrant`·`consentSaveError` · `lib/consentDocuments` `CONSENT_DOCUMENT_PATH`.
-  ⚠️ `check:design` 이 소스 문자열로 고정한 표현(예: `LandingPage` 의 `const Y`, `OrgForm` 의 `org.data?.id ?? '—'`)은
-  리팩토링에서도 **제자리에 둔다**(사용자 확정 A안) — 게이트를 코드에 맞춰 고치지 않는다.
+- 서버 상태 = TanStack Query(`@giokon/data` 훅), UI 상태 = Zustand. 서버 데이터를 스토어에 복제하지 않는다.
+- **Supabase 미설정(.env 없음)에서도 앱은 떠야 한다** — `useAuth().isConfigured` 로 훅을 `enabled` 끄고 안내를 렌더한다.
+- Realtime 은 `useGiokonRealtime`. ⚠️ **새 테이블은 `RealtimeTable`·`DEFAULT_TABLES`·`invalidateFor` 세 곳에 모두 등록한다**(publication 에만 넣으면 아무도 안 듣는다).
+- **세션 상태 3종**: `planned`(웹 설계) · `active`(앱 진행 중) · `ended`. 대화 이력·분석 목록에 `planned` 를 세우지 않는다. 앱은 설계 행을 그대로 시작한다(새로 만들면 설계가 유령으로 남는다).
+- 어르신 접근은 **기관 단위 + 역할**이다. 배정(`profile_caregivers`)은 알림·"내 담당" 필터 용도. 보호자 격리·어르신 코드(`elder_codes`)는 그대로.
 - RLS 가 최종 방어선이다. 화면에서 감추는 것으로 접근통제를 대신하지 않는다.
-- **보호자는 "공개된 분석에 매달린" 세션만 읽는다**(2026-09-06, `app.is_session_shared_to_me`).
-  승인된 연결 + 그 어르신 + **그 세션의 분석이 미철회 공개**, 셋을 다 만족할 때만 열린다.
-  철회하면 즉시 닫힌다 → 보호자 화면에서 무언가 안 보이면 **공개 상태를 먼저 본다**.
-- ⛔ **공개 항목의 신원은 `(item_type, item_id)` 복합키다.** `session_summary` 와
-  `analysis` 는 **같은 분석 행 id** 를 쓴다 — `item_id` 만으로 Map 을 만들면 하나가 다른
-  하나를 덮어 "AI 분석 체크 해제"가 요약 공개를 철회한다. 사진은 일지 id 가 아니라
-  **사진 id** 로 공개되므로 "이 일지의 사진" 은 `journal_photos`(→ 전환 후 `program_journal_photos`)를 거쳐 찾는다.
-- **보호자 화면의 "지금 보는 어르신" 은 `lib/guardianElder.ts` 가 정한다**
-  (URL `?elder=` → localStorage → 첫 연결). **승인 목록에 있는 id 만 받아들인다** —
-  없는 id 로 화면이 뜨면 "이 어르신은 기록이 없다"는 오해가 된다.
-  화면마다 `links.find(approved)` 로 되돌아가지 말 것(둘째 어르신을 못 고르게 된다).
-- ⚠️ **2026-09-24 D5 운영 적용 — `care_journals`·`journal_photos` 는 없다.** 기존 요양일지 화면(목록·작성·공개·보호자 상세)은
-  W1 전까지 **같은 시안 그대로 `program_journals` 에** 쓴다(본문=`activity_content`, 활동 시간=`operated_from/to`, 진행자=본인).
-  "저장"은 확정 권한(`useHasCapability('journal_finalize')`)이 있을 때만 확정, 없으면 확인 대기로 저장하고 알린다.
-  확정 일지는 수정 사유 칸이 없어 이 화면에서 고치지 않는다. 공개는 **확정 + 보호자 문장 승인** 일지만(서버 게이트),
-  보호자 화면은 `get_my_shared_journals` 의 **보호자 문장만** 렌더한다. 서버 오류 코드는 `lib/journalErrors.ts` 가 문구로 바꾼다.
-- ✅ **W1 완료(2026-09-26)** — 아래 "두 경로"는 **삭제됐다**(기록으로만 남긴다). 지금 화면:
-  `JournalPage`(어르신 고르기 · 틀 205:1039 · 확인 대기 수) → `ProgramJournalListPage`(틀 207:1147 · 상태 칩 · "확인 대기 N건" 필터 ·
-  실패 행 "다시 생성") → `ProgramJournalDetailPage`(시안 없음 · 작성 화면 221:283 카드 체계 · 공단 12칸 · 제공 여부 · 사진 · 보호자 문장+승인 ·
-  확정(권한) · 확정 후 수정 사유 · 이력 탭). 주소는 그대로 `/caregiver/journal/:elderId(/new|/:journalId)`.
-  ⚠️ 상세 저장은 **바꾼 칸만** 보낸다(생성 중에 열어 둔 화면이 워커가 채운 칸을 빈 값으로 지우지 않게) · 생성 중 저장은 상태를 바꾸지 않고,
-  실패 일지를 사람이 이어 쓰면 확인 대기로 · 'AI 초안' 표시는 워커가 채우는 4칸(진행 내용·수급자 반응·의견수렴·보호자 문장)에만
-  (DB 에 칸별 출처가 없다 — `draft_generated_at` 이 근거) · 상태 칩 글자는 본문색 + 색 점(대비).
-- ~~**요양일지 초안은 지금 두 경로다**~~(`JournalWritePage` — W1 에서 삭제).
-  둘 다 **자동 저장·자동 공개하지 않는다** — 본문에 넣을 뿐이고, 저장·공개는 담당자 동작이다.
-  · **규칙 기반** `AI 초안 만들기` → core `buildJournalDraft`(W1 때 삭제 — 루트 AGENTS C1 결정).
-  · **실 LLM** `회상 대화에서 일지 초안`(2026-09-14, `components/SessionJournalDialog.tsx`) → `ended` 세션 선택 →
-    Edge Function **`session-report`** → 미리보기 → **명시적 적용**(`source='ai_draft'`). 서버가 종료·담당·현재 동의·
-    **기관 AI 스위치(`org_settings.ai_drafts_enabled`, 2026-09-25 — 허용목록 폐기)** 를 검사한다. 스위치가 꺼진 기관은 403 문구가 뜬다.
-    ⚠️ **W1(WT7)은 이 두 버튼을 흡수하지 않고 지운다** — 아래 "일지 초안은 자동" 참고.
-  · 본문 한도 **5000자** — DB `care_journals_content_check`(1~5000)와 같다.
-- 🟠 **일지 초안은 자동이다 — "초안 생성" 버튼을 만들지 않는다**(사용자 확정 2026-09-25, C4 운영 반영).
-  대화가 끝나면 DB 트리거 → 워커 `program-journal-draft` 가 AI 초안을 채워 **확인 대기**로 올린다. 사람은 확인·수정·확정만 한다.
-  WT7(프로그램 일지 목록·상세)이 지킬 것:
-  · 지금의 `AI 초안 만들기`(`buildJournalDraft`)·`AI 초안 생성·불러오기`(`SessionJournalDialog` → `session-report`)는 **삭제**한다.
-  · **"다시 생성"은 `status='failed'` 일지에만** 보이는 복구 버튼이다 → `useRetryJournalGeneration`(RPC `retry_journal_generation`).
-    `session-report` 를 부르지 않는다.
-  · 상태별 화면: `generating` = "AI 가 초안을 만들고 있어요"(수정은 가능, 워커는 사람이 먼저 쓴 칸을 덮어쓰지 않는다) ·
-    `pending_review` = 확인 대기(**`draft_generated_at` 이 있으면 AI 초안 배지**, 없으면 직접 작성) ·
-    `failed` = `last_error` 문구 + 다시 생성 · `final` = 확정. 전환은 Realtime `program_journals` 로 반영(이미 등록됨).
-  · `pending_review` 인데 `last_error` 가 있으면(처리 동의 없음으로 AI 를 건너뜀) 그 문구를 안내로 보여 준다.
-  · 기관 AI 스위치(`org_settings.ai_drafts_enabled`)가 **꺼진 기관**은 세션이 끝나면 곧바로 빈 초안(`pending_review`)이 생긴다 —
-    "AI 초안 없음 · 직접 작성" 상태로 보이면 된다. 스위치는 **플랫폼 운영자만** 켠다(웹에 켜는 UI 를 만들지 않는다 — DB 가 막는다).
-  · 워커는 활동 내용·참여자 반응·의견 수렴·보호자 문장만 채운다. 종합평가·다음 계획·확정·보호자 문장 승인은 사람 몫이다.
-- 🔒 **보안 수정이 세운 웹 불변식**(판정 SoT = `docs/runbooks/security-fixes.md`):
-  · **R009 계정 격리** — 인증 경계마다 **`QueryClient` 를 새로 만든다**(`@giokon/data` `AuthQueryScope`: 이전 클라이언트는
-    취소·폐기, 늦게 끝난 작업은 lease 의 `assertCurrent()` 가 막는다). ⛔ 전역 `queryClient` 하나로 되돌리지 말 것 —
-    이전 계정의 캐시가 새 계정 화면에 보인다. 스토어도 `resetForAuth()` + **세대 번호**로 늦은 토스트를 버린다.
-    회귀 = `pnpm -F @giokon/web test:auth`(§7 실행 주의).
-  · ~~R010 대상 동의 STT~~ — 웹 음성 입력(`lib/stt.ts`)은 **W1(2026-09-26)에서 삭제**했다(기획 §5-1 "요양보호사 음성 자가기록" 삭제 대상).
-    Edge Function `stt-transcribe` 의 서버 검사(대상 어르신 필수 동의 + 담당 권한)는 그대로다. 웹에 음성 입력을 되살리면 이 규칙도 되살린다.
-  · **R011 동의 증거 보존** — 온보딩은 **현행** 동의를 요구하고, 철회·재동의가 과거 증거를 덮지 않는다.
+- 🔒 **보안 불변식**(판정 SoT = `docs/runbooks/security-fixes.md`):
+  · **R009 계정 격리** — 인증 경계마다 `QueryClient` 를 새로 만든다(`AuthQueryScope` · lease `assertCurrent()`). ⛔ 전역 `queryClient` 하나로 되돌리지 말 것.
+    스토어도 `resetForAuth()` + 세대 번호로 늦은 토스트를 버린다. 회귀 `test:auth`.
+  · 웹 음성 입력은 없다(삭제). 되살리면 `stt-transcribe` 의 동의·권한 규칙도 함께 되살린다.
+  · **R011 동의 증거 보존** — 철회·재동의가 과거 증거를 덮지 않는다.
+- **화면 폭** — 1440 캔버스는 줄어들지 않는다(`html[data-canvas=fixed] body{min-width:1440px}` · viewport `width=1440`). **반응형 예외는 감독 화면뿐**이며 규칙은
+  `src/lib/viewportMode.ts`(`isFluidPath`)와 `public/viewport-mode.js`(CSP 가 인라인 스크립트를 막는다) **두 곳** — 반응형 화면을 새로 만들면 함께 고친다. 회귀 `test:viewport`.
+- **시안 밖 단독 화면 체계**: 배경 `#f8f8f8` · 로그인한 사람의 단독 화면은 워드마크(→ 역할별 메인) + 오른쪽 동작 하나의 단독 헤더 · 버튼은 공용 `Button`
+  (되돌릴 수 없는 동작 = `danger`) · 누를 수 없는 상태 표시에 컨트롤 모양(라디오·체크)을 쓰지 않는다 · 시안 밖 화면의 명도대비는 우리가 보정한다(감독 화면 방식).
+- 시안에 없는 사이드바 메뉴는 **맨 끝에만** 붙이고(중간 삽입 = 시안 좌표 이동), 아이콘은 시안 글리프를 다시 칠해 만든다(`scripts/crop-web-figma-assets.py` `RECOLOR`).
+- **공용 모듈 — 화면에서 다시 짜지 말고 쓴다**: `lib/figmaY` `Y` · `lib/format` `dayKey`·`secondsParts` · `lib/elderProfile` `useElderProfile` ·
+  `lib/shareViewed` `useMarkShareViewedOnce` · `lib/serverErrors` `serverErrorMessage` · `lib/myName` `useMyNameForm` · `lib/consents` ·
+  `lib/consentDocuments` `CONSENT_DOCUMENT_PATH`(동의서 경로 하나) · 선택 메뉴 `ui/Select`(+ `PeriodSelect`·`DateFilter`).
+  ⚠️ `check:design` 이 소스 문자열로 고정한 표현은 리팩토링에서도 제자리에 둔다 — 게이트를 코드에 맞춰 고치지 않는다.
+- 감사 스텁의 `?audit-role=<역할>` 은 접근성 감사 전용이다(좌표 감사는 쓰지 않는다).
 
 ## 4. 카피 · 컴플라이언스 (CI 강제)
 
-- **비의료**: "치료·진단·완치·처방·치매 예방·인지 개선" 금지. `pnpm check:copy` 가 강제한다.
-- ⚠️ **분석 화면의 "인지 효과 분석"·"향상률·증가율"·"향상/하락"·"매우 긍정적" 은 시안 그대로
-  둔다**(사용자 확정 2026-09-01 — 모바일이 이미 같은 문구로 나가 있어 맞춘다). 화면 하단
-  관찰 지표 고지로 보완한다. 이 문구들을 "관찰 언어" 로 되돌리지 말 것.
-  단, **값과 라벨은 일치해야 한다**: 견줄 근거가 없으면 방향 낱말을 띄우지 않고 `—`,
-  시안이 그리지 않은 상태(부정 평가 등)의 문구는 지어내지 않는다.
-- ⚠️ 다만 **재는 것이 다른 라벨은 시안을 따르지 않는다**: 대화 분석의 감정 막대는 우리가
-  '긍정/보통/부정' 을 재지 않고 **말투 묶음**을 세므로 시안 라벨을 쓰면 없는 측정을 있다고
-  말하게 된다(자리표시자 금지 원칙). `components/analysis-session.tsx` 참조.
-- **AI 투명성**: AI 생성물은 항상 표시. **안전장치 고지**: "키워드 기반 안전장치 — 의학적 판단이 아닙니다".
-- **분석 하단 고지**: "대화에서 직접 관찰된 지표입니다(효능·향상 판정이 아닙니다)."
-- 한글 가독성: 긴 문장에 `style={{ wordBreak: 'keep-all' }}`.
-- ⛔ **네이티브 대화상자 금지**: `window.alert/confirm/prompt` 는 초점 가둠·스크린리더 이름이
-  없어 `check:a11y` 가 보지도 못한다. 되돌릴 수 없는 동작은 **`ui/ConfirmDialog`**,
-  알림은 `store` 의 `toast` 를 쓴다. `check:design` 이 `{ absent: /window\.confirm\(/ }` 로
-  **되살아나는지 감시한다**(2026-09-06 — 5곳을 걷어냈다).
-- ⛔ **조회 실패를 빈 상태로 두지 않는다**: 셸의 `QueryErrorBanner` 가 실패한 쿼리를 잡아
-  "화면이 비어 보여도 기록이 없다는 뜻이 아닙니다" 를 띄운다. 화면들이 Figma 실측 좌표라
-  페이지마다 오류 블록을 끼우면 프로브가 흔들려 **셸에 둔 것**이다. 지우지 말 것 —
-  RLS 거부·네트워크 실패가 "기록 없음" 으로 보이는 것이 이 제품에서 가장 위험한 실패다.
-  화면 안에서 더 정밀하게 보여 주는 것(문의 목록의 재시도 버튼)은 배너를 **대체하지 않고
-  더한다**.
+- **비의료**: "치료·진단·완치·처방·치매 예방·인지 개선" 금지(`pnpm check:copy`).
+- 요양보호사 분석 화면의 "인지 효과 분석"·"향상률·증가율"·"향상/하락"·"매우 긍정적"은 **시안 그대로 둔다**(2026-09-01 확정 — 모바일과 같은 문구) +
+  하단 관찰 지표 고지. 단 **값과 라벨은 일치**해야 한다(근거가 없으면 방향 낱말 대신 `—`, 시안이 그리지 않은 상태의 문구는 지어내지 않는다).
+- **재는 것이 다른 라벨은 시안을 따르지 않는다** — 대화 분석 감정 막대는 '긍정/보통/부정'을 재지 않고 말투 묶음을 센다(`components/analysis-session.tsx`).
+- **AI 투명성**: AI 생성물은 항상 표시. **안전장치 고지**: "키워드 기반 안전장치 — 의학적 판단이 아닙니다". 분석 하단: "대화에서 직접 관찰된 지표입니다(효능·향상 판정이 아닙니다)."
+- **알림(toast) 문구 = 해요체 + '해 주세요'**. Figma 문구·서버 원문은 대상이 아니다. 긴 문장에 `wordBreak: 'keep-all'`.
+- ⛔ **네이티브 대화상자 금지**(`window.alert/confirm/prompt`) → `ui/ConfirmDialog` · `toast`. `check:design` 이 되살아나는지 감시한다.
+- ⛔ **조회 실패를 빈 상태로 두지 않는다**: 셸의 `QueryErrorBanner` 를 지우지 말 것(RLS 거부·네트워크 실패가 "기록 없음"으로 보이는 것이 가장 위험한 실패).
+  셸 밖 화면(감독 등)은 스스로 실패를 보인다. 화면 안의 더 정밀한 표시는 배너를 대체하지 않고 더한다.
 
 ## 5. 접근성(KWCAG)
 
-본문 바로가기 스킵 링크, 안전 알림 `role="alert" aria-live="assertive"`, 아이콘 버튼 `aria-label`,
-포커스 링. 새 인터랙션에도 같은 기준을 적용한다.
-
-- **`pnpm check:a11y`** 가 이관 완료 52화면 + 신규 공개 4화면에 axe(WCAG 2.1 A/AA)를 돌리고, axe 가 못 보는
-  **모달 키보드 동작**(초점 진입·Tab 가둠·Esc)까지 본다. 모달을 새로 만들면
-  `lib/modalA11y.ts` 의 `useModalA11y(open, onClose)` 를 쓰고 반환 ref 를 패널에 건다 —
-  시안 치수를 직접 그리는 모달도 키보드 동작은 공유한다.
-- 보이는 라벨이 없는 입력(시안이 안내문을 안 그린 검색 등)에는 `aria-label` 을 붙인다(렌더 무변화).
-- ⚠️ **명도대비는 시안이 정한 색이라 코드가 임의로 바꾸지 않는다.** 게이트는 미달 색 쌍을
-  표로 보고만 하고 실패시키지 않는다. 현황·최소 보정값은 `docs/accessibility.md` §6.
+- 스킵 링크 · 안전 알림 `role="alert" aria-live="assertive"` · 아이콘 버튼 `aria-label` · 포커스 링 · 보이는 라벨 없는 입력에 `aria-label`.
+- **`pnpm check:a11y`** — axe(WCAG 2.1 A/AA) + 모달 키보드 동작(초점 진입·Tab 가둠·Esc). 새 모달은 `lib/modalA11y.ts` `useModalA11y(open, onClose)`.
+  선택 메뉴(`ui/Select`)는 방향키·Home/End·Enter·Escape·Tab·문자 탐색·바깥 클릭을 지원하고, 모달 안에서 Escape 는 메뉴만 닫는다.
+- ⚠️ **명도대비는 시안이 정한 색이라 코드가 임의로 바꾸지 않는다**(시안 밖 화면 제외). 게이트는 미달 쌍을 보고만 한다 — 현황은 `docs/accessibility.md` §6.
+  WCAG 1.4.10(리플로우)은 1440 고정 시안의 한계로 미충족.
 
 ## 6. 개발 · 검증
 
 ```bash
 pnpm web                 # 개발 서버
-pnpm web:preview         # 빌드 + 프리뷰
-pnpm web:smoke           # 빌드 + 라우트 스모크(preview 를 스스로 띄우고 끔)
-pnpm check:design        # ★ 신규 디자인 ↔ 구현 대조 (소스 정규식, 이관 완료 화면만)
-pnpm check:figma-web     # ★★ Figma 좌표 ↔ 실제 렌더 정밀 대조 (DOM + 잉크, ±1.5px + 이미지 비율)
-pnpm -F @giokon/web img:audit   # ★ 이미지 비율만 따로 (위 검사에 이미 포함)
-pnpm -F @giokon/web nav:audit   # ★ 사이드바가 실제로 눌리는가 (위 검사에 이미 포함)
-pnpm check:copy          # 비의료 카피 린트
-pnpm check:a11y          # ★ axe(WCAG 2.1 A/AA) 57화면 + 모달 키보드 동작
-pnpm check:audit         # ★ 의존성 취약점 — **배포본(apps/web)에 닿는 것만 차단**(CI 게이트)
+pnpm web:smoke           # 빌드 + 라우트 스모크(CSP 헤더를 씌워 돈다 — 콘솔 오류 0 = CSP 검증)
+pnpm check:design        # 소스 정규식 게이트 (CI)
+pnpm check:figma-web     # Figma 좌표·잉크·이미지 비율·사이드바 클릭 대조
+pnpm check:a11y          # axe + 모달 키보드
+pnpm check:audit         # 배포본(apps/web)에 닿는 취약점만 차단 (CI)
 pnpm check:web           # typecheck → lint → copy → design → build → smoke
+# 흐름 스모크(합성 API · 스텁 빌드 · CI 미연결): test:journal · test:org · test:plan · test:grade · test:elder-delete · test:viewport · test:design-feedback
 ```
 
-**현재 통과 수치(2026-09-24, `main` `6e8c1b9` 에서 실제 실행)**: `check:design` **186** · `check:figma-web` **1511 프로브 +
-잉크 810 + 이미지 564 + 사이드바 137** · `route-smoke` **65/65**(콘솔 오류 0) · `check:a11y` **57화면**(차단 0 · 대비 미달 26종·283곳은
-비차단 보고) · 테스트 **678**(core 212 + data 155 + mobile 261 + voice-relay 50) · 마이그레이션 파일 59.
-  ↳ **2026-09-24 D5 뒤 재실행**: `check:design` 186 · `check:figma-web` 1511 + 잉크 810 + 이미지 564 + 사이드바 137 · `route-smoke` 65/65 ·
-  `check:a11y` 57화면(대비 미달 26종·283곳 그대로) · 테스트 **693**(core 224 + data 158 + mobile 261 + voice-relay 50) · 마이그레이션 파일 61.
-  ↳ **2026-09-25 W9·W6·W2 + D1~D11 뒤**: `check:design` 194 · `check:figma-web` 1511 + 잉크 810 + 이미지 565 + 사이드바 150 · `route-smoke` 67/67 ·
-  `check:a11y` **60화면**(차단 0 · 대비 미달 26종·295곳 — 화면이 3개 늘어 곳 수가 늘었고, 감독 화면은 0건) · 테스트 704.
-숫자가 줄면 무언가를 지운 것이다 — 늘리는 방향으로만 움직인다.
-⚠️ **이미지 581 → 564 는 삭제가 아니다**(2026-09-11 PR #10): 휴지통 아이콘 17곳을 `object-contain` 으로 바꿔
-**판정 대상에서 빠졌다**(아래 규칙). 실측으로 564 + 17 = 581 을 확인했다.
-⚠️ **게이트를 새 코드에 맞춰 고쳐서 통과시키지 않는다.** `check:design` 의 Figma 실측 정규식을 지우거나 바꾸면
-"통과"가 아무 뜻도 없어진다 — 2026-09-24 `jinwoo` 브랜치 검토에서 `check:design` 은 통과했지만 `check:figma-web` 은
-**편차 192건**이었다(루트 AGENTS 웹 절). 시안이 바뀐 게 아니면 코드를 시안에 맞춘다.
+- **게이트 수치는 늘리는 방향으로만 움직인다** — 줄면 무언가를 지운 것이다. **게이트를 새 코드에 맞춰 고쳐서 통과시키지 않는다**
+  (`check:design` 은 통과했는데 `check:figma-web` 편차 192건이던 사례가 있다). 시안이 바뀐 게 아니면 코드를 시안에 맞춘다.
+- `check:design` 은 `{ absent: /…/ }` 로 "되살아나면 안 되는 것"도 검사한다.
+- `check:figma-web` 은 첫 단계(`figma-audit.mjs`)가 실패하면 뒤의 잉크·이미지·사이드바 검사를 돌리지 않는다.
+- **이미지 비율 검사**: Tailwind preflight `img{height:auto}` 가 HTML `height` 를 덮어 flex 행의 아이콘이 세로로 늘어난다 →
+  flex 부모 안이면 `self-start`(+`shrink-0`), 비율 자체가 다르면 `object-contain`(판정 대상에서 빠진다).
+- **사이드바 클릭 검사**: 본문을 `-ml-[323px] w-[1440px]` 로 당긴 띠가 사이드바 위를 덮어 클릭을 가로챈다 → `Sidebar` 의 `relative z-30` 을 지운다면 이 검사가 잡는다.
+- 모달 화면 좌표 대조는 `viewportHeight` 1200 을 준다(안 그러면 `Dialog` 의 `fit` 축소가 켜진다). `Dialog fit={{width,height}}` 는 여유가 있으면 배율 1.
+- CSP 에 `unsafe-inline`·`unsafe-eval` 을 넣지 않는다.
+- 감사 스텁(`src/audit/auth-stub.tsx`)은 화면이 부르는 쿼리를 **전부** 심어야 한다(빠지면 `QueryErrorBanner` 가 떠 프로브가 깨진다 — 진짜 신호다).
 
-- **이미지 비율 검사(`scripts/img-aspect-audit.mjs`)** — 좌표 프로브가 **못 보는 종류의 결함**을
-  잡는다. Tailwind preflight 의 `img { height: auto }` 가 HTML `height="19"` 속성을 **덮으므로**,
-  `align-items: stretch`(flex 기본) 행에 들어간 아이콘은 **행 높이만큼 세로로 늘어난다**.
-  코드에는 height 가 박혀 있어 리뷰로는 안 잡히고, `data-fx` 앵커가 없으면 좌표 프로브도 못 본다
-  (실제로 대시보드 "담당 어르신" chevron 이 12×19 대신 **12×75** 로 렌더되고 있었다 — 2026-09-07 사용자 신고).
-  → 좌표 대신 **렌더 비율 vs 원본 비율**을 보므로 앵커가 없어도 잡힌다(허용 3%).
-  · **고치는 법**: flex 부모 안이면 이미지에 `self-start`(+`shrink-0`), 내보낸 글리프와 시안 박스의
-    비율 자체가 다르면 `object-contain`(박스는 실측 그대로, 그림만 비율 유지).
-  · `object-fit` 이 `fill`(기본) 이 아닌 이미지는 **판정 대상에서 제외**한다 — contain·cover 는
-    상자 비율과 무관하게 원본 비율이 지켜지므로 상자만 재는 이 검사로는 판정할 수 없다.
-- **사이드바 클릭 검사(`scripts/nav-click-audit.mjs`)** — 렌더가 아니라 **히트테스트**를 본다.
-  화면 24종이 Figma 절대좌표를 쓰려고 본문을 `-ml-[323px] w-[1440px]` 로 왼쪽으로 당긴다.
-  그 띠(x 0~322)는 비어 있지만 **사이드바 위를 덮고**, DOM 순서상 나중이라 클릭을 가로챈다 —
-  **어느 페이지에서도 사이드바를 누를 수 없었다**(2026-09-11 사용자 신고). 화면은 멀쩡해
-  보이므로 스크린샷·좌표 대조로는 절대 안 잡힌다.
-  → 막는 장치는 `Sidebar` 의 **`relative z-30`**. 절대좌표 오버레이를 새로 만들 때
-    이 검사가 다시 지켜 준다(17화면 · 137개 항목).
-- ⚠️ **모달 화면의 `height` 는 패널 높이지 화면 높이가 아니다.** 좌표 대조는
-  `viewportHeight` 로 실제 데스크톱 높이(1200)를 준다 — 안 그러면 창이 패널만큼 낮아져
-  `Dialog` 의 **축소(`fit`)** 가 켜지고 좌표가 배율만큼 통째로 어긋난다.
-- **`Dialog` 의 `fit={{width,height}}`** — 시안 치수를 절대좌표로 그리는 패널이 좁은 화면에서
-  잘리지 않게 **통째로 축소**한다(공개 기록 설정·공개 이력 상세). 배율은 `min(1, …)` 이라
-  **여유가 있으면 1** 이다 → 넓은 화면·좌표 대조에서는 시안 그대로 그려진다.
+### 6.1 "렌더는 멀쩡해 보이는데 틀린" 결함에서 나온 규칙
 
-- **`check:design` 은 `{ absent: /…/ }` 패턴을 지원한다** — "있어야 할 것" 뿐 아니라
-  **"되살아나면 안 되는 것"** 도 검사한다(모바일 `check:figma` 와 같은 규약).
-- **CSP 는 문서가 아니라 시험이다**: `route-smoke` 가 `apps/web/vercel.json` 의 배포 헤더를
-  그대로 씌워 돌린다. 위반은 콘솔 오류로 잡히므로 "콘솔 오류 0건" 판정이 곧 CSP 검증이다.
-  헤더를 고치면 스모크가 즉시 말해 준다. ⚠️ `unsafe-inline`·`unsafe-eval` 은 **넣지 않는다**
-  (React 는 CSSOM 으로 스타일을 써서 필요 없다 — 전 화면으로 확인했다).
-- **`check:audit` 은 배포본에 닿는 취약점만 막는다.** 나머지(모바일 개발·빌드 도구)는 목록만
-  보고한다. 전부를 막으면 게이트가 상시 빨간불이라 아무도 보지 않게 되고, 정작 새로 생긴
-  진짜 취약점을 놓친다. 앱 스토어 제출 전에 `apps/mobile` 도 같은 기준으로 승격한다.
-- **감사 스텁(`src/audit/auth-stub.tsx`)은 화면이 부르는 쿼리를 전부 심어야 한다.** 안 심으면
-  그 쿼리가 실패하고 `QueryErrorBanner` 가 떠 **레이아웃이 밀려 프로브가 깨진다**(오탐이
-  아니라 진짜 신호다 — 실제로 이 방식으로 숨은 실패를 하나 잡았다).
-
-### 6.1 사용자 신고에서 나온 규칙 (2026-09-07 ~ 09-13, PR #7·#9·#10)
-
-**렌더는 멀쩡해 보이는데 틀린** 종류라 좌표 대조가 통과시켰던 결함들이다. 다시 어기지 않을 규칙만 적는다.
-
-- **한 글리프 = 에셋 하나.** 같은 모양의 "여백 포함판"과 "타이트 크롭판"이 공존하면 반드시 틀린 쪽이 쓰인다
-  (chevron 82% 로 작고 9% 눌림 · 휴지통 두 판 모두 잘림). `check:design` 이 `{ absent: /iconTrashLg/ }` 로 막는다.
-  **에셋을 새로 받으면 잉크 bbox 가 테두리에 닿는지부터 본다**(닿으면 잘린 것이다).
-- **아이콘 세로 중앙은 손으로 박은 `top` 대신 `top-1/2 -translate-y-1/2`.** 드롭다운 화살표가 바닥에 붙어 있었다(15곳).
-- **같은 부품은 같은 값.** 날짜 칸 화살표 x 144 통일 · 드롭다운 라벨 `text-[16px] leading-[23px] text-ink-500`.
-  시안 밖 화면에 드롭다운을 새로 둘 때도 같은 부품을 쓴다(2026-09-25 기관 관리 직원 초대 역할·기간): 칸 r5 · 1px `line` · 흰 배경 ·
-  h37.02 · `focus-within:border-accent` · 라벨 @19 · 화살표 `iconChevronDownSm` 12×7.81 을 오른쪽 26 에 `top-1/2 -translate-y-1/2` ·
-  네이티브 `<select>` 는 `opacity-0` 으로 칸 전체를 덮는다(보이는 테두리 있는 네이티브 select 를 그대로 두지 않는다).
-- **24시간제는 네이티브 `<input type="time">` 으로 못 한다**(한국어 로캘이 오전/오후로 쪼갬) → `components/ui/TimeField.tsx`.
-  날짜는 네이티브를 쓰되 기본 달력 아이콘을 `.date-native-hidden`(`index.css`)으로 투명하게 칸 전체로 늘린다.
-- **시안보다 항목이 늘면 좌표를 억지로 끼우지 않는다**(2026-09-25 온보딩 동의 박스): 시안의 간격(피치·여백)을 상수로 두고 칸 높이와
-  아래 요소 위치를 **항목 수에서 계산**한다. 시안 프로브는 실측값을 지우지 말고 `accept` 로 사유를 남긴다.
-- **문구 길이는 코드가 정할 수 없다** → 칸 폭을 주고 접는다(동의 라벨이 상태 pill 을 뚫었다. 문구 SoT 는 core 동의 카탈로그).
-- **표시 전용 컨트롤을 두지 않는다.** 누를 수 있어 보이면 동작해야 한다(정렬 드롭다운).
-- **돌아가기는 그 화면의 부모 섹션으로.** · **로그인 상태의 로고는 역할별 메인**(`TopBar` 의 `home`).
-- **겹침은 좌표 상수로 드러난다** — 절대좌표 요소를 추가하면 같은 카드 안의 y 범위를 대조한다(`PHOTO_DRAFT_TOP`).
+- **한 글리프 = 에셋 하나**(여백판·크롭판이 공존하면 틀린 쪽이 쓰인다). 새 에셋은 잉크 bbox 가 테두리에 닿는지부터 본다.
+- 아이콘 세로 중앙은 `top-1/2 -translate-y-1/2`(손으로 박은 `top` 금지).
+- **같은 부품은 같은 값** — 선택 메뉴는 `ui/Select` 하나(팝업은 `dropdownStyles`: 흰 배경·line 테두리·r10·card 그림자·48px 항목·16px 글자, portal 로 띄우고
+  첫 렌더 전에 위치 측정). 네이티브 `<select>` 는 폼 값·필수 검증용 숨은 필드로만. 기존 입력 칸 치수는 시안 그대로.
+- 24시간제 시각은 `components/ui/TimeField.tsx`(네이티브 time 은 오전/오후로 쪼갠다). 날짜는 네이티브를 쓰되 달력 아이콘을 `.date-native-hidden` 으로 칸 전체로.
+- 시안보다 항목이 늘면 좌표를 억지로 끼우지 말고 시안 간격을 상수로 두고 **항목 수에서 계산**한다. 문구 길이는 코드가 정할 수 없다 → 칸 폭을 주고 접거나 말줄임 + `title`.
+- 표시 전용 컨트롤을 두지 않는다(누를 수 있어 보이면 동작해야 한다). 돌아가기는 부모 섹션으로 · 로그인 상태의 로고는 역할별 메인.
+- 절대좌표 요소를 추가하면 같은 카드 안의 y 범위 겹침을 대조한다.
 
 ## 7. 환경 주의점
 
-- **Pretendard 는 자체 호스팅**한다(`assets/fonts/Pretendard-1.3.9`, `index.css` 의 `@font-face`).
-  jsdelivr CDN 은 컨테이너에서 막혀 있어 쓰지 않는다.
-- `*.supabase.co` 도 막혀 있다 → 컨테이너에서는 목업 모드로 뜬다.
-- `.env` 는 커밋 금지. 원격 세션은 `.claude/hooks/session-start.sh` 가 환경변수로 생성한다.
-- **원격 컨테이너에서 게이트를 돌릴 때**(2026-09-23·24 확인):
-  · 잉크 대조(`figma-ink.py`)는 **`numpy`·`Pillow`** 가 필요하다 → `pip install numpy Pillow`(없으면 `ModuleNotFoundError`).
-  · 브라우저는 **`/opt/pw-browsers/chromium`**(`playwright install` 금지). figma·img·nav·a11y 검사는 `executablePath` 를 준다.
-    ⚠️ **`test:auth`(`scripts/auth-isolation.mjs`)는 안 준다** — 원격에서는 실패한다(코드 결함 아님, 미수정).
-  · 흐름 스모크(합성 API · 스텁 빌드): **`test:plan`**(세션 설계 W5, `?audit-plan=1`) · **`test:org`**(기관 관리 W6) · 아래 `test:journal` — 셋 다 CI 미연결.
-  · **`pnpm -F @giokon/web test:journal`**(`scripts/journal-flow-smoke.mjs`, W1 2026-09-26) — 프로그램 일지 흐름 UI 회귀(합성 API):
-    초안 생성 버튼 없음 · 다시 생성은 실패 일지만 · **바꾼 칸만 저장** · 확정 권한 잠금 · 확정 후 수정 사유. `/opt/pw-browsers/chromium` 을 쓴다
-    (없으면 msedge). CI 에는 아직 연결하지 않았다. 이전 `report-flow-smoke.mjs`(`SessionJournalDialog` 흐름)는 다이얼로그와 함께 대체했다.
-  · `smoke` 는 `dist` 가 있어야 한다 — 새 컨테이너에선 `pnpm web:smoke`(빌드 포함).
-  · `check:figma-web` 은 `figma-audit.mjs` 에서 실패하면 **뒤의 잉크·이미지·사이드바 검사를 돌리지 않는다** — 첫 단계 통과가 전부가 아니다.
-- ⚠️ **`apps/web/supabase/config.toml`(`project_id = "web"`) 이 있다**(커밋 `20250e5`) — `apps/web` 에서 `supabase init` 을 돌린 흔적.
-  마이그레이션도 함수도 없는 빈 프로젝트 폴더이고 루트 `supabase/` 엔 `config.toml` 이 없다. CLI(`db push`·`functions deploy`)는
-  **루트에서** 한다. 지울지 사용자 확인 필요(미처리).
-
-## 2026-09-12 사업 기획 반영 사항 (당시 기록)
-
-현재 JournalWritePage→core buildJournalDraft는 규칙 기반이다. 실제 LLM 초안은 별도 서버 호출·품질 평가 작업이다. 담당자 최종 승인·공개 선택은 유지한다. 앱 매 턴 확인 제거를 웹 승인 제거로 해석하지 않는다. 현재 Figma에 없는 신규 상태/계측/구독 요구는 사용자 확정 계획을 근거로 상세 설계 후 반영하고 무관한 재디자인은 하지 않는다.
-
-## 2026-09-23 기획 변경 반영 사항
-
-`JournalWritePage` → `buildJournalDraft`(규칙 기반 목업)는 **폐기 대상**이다 —
-`ProgramJournalListPage`·`ProgramJournalDetailPage` 로 대체한다([`pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) W1).
-**담당자 최종 승인·공개 선택 유지는 그대로 유효하고 오히려 강화된다** — 확정은 DB 가 사람만 허용한다
-(`auth.uid() is null` 이면 예외). 신규 화면(감독·프로그램 일지·권한 매트릭스·어르신 동의)은 현재 Figma 에
-없으므로 **사용자 확정 계획을 근거로 상세 설계 후 반영**한다 — 무관한 재디자인은 여전히 하지 않는다.
+- Pretendard 는 자체 호스팅(`assets/fonts/Pretendard-1.3.9`) — jsdelivr 는 컨테이너에서 막힌다. `*.supabase.co` 도 막혀 컨테이너에서는 목업 모드로 뜬다.
+- 잉크 대조(`figma-ink.py`)는 `pip install numpy Pillow` 가 필요하다.
+- 브라우저는 `/opt/pw-browsers/chromium`(`playwright install` 금지). ⚠️ `test:auth` 는 `executablePath` 를 주지 않아 원격 컨테이너에서는 실패한다(코드 결함 아님 — CI 에서는 돈다).
+- `smoke` 는 `dist` 가 있어야 한다 — 새 컨테이너에선 `pnpm web:smoke`(빌드 포함).
+- ⚠️ `apps/web/supabase/config.toml`(`project_id="web"`)은 빈 흔적이다. Supabase CLI 는 **루트에서** 쓴다. 삭제 여부는 사용자 결정 대기.

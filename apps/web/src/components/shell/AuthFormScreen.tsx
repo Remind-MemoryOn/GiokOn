@@ -34,7 +34,7 @@ interface Props {
   submitting?: boolean;
   disabled?: boolean;
   /** 하단 보조 링크(있는 화면만). top 은 Figma 실측(111:148=793 · 111:170=796.8). */
-  footerLink?: { to: string; label: string; top?: number };
+  footerLink?: { to: string; label: string; prefix?: string; top?: number };
   /** 결과 안내 등 화면별 추가 요소. */
   children?: ReactNode;
 }
@@ -144,7 +144,15 @@ export function AuthFormScreen({
           {submitting ? '처리 중...' : submitLabel}
         </button>
 
-        {footerLink ? (
+        {footerLink?.prefix ? (
+          <p
+            className="absolute left-1/2 flex -translate-x-1/2 items-center gap-[16px] whitespace-nowrap text-[20px] font-medium leading-[24px] text-ink-500"
+            style={{ top: Y(footerLink.top ?? ctaTop(fields.length) + 121) }}
+          >
+            <span>{footerLink.prefix}</span>
+            <Link to={footerLink.to} className="text-accent">{footerLink.label}</Link>
+          </p>
+        ) : footerLink ? (
           <Link
             to={footerLink.to}
             data-fx="111:145"

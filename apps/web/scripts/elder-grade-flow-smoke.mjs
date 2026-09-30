@@ -9,6 +9,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
+import { selectValue } from './select-control.mjs';
 
 const outDir = await mkdtemp(join(tmpdir(), 'giokon-grade-ui-'));
 await build({ envDir: false, mode: 'figma', plugins: [{ name: 'grade-test-auth', enforce: 'pre', transform(code, id) {
@@ -51,7 +52,7 @@ try {
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await page.getByText('주간보호 기관은 장기요양등급을 입력해야 해요.').waitFor();
   assert.equal(patches.length, 0);
-  await page.getByLabel('장기요양등급').selectOption('grade_3');
+  await selectValue(page, '장기요양등급', 'grade_3');
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await page.waitForURL(/\/caregiver\/elders\/e1$/);
   assert.equal(patches.length, 1);
@@ -64,7 +65,7 @@ try {
   await page.locator('#r-birth').fill('1940-03-02');
   await page.getByRole('button', { name: '다음' }).click();
   await page.getByText('주간보호 기관은 장기요양등급을 입력해야 해요.').waitFor();
-  await page.getByLabel('장기요양등급').selectOption('cognitive_support');
+  await selectValue(page, '장기요양등급', 'cognitive_support');
   await page.getByRole('button', { name: '다음' }).click();
   await page.getByRole('button', { name: '동의 후 등록' }).waitFor();
 

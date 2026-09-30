@@ -26,6 +26,11 @@ const handler = createWorkerHandler({
     if (logs.error) throw new Error('LOAD_FAILED')
     return toSourceTurns(logs.data)
   },
+  stillAllowed: async (secret, jobId) => {
+    const { data, error } = await db.rpc('check_journal_generation', { p_secret: secret, p_job_id: jobId })
+    if (error) throw new Error('CHECK_FAILED')
+    return data === true
+  },
   generate: (turns, signal) => generateReport(turns, { apiKey, model }, signal),
   finish: async (secret, jobId, fields) => {
     const { error } = await db.rpc('finish_journal_generation', { p_secret: secret, p_job_id: jobId, p_fields: fields })

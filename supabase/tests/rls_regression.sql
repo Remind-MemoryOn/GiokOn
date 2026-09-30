@@ -337,6 +337,14 @@ do $$ begin
     'guardian 은 연결을 자가 승인할 수 없어야 함';
 end $$;
 
+-- T25.4: 연결 승인·공개 철회는 권한 표를 따른다 — 이 기관은 둘 다 요양보호사에게 위임한다
+-- (위임 on/off 에 따른 허용·거부 자체는 capability_enforcement.sql 이 따로 검사한다).
+insert into public.org_capabilities (org_id, capability, allowed_roles)
+select u.org_id, c.cap::public.org_capability, array['org_admin','social_worker','center_director','caregiver']::public.org_role[]
+  from public.users u, unnest(array['guardian_link_approve', 'share_revoke']) c(cap)
+ where u.id = '33333333-3333-3333-3333-333333333333'
+on conflict (org_id, capability) do update set allowed_roles = excluded.allowed_roles;
+
 -- C 승인 → H 는 연결 어르신(1명)만 열람.
 set role authenticated;
 set test.uid = '33333333-3333-3333-3333-333333333333';

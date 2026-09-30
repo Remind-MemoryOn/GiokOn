@@ -17,6 +17,9 @@ import {
   assessEngagement,
   assessUtterance,
   buildCaregiverAlert,
+  CAREGIVER_ALERT_KINDS,
+  caregiverAlertKind,
+  type CaregiverAlertKind,
   type CrisisCategory,
   type Engagement,
   type UtteranceAssessment,
@@ -140,6 +143,39 @@ function buildSafetyEventDraft(
  */
 export function safetyEventDraftFor(assessment: UtteranceAssessment, utterance: string): SafetyEventDraft | null {
   return buildSafetyEventDraft(assessment, utterance, buildCaregiverAlert(assessment))
+}
+
+/**
+ * 음성 중계 → 앱 안전 판정 요약(파일럿 T25.14). 중계는 위험 발화 원문을 앱에 보내지 않으므로, 현장 요양보호사 화면이
+ * 위기 종류별 안내(☎109·119·1577-1389)를 띄울 수 있게 **판정만** 보낸다 — 원문·발화 조각·매칭 단어는 넣지 않는다.
+ * `safetyEventDraftFor` 가 초안을 만드는 경우에만 만들어지고, 수준·분류·문구가 그 초안과 같다.
+ */
+export interface RelaySafetySummary {
+  level: SafetyEventDraft['level']
+  categories: CrisisCategory[]
+  alert: CaregiverAlertKind
+}
+
+export function relaySafetySummary(assessment: UtteranceAssessment): RelaySafetySummary | null {
+  const alert = caregiverAlertKind(assessment)
+  if (!alert || (assessment.risk !== 'crisis' && assessment.risk !== 'watch')) return null
+  return { level: assessment.risk, categories: [...assessment.crisisCategories], alert }
+}
+
+const CRISIS_CATEGORIES: readonly CrisisCategory[] = ['self_harm', 'medical_emergency', 'abuse']
+
+/** 네트워크로 받은 요약 검증 — 모르는 값·여분 칸이 있으면 통째로 버린다(null). */
+export function parseRelaySafetySummary(value: unknown): RelaySafetySummary | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const v = value as Record<string, unknown>
+  if (Object.keys(v).some(k => k !== 'level' && k !== 'categories' && k !== 'alert')) return null
+  if (v.level !== 'watch' && v.level !== 'crisis') return null
+  if (!CAREGIVER_ALERT_KINDS.includes(v.alert as CaregiverAlertKind)) return null
+  if (!Array.isArray(v.categories) || v.categories.length > CRISIS_CATEGORIES.length) return null
+  const categories = v.categories as unknown[]
+  if (!categories.every(c => CRISIS_CATEGORIES.includes(c as CrisisCategory))) return null
+  if (new Set(categories).size !== categories.length) return null
+  return { level: v.level, categories: categories as CrisisCategory[], alert: v.alert as CaregiverAlertKind }
 }
 
 // ─────────────────────────────────────────────────────────────

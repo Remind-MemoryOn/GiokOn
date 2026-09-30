@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { dateDotTime } from '@giokon/core';
 import { roleHonorific } from '@giokon/data';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { cn } from '../../lib/utils';
+import { DROPDOWN_OPTION, DROPDOWN_PANEL } from '../ui/dropdownStyles';
 
 // 신규 디자인 실측(Figma 118:300 대시보드 상단 · 15:443 공개 헤더):
 //   바   h122 · 흰 배경 · shadow 1px 1px 10px rgba(108,101,101,.13)
@@ -56,6 +57,25 @@ export function TopBar({
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen && !bellOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+      if (!bellRef.current?.contains(event.target as Node)) setBellOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (menuOpen) menuRef.current?.querySelector('button')?.focus();
+      else bellRef.current?.querySelector('button')?.focus();
+      setMenuOpen(false); setBellOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', escape); };
+  }, [menuOpen, bellOpen]);
+  const unreadNotifications = notifications.filter((notification) => !notification.read);
 
   // 로고의 목적지 — 로그인 전에만 랜딩이다.
   const home = !user ? '/' : userRow?.role === 'guardian' ? '/guardian' : '/caregiver';
@@ -117,7 +137,7 @@ export function TopBar({
               <div
                 role="listbox"
                 aria-label="어르신 검색 결과"
-                className="absolute inset-x-0 top-[48px] z-10 overflow-hidden rounded-[10px] border border-line bg-white shadow-card"
+                className={cn('absolute inset-x-0 top-[48px] z-10 overflow-hidden', DROPDOWN_PANEL)}
               >
                 {searchResults.length ? (
                   searchResults.map((result) => (
@@ -129,7 +149,7 @@ export function TopBar({
                       onClick={() => search.onChange('')}
                       className="flex min-h-[48px] items-center px-5 text-w-sub text-ink-700 hover:bg-accent-soft hover:text-accent focus:bg-accent-soft focus:outline-none"
                     >
-                      {result.label}
+                      <span className="min-w-0 truncate" title={result.label}>{result.label}</span>
                     </Link>
                   ))
                 ) : (
@@ -141,7 +161,7 @@ export function TopBar({
         ) : null}
 
         {/* 알림 — 전용 화면은 디자인에 없다. 벨이 드롭다운을 연다. */}
-        <div className="absolute top-[69px]" style={{ left: X.bell }}>
+        <div ref={bellRef} className="absolute top-[69px]" style={{ left: X.bell }}>
           <button
             type="button"
             onClick={() => setBellOpen((v) => !v)}
@@ -161,11 +181,11 @@ export function TopBar({
           </button>
           {bellOpen ? (
             <div
-              className="absolute right-0 top-[42px] max-h-[420px] w-[380px] overflow-y-auto rounded-[10px] bg-white p-6 shadow-card"
+              className={cn('absolute right-0 top-[42px] max-h-[420px] w-[380px] overflow-x-hidden overflow-y-auto p-6', DROPDOWN_PANEL)}
               role="region"
               aria-label="알림"
             >
-              {notifications.length === 0 ? (
+              {unreadNotifications.length === 0 ? (
                 <p className="text-w-sub text-ink-500">새로운 알림이 없어요.</p>
               ) : (
                 <>
@@ -181,8 +201,8 @@ export function TopBar({
                     </div>
                   ) : null}
                   <ul className="flex flex-col gap-4">
-                    {notifications.map((n) => (
-                      <li key={n.id}>
+                    {unreadNotifications.map((n) => (
+                      <li key={n.id} className="min-w-0">
                         <button
                           type="button"
                           onClick={() => !n.read && onReadNotification?.(n.id)}
@@ -198,17 +218,17 @@ export function TopBar({
                           <span className="min-w-0 flex-1">
                             <span
                               className={cn(
-                                'block text-w-sub',
+                                'block truncate text-w-sub',
                                 n.read ? 'text-ink-500' : 'font-semibold text-ink-900',
                               )}
-                              style={{ wordBreak: 'keep-all' }}
+                              title={n.title}
                             >
                               {n.title}
                             </span>
                             {n.body ? (
                               <span
-                                className="mt-1 block text-w-label leading-[24px] text-ink-700"
-                                style={{ wordBreak: 'keep-all' }}
+                                className="mt-1 block truncate text-w-label leading-[24px] text-ink-700"
+                                title={n.body}
                               >
                                 {n.body}
                               </span>
@@ -229,7 +249,7 @@ export function TopBar({
           ) : null}
         </div>
 
-        <div className="absolute top-[62px] flex items-center gap-[19px]" style={{ left: X.avatar }}>
+        <div ref={menuRef} className="absolute top-[62px] flex items-center gap-[19px]" style={{ left: X.avatar }}>
           <img
             src={asset.avatarDefault}
             alt=""
@@ -260,18 +280,18 @@ export function TopBar({
 
           {/* 사용자 메뉴 드롭다운 — Figma components/Frame 1 (236×156) */}
           {menuOpen ? (
-            <div className="absolute right-0 top-[68px] w-[236px] rounded-[10px] bg-white py-4 shadow-card">
+            <div className={cn('absolute right-0 top-[68px] w-[236px] py-1', DROPDOWN_PANEL)}>
               <Link
                 to={guardian ? '/guardian/settings' : '/caregiver/settings'}
                 onClick={() => setMenuOpen(false)}
-                className="flex h-[57px] items-center gap-4 px-[59px] text-w-nav font-semibold text-ink-500 hover:text-accent"
+                className={cn(DROPDOWN_OPTION, 'text-ink-900 focus:bg-accent-soft')}
               >
                 설정
               </Link>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex h-[57px] w-full items-center gap-4 px-[59px] text-w-nav font-semibold text-ink-500 hover:text-accent"
+                className={cn(DROPDOWN_OPTION, 'text-ink-900 focus:bg-accent-soft')}
               >
                 로그아웃
               </button>

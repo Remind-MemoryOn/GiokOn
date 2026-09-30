@@ -35,7 +35,7 @@ import type {
   Session,
   SessionAnalysis,
 } from '@giokon/core';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { isCurrentConsent } from '@giokon/core';
 
 /** 분석 + 기록 시각 — core 의 기간 집계 함수가 요구하는 형태. */
@@ -94,7 +94,7 @@ export function useChronicles(elderId: string | undefined): ChronicleEntry[] {
 export function useElderSessions(elderId: string | undefined): Session[] {
   const rows = useSessionsData(elderId).data;
   // 웹 설계(planned) 행은 **아직 진행하지 않은 세션**이다 — 실행 이력 목록에서 제외한다.
-  // 채택은 세션 시작 화면(useDuePlannedRow → adoptPlannedSession)이 전담한다(B1-d).
+  // 채택은 세션 시작 화면(useDuePlannedFetcher → adoptPlannedSession)이 전담한다(B1-d).
   return useMemo(
     () => (rows ?? []).filter((row) => row.status !== 'planned').map(toSession),
     [rows],
@@ -116,16 +116,22 @@ export function useElderLogs(elderId: string | undefined): ConversationLog[] {
   );
 }
 
+type DuePlannedRow = NonNullable<ReturnType<typeof useDuePlannedSessionData>['data']>;
+
 /**
- * 오늘 진행할 웹 설계 세션(planned, 기록일 도래)의 DB 행 — 세션 시작 화면이
- * 채택 여부를 결정하는 근거(B1-a).
- * 도메인 Session 이 아닌 **raw 행**을 그대로 노출한다 — status/planned_date 등
- * 채택 판정에 필요한 필드가 도메인 매핑엔 없기 때문이다.
+ * 오늘 진행할 웹 설계 세션(planned, 기록일 도래)의 DB 행을 **시작 직전에 새로 조회**하는 함수 —
+ * 세션 시작 화면이 채택 여부를 결정하는 근거(B1-a · T25.15).
+ * 렌더 때의 캐시 값을 쓰지 않는다: 조회 중·실패가 `null`(설계 없음)과 섞이면 설계를 버린 즉석 세션이 생긴다.
+ * 성공하면 행 또는 `null`(설계 없음), 실패하면 던진다.
+ * 도메인 Session 이 아닌 **raw 행** — status/planned_date 등 채택 판정 필드가 도메인 매핑엔 없다.
  */
-export function useDuePlannedRow(
-  elderId: string | undefined,
-): ReturnType<typeof useDuePlannedSessionData>['data'] {
-  return useDuePlannedSessionData(elderId).data ?? null;
+export function useDuePlannedFetcher(elderId: string | undefined): () => Promise<DuePlannedRow | null> {
+  const { refetch } = useDuePlannedSessionData(elderId);
+  return useCallback(async () => {
+    const result = await refetch();
+    if (result.status !== 'success') throw result.error ?? new Error('DUE_PLANNED_UNAVAILABLE');
+    return result.data ?? null;
+  }, [refetch]);
 }
 
 /** 단일 대화 로그(전문 포함). id 는 세션 id. */

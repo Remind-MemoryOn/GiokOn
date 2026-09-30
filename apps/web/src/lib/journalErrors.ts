@@ -14,6 +14,7 @@ const MESSAGES: Record<string, string> = {
   JOURNAL_EDIT_FORBIDDEN: '확정된 일지를 고칠 권한이 없어요.',
   JOURNAL_WORKER_FIELDS: '자동 생성 중인 항목은 바꿀 수 없어요.',
   JOURNAL_GUARDIAN_TEXT_REQUIRED: '보호자 문장을 먼저 입력해 주세요.',
+  SHARE_REVOKE_FORBIDDEN: '공개 철회 권한이 없어요. 기관 권한 위임 표에서 공개 철회 권한을 받은 분이 철회할 수 있어요.',
   SHARE_JOURNAL_NOT_READY: '확정되고 보호자 문장이 승인된 일지만 보호자에게 공개할 수 있어요.',
   JOURNAL_RETRY_NOT_FAILED: '생성에 실패한 일지만 다시 시도할 수 있어요.',
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dateDot, dateDotTime, formatKoreanDate, relativeDay, withinMonths } from './utils'
+import { dateDot, dateDotTime, formatKoreanDate, relativeDay, seoulDate, withinMonths } from './utils'
 
 describe('relativeDay', () => {
   // 브라우저(사용자 로컬)의 달력 하루를 센다 → 테스트도 로컬 기준으로 만든다.
@@ -61,5 +61,19 @@ describe('withinMonths', () => {
   it('근거가 없으면 담지 않는다', () => {
     expect(withinMonths(null, 3, now)).toBe(false)
     expect(withinMonths('아직 없음', 3, now)).toBe(false)
+  })
+})
+
+describe('seoulDate (T25.7 — 한국 날짜 기준)', () => {
+  it('한국 자정(UTC 전날 15:00)부터 그날이다', () => {
+    expect(seoulDate(new Date('2026-09-26T14:59:59Z'))).toBe('2026-09-26') // KST 09-26 23:59:59
+    expect(seoulDate(new Date('2026-09-26T15:00:00Z'))).toBe('2026-09-27') // KST 09-27 00:00
+  })
+  it('한국 08:59·09:00 모두 같은 날(UTC 날짜가 바뀌는 경계)', () => {
+    expect(seoulDate(new Date('2026-09-26T23:59:00Z'))).toBe('2026-09-27') // KST 08:59 — UTC 로는 전날
+    expect(seoulDate(new Date('2026-09-27T00:00:00Z'))).toBe('2026-09-27') // KST 09:00
+  })
+  it('월말·연말도 한국 날짜로 넘어간다', () => {
+    expect(seoulDate(new Date('2026-12-31T15:00:00Z'))).toBe('2027-01-01')
   })
 })

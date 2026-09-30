@@ -52,6 +52,7 @@ import { useAuth } from './auth/AuthProvider';
 import { isAwaitingOrgJoin } from '@giokon/data';
 import { JoinPendingPage } from './pages/public/JoinPendingPage';
 import { SupervisionPage } from './pages/caregiver/SupervisionPage';
+import { useViewportMode } from './lib/viewportMode';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
 // 화면↔노드 맵: docs/runbooks/figma-web-extraction.md
@@ -79,9 +80,16 @@ function GuardianGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** 경로별 화면 폭 모드(1440 캔버스 / 감독 화면 반응형) — src/lib/viewportMode.ts */
+function ViewportMode() {
+  useViewportMode();
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
+      <ViewportMode />
       <Routes>
         {/* ── 공개 ── */}
         <Route path="/" element={<LandingPage />} />

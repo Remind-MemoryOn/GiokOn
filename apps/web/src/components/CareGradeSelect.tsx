@@ -1,3 +1,4 @@
+import { Select } from './ui/Select';
 // 장기요양등급 드롭다운(파일럿 W8) — 등록 모달·기본 정보 수정의 입력 칸과 같은 틀(h57 · r10 · 1px line · 글자 18)
 // + 시안의 큰 꺾쇠(221:680). 좌표 화면이라 left/top(px)을 받는다. 빈 값 = 미입력.
 import { CARE_GRADE_LABEL, CARE_GRADES } from '@giokon/data';
@@ -14,7 +15,7 @@ export function CareGradeSelect({ id, value, onChange, left, top, width = 416, r
 }) {
   return (
     <div className="absolute" style={{ left, top, width, height: 57 }}>
-      <select
+      <Select
         id={id}
         value={value}
         required={required}
@@ -28,7 +29,7 @@ export function CareGradeSelect({ id, value, onChange, left, top, width = 416, r
             {CARE_GRADE_LABEL[g]}
           </option>
         ))}
-      </select>
+      </Select>
       <img
         src={asset.iconChevronDownLg}
         alt=""

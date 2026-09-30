@@ -303,14 +303,29 @@ export const CRISIS_CAREGIVER_ALERT: Record<CrisisCategory, string> = {
 export const DISTRESS_CAREGIVER_NOTE =
   '⚠️ 정서적으로 힘들다는 표현이 있었어요. 세션 후 어르신 상태를 살펴봐 주세요. (진단 아님)'
 
+/**
+ * 요양보호사 알림의 종류 — 문구는 이 키 하나로 정해진다. 음성 중계는 원문 대신 이 키를 앱에 보내고(파일럿 T25.14),
+ * 앱은 `caregiverAlertText` 로 DB `caregiver_alert` 와 같은 문구를 만든다.
+ */
+export type CaregiverAlertKind = CrisisCategory | 'distress'
+export const CAREGIVER_ALERT_KINDS: readonly CaregiverAlertKind[] = ['self_harm', 'medical_emergency', 'abuse', 'distress']
+
+/** 상황 평가 → 알림 종류(알림 불필요 시 null). */
+export function caregiverAlertKind(a: UtteranceAssessment): CaregiverAlertKind | null {
+  if (a.situation === 'crisis' && a.crisisCategories.length > 0) return a.crisisCategories[0]
+  // 중단 요청과 겹친 고통 신호도 알림은 유지한다(존중과 관찰을 둘 다).
+  if (a.situation === 'distress' || a.hasDistressSignal) return 'distress'
+  return null
+}
+
+export function caregiverAlertText(kind: CaregiverAlertKind): string {
+  return kind === 'distress' ? DISTRESS_CAREGIVER_NOTE : CRISIS_CAREGIVER_ALERT[kind]
+}
+
 /** 상황 평가로부터 보호자 알림 문구를 만든다(알림 불필요 시 null). */
 export function buildCaregiverAlert(a: UtteranceAssessment): string | null {
-  if (a.situation === 'crisis' && a.crisisCategories.length > 0) {
-    return CRISIS_CAREGIVER_ALERT[a.crisisCategories[0]]
-  }
-  // 중단 요청과 겹친 고통 신호도 알림은 유지한다(존중과 관찰을 둘 다).
-  if (a.situation === 'distress' || a.hasDistressSignal) return DISTRESS_CAREGIVER_NOTE
-  return null
+  const kind = caregiverAlertKind(a)
+  return kind ? caregiverAlertText(kind) : null
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -395,3 +410,27 @@ export const AI_DISCLOSURE = '이 대화는 사람이 아니라 AI가 진행합�
 
 /** 생성물 표시 라벨(AI 발화·요약 등에 부착). */
 export const AI_GENERATED_LABEL = 'AI가 생성한 내용입니다.'
+
+/**
+ * 위기 기록의 **발화 근거(발췌)** 상태(T25.17 웹 파트).
+ *
+ * 중계는 감지 즉시 대화를 멈추고, 근거 저장은 뒤에서 제한된 횟수만 재시도한다(5회 · 2·4·8·16초 ≈ 30초).
+ * 앱의 대체 저장은 판정만 넣고 발췌는 넣지 않는다 — 중계가 나중에 빈 칸을 채운다.
+ * 그래서 발췌가 비어 있어도 **감지 직후에는 아직 저장 중**일 수 있다. 창을 넘기면 '저장 실패'로 본다.
+ * 근거를 지어내 채우지 않는다 — 없는 것은 없다고 보인다.
+ */
+export const SAFETY_EVIDENCE_PENDING_MS = 2 * 60 * 1000
+
+export type SafetyEvidenceState = 'present' | 'pending' | 'missing'
+
+export function safetyEvidenceState(
+  excerpt: string | null | undefined,
+  createdAt: string,
+  now: number = Date.now(),
+): SafetyEvidenceState {
+  if (excerpt && excerpt.trim()) return 'present'
+  const at = Date.parse(createdAt)
+  // 시각을 읽지 못하면 '저장 중'이라고 말할 근거도 없다 → 실패로 보인다.
+  if (Number.isNaN(at)) return 'missing'
+  return now - at < SAFETY_EVIDENCE_PENDING_MS ? 'pending' : 'missing'
+}

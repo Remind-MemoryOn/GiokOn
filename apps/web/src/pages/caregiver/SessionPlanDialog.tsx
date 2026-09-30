@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/Select';
 // 회상 세션 설계 (Figma 196:272 — 카드 1054×919, 세션 목록 위에 뜨는 모달)
 //   제목 Bold 25/70 @(87,27) · 세션 제목* 879×57 @(87,139.15) + 0/50
 //   목표* 879×57 @(87,252.27) + 0/200 · 예상 소요 시간 142×57 @(87,368.40)
@@ -25,7 +26,7 @@ import {
   useSessions,
   useUpdateSession,
 } from '@giokon/data';
-import { phasePlan, SESSION_MAX_MINUTES } from '@giokon/core';
+import { phasePlan, seoulDate, SESSION_MAX_MINUTES } from '@giokon/core';
 import { useAuth } from '../../auth/AuthProvider';
 import { asset } from '../../assets/ui';
 import { useStore } from '../../store/store';
@@ -138,7 +139,7 @@ export function SessionPlanDialog() {
         title: row?.title ?? '',
         goal: row?.goal ?? '',
         minutes: Math.min(SESSION_MAX_MINUTES, Math.max(5, saved ?? orgTarget)),
-        plannedDate: row?.planned_date ?? new Date().toISOString().slice(0, 10),
+        plannedDate: row?.planned_date ?? seoulDate(), // 한국 날짜 기준(T25.7)
         content: row?.content ?? '',
         // 기존 세션은 저장된 값 그대로 · 새 세션은 기관 기본 피할 주제로 시작(고칠 수 있다).
         avoid: row ? (row.avoid_topics ?? '') : (settings.data?.default_avoid_topics ?? []).join(', ').slice(0, AVOID_MAX),
@@ -288,7 +289,7 @@ function Form({
             height={13.02}
             className="pointer-events-none absolute left-[97.13px] top-1/2 block -translate-y-1/2"
           />
-          <select
+          <Select
             id="p-minutes"
             value={v.minutes}
             onChange={(e) => set('minutes', Number(e.target.value))}
@@ -299,7 +300,7 @@ function Form({
                 {m}분
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <Label fx="195:406" left={264} top={333.36} htmlFor="p-date">

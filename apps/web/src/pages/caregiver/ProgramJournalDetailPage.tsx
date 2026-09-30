@@ -1,3 +1,4 @@
+import { Select as StyledSelect } from '../../components/ui/Select';
 // 프로그램 일지 상세·작성 (파일럿 W1 · SCR-W16 — Figma 시안 없음)
 //
 // 시안이 없는 화면이라 기존 요양일지 작성(221:283) 체계를 그대로 쓴다(계획 §7 디자인 결정 2026-09-24):
@@ -13,7 +14,7 @@
 // ⚠️ 워커가 도는 동안(generating)에도 고칠 수 있다 — 워커는 사람이 먼저 쓴 칸을 덮어쓰지 않는다.
 //    그래서 **바꾼 칸만** 보낸다(열어 본 뒤 워커가 채운 칸을 빈 값으로 지우지 않게).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   useAddProgramJournalPhoto,
   useCreateProgramJournal,
@@ -27,13 +28,14 @@ import {
   useProgramJournals,
   useRetryJournalGeneration,
   useUpdateProgramJournal,
+  JOURNAL_VERSION_CONFLICT,
   type JournalNonDeliveryReason,
   type ProgramJournalRevisionRow,
   type ProgramJournalRow,
   type ProgramJournalUpdate,
   type UserRow,
 } from '@giokon/data';
-import { dateDot } from '@giokon/core';
+import { dateDot, seoulDate } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useStore } from '../../store/store';
@@ -97,11 +99,6 @@ const LONG_FIELDS: { key: TextKey; max: number; placeholder: string }[] = [
 ];
 
 /** 오늘 날짜(로컬) — `2026-07-30`. */
-function today(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 function fromRow(j: ProgramJournalRow): Form {
   return {
@@ -131,7 +128,7 @@ function fromRow(j: ProgramJournalRow): Form {
  */
 function blankForm(settings: { default_program_type: string; default_location: string | null } | null | undefined, meId: string | undefined): Form {
   return {
-    journal_date: today(),
+    journal_date: seoulDate(), // 운영일 기본값 = 한국 날짜(기기 시간대 무관 · DB 와 같은 기준, T25.7)
     operated_from: '',
     operated_to: '',
     program_type: settings?.default_program_type ?? '인지활동 - 회상훈련',
@@ -210,7 +207,7 @@ function Select({ id, value, onChange, disabled, children, label }: {
 }) {
   return (
     <div className="relative">
-      <select
+      <StyledSelect
         id={id}
         aria-label={label}
         value={value}
@@ -219,7 +216,7 @@ function Select({ id, value, onChange, disabled, children, label }: {
         className={cn(INPUT, 'cursor-pointer appearance-none pr-[56px] disabled:cursor-not-allowed')}
       >
         {children}
-      </select>
+      </StyledSelect>
       <img
         src={asset.iconChevronDownLg}
         alt=""
@@ -230,8 +227,18 @@ function Select({ id, value, onChange, disabled, children, label }: {
   );
 }
 
+/** 새 일지를 만든 뒤 사진 일부가 실패하면 그 일지의 편집 화면으로 옮기면서 **아직 붙지 않은 사진**을 넘긴다(T25.2). */
+type JournalNavState = { pendingPhotos?: File[] } | null;
+
+/** 일지 ID 가 바뀌면(새 일지 → 만들어진 일지) 폼을 새로 심는다 — 손댄 표시·비교 기준이 다른 일지로 넘어가지 않게. */
 export function ProgramJournalDetailPage() {
+  const { journalId } = useParams<{ journalId: string }>();
+  return <ProgramJournalDetailForm key={journalId ?? 'new'} />;
+}
+
+function ProgramJournalDetailForm() {
   const { elderId, journalId } = useParams<{ elderId: string; journalId: string }>();
+  const location = useLocation();
   const [search, setSearch] = useSearchParams();
   const navigate = useNavigate();
   const { isConfigured } = useAuth();
@@ -269,14 +276,17 @@ export function ProgramJournalDetailPage() {
   const [approve, setApprove] = useState(baselineApproved);
   /** 폼을 심은 그때의 서버 값 — "바꾼 칸"의 비교 기준. 손댄 뒤 서버가 바뀌어도(워커 완료) 이 값은 그대로라
    *  사용자가 건드리지 않은 칸을 옛 값(빈 값)으로 보내 워커가 채운 내용을 지우지 않는다. */
-  const [seed, setSeed] = useState({ form: baseline, approved: baselineApproved });
+  const [seed, setSeed] = useState({ form: baseline, approved: baselineApproved, updatedAt: existing?.updated_at });
+  /** 저장·승인·확정이 버전 충돌로 거절됐다(T25.3) — 최신 내용을 불러와 다시 확인하게 한다. */
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [reason, setReason] = useState('');
   const touched = useRef(false);
   useEffect(() => {
     if (touched.current) return;
     setForm(baseline);
     setApprove(baselineApproved);
-    setSeed({ form: baseline, approved: baselineApproved });
+    setSeed({ form: baseline, approved: baselineApproved, updatedAt: existing?.updated_at });
     // baselineKey 가 baseline·baselineApproved 를 대표한다(객체 동일성으로 다시 심지 않게).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baselineKey]);
@@ -286,7 +296,7 @@ export function ProgramJournalDetailPage() {
   };
 
   /** 아직 올리지 않은 사진(저장 시 일지 행을 만든 뒤 올린다). */
-  const [photos, setPhotos] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<File[]>(() => (location.state as JournalNavState)?.pendingPhotos ?? []);
   const previews = useMemo(() => photos.map((f) => URL.createObjectURL(f)), [photos]);
   // 미리보기 URL 은 해제하지 않으면 파일이 메모리에 계속 남는다.
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
@@ -348,24 +358,34 @@ export function ProgramJournalDetailPage() {
     if (isFinal && changedTracked.length > 0) patch.edit_reason = reason.trim();
 
     setSaving(true);
-    // 업로드는 성공했는데 첨부 행이 실패하면 Storage 에 주인 없는 파일이 남는다 → 되돌린다.
-    const uploaded: string[] = [];
+    // 저장 → 업로드 → 첨부 행 순서(일지 행이 있어야 첨부 행 정책을 통과한다).
+    // ⚠️ 부분 실패(T25.2): 이미 붙은 사진은 그대로 두고, **붙지 못한 그 파일만** 지운다.
+    //    새 일지는 만들어진 뒤라면 그 일지로 옮겨 이어서 저장하게 한다(다시 저장해도 일지가 둘이 되지 않게).
+    let row: ProgramJournalRow | null = null;
+    const pending = [...photos];
     try {
-      const row =
+      row =
         existing && journalId
           ? Object.keys(patch).length > 0
-            ? await updateJournal.mutateAsync({ id: journalId, patch })
+            ? await updateJournal.mutateAsync({ id: journalId, patch, expectedUpdatedAt: seed.updatedAt })
             : existing
           : await createJournal.mutateAsync({
               ...(patch as Required<typeof after>),
               status: finalizing ? 'final' : 'pending_review',
               profile_id: elderId,
             });
-      // 일지 행이 생긴 뒤에야 Storage 정책을 통과한다 → 저장 → 업로드 → 첨부 행 순서.
-      for (const [i, file] of photos.entries()) {
-        const path = await uploadJournalPhoto(elderId, file);
-        uploaded.push(path);
-        await addPhoto.mutateAsync({ journal_id: row.id, path, sort: attached.length + i });
+      let sort = attached.length;
+      while (pending.length > 0) {
+        const path = await uploadJournalPhoto(elderId, pending[0]);
+        try {
+          await addPhoto.mutateAsync({ journal_id: row.id, path, sort });
+        } catch (e) {
+          // 이 파일만 주인이 없다 — 지운다(정리 실패가 원래 오류를 덮지 않게).
+          await removeJournalPhotoFiles([path]).catch(() => {});
+          throw e;
+        }
+        pending.shift();
+        sort += 1;
       }
       toast(
         'success',
@@ -377,11 +397,49 @@ export function ProgramJournalDetailPage() {
       );
       navigate(`/caregiver/journal/${elderId}`);
     } catch (e) {
-      // 붙지 못한 파일은 지운다(정리에 실패해도 원래 오류를 덮지 않는다).
-      if (uploaded.length) await removeJournalPhotoFiles(uploaded).catch(() => {});
-      toast('error', journalErrorMessage(e));
+      if (!row && e instanceof Error && e.message === JOURNAL_VERSION_CONFLICT) {
+        // 화면이 읽은 뒤 다른 곳(워커·다른 직원)에서 일지가 바뀌었다 — 보지 않은 내용을 승인·확정하지 않는다.
+        setConflict(true);
+        toast('error', '다른 곳에서 이 일지가 바뀌었어요. 최신 내용을 불러와 확인한 뒤 다시 저장해 주세요.');
+      } else if (!row) {
+        toast('error', journalErrorMessage(e));
+      } else {
+        // 일지는 저장됐고 사진 일부만 못 붙였다 — 남은 사진만 다시 올리면 된다.
+        toast('error', `일지는 저장했어요. 사진 ${pending.length}장을 붙이지 못했어요 — 다시 저장하면 남은 사진만 올려요.`);
+        if (!existing) {
+          const state: JournalNavState = { pendingPhotos: pending };
+          navigate(`/caregiver/journal/${elderId}/${row.id}`, { replace: true, state });
+        } else {
+          setPhotos(pending);
+          // 저장된 값으로 폼을 다시 심게 한다(같은 칸을 "바뀐 칸"으로 또 보내지 않게).
+          touched.current = false;
+        }
+      }
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** 최신 일지를 불러와 폼에 다시 심는다 — **내가 바꾼 칸은 유지**하고 나머지는 서버 값으로.
+   *  보호자 문장 승인은 새 문장을 보고 다시 체크하게 서버 상태로 되돌린다(내가 문장을 고쳤으면 해제). */
+  async function reloadLatest() {
+    setReloading(true);
+    try {
+      const fresh = await journals.refetch();
+      const row = (fresh.data ?? []).find((j) => j.id === journalId);
+      if (!row) return toast('error', '일지를 다시 불러오지 못했어요.');
+      const latest = fromRow(row);
+      const merged = { ...latest };
+      for (const k of Object.keys(latest) as (keyof Form)[]) {
+        if (form[k] !== seed.form[k]) Object.assign(merged, { [k]: form[k] });
+      }
+      const latestApproved = Boolean(row.guardian_text_approved_at);
+      setForm(merged);
+      setApprove(latestApproved && merged.guardian_text === latest.guardian_text);
+      setSeed({ form: latest, approved: latestApproved, updatedAt: row.updated_at });
+      setConflict(false);
+    } finally {
+      setReloading(false);
     }
   }
 
@@ -707,6 +765,25 @@ export function ProgramJournalDetailPage() {
                   </div>
                 ) : null}
 
+                {conflict ? (
+                  <div
+                    role="alert"
+                    className="mt-[44px] flex items-center gap-[24px] rounded-[10px] bg-alert-soft px-[28px] py-[18px]"
+                  >
+                    <p className="mr-auto text-w-sub leading-[30px] text-ink-900" style={{ wordBreak: 'keep-all' }}>
+                      다른 곳에서 이 일지가 바뀌어 저장하지 않았어요. 최신 내용을 불러오면 내가 고친 칸은 그대로 두고 나머지를 새로 채워요.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={reloading}
+                      onClick={() => void reloadLatest()}
+                      className="h-[57px] shrink-0 whitespace-nowrap rounded-[10px] border border-accent bg-white px-[24px] text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-60"
+                    >
+                      최신 내용 불러오기
+                    </button>
+                  </div>
+                ) : null}
+
                 <div className="mt-[44px] flex items-center justify-end gap-[30px]">
                   {!isFinal && !mayFinalize ? (
                     <p className="mr-auto text-[16px] leading-[24px] text-ink-500" style={{ wordBreak: 'keep-all' }}>
@@ -716,7 +793,7 @@ export function ProgramJournalDetailPage() {
                   {isFinal ? (
                     <button
                       type="button"
-                      disabled={saving || !dirty}
+                      disabled={saving || conflict || !dirty}
                       onClick={() => void save('save')}
                       className="h-[57px] w-[140px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-60"
                     >
@@ -726,7 +803,7 @@ export function ProgramJournalDetailPage() {
                     <>
                       <button
                         type="button"
-                        disabled={saving || (editing && !dirty && status !== 'failed')}
+                        disabled={saving || conflict || (editing && !dirty && status !== 'failed')}
                         onClick={() => void save('save')}
                         className="h-[57px] w-[140px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-60"
                       >
@@ -734,7 +811,7 @@ export function ProgramJournalDetailPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={saving || !mayFinalize}
+                        disabled={saving || conflict || !mayFinalize}
                         onClick={() => void save('finalize')}
                         className="h-[57px] w-[140px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-60"
                       >

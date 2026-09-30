@@ -1,3 +1,4 @@
+import { PeriodSelect } from '../../components/ui/PeriodSelect';
 // 보호자 — 대화 분석(세션 목록) (Figma 104:1041 — 1440×1106)
 //   인사말 @(322,186) · 부제 @(322,236.21) · 어르신 pill @(1054,187)
 //   탭 @301(종합 분석 426 · 대화 분석 598 활성, 밑줄 81×3 @340) · 기간 pill 127×30 @(1249,292)
@@ -12,13 +13,12 @@ import {
   useProfile, useSessions,
 } from '@giokon/data';
 import { withinMonths } from '@giokon/core';
-import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
 import { useGuardianElder } from '../../lib/guardianElder';
 import { ElderPill, GuardianGreeting } from '../../components/guardian-header';
 import { SessionRow } from '../../components/session-row';
 import { ROW_H, ROW_PITCH } from '../../lib/session-row';
-import { PERIODS, Y, type Months } from '../../lib/analysis';
+import { Y, type Months } from '../../lib/analysis';
 import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 343;
@@ -87,37 +87,7 @@ export function AnalysisSessionsPage() {
       />
 
       {/* 기간 — 시안은 '최근 3개월' 하나지만 실제로는 고를 수 있어야 한다 */}
-      <div
-        data-fx="104:1122"
-        className="absolute h-[30px] w-[127px] rounded-[5px] border border-ink-500/30 bg-ink-500/[0.03]"
-        style={{ left: 1249, top: Y(292) }}
-      >
-        <span
-          data-fx="104:1124"
-          className="pointer-events-none absolute left-[19px] whitespace-nowrap text-[16px] leading-[23px] text-ink-500"
-        >
-          최근 {months}개월
-        </span>
-        <img
-          src={asset.iconChevronDownSm}
-          alt=""
-          width={12}
-          height={7.81}
-          className="pointer-events-none absolute left-[97px] top-1/2 block -translate-y-1/2"
-        />
-        <select
-          aria-label="분석 기간"
-          value={months}
-          onChange={(e) => setMonths(Number(e.target.value) as Months)}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        >
-          {PERIODS.map((m) => (
-            <option key={m} value={m}>
-              최근 {m}개월
-            </option>
-          ))}
-        </select>
-      </div>
+      <PeriodSelect months={months} onChange={setMonths} fxBox="104:1122" fxLabel="104:1124" />
 
       <div
         data-fx="104:1524"

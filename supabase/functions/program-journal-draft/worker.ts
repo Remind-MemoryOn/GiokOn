@@ -1,7 +1,8 @@
 // 프로그램 일지 초안 워커 로직(파일럿 C4 · T20.6) — 런타임·환경 import 없음(packages/data 가 테스트한다).
 //
 // 흐름: pg_cron(30초) → pg_net POST(x-worker-secret) → claim(비밀값 확인 + 작업 잡기) → 202 응답
-//       → 백그라운드: 대화 기록 → Gemini 생성·검증 → 칸 매핑·진단표현 칸 비우기 → finish(확인 대기)
+//       → 백그라운드: 대화 기록 → **보내기 직전 동의·AI 스위치 재확인**(T25.5) → Gemini 생성·검증 → 칸 매핑·진단표현 칸 비우기
+//       → finish(확인 대기 — DB 가 저장 직전에 한 번 더 확인해 철회됐으면 결과를 버린다)
 //       실패는 fail(재시도 가능 여부)로 넘긴다 — 백오프·최대 6회·failed 전환은 DB 가 정한다.
 // 원칙: 확정하지 않는다(DB 가드가 서비스 계정 확정을 막는다) · 오류 문구는 요양보호사가 읽는다(원문·내부 코드 노출 금지).
 import type { GeneratedSession, GenerationSourceTurn } from '../../../packages/core/src/generated-session.ts'
@@ -16,6 +17,8 @@ export interface WorkerDeps {
   /** 비밀값이 틀리면 WorkerAuthError. */
   claim(secret: string, limit: number): Promise<ClaimedJob[]>
   loadTurns(sessionId: string): Promise<GenerationSourceTurn[]>
+  /** 외부 모델로 보내기 직전 확인(T25.5) — 잡은 뒤 동의가 철회됐거나 AI 가 꺼졌으면 false(DB 가 작업을 이미 멈췄다). */
+  stillAllowed(secret: string, jobId: string): Promise<boolean>
   generate(turns: GenerationSourceTurn[], signal: AbortSignal): Promise<{ result: GeneratedSession }>
   finish(secret: string, jobId: string, fields: JournalDraftFields): Promise<void>
   fail(secret: string, jobId: string, message: string, retryable: boolean): Promise<void>
@@ -35,9 +38,10 @@ export const WORKER_MESSAGES = {
   loadFailed: '대화 기록을 읽지 못했어요. 잠시 후 다시 시도합니다.',
   generateFailed: 'AI 초안을 만들지 못했어요. 잠시 후 다시 시도합니다.',
   saveFailed: 'AI 초안을 저장하지 못했어요. 잠시 후 다시 시도합니다.',
+  checkFailed: '처리 동의를 확인하지 못했어요. 잠시 후 다시 시도합니다.',
 } as const
 
-type Outcome = 'finished' | 'retry' | 'failed'
+type Outcome = 'finished' | 'retry' | 'failed' | 'stopped'
 
 /** 작업 하나 — 어떤 경우에도 finish 나 fail 중 하나로 끝낸다(던지지 않는다). */
 export async function processJob(job: ClaimedJob, secret: string, deps: WorkerDeps): Promise<Outcome> {
@@ -54,6 +58,13 @@ export async function processJob(job: ClaimedJob, secret: string, deps: WorkerDe
   // 앱이 기록을 다 올리기 전에 세션이 끝났을 수 있다 → 재시도.
   if (!hasElderSpeech(turns)) return fail(WORKER_MESSAGES.noSpeech, true)
   if (exceedsGenerationLimit(turns)) return fail(WORKER_MESSAGES.tooLong, false)
+
+  // 잡은 뒤 동의 철회·AI 끔 → 원문을 외부로 보내지 않는다. 확인을 못 하면 보내지 않고 다시 시도한다.
+  try {
+    if (!(await deps.stillAllowed(secret, job.job_id))) return 'stopped'
+  } catch {
+    return fail(WORKER_MESSAGES.checkFailed, true)
+  }
 
   let fields: JournalDraftFields
   try {

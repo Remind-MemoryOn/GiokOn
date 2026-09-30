@@ -42,15 +42,27 @@ export type SessionSaveResult =
   | { status: 'failed'; logId: null; message: string };
 
 /** 대화 시작 실패 사유 — 화면이 안내를 고르는 근거. */
-export type SessionStartFailure = 'supervisor_limit' | 'failed';
+export type SessionStartFailure = 'supervisor_limit' | 'elder_busy' | 'already_started' | 'consent_required' | 'failed';
 
 /**
- * 서버가 **정책으로** 거절한 경우(재시도해도 같다) — 재시도하지 않고 사유를 돌려준다.
- * SESSION_SUPERVISOR_LIMIT: 요양보호사 1명당 동시 진행 4대(파일럿 D6·T21.13, DB 트리거가 판정).
+ * 서버가 **정책으로** 거절한 경우(재시도해도 같다) — 재시도하지 않고 사유를 돌려준다(DB 가 판정, 앱은 이유만 안내).
+ * SESSION_SUPERVISOR_LIMIT: 요양보호사 1명당 동시 진행 4대(T21.13) · ELDER_SESSION_ACTIVE: 어르신 1명당 실행 중 세션 1개(T25.19) ·
+ * SESSION_ALREADY_STARTED: 설계 세션을 다른 사람이 이미 시작·종료(T25.11) · PROCESSING_CONSENT_REQUIRED: 처리 동의 없음 ·
+ * SESSION_START_FORBIDDEN: 돌봄팀 아님·없는 세션·다른 기관(존재 여부를 구분하지 않는다 — 일반 실패로 안내).
  */
-class PolicyRejection extends Error {}
+const POLICY_REASONS: [code: string, reason: SessionStartFailure][] = [
+  ['SESSION_SUPERVISOR_LIMIT', 'supervisor_limit'],
+  ['ELDER_SESSION_ACTIVE', 'elder_busy'],
+  ['SESSION_ALREADY_STARTED', 'already_started'],
+  ['PROCESSING_CONSENT_REQUIRED', 'consent_required'],
+  ['SESSION_START_FORBIDDEN', 'failed'],
+];
+class PolicyRejection extends Error {
+  constructor(readonly reason: SessionStartFailure) { super(reason); }
+}
 function policyRejection(message: string): PolicyRejection | null {
-  return message.includes('SESSION_SUPERVISOR_LIMIT') ? new PolicyRejection('SESSION_SUPERVISOR_LIMIT') : null;
+  const hit = POLICY_REASONS.find(([code]) => message.includes(code));
+  return hit ? new PolicyRejection(hit[1]) : null;
 }
 
 /**
@@ -103,29 +115,44 @@ async function writeSafetyEvents(
   for (const ev of events) {
     let next = ev;
     if (next.remoteId === null) {
-      const row = await withRetry(lease, async () => {
-        const { data, error } = await client
-          .from('safety_events')
-          .insert({
-            profile_id: ids.profileId,
-            session_id: ids.sessionId,
-            user_id: ids.userId,
-            level: next.level,
-            categories: next.categories as string[],
-            matched_terms: next.matchedTerms,
-            excerpt: next.excerpt,
-            caregiver_alert: next.caregiverAlert,
-            // DB 제약 safety_events_ack_pair_check: at/by 는 둘 다 또는 둘 다 없음
-            acknowledged_at: next.acknowledgedAt,
-            acknowledged_by: next.acknowledgedAt ? ids.userId : null,
-          })
-          .select('id')
-          .single();
-        if (error) throw new Error(error.message);
-        return data;
-      });
-      next = { ...next, remoteId: row.id, ackSynced: next.acknowledgedAt !== null };
-    } else if (next.acknowledgedAt !== null && !next.ackSynced) {
+      const insert = {
+        profile_id: ids.profileId,
+        session_id: ids.sessionId,
+        user_id: ids.userId,
+        level: next.level,
+        categories: next.categories as string[],
+        matched_terms: next.matchedTerms,
+        excerpt: next.excerpt,
+        caregiver_alert: next.caregiverAlert,
+        // DB 제약 safety_events_ack_pair_check: at/by 는 둘 다 또는 둘 다 없음
+        acknowledged_at: next.acknowledgedAt,
+        acknowledged_by: next.acknowledgedAt ? ids.userId : null,
+      };
+      const reservedId = next.reservedId;
+      if (reservedId) {
+        // T25.17 — 중계가 만든 사건 id 로 '없을 때만' 넣는다. 중계 재시도가 먼저 들어갔으면 아무것도 하지 않는다
+        // (그 행이 근거까지 가진 원본이다). 어느 쪽이 먼저든 사건은 1건 — 확인 시각은 아래에서 따로 반영한다.
+        await withRetry(lease, async () => {
+          const { error } = await client
+            .from('safety_events')
+            .upsert({ ...insert, id: reservedId }, { onConflict: 'id', ignoreDuplicates: true });
+          if (error) throw new Error(error.message);
+        });
+        next = { ...next, remoteId: reservedId, reservedId: null, ackSynced: false };
+      } else {
+        const row = await withRetry(lease, async () => {
+          const { data, error } = await client
+            .from('safety_events')
+            .insert(insert)
+            .select('id')
+            .single();
+          if (error) throw new Error(error.message);
+          return data;
+        });
+        next = { ...next, remoteId: row.id, ackSynced: next.acknowledgedAt !== null };
+      }
+    }
+    if (next.remoteId !== null && next.acknowledgedAt !== null && !next.ackSynced) {
       await withRetry(lease, async () => {
         const { error } = await client
           .from('safety_events')
@@ -163,7 +190,7 @@ function failure(message: string): SessionSaveResult {
 /**
  * 종료 시 일괄 저장(폴백) — 시작 시 세션 생성이 실패해 remoteId 가 없을 때만 쓴다.
  *
- * 순서: 세션(active) 생성 → 턴 → 분석 → 안전 이벤트 → `ended`(finalizeSession 처럼 종료가 마지막).
+ * 순서: 세션(`recording` — 실행 불가 기록 전용, T25.18) 생성 → 턴 → 분석 → 안전 이벤트 → `ended`(finalizeSession 처럼 종료가 마지막).
  * 예전에는 처음부터 `ended` 로 넣어, 세션이 끝난 시점에 턴·분석 행이 아직 없었다 —
  * 세션 종료를 계기로 도는 후속 처리(프로그램 일지 초안 생성 등)가 빈 기록을 보게 된다.
  * 마지막 update 는 종료 필드(status·ended_at·duration_seconds)만 바꾼다 — 동의 가드
@@ -180,7 +207,8 @@ async function persistWholeSession(b: FinishedSessionBundle, userId: string, lea
       .insert({
         profile_id: b.elder.id,
         user_id: userId,
-        status: 'active',
+        // 실행 중(active)이 아니라 기록 전용 — 과거 시각을 남기되 중계·토큰 권한이 없고 ended 로만 간다(T25.18).
+        status: 'recording',
         turn_count: b.turns.length,
         current_topic: b.currentTopic,
         started_at: b.startedAt,
@@ -271,7 +299,7 @@ export function useSessionPersistence(): {
    * 웹 설계 세션(planned)을 **채택**해 active 로 전환한다(B1-c).
    * 새 행을 만들지 않고 같은 행을 이어 쓰므로 '설계됨' 좀비가 남지 않는다.
    */
-  adoptPlannedSession: (sessionId: string, startedAt: string) => Promise<SessionStartFailure | null>;
+  adoptPlannedSession: (sessionId: string) => Promise<SessionStartFailure | null>;
   syncProgress: () => Promise<boolean>;
   finishAndPersist: () => Promise<SessionSaveResult>;
   retrySave: () => Promise<SessionSaveResult>;
@@ -294,7 +322,7 @@ export function useSessionPersistence(): {
             status: 'active',
             turn_count: a.turns.length,
             current_topic: a.currentTopic,
-            started_at: a.startedAt,
+            // started_at 은 보내지 않는다 — 실행 중 세션의 시작 시각은 서버가 정한다(T25.18, 보내도 무시된다).
           })
           .select('id')
           .single();
@@ -308,34 +336,30 @@ export function useSessionPersistence(): {
     } catch (e) {
       // 시작 화면은 remoteId가 없으면 음성/AI 처리에 진입하지 않는다.
       console.warn('[giokon] 진행 중 세션 생성 실패 — 시작을 중단합니다.', e);
-      return e instanceof PolicyRejection ? 'supervisor_limit' : 'failed';
+      return e instanceof PolicyRejection ? e.reason : 'failed';
     }
   }, [user, lease]);
 
   /**
-   * planned 세션 채택 — status 를 active 로 바꾸고 그 행 id 를 런타임에 붙인다.
-   * 이후 syncProgress/finalize 가 같은 행에 이어 쓴다. 전환 승인이 없으면
-   * 런타임에 붙이지 않고 시작 화면에서 중단한다.
+   * planned 세션 채택 — DB 시작 RPC(`start_planned_session`, T25.11)가 시작 권한·처리 동의·동시 한도·어르신당 1세션을
+   * 확인하고 **호출한 사람을 진행자로** planned → active 를 원자적으로 바꾼다(설계자는 planned_by 로 남는다).
+   * 시작 시각은 서버 시각. 같은 사람의 재호출(응답 유실 재시도)은 같은 값으로 성공한다.
+   * 이후 syncProgress/finalize 가 같은 행에 이어 쓴다. 승인이 없으면 런타임에 붙이지 않고 시작 화면에서 중단한다.
    */
   const adoptPlannedSession = useCallback(
-    async (sessionId: string, startedAt: string): Promise<SessionStartFailure | null> => {
+    async (sessionId: string): Promise<SessionStartFailure | null> => {
       if (!user || !lease.current()) return 'failed';
       const original = useApp.getState().active;
       if (!original) return 'failed';
       try {
         await withRetry(lease, async () => {
-          const { data, error } = await getGiokonClient()
-            .from('sessions')
-            .update({ status: 'active', started_at: startedAt })
-            .eq('id', sessionId)
-            .eq('status', 'planned')
-            .select('id').maybeSingle();
+          const { data, error } = await getGiokonClient().rpc('start_planned_session', { p_session_id: sessionId });
           if (error) throw policyRejection(error.message) ?? new Error(error.message);
-          if (!data) throw new Error('설계 세션의 시작 승인을 받지 못했어요.');
+          if (!data || data.session_id !== sessionId) throw new Error('설계 세션의 시작 승인을 받지 못했어요.');
         });
       } catch (e) {
-        console.warn('[giokon] 설계 세션 active 전환 실패', e);
-        return e instanceof PolicyRejection ? 'supervisor_limit' : 'failed';
+        console.warn('[giokon] 설계 세션 시작 실패', e);
+        return e instanceof PolicyRejection ? e.reason : 'failed';
       }
       if (!lease.current() || useApp.getState().active?.session.id !== original.session.id) return 'failed';
       useApp.getState().attachRemoteSession(sessionId);

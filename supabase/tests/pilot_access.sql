@@ -578,22 +578,35 @@ begin
 end $$;
 
 -- 감독자(시작자)당 동시 active 4대 — 5번째는 거부, 30분이 지난 좀비는 세지 않는다
+-- T25.19 이후 어르신 1명당 실행 중 세션은 1개 → 한도 시험용 어르신(처리 동의 포함)을 따로 둔다.
+set role authenticated;
+set test.uid = 'a0000000-0000-0000-0000-000000000001';
+insert into public.profiles (user_id, name, birth_year)
+  select 'a0000000-0000-0000-0000-000000000001', '한도어르신' || g, 1940 from generate_series(1, 5) g;
+insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+  select p.id, (select pa from pilot_p), 'a0000000-0000-0000-0000-000000000001', t::public.consent_type, true, 'v1.0', 'capable'
+  from public.profiles p cross join unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) t
+  where p.name like '한도어르신%';
+reset role;
+set test.uid = '';
+create temp table pilot_px as select array_agg(id order by name) as x from public.profiles where name like '한도어르신%';
+grant select on pilot_px to authenticated;
 do $$
-declare p1 uuid := (select p1 from pilot_p); blocked boolean := false; n int;
+declare x uuid[] := (select x from pilot_px); blocked boolean := false; n int;
 begin
   set role authenticated;
   perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
   select count(*) into n from public.sessions where user_id = auth.uid() and status = 'active';
   assert n = 1, '픽스처: 진행 중 1대';
   insert into public.sessions (profile_id, user_id, status) values
-    (p1, auth.uid(), 'active'), (p1, auth.uid(), 'active'), (p1, auth.uid(), 'active');
+    (x[1], auth.uid(), 'active'), (x[2], auth.uid(), 'active'), (x[3], auth.uid(), 'active');
   begin
-    insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'active');
+    insert into public.sessions (profile_id, user_id, status) values (x[4], auth.uid(), 'active');
   exception when program_limit_exceeded then blocked := sqlerrm = 'SESSION_SUPERVISOR_LIMIT';
   end;
   assert blocked, '같은 감독자의 5번째 동시 세션은 거부돼야 함';
   -- planned → active 전환도 같은 규칙
-  insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'planned');
+  insert into public.sessions (profile_id, user_id, status) values (x[4], auth.uid(), 'planned');
   blocked := false;
   begin
     update public.sessions set status = 'active' where user_id = auth.uid() and status = 'planned';
@@ -602,7 +615,7 @@ begin
   assert blocked, '설계된 세션을 5번째로 시작하는 것도 거부돼야 함';
   -- 다른 직원은 따로 센다
   perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000003', true);
-  insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'active');
+  insert into public.sessions (profile_id, user_id, status) values (x[5], auth.uid(), 'active');
   reset role;
   -- 좀비: 한 대를 1시간 전에 시작한 것으로 만들면(슈퍼유저) 다시 시작할 수 있다
   update public.sessions set started_at = now() - interval '1 hour'
@@ -610,7 +623,7 @@ begin
                and id <> (select sid from pilot_s) limit 1);
   set role authenticated;
   perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
-  insert into public.sessions (profile_id, user_id, status) values (p1, auth.uid(), 'active');
+  insert into public.sessions (profile_id, user_id, status) values (x[4], auth.uid(), 'active');
   reset role;
 end $$;
 
@@ -763,7 +776,7 @@ reset role;
 create temp table pilot_j2 as
   select j.id as jid from public.program_journals j
    where j.session_id is not null and j.id <> (select jid from pilot_j) and j.status = 'generating'
-     and j.profile_id = (select p1 from pilot_p) limit 1;
+     and j.org_id = (select pa from pilot_p) limit 1;  -- 한도 시험용 어르신 세션일 수 있다(T25.19 이후 어르신당 실행 세션 1개)
 grant select on pilot_j2 to authenticated;
 update public.program_journals set status = 'failed', generation_attempts = 6, last_error = 'synthetic' where id = (select jid from pilot_j2);
 set role authenticated;
@@ -898,5 +911,8 @@ begin
   assert (select revoked_at is not null from public.org_invites where code = (select admin_code from pilot_admin_code)), '관리자 코드는 1회용이어야 함';
   assert (select org_id is null from public.users where id = 'a0000000-0000-0000-0000-000000000022'), '두 번째 사용자는 합류하지 않아야 함';
 end $$;
+
+-- 뒷정리: 이 파일이 남긴 실행 중 세션을 끝낸다(T25.19 — 어르신당 실행 세션 1개라 뒤 파일이 같은 어르신으로 시작할 수 있게)
+update public.sessions set status = 'ended', ended_at = now() where status = 'active';
 
 select 'pilot access assertions passed' as result;

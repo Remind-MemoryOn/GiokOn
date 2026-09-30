@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/Select';
 // 연대기 추가 (Figma 196:271) · 연대기 상세 정보 (Figma 198:991) — 같은 다이얼로그의 두 상태
 //   카드 1054 @0 r10 shadow-card · 제목 Bold 25/70 @(87,26)
 //   작성자 172×57.08 @(87,139.20) · 유형 172×57.08 @(298,139.20) · 기록일 219×57.08 @(509,139.20)
@@ -233,7 +234,7 @@ function Form({
             height={13.02}
             className="pointer-events-none absolute left-[127.13px] top-1/2 block -translate-y-1/2"
           />
-          <select
+          <Select
             id="c-topic"
             value={v.topic}
             onChange={(e) => set('topic', e.target.value)}
@@ -244,7 +245,7 @@ function Form({
                 {t}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <Label fx={editing ? '198:864' : '196:166'} left={510} top={104.12} htmlFor="c-date">

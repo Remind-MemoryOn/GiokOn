@@ -1,3 +1,6 @@
+import type { Months } from '../../lib/analysis';
+import { PeriodSelect } from '../../components/ui/PeriodSelect';
+import { Select } from '../../components/ui/Select';
 // 분석 — 전체 종합 (Figma 225:1669 — 1440×4164)
 //   제목 @(322,186) · 부제 @(322,236.17) · 탭 @301(활성 밑줄 125×3 @341) · 기간 pill 127×30 @(1249,292)
 //   카드1 1054×1885 @(322,343) — 전체 요약 4칸 201×167 · TOP5 · 관심 주제 변화 · 주제별 상세 · 주요 키워드
@@ -40,7 +43,7 @@ const C1 = 343;
 const C2 = 2294;
 const COL = 87; // 카드 안 콘텐츠 왼쪽(409 - 322)
 
-const PERIODS = [3, 6, 12] as const;
+
 const AXIS_LABEL: Record<ObservationAxis, string> = {
   recall: '기억 회상력',
   emotion: '정서 안정감',
@@ -83,7 +86,7 @@ const TINT = 'absolute rounded-[5px] border border-accent/30 bg-accent/[0.03]';
 
 export function AnalysisPage() {
   const { isConfigured } = useAuth();
-  const [months, setMonths] = useState<(typeof PERIODS)[number]>(3);
+  const [months, setMonths] = useState<Months>(3);
   const [topicPick, setTopicPick] = useState<string | null>(null);
 
   const profilesQuery = useProfiles();
@@ -184,37 +187,7 @@ export function AnalysisPage() {
       </Link>
 
       {/* 기간 — 시안은 '최근 3개월' 하나지만 실제로는 고를 수 있어야 한다 */}
-      <div
-        data-fx="228:3053"
-        className="absolute h-[30px] w-[127px] rounded-[5px] border border-ink-500/30 bg-ink-500/[0.03]"
-        style={{ left: 1249, top: Y(292) }}
-      >
-        <span
-          data-fx="228:3055"
-          className="pointer-events-none absolute left-[19px] top-[3px] whitespace-nowrap text-[16px] leading-[23px] text-ink-500"
-        >
-          최근 {months}개월
-        </span>
-        <img
-          src={asset.iconChevronDownSm}
-          alt=""
-          width={12}
-          height={7.81}
-          className="pointer-events-none absolute left-[109px] top-1/2 block -translate-y-1/2"
-        />
-        <select
-          aria-label="분석 기간"
-          value={months}
-          onChange={(e) => setMonths(Number(e.target.value) as (typeof PERIODS)[number])}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        >
-          {PERIODS.map((m) => (
-            <option key={m} value={m}>
-              최근 {m}개월
-            </option>
-          ))}
-        </select>
-      </div>
+      <PeriodSelect months={months} onChange={setMonths} fxBox="228:3053" fxLabel="228:3055" />
 
       {/* ── 카드 1 ─────────────────────────────────────────────────────── */}
       <div
@@ -358,7 +331,7 @@ export function AnalysisPage() {
                 height={7.81}
                 className="pointer-events-none absolute left-[77px] top-1/2 block -translate-y-1/2"
               />
-              <select
+              <Select
                 aria-label="상세를 볼 주제"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
@@ -369,7 +342,7 @@ export function AnalysisPage() {
                     {t.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             {[
               { fx: '228:3272', label: '언급 빈도', value: `${detail.mentions}`, unit: '회', delta: detail.delta.mentions, deltaUnit: '회' },

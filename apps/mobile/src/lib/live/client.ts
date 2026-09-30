@@ -9,7 +9,7 @@
 //     '확인 텍스트만 모델이 본다'고 가정하면 안 된다.
 //   - 출력은 중계가 검증·Gemini TTS 합성한 것만 온다. v2 는 재생 영수증, v3 는 복구 맥락.
 
-import { voiceFailureMessage, parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
+import { voiceFailureMessage, parseRelaySafetySummary, parseVoiceResumeContext, type RelaySafetySummary, type VoiceResumeContext } from '@giokon/core';
 import { parseVoiceRelayUrl } from './relay-config';
 
 export type LiveTurnResult = {
@@ -35,9 +35,20 @@ type Handlers = {
   onClose?: () => void;
   /** 감독 화면의 원격 일시정지·종료(파일럿 M5). 중계는 이 알림 뒤 곧 연결을 닫는다. */
   onRemoteControl?: (state: RelayControlState) => void;
-  /** 중계가 위험 발화를 이미 safety_events 에 기록했다(파일럿 T21.4) — 그 행 id. 오류 알림보다 먼저 온다. */
-  onSafetyRecorded?: (eventId: string) => void;
+  /**
+   * 중계가 위험 발화로 대화를 멈췄다 — 오류 알림보다 먼저 온다. 중계가 기록한 safety_events 행 id(파일럿 T21.4)와
+   * 판정 요약(수준·분류·알림 종류 — 원문 없음, T25.14) 중 검증을 통과한 것만 담는다(둘 다 없으면 부르지 않는다).
+   */
+  onRelayReview?: (detail: RelayReviewDetail) => void;
 };
+
+export interface RelayReviewDetail {
+  /** 중계가 기록을 확정한 safety_events id — 앱은 다시 기록하지 않는다. */
+  eventId?: string;
+  /** 중계가 만들었지만 아직 확정 못 한 사건 id(T25.17) — 앱은 이 id 로 '없을 때만' 대체 기록한다. */
+  pendingEventId?: string;
+  safety?: RelaySafetySummary;
+}
 
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
@@ -157,9 +168,15 @@ export class GeminiLiveClient {
             this.handleServerContent(msg['serverContent'] as never);
           }
           if ('relayError' in msg) {
-            const relayError = msg.relayError as { code?: unknown; safetyEventId?: unknown } | null;
-            const eventId = relayError?.safetyEventId;
-            if (typeof eventId === 'string' && UUID.test(eventId)) this.handlers.onSafetyRecorded?.(eventId);
+            const relayError = msg.relayError as { code?: unknown; safetyEventId?: unknown; pendingSafetyEventId?: unknown; safety?: unknown } | null;
+            if (relayError?.code === 'INPUT_REVIEW_REQUIRED') {
+              const uuid = (v: unknown) => typeof v === 'string' && UUID.test(v) ? v : undefined;
+              const eventId = uuid(relayError.safetyEventId);
+              const pendingEventId = eventId ? undefined : uuid(relayError.pendingSafetyEventId);
+              const safety = parseRelaySafetySummary(relayError.safety) ?? undefined;
+              if (eventId || pendingEventId || safety) this.handlers.onRelayReview?.({
+                ...(eventId ? { eventId } : {}), ...(pendingEventId ? { pendingEventId } : {}), ...(safety ? { safety } : {}) });
+            }
             throw new Error(voiceFailureMessage(relayError?.code));
           }
           if ('error' in msg) throw new Error('음성 중계가 요청을 거부했어요.');

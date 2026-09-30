@@ -41,6 +41,8 @@ import { MessageNoticeDialog } from '../../components/guardian-message';
 import { useJournalPhotoUrls } from '../../lib/journalPhotos';
 import { cn } from '../../lib/utils';
 import { Y } from '../../lib/figmaY';
+import { dayKey } from '../../lib/format';
+import { DateFilter } from '../../components/ui/DateFilter';
 import { useElderProfile } from '../../lib/elderProfile';
 
 const CARD_TOP = 343;
@@ -99,9 +101,19 @@ export function FeedPage() {
   const tab: Tab = tabDef.key;
   const [limit, setLimit] = useState(PAGE);
   const compose = search.get('compose') === '1';
+  const day = search.get('date') ?? '';
+  const updateSearch = (key: string, value: string) => {
+    setLimit(PAGE);
+    setSearch((current) => {
+      const next = new URLSearchParams(current);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next;
+    }, { replace: true });
+  };
   const setTab = (t: Tab) => {
     setLimit(PAGE);
-    setSearch(t === 'all' ? {} : { tab: t }, { replace: true });
+    updateSearch('tab', t === 'all' ? '' : t);
   };
 
   const { link: approvedLink } = useGuardianElder();
@@ -124,7 +136,7 @@ export function FeedPage() {
     );
     const out: FeedItem[] = [];
     for (const s of shared.data?.shares ?? []) {
-      if (s.revoked_at) continue;
+      if (s.revoked_at || !approvedLink || s.profile_id !== approvedLink.profile_id) continue;
       if (s.item_type === 'journal') {
         const j = journals.get(s.item_id);
         if (!j) continue;
@@ -167,12 +179,12 @@ export function FeedPage() {
           key: s.id, kind: 'photo', at: s.shared_at, on,
           title: Number.isNaN(d.getTime()) ? '활동 사진' : `${d.getMonth() + 1}월 ${d.getDate()}일 활동 사진`,
           body: p.caption ?? '',
-          photoPath: p.path, to: '/guardian/feed?tab=photo',
+          photoPath: p.path, to: `/guardian/feed?${new URLSearchParams({ ...Object.fromEntries(search), tab: 'photo' })}`,
         });
       }
     }
-    return out.filter((i) => tab === 'all' || i.kind === tab);
-  }, [shared.data, tab]);
+    return out.filter((i) => (tab === 'all' || i.kind === tab) && (!day || dayKey(i.at) === day));
+  }, [shared.data, tab, approvedLink, day, search]);
 
   const shown = items.slice(0, limit);
   const hasMore = items.length > shown.length;
@@ -226,18 +238,7 @@ export function FeedPage() {
         style={{ left: tabDef.left, top: Y(340), width: tabDef.w }}
       />
 
-      {/* 날짜 선택 — 여는 화면이 디자인에 없어 지금은 표시만 한다(전체 기간) */}
-      <div
-        data-fx="157:130"
-        className="absolute left-[1203px] h-[37.02px] w-[170px] rounded-[5px] border border-line bg-white"
-        style={{ top: Y(294.17) }}
-      >
-        <img src={asset.iconCalendarSm} alt="" width={22} height={22} className="pointer-events-none absolute left-[13px] top-1/2 block -translate-y-1/2" />
-        <span data-fx="157:131" className="pointer-events-none absolute left-[47px] top-[4px] whitespace-nowrap text-[16px] leading-[30px] text-ink-500">
-          날짜 선택하기
-        </span>
-        <img src={asset.iconChevronDownSm} alt="" width={12} height={7.81} className="pointer-events-none absolute left-[156px] top-1/2 block -translate-y-1/2" />
-      </div>
+      <DateFilter value={day} onChange={(value) => updateSearch('date', value)} label="공개된 날짜로 거르기" fxBox="157:130" fxLabel="157:131" style={{ top: Y(294.17) }} />
 
       <div
         data-fx="50:933"
@@ -250,7 +251,8 @@ export function FeedPage() {
           className="absolute left-[388px] w-[922px] text-center text-w-body leading-[30px] text-ink-500"
           style={{ top: Y(ITEM_TOP + 70) }}
         >
-          아직 공개된 소식이 없어요. 요양보호사가 공개하면 여기에 보여요.
+          {day ? '선택한 날짜에 공개된 소식이 없어요.' : '아직 공개된 소식이 없어요. 요양보호사가 공개하면 여기에 보여요.'}
+          {day ? <button type="button" onClick={() => updateSearch('date', '')} className="mx-auto mt-3 block font-semibold text-accent underline">전체 날짜 보기</button> : null}
         </p>
       ) : tab === 'photo' ? (
         <PhotoGrid items={shown} urls={photoUrls.data} />
@@ -305,7 +307,7 @@ export function FeedPage() {
                 data-fx={i === 0 ? '50:964' : undefined}
                 /* 줄상자 21→25.5: Figma 는 21.02 줄높이 안에서 잉크를 CSS 보다 2.25px
                    아래에 앉힌다 → 상자를 4.5 넓혀 위 모서리는 그대로 두고 잉크만 내린다. */
-                className="absolute block w-[136px] text-right text-w-body font-semibold leading-[25.5px] text-ink-700"
+                className="absolute flex w-[163px] items-center justify-end gap-[15px] text-w-body font-semibold leading-[25.5px] text-ink-700"
                 style={{ left: 1125, top: Y(top + 67.27) }}
               >
                 자세히 보기
@@ -313,8 +315,8 @@ export function FeedPage() {
                   data-fx={i === 0 ? '50:966' : undefined}
                   src={asset.iconChevronRightSm}
                   alt=""
-                  className="absolute block"
-                  style={{ left: 150.8, top: 19.62, width: 12.18, height: 18.73 }}
+                  className="block shrink-0"
+                  style={{ width: 12.18, height: 18.73 }}
                 />
               </Link>
               {last && !hasMore ? null : (
@@ -372,7 +374,7 @@ export function FeedPage() {
           </span>
           {/* 메시지는 보호자 → 요양보호사 단방향이다(디자인 확정) */}
           <Link
-            to="/guardian/feed?compose=1"
+            to={`/guardian/feed?${new URLSearchParams({ ...Object.fromEntries(search), compose: '1' })}`}
             data-fx="50:1202"
             className="absolute flex h-[50.03px] w-[213px] items-center rounded-[10px] border border-line bg-white"
             style={{ left: 767, top: 94.88 }}
@@ -397,7 +399,7 @@ export function FeedPage() {
         open={compose}
         profileId={approvedLink?.profile_id}
         senderUserId={userRow?.id}
-        onClose={() => setSearch(tab === 'all' ? {} : { tab }, { replace: true })}
+        onClose={() => updateSearch('compose', '')}
       />
     </div>
   );

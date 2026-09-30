@@ -1,9 +1,13 @@
 // 보호자 화면 머리 — 인사말·부제·연결된 어르신 pill (Figma 50:543 · 96:94 공통 실측).
 //   인사말 Bold 30/40 @(322,186) — 이름만 주황 · 부제 20/30 @(322,236.14)
 //   pill 322×57 @(1054,187) — 라벨 SemiBold 18(주황 @34 · 검정 @161) · ∨ 15.37×10 @276
-import { Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { toElderProfile, useProfiles } from '@giokon/data';
 import { asset } from '../assets/ui';
 import { Y } from '../lib/analysis';
+import { useAuth } from '../auth/AuthProvider';
+import { ELDER_PARAM, useGuardianElder } from '../lib/guardianElder';
+import { Select } from './ui/Select';
 
 export function GuardianGreeting({
   name, subtitle, fxTitle, fxDesc, top = 186, descTop = 236.14,
@@ -37,7 +41,7 @@ export function GuardianGreeting({
 }
 
 export function ElderPill({
-  elderName, to, fxBox, fxLabel, fxName, top = 187,
+  elderName, fxBox, fxLabel, fxName, top = 187,
 }: {
   elderName: string | null | undefined;
   to: string;
@@ -46,13 +50,29 @@ export function ElderPill({
   fxName: string;
   top?: number;
 }) {
+  const { isConfigured } = useAuth();
+  const { approved, link, loading } = useGuardianElder();
+  const profiles = useProfiles({ enabled: isConfigured });
+  const [, setSearch] = useSearchParams();
+  const names = new Map((profiles.data ?? []).map((profile) => [profile.id, toElderProfile(profile).name]));
   return (
-    <Link
-      to={to}
+    <Select
+      aria-label="연결된 어르신 선택"
+      value={link?.profile_id ?? ''}
+      disabled={loading || approved.length === 0}
+      onChange={(event) => {
+        const id = event.target.value;
+        if (!approved.some((item) => item.profile_id === id)) return;
+        setSearch((current) => {
+          const next = new URLSearchParams(current);
+          next.set(ELDER_PARAM, id);
+          return next;
+        });
+      }}
       data-fx={fxBox}
       className="absolute flex h-[57px] w-[322px] items-center rounded-[10px] border border-accent bg-white"
       style={{ left: 1054, top: Y(top) }}
-    >
+      trigger={<>
       <span
         data-fx={fxLabel}
         className="absolute left-[34px] whitespace-nowrap text-[18px] font-semibold leading-[30px] text-accent"
@@ -61,7 +81,7 @@ export function ElderPill({
       </span>
       <span
         data-fx={fxName}
-        className="absolute left-[161px] whitespace-nowrap text-[18px] font-semibold leading-[30px] text-ink-900"
+        className="absolute left-[161px] max-w-[106px] truncate whitespace-nowrap text-[18px] font-semibold leading-[30px] text-ink-900"
       >
         {elderName ? `${elderName} 어르신` : '—'}
       </span>
@@ -71,6 +91,10 @@ export function ElderPill({
         className="absolute left-[276px] block"
         style={{ width: 15.37, height: 10 }}
       />
-    </Link>
+      </>}
+    >
+      {approved.length === 0 ? <option value="">연결된 어르신 없음</option> : null}
+      {approved.map((item) => <option key={item.profile_id} value={item.profile_id}>{names.get(item.profile_id) ? `${names.get(item.profile_id)} 어르신` : item.profile_id === link?.profile_id && elderName ? `${elderName} 어르신` : '이름 확인 중'}</option>)}
+    </Select>
   );
 }

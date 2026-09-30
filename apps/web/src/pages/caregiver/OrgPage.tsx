@@ -1,3 +1,4 @@
+import { Select } from '../../components/ui/Select';
 // 기관 관리 (Figma 131:959 — 1440×1238)
 //   제목 @169 · 부제 w547 @236.19
 //   카드1 1054×360 @(322,315) — 기관 정보
@@ -32,6 +33,7 @@ import {
   toElderProfile,
   useApproveCaregiverAssignment,
   useApproveGuardianLink,
+  useHasCapability,
   useCurrentUser,
   useOrgGuardianLinks,
   useOrgPendingAssignments,
@@ -247,6 +249,9 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
   const elders = useMemo(() => (profiles.data ?? []).map(toElderProfile), [profiles.data]);
   const waiting = useWaitingList(isConfigured, isManager, me, elders);
   const { decide, deciding } = useDecideWaiting(me);
+  // 보호자 연결 승인은 권한 위임 표를 따른다(T25.4 — DB 가 강제). 권한이 없으면 버튼을 잠근다.
+  const linkApprove = useHasCapability('guardian_link_approve', { enabled: isConfigured });
+  const noLinkApprove = linkApprove.data === false;
   const rows = members.data ?? [];
   /** 카드 높이는 구성원 수에서 계산한다(시안은 2명 고정). */
   const card2Height = MEMBER_TOP + Math.max(rows.length, 1) * MEMBER_PITCH + 114;
@@ -429,7 +434,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                         className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
                         style={{ left: 170 - 26 }}
                       />
-                      <select
+                      <Select
                         aria-label={`${m.name ?? '구성원'} 역할 변경`}
                         value={m.role}
                         disabled={setRole.isPending || !isConfigured}
@@ -441,7 +446,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                             {ORG_ROLE_LABEL[r]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                   ) : null}
                   {i < rows.length - 1 ? (
@@ -512,7 +517,8 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                     <>
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || (w.kind === 'guardian' && noLinkApprove)}
+                        title={w.kind === 'guardian' && noLinkApprove ? '보호자 연결 승인 권한이 없어요(기관 권한 위임 표)' : undefined}
                         // 직원 합류는 기관 전체 기록 열람으로 이어진다 — 확인창을 먼저 띄운다.
                         onClick={() => (w.kind === 'staff' ? setApprovingStaff(w) : decide(w, true))}
                         className="absolute h-[44px] w-[96px] rounded-[10px] bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-50"
@@ -594,7 +600,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                   className="pointer-events-none absolute top-1/2 block -translate-y-1/2"
                   style={{ left: dd.width - 26 }}
                 />
-                <select
+                <Select
                   id={dd.id}
                   aria-label={dd.label}
                   value={dd.value}
@@ -606,7 +612,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             ))}
             <button

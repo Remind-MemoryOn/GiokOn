@@ -16,12 +16,14 @@ import {
   screenAiUtterance,
   snapshotVoicePlayback,
   VOICE_FAILURE_MESSAGES,
+  caregiverAlertText,
   nowIso,
   uid,
   type ChronicleEntry,
   type ConversationTurn,
   type ElderProfile,
   type SafetyEventDraft,
+  type RelaySafetySummary,
   type Session,
   type SessionAnalysis,
   type SessionDesign,
@@ -52,6 +54,11 @@ export interface SessionSafetyEvent extends SafetyEventDraft {
   acknowledgedAt: string | null;
   /** DB safety_events.id — 아직 기록 전이면 null. */
   remoteId: string | null;
+  /**
+   * 중계가 감지 때 만들었지만 아직 기록을 확정하지 못한 사건 id(T25.17). 앱이 대신 기록할 때 **이 id 로 '없을 때만'** 넣어
+   * 중계의 뒤늦은 재시도와 합쳐도 사건이 1건이 되게 한다(중계는 비어 있는 근거만 채운다).
+   */
+  reservedId?: string | null;
   /** 확인 시각까지 DB 에 반영됐는지(중복 update 방지). */
   ackSynced: boolean;
 }
@@ -164,7 +171,11 @@ interface AppState {
    * 중계가 위험 발화로 멈췄다 — 요양보호사 확인 배너 + 안전 이벤트.
    * `remoteId` = 중계가 이미 기록한 safety_events 행(T21.4). 있으면 다시 기록하지 않고 확인 시각만 반영한다.
    */
-  requireRelayReview: (remoteId?: string) => void;
+  /**
+   * 중계가 위험 발화로 멈췄다. `remoteId` = 중계가 이미 기록한 safety_events id(T21.4 — 다시 기록하지 않는다),
+   * `safety` = 중계의 판정 요약(T25.14 — 있으면 위기 종류별 안내·수준으로, 없으면 일반 확인 안내로).
+   */
+  requireRelayReview: (detail?: { remoteId?: string; pendingId?: string; safety?: RelaySafetySummary }) => void;
   cancelSession: () => void;
 
   // ── 진행 중 DB 동기화(영속화 계층이 호출) ──
@@ -315,15 +326,19 @@ export const useApp = create<AppState>((set, get) => ({
     return true;
   },
 
-  requireRelayReview: (remoteId) => {
+  requireRelayReview: (detail) => {
     const a=get().active;
     // Keep an existing, more specific assessment and avoid duplicate stop events.
     if (!a || a.safety.caregiverAlert) return;
-    const caregiverAlert=VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED;
-    const event: SessionSafetyEvent = {level:'watch',categories:[],matchedTerms:[],excerpt:'',caregiverAlert,
-      acknowledgedAt:null,remoteId:remoteId ?? null,ackSynced:false};
+    const safety=detail?.safety;
+    // 판정 요약이 있으면 중계와 같은 규칙(core)으로 안내·수준을 만든다 — DB caregiver_alert 와 같은 문구.
+    // 원문·매칭 단어는 중계가 보내지 않으므로 비워 둔다(근거는 중계 기록에 있다).
+    const caregiverAlert=safety ? caregiverAlertText(safety.alert) : VOICE_FAILURE_MESSAGES.INPUT_REVIEW_REQUIRED;
+    const level=safety?.level ?? 'watch';
+    const event: SessionSafetyEvent = {level,categories:safety ? [...safety.categories] : [],matchedTerms:[],excerpt:'',caregiverAlert,
+      acknowledgedAt:null,remoteId:detail?.remoteId ?? null,reservedId:detail?.remoteId ? null : detail?.pendingId ?? null,ackSynced:false};
     set({active:{...a,events:[...a.events,event],safety:{...a.safety,caregiverAlert,
-      level:'watch',recommendation:'end_session',acknowledged:false}}});
+      level,recommendation:'end_session',acknowledged:false}}});
   },
 
   acknowledgeSafety: () => {

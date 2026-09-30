@@ -116,3 +116,8 @@
 
 - 음성 인식·대화 모델 자체 특화(Whisper · 공개 LLM + Ollama)는 권리 확인된 데이터와 평가 게이트를 통과한 뒤에만 — [`voice-ai-personalization.md`](plans/voice-ai-personalization.md).
 - 모니터링(Sentry 등)·스테이징 분리·부하 시험은 정식 운영 전 과제 — [`security.md`](security.md) §인프라.
+
+### ✅ 2026-09-28 — 웹 디자인 수정사항 반영
+- 사용자 제공 `디자인 수정사항.txt`: 보호자 날짜 필터·연결 어르신 선택·화살표 정렬, 가입 하단 로그인 링크, 읽은 알림 숨김·긴 텍스트 말줄임을 구현했다.
+- 웹 전체 선택 메뉴를 공통 `Select`로 통일했다. 기간 선택은 `PeriodSelect`, 세션/보호자 날짜 필터는 `DateFilter`를 공유한다. 사용자 요청으로 달라진 정렬은 Figma 검사에 사유를 기록했다.
+- 검증: `pnpm -F @giokon/web test:design-feedback` 및 `test:org`·`test:plan`·`test:grade` 통과. 운영 배포는 별도다. 구현 규칙은 `apps/web/AGENTS.md`의 같은 날짜 기록을 따른다.

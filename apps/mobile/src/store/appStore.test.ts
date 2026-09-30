@@ -1,5 +1,5 @@
 import { beforeEach, expect, it } from 'vitest';
-import { DEFAULT_APPEARANCE } from '@giokon/core';
+import { CRISIS_CAREGIVER_ALERT, DEFAULT_APPEARANCE, DISTRESS_CAREGIVER_NOTE } from '@giokon/core';
 import { useApp } from './appStore';
 
 beforeEach(() => {
@@ -108,13 +108,33 @@ it('retains a relay review request without inventing a transcript or crisis cate
 });
 it('links a relay-recorded safety event instead of recording it again (T21.4)',()=>{
   const id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-  useApp.getState().requireRelayReview(id); useApp.getState().requireRelayReview();
+  useApp.getState().requireRelayReview({remoteId:id}); useApp.getState().requireRelayReview();
   const active=useApp.getState().active!;
   expect(active.events).toHaveLength(1);
   expect(active.events[0]).toMatchObject({remoteId:id,acknowledgedAt:null,ackSynced:false});
   useApp.getState().acknowledgeSafety();
   expect(useApp.getState().active!.events[0]).toMatchObject({remoteId:id,ackSynced:false});
   expect(useApp.getState().active!.events[0].acknowledgedAt).not.toBeNull();
+});
+it.each([
+  ['recorded by the relay',{remoteId:'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'}],
+  ['not recorded (failure or timeout) — the app records it on save',{}],
+] as const)('keeps the relay crisis level, categories and specific guidance when %s (T25.14)',(_,extra)=>{
+  useApp.getState().requireRelayReview({...extra,safety:{level:'crisis',categories:['self_harm'],alert:'self_harm'}});
+  const active=useApp.getState().active!;
+  expect(active.events).toHaveLength(1);
+  expect(active.events[0]).toMatchObject({level:'crisis',categories:['self_harm'],matchedTerms:[],excerpt:'',
+    caregiverAlert:CRISIS_CAREGIVER_ALERT.self_harm,remoteId:'remoteId' in extra ? extra.remoteId : null});
+  expect(active.safety).toMatchObject({level:'crisis',caregiverAlert:CRISIS_CAREGIVER_ALERT.self_harm,recommendation:'end_session',acknowledged:false});
+  expect(active.safety.caregiverAlert).toContain('109');
+});
+it('keeps the relay event id to record under when the relay has not confirmed it yet (T25.17)',()=>{
+  useApp.getState().requireRelayReview({pendingId:'cccccccc-cccc-cccc-cccc-cccccccccccc',safety:{level:'crisis',categories:['abuse'],alert:'abuse'}});
+  expect(useApp.getState().active!.events[0]).toMatchObject({remoteId:null,reservedId:'cccccccc-cccc-cccc-cccc-cccccccccccc',level:'crisis',categories:['abuse']});
+});
+it('shows the distress note at watch level for a relay distress summary (T25.14)',()=>{
+  useApp.getState().requireRelayReview({safety:{level:'watch',categories:[],alert:'distress'}});
+  expect(useApp.getState().active!.safety).toMatchObject({level:'watch',caregiverAlert:DISTRESS_CAREGIVER_NOTE});
 });
 it('never replaces an existing crisis with a generic relay review',()=>{
   useApp.getState().adoptAutomaticInput('죽고 싶어요');
