@@ -139,7 +139,7 @@ export function LandingPage() {
           className="absolute left-[118px] w-[695px] text-[45px] font-bold leading-[70px] text-ink-900"
           style={{ top: Y(1652) }}
         >
-          AI 회상 기록부터 요양일지,
+          AI 회상 대화부터 프로그램일지 자동작성까지,
           <br />
           보호자 공유까지, 하나의 인지 활동 관리
           <br />웹 서비스,
@@ -229,9 +229,7 @@ export function LandingPage() {
           className="absolute left-[381px] w-[679px] text-center text-[24px] font-semibold leading-[35px] text-ink-700"
           style={{ top: Y(2320) }}
         >
-          AI 회상 기록 관리, 연대기 관리, AI 분석, 요양일지 관리,보호자 공유까지.
-          <br />
-          인지 활동 관리에 필요한 모든 기능을 하나의 웹에서 제공합니다.
+          AI 기반 인지 활동 관리에 필요한 모든 기능을 하나의 웹에서 제공합니다.
         </p>
       </main>
       <PublicFooter />
