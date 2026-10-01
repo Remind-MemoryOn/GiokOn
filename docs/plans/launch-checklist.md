@@ -78,8 +78,8 @@
 ## 4. 파일럿 — 외부 설정 (코드로 끝낼 수 없는 것)
 
 **음성 중계** (없으면 세션이 시작되지 않는다)
-- [ ] 중계 컨테이너 호스팅 · TLS · 공개 주소 `wss://호스트/voice` ([운영 런북](../runbooks/voice-relay-operations.md))
-- [ ] 중계 환경변수: `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` · 서버 전용 `GEMINI_API_KEY` · `GEMINI_TTS_MODEL=gemini-3.8-flash-tts` · 중계 전용 자격
+- [ ] 중계 컨테이너 호스팅 · TLS · 공개 주소 `wss://호스트/voice` — ✅ 결정 2026-10-01: Cloud Run 서울 · 최대 1대 · 평일 09~18시 최소 1대 · 첫 빌드는 `run.app` 주소, 도메인(가비아)은 서비스 직전 → 앱 재빌드 1회 ([운영 런북 "호스팅"](../runbooks/voice-relay-operations.md)) · ⏳ 실제 생성·배포(T26.2 · 사용자)
+- [ ] 중계 환경변수: `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` · **중계 전용으로 새로 발급한** `GEMINI_API_KEY`(Supabase Edge 키와 분리 — Edge 키는 지우지 않는다) · `GEMINI_TTS_MODEL=gemini-3.8-flash-tts` · 중계 전용 자격
 - [ ] `live-token`: `GEMINI_LIVE_MODEL=gemini-3.8-live` 시크릿 · 중계 전용 자격 검사 → 요양보호사 JWT 만으로 부르면 403 확인
 - [ ] `live-token` 한도 조정 — 사용자 분당 3 → 4 이상, 일 20 → 운영 시간 기준 재계산(최대 4대 × 10분 세션)
 - [ ] EAS 환경에 `EXPO_PUBLIC_VOICE_RELAY_URL` · 개발/내부 빌드(Expo Go 불가)
