@@ -20,7 +20,7 @@ import { RobotMascot } from '../../src/components/brand';
 import { AiDisclosureBanner } from '../../src/components/banners';
 import { useApp } from '../../src/store/appStore';
 import { useElder, useChronicles, useDuePlannedFetcher } from '../../src/data/reads';
-import { PLAN_UNAVAILABLE_ALERT, resolveStartPlan } from '../../src/features/session/plannedStart';
+import { PLAN_UNAVAILABLE_ALERT, resolveStartPlan, START_FAILURE_ALERT } from '../../src/features/session/plannedStart';
 import { useSessionPersistence } from '../../src/data/session-persistence';
 import { VOICE_RELAY_MISSING_MESSAGE, voiceRelayUrl } from '../../src/lib/live/relay-config';
 
@@ -95,22 +95,20 @@ export default function SessionStart() {
     }
     begin(elder, chronicles, { title, therapyType: 'reminiscence' }, design);
     const localSessionId = useApp.getState().active?.session.id;
-    // 같은 행을 active 로 전환해 이어 쓴다(B1-c — 새 행을 만들지 않아 좀비 없음).
+    // 같은 행을 DB 시작 RPC 로 active 로 전환해 이어 쓴다(B1-c — 새 행을 만들지 않아 좀비 없음 · T25.11 — 진행자 = 나).
     // 즉석 시작이면 진행 중인 대화도 DB 에 남긴다 — 중간에 앱이 꺼져도 여기까지의 기록이 남고,
     // DB가 동의·권한·동시 진행 수를 승인해야 대화 화면과 음성을 시작한다.
     const failure = duePlanned
-      ? await adoptPlannedSession(duePlanned.id, new Date().toISOString())
+      ? await adoptPlannedSession(duePlanned.id)
       : await openRemoteSession();
     if (!lease.current()) return;
     if (useApp.getState().active?.session.id !== localSessionId) return;
     if (!useApp.getState().active?.remoteId) {
       useApp.getState().cancelSession();
-      if (failure === 'supervisor_limit') {
-        // 요양보호사 1명당 동시 진행 4대(사용자 확정 2026-09-24) — DB 가 판정하고 앱은 이유만 보여 준다.
-        Alert.alert('진행 중인 대화가 이미 4개예요', '한 분이 동시에 진행할 수 있는 대화는 4개까지예요.\n끝난 대화를 저장한 뒤 다시 시작해 주세요.');
-      } else {
-        Alert.alert('대화를 시작하지 못했어요', '동의·이용 권한 또는 서버 연결을 확인한 뒤 다시 시도해 주세요.');
-      }
+      const alert = START_FAILURE_ALERT[failure ?? 'failed'];
+      Alert.alert(alert.title, alert.body);
+      // 동의가 없으면 동의 화면으로(시작 전 확인과 같은 흐름).
+      if (failure === 'consent_required') router.replace(`/consent/${id}`);
       return;
     }
     router.replace('/session/talk');

@@ -21,6 +21,8 @@ const MESSAGES: Record<string, string> = {
   MEMBER_ROLE_INVALID: '바꿀 역할을 다시 골라 주세요.',
   MEMBER_ROLE_SELF: '본인의 역할은 바꿀 수 없어요. 다른 관리자에게 요청해 주세요.',
   MEMBER_ROLE_GUARDIAN: '보호자와 직원 역할은 서로 바꿀 수 없어요.',
+  // 권한 위임 표(T25.4 — DB 가 강제)
+  GUARDIAN_LINK_APPROVE_FORBIDDEN: '보호자 연결 승인 권한이 없어요. 기관 권한 위임 표에서 연결 승인 권한을 받은 분이 승인할 수 있어요.',
   MEMBER_ROLE_LAST_ADMIN: '기관 관리자가 한 명뿐이라 역할을 바꿀 수 없어요. 다른 관리자를 먼저 지정해 주세요.',
 };
 

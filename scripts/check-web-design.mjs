@@ -257,9 +257,26 @@ const SCREENS = [
     /roleHonorific\(userRow\?\.role\)/,
   ]],
   [`${WEB}/src/pages/caregiver/SupervisionPage.tsx`, '감독 화면(W2): RPC 원격 제어 · 종료는 확인 후 · 위기 안내는 서버 문구 · 조회 실패 ≠ 대화 없음', [
-    /useRequestSessionControl/, /<ConfirmDialog/, /a\.caregiver_alert/, /role="alert" aria-live="assertive"/,
+    /useRequestSessionControl/, /<ConfirmDialog/, /alert\.caregiver_alert/, /role="alert" aria-live="assertive"/,
     /대화가 없다는 뜻은 아닙니다/, /의학적 판단이 아닙니다/, { absent: /window\.confirm\(/ },
     { absent: /from\('sessions'\)\.update/ },
+    // T25.6: 미확인 위기는 세션 상태와 무관하게 확인까지 · 안전 조회 실패 ≠ 알림 없음
+    /aria-label="확인하지 않은 안전 알림"/, /!sessionsKnown \|\| !e\.session_id \|\| !activeIds\.has\(e\.session_id\)/,
+    /safety\.isError/, /알림이 없다는 뜻이 아닙니다/, /safety\.dataUpdatedAt/,
+    /safetyEvidenceText\(alert, now\)/,                                // T25.17: 빈 발췌 = 저장 중/저장 실패(근거를 지어내지 않음)
+  ]],
+  // ── 위기 근거 표시(T25.17 웹) — 빈 발췌를 안내 문구로 덮지 않는다 ─────────────
+  [`${WEB}/src/pages/caregiver/DashboardPage.tsx`, '대시보드: 안전 알림 발화 근거 상태', [
+    /safetyEvidenceText\(ev\)/, { absent: /ev\.excerpt \? `발화: “\$\{ev\.excerpt\}”` : ev\.caregiver_alert/ },
+  ]],
+  [`${WEB}/src/pages/caregiver/ElderDetailPage.tsx`, '어르신 상세: 안전 이벤트 발화 근거 상태', [
+    /safetyEvidenceText\(ev\)/, { absent: /ev\.excerpt \? `발화: “\$\{ev\.excerpt\}”` : ev\.caregiver_alert/ },
+  ]],
+  // ── 한국 날짜 기준(T25.7) — UTC 로 자르면 한국 00:00~08:59 에 전날이 된다 ─────────────
+  [`${WEB}/src/pages/caregiver/SessionPlanDialog.tsx`, '세션 설계: 기록일 기본값 = 한국 날짜', [/planned_date \?\? seoulDate\(\)/]],
+  [`${WEB}/src/pages/caregiver/ProgramJournalDetailPage.tsx`, '일지: 운영일 기본값 = 한국 날짜', [/journal_date: seoulDate\(\)/]],
+  ['packages/data/src/hooks/sessions.ts', 'data: 오늘의 설계 세션 조회 = 한국 날짜', [
+    /const today = seoulDate\(\)/, { absent: /toISOString\(\)\.slice\(0, ?10\)/ },
   ]],
   [`${WEB}/src/components/shell/nav.ts`, '사이드바: 감독 메뉴는 맨 끝(시안 항목 좌표 불변)', [
     /label: '설정', icon: 'settings' \},\n  \/\/[^\n]*\n  \{ to: '\/caregiver\/supervision', label: '감독'/,
@@ -826,13 +843,17 @@ const SCREENS = [
   // ── 프로그램 일지 상세 (파일럿 W1 · SCR-W16 — 시안 없음, 작성 화면 221:283 체계) ─────────────
   [`${WEB}/src/pages/caregiver/ProgramJournalDetailPage.tsx`, '프로그램 일지 상세: 확정은 권한일 때만 · 확정 후 수정 사유 · 바꾼 칸만 · 다시 생성은 failed 에만 · 초안 생성 버튼 없음', [
     /useHasCapability\('journal_finalize'/,
-    /disabled=\{saving \|\| !mayFinalize\}/,                     // 확정 버튼은 권한일 때만 활성
+    /disabled=\{saving \|\| conflict \|\| !mayFinalize\}/,       // 확정 버튼은 권한일 때만 활성(충돌 중에는 잠김)
     /patch\.edit_reason = reason\.trim\(\)/,                        // 확정 후 수정 사유
     /if \(!existing \|\| after\[k\] !== before\[k\]\)/,          // 바꾼 칸만 보낸다(워커 칸을 지우지 않게)
     /journal\.status === 'failed'/, /useRetryJournalGeneration/,
     /guardian_text_approved_at = new Date\(\)\.toISOString\(\)/,
-    /uploadJournalPhoto\(elderId, file\)/, /addPhoto\.mutateAsync/,
-    /await removeJournalPhotoFiles\(uploaded\)/,                   // 첨부 실패 시 파일 되돌리기
+    /uploadJournalPhoto\(elderId, pending\[0\]\)/, /addPhoto\.mutateAsync/,
+    /await removeJournalPhotoFiles\(\[path\]\)/,                  // 첨부 실패 시 **그 파일만** 되돌리기(T25.2)
+    /pendingPhotos: pending/,                                          // 새 일지는 만든 일지로 옮겨 남은 사진만 이어서(중복 생성 방지)
+    { absent: /removeJournalPhotoFiles\(uploaded\)/ },                // 이미 붙은 사진까지 지우던 옛 정리(T25.2)
+    /expectedUpdatedAt: seed\.updatedAt/,                              // 저장·승인·확정은 화면이 읽은 버전일 때만(T25.3)
+    /e\.message === JOURNAL_VERSION_CONFLICT/, /최신 내용 불러오기/,     // 충돌 시 거절 → 최신 불러오기(내 칸 유지)
     /URL\.revokeObjectURL/,                                          // 미리보기 URL 해제
     /operated_from: '',/,                                              // 시각 기본값을 지어내지 않는다
     { absent: /session-report|useGenerateSessionReport|SessionJournalDialog|buildJournalDraft|transcribeAudio/ },

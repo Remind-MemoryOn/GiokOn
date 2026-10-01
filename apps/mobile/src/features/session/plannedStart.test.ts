@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveStartPlan } from './plannedStart';
+import { resolveStartPlan, START_FAILURE_ALERT } from './plannedStart';
 
 describe('resolveStartPlan', () => {
   it('adopts the plan returned by the fresh query', async () => {
@@ -23,5 +23,20 @@ describe('resolveStartPlan', () => {
     resolve({ id: 'planned-late' });
     await expect(pending).resolves.toEqual({ kind: 'planned', row: { id: 'planned-late' } });
     expect(fetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe('START_FAILURE_ALERT', () => {
+  it('has guidance for every start rejection the DB can give', () => {
+    const reasons = ['supervisor_limit', 'elder_busy', 'already_started', 'consent_required', 'failed'] as const;
+    expect(Object.keys(START_FAILURE_ALERT).sort()).toEqual([...reasons].sort());
+    for (const r of reasons) {
+      expect(START_FAILURE_ALERT[r].title.trim()).not.toBe('');
+      expect(START_FAILURE_ALERT[r].body.trim()).not.toBe('');
+    }
+  });
+
+  it('sends a busy elder to the supervision screen instead of taking the other session over (T25.19)', () => {
+    expect(START_FAILURE_ALERT.elder_busy.body).toContain('감독 화면');
   });
 });

@@ -27,6 +27,7 @@ function deps(over: Partial<WorkerDeps> = {}) {
   const d = {
     claim: vi.fn(async () => [job]),
     loadTurns: vi.fn(async () => turns),
+    stillAllowed: vi.fn(async () => true),
     generate: vi.fn(async () => ({ result: generated })),
     finish: vi.fn(async () => {}),
     fail: vi.fn(async () => {}),
@@ -52,6 +53,33 @@ describe('program-journal-draft worker — one job', () => {
     })
     expect(d.fail).not.toHaveBeenCalled()
     expect(vi.mocked(d.generate).mock.calls[0][0]).toBe(turns)
+  })
+
+  it('does not send the conversation to the model when consent was revoked or AI turned off after claim (T25.5)', async () => {
+    const d = deps({ stillAllowed: vi.fn(async () => false) })
+    expect(await processJob(job, 's', d)).toBe('stopped')
+    expect(d.stillAllowed).toHaveBeenCalledExactlyOnceWith('s', 'job-1')
+    expect(d.generate).not.toHaveBeenCalled()
+    expect(d.finish).not.toHaveBeenCalled()
+    expect(d.fail).not.toHaveBeenCalled()
+  })
+
+  it('does not send when the pre-send check itself fails — retries instead (T25.5)', async () => {
+    const d = deps({ stillAllowed: vi.fn(async () => { throw new Error('CHECK_FAILED') }) })
+    expect(await processJob(job, 's', d)).toBe('retry')
+    expect(d.generate).not.toHaveBeenCalled()
+    expect(d.fail).toHaveBeenCalledExactlyOnceWith('s', 'job-1', WORKER_MESSAGES.checkFailed, true)
+  })
+
+  it('checks consent after loading the transcript and before generating (T25.5)', async () => {
+    const order: string[] = []
+    const d = deps({
+      loadTurns: vi.fn(async () => { order.push('load'); return turns }),
+      stillAllowed: vi.fn(async () => { order.push('check'); return true }),
+      generate: vi.fn(async () => { order.push('generate'); return { result: generated } }),
+    })
+    await processJob(job, 's', d)
+    expect(order).toEqual(['load', 'check', 'generate'])
   })
 
   it('clears only the field that carries a diagnostic expression', async () => {

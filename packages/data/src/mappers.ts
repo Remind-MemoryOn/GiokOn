@@ -150,7 +150,8 @@ export function toConversationLog(session: SessionRow, logs: SessionLogRow[]): C
     elderId: session.profile_id,
     therapyType: 'reminiscence', // v1은 회상 대화만
     turns: logs.map(toConversationTurn),
-    status: session.status,
+    // recording(종료 후 일괄 기록 중 — 몇 초)은 아직 끝나지 않은 기록이라 도메인에서는 active 로 본다(T25.18).
+    status: session.status === 'recording' ? 'active' : session.status,
     startedAt: session.started_at,
     endedAt: session.ended_at ?? undefined,
     chronicleEntriesAdded: [],

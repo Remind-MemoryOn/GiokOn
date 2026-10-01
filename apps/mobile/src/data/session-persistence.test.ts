@@ -25,14 +25,16 @@ function fixture() {
     delete: vi.fn(() => { writes.push(`${table}:delete`); return builder; }),
     eq: () => builder, select: () => builder, single, maybeSingle };
   const from = vi.fn((name: string) => { table = name; return builder; });
+  const rpc = vi.fn(async (_name: string, _args: unknown): Promise<{ data: { session_id: string; started_at: string } | null; error: { message: string } | null }> =>
+    ({ data: { session_id: 'planned', started_at: 'server-time' }, error: null }));
   const persistTurns = vi.fn(async () => { writes.push('session_logs:upsert'); });
-  const exports: { useSessionPersistence?: () => { syncProgress: () => Promise<boolean>; adoptPlannedSession: (id: string, at: string) => Promise<unknown>; openRemoteSession: () => Promise<unknown>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
+  const exports: { useSessionPersistence?: () => { syncProgress: () => Promise<boolean>; adoptPlannedSession: (id: string) => Promise<unknown>; openRemoteSession: () => Promise<unknown>; finishAndPersist: () => Promise<unknown>; discardUnsaved: () => void } } = {};
   runInNewContext(ts.transpileModule(readFileSync(new URL('./session-persistence.ts', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, { exports, console: { warn: vi.fn() }, setTimeout: (fn: () => void) => setTimeout(fn, 0),
     require: (name: string) => {
       if (name === 'react') return { useCallback: (fn: unknown) => fn, useMemo: (fn: () => unknown) => fn() };
-      if (name === '@giokon/data') return { getGiokonClient: () => ({ from }), persistConversationTurns: persistTurns, queryKeys: { sessions: () => [], sessionAnalyses: () => [], recentSessions: [] } };
+      if (name === '@giokon/data') return { getGiokonClient: () => ({ from, rpc }), persistConversationTurns: persistTurns, queryKeys: { sessions: () => [], sessionAnalyses: () => [], recentSessions: [] } };
       if (name === '../lib/supabase') return { queryScope: { capture: () => {
         const captured = generation;
         return { generation, current: () => captured === generation, assertCurrent: () => {
@@ -44,7 +46,7 @@ function fixture() {
       throw new Error(name);
     },
   });
-  return { state, builder, writes, persistTurns, api: () => exports.useSessionPersistence!(), single, maybeSingle, from, attach, finish, clear,
+  return { state, builder, writes, persistTurns, api: () => exports.useSessionPersistence!(), single, maybeSingle, from, rpc, attach, finish, clear,
     ready: () => { state.active.remoteId = 'remote'; },
     switchUser: () => { generation++; user = { id: 'b' }; state.active = active('b'); } };
 }
@@ -58,8 +60,8 @@ describe('session writes across account changes', () => {
   });
   it.each([null, { message: 'PROCESSING_CONSENT_REQUIRED' }])('does not attach a planned session without a successful activation: %s', async error => {
     const f = fixture();
-    f.maybeSingle.mockResolvedValue({ data: null, error });
-    await f.api().adoptPlannedSession('planned', 'synthetic-date');
+    f.rpc.mockResolvedValue({ data: null, error });
+    await f.api().adoptPlannedSession('planned');
     expect(f.attach).not.toHaveBeenCalled();
   });
   it('does not attach an old delayed remote session to the new account', async () => {
@@ -119,11 +121,11 @@ describe('fallback save without a remote session (M7)', () => {
   const event: SessionSafetyEvent = { level: 'watch', categories: [], matchedTerms: [], excerpt: '', caregiverAlert: '확인',
     acknowledgedAt: null, remoteId: null, ackSynced: false };
 
-  it('creates the session active and ends it only after turns, analysis and events are written', async () => {
+  it('creates the session as recording (not runnable) and ends it only after turns, analysis and events are written (T25.18)', async () => {
     const f = fixture();
     f.state.lastFinished = bundle([event]);
     expect(await f.api().finishAndPersist()).toEqual({ status: 'saved', logId: 'remote' });
-    expect(f.writes).toEqual(['sessions:insert:active', 'session_logs:upsert', 'session_analyses:upsert',
+    expect(f.writes).toEqual(['sessions:insert:recording', 'session_logs:upsert', 'session_analyses:upsert',
       'safety_events:insert', 'sessions:update:ended']);
     expect(f.builder.update).toHaveBeenLastCalledWith({ status: 'ended', ended_at: 'synthetic-end', duration_seconds: 60 });
     expect(f.builder.insert).toHaveBeenNthCalledWith(1, expect.not.objectContaining({ ended_at: expect.anything() }));
@@ -148,17 +150,42 @@ describe('start rejection reasons (pilot D6 · T21.13)', () => {
     expect(f.single).toHaveBeenCalledOnce();
     expect(f.attach).not.toHaveBeenCalled();
   });
-  it('reports the limit when starting a planned session too', async () => {
+  it('starts a planned session through the DB start RPC so the caller becomes the facilitator (T25.11)', async () => {
     const f = fixture();
-    f.maybeSingle.mockResolvedValue({ data: null, error: { message: 'SESSION_SUPERVISOR_LIMIT' } });
-    expect(await f.api().adoptPlannedSession('planned', 'synthetic-date')).toBe('supervisor_limit');
-    expect(f.maybeSingle).toHaveBeenCalledOnce();
+    expect(await f.api().adoptPlannedSession('planned')).toBeNull();
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith('start_planned_session', { p_session_id: 'planned' });
+    // 직접 UPDATE(planned → active) 경로를 더 쓰지 않는다 — user_id·시작 시각은 DB 가 정한다.
+    expect(f.builder.update).not.toHaveBeenCalled();
+    expect(f.attach).toHaveBeenCalledExactlyOnceWith('planned');
   });
-  it('keeps other failures generic and successes empty', async () => {
+  it.each([
+    ['SESSION_SUPERVISOR_LIMIT', 'supervisor_limit'],
+    ['ELDER_SESSION_ACTIVE', 'elder_busy'],
+    ['SESSION_ALREADY_STARTED', 'already_started'],
+    ['PROCESSING_CONSENT_REQUIRED', 'consent_required'],
+    ['SESSION_START_FORBIDDEN', 'failed'],
+  ])('maps %s from the start RPC to %s without retrying', async (message, reason) => {
+    const f = fixture();
+    f.rpc.mockResolvedValue({ data: null, error: { message } });
+    expect(await f.api().adoptPlannedSession('planned')).toBe(reason);
+    expect(f.rpc).toHaveBeenCalledOnce();
+    expect(f.attach).not.toHaveBeenCalled();
+  });
+  it('treats an instant start of an elder already in a conversation as elder_busy (T25.19)', async () => {
+    const f = fixture();
+    f.single.mockResolvedValue({ data: null, error: { message: 'ELDER_SESSION_ACTIVE' } } as never);
+    expect(await f.api().openRemoteSession()).toBe('elder_busy');
+    expect(f.single).toHaveBeenCalledOnce();
+  });
+  it('does not send a device clock start time for an instant session (T25.18)', async () => {
     const f = fixture();
     expect(await f.api().openRemoteSession()).toBeNull();
+    expect(f.builder.insert).toHaveBeenCalledWith(expect.not.objectContaining({ started_at: expect.anything() }));
+  });
+  it('keeps unknown failures generic after retrying', async () => {
     const g = fixture();
-    g.single.mockResolvedValue({ data: null, error: { message: 'PROCESSING_CONSENT_REQUIRED' } } as never);
+    g.single.mockResolvedValue({ data: null, error: { message: 'network down' } } as never);
     expect(await g.api().openRemoteSession()).toBe('failed');
+    expect(g.single).toHaveBeenCalledTimes(3);
   });
 });

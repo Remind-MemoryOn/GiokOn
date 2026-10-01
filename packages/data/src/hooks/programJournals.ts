@@ -115,23 +115,31 @@ export function useCreateProgramJournal(): UseMutationResult<ProgramJournalRow, 
   })
 }
 
-/** 일지 수정·확정·보호자 문장 승인(한 번의 UPDATE — 서버 트리거가 규칙을 집행한다). */
+/** 화면이 읽은 뒤 서버에서 일지가 바뀌어 저장·승인·확정을 거절했다(T25.3) — 코드로 판별한다. */
+export const JOURNAL_VERSION_CONFLICT = 'JOURNAL_VERSION_CONFLICT'
+
+/**
+ * 일지 수정·확정·보호자 문장 승인(한 번의 UPDATE — 서버 트리거가 규칙을 집행한다).
+ *
+ * `expectedUpdatedAt` 을 주면 **화면이 읽은 그 버전일 때만** 바꾼다(T25.3). 보호자 문장 승인은 승인 시각만
+ * 보내고 서버는 **지금 저장된 문장**을 승인하므로, 화면을 연 뒤 워커가 문장을 채우거나 다른 직원이 고치면
+ * 보지 않은 문장이 승인·확정될 수 있었다. 0건이면 `JOURNAL_VERSION_CONFLICT` 로 알린다.
+ */
 export function useUpdateProgramJournal(): UseMutationResult<
   ProgramJournalRow,
   Error,
-  { id: string; patch: ProgramJournalUpdate }
+  { id: string; patch: ProgramJournalUpdate; expectedUpdatedAt?: string }
 > {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, patch }) => {
-      const { data, error } = await getGiokonClient()
-        .from('program_journals')
-        .update(patch)
-        .eq('id', id)
-        .select()
-        .single()
+    mutationFn: async ({ id, patch, expectedUpdatedAt }) => {
+      let query = getGiokonClient().from('program_journals').update(patch).eq('id', id)
+      if (expectedUpdatedAt) query = query.eq('updated_at', expectedUpdatedAt)
+      const { data, error } = await query.select()
       if (error) throw new Error(error.message)
-      return data
+      const row = data?.[0]
+      if (!row) throw new Error(expectedUpdatedAt ? JOURNAL_VERSION_CONFLICT : '일지를 찾을 수 없어요.')
+      return row
     },
     onSuccess: (row) => {
       invalidateJournals(qc, row.profile_id)

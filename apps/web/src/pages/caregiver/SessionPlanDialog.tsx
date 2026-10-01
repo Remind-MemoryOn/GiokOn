@@ -26,7 +26,7 @@ import {
   useSessions,
   useUpdateSession,
 } from '@giokon/data';
-import { phasePlan, SESSION_MAX_MINUTES } from '@giokon/core';
+import { phasePlan, seoulDate, SESSION_MAX_MINUTES } from '@giokon/core';
 import { useAuth } from '../../auth/AuthProvider';
 import { asset } from '../../assets/ui';
 import { useStore } from '../../store/store';
@@ -139,7 +139,7 @@ export function SessionPlanDialog() {
         title: row?.title ?? '',
         goal: row?.goal ?? '',
         minutes: Math.min(SESSION_MAX_MINUTES, Math.max(5, saved ?? orgTarget)),
-        plannedDate: row?.planned_date ?? new Date().toISOString().slice(0, 10),
+        plannedDate: row?.planned_date ?? seoulDate(), // 한국 날짜 기준(T25.7)
         content: row?.content ?? '',
         // 기존 세션은 저장된 값 그대로 · 새 세션은 기관 기본 피할 주제로 시작(고칠 수 있다).
         avoid: row ? (row.avoid_topics ?? '') : (settings.data?.default_avoid_topics ?? []).join(', ').slice(0, AVOID_MAX),

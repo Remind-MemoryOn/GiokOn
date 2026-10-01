@@ -410,3 +410,27 @@ export const AI_DISCLOSURE = '이 대화는 사람이 아니라 AI가 진행합�
 
 /** 생성물 표시 라벨(AI 발화·요약 등에 부착). */
 export const AI_GENERATED_LABEL = 'AI가 생성한 내용입니다.'
+
+/**
+ * 위기 기록의 **발화 근거(발췌)** 상태(T25.17 웹 파트).
+ *
+ * 중계는 감지 즉시 대화를 멈추고, 근거 저장은 뒤에서 제한된 횟수만 재시도한다(5회 · 2·4·8·16초 ≈ 30초).
+ * 앱의 대체 저장은 판정만 넣고 발췌는 넣지 않는다 — 중계가 나중에 빈 칸을 채운다.
+ * 그래서 발췌가 비어 있어도 **감지 직후에는 아직 저장 중**일 수 있다. 창을 넘기면 '저장 실패'로 본다.
+ * 근거를 지어내 채우지 않는다 — 없는 것은 없다고 보인다.
+ */
+export const SAFETY_EVIDENCE_PENDING_MS = 2 * 60 * 1000
+
+export type SafetyEvidenceState = 'present' | 'pending' | 'missing'
+
+export function safetyEvidenceState(
+  excerpt: string | null | undefined,
+  createdAt: string,
+  now: number = Date.now(),
+): SafetyEvidenceState {
+  if (excerpt && excerpt.trim()) return 'present'
+  const at = Date.parse(createdAt)
+  // 시각을 읽지 못하면 '저장 중'이라고 말할 근거도 없다 → 실패로 보인다.
+  if (Number.isNaN(at)) return 'missing'
+  return now - at < SAFETY_EVIDENCE_PENDING_MS ? 'pending' : 'missing'
+}
