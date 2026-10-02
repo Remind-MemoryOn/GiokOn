@@ -32,7 +32,7 @@
 | 위치 | 이름 | 비고 |
 |---|---|---|
 | Cloud Run Secret Manager | `GEMINI_API_KEY` | **중계 전용 키를 새로 발급**(2026-10-01 사용자 동의 — 키 분리). Supabase Edge 의 키와 다른 키 |
-| Cloud Run Secret Manager | 중계 전용 자격(T23.5 — 이름은 구현 때 확정) | 같은 값을 Supabase Edge 시크릿에도 넣는다 |
+| Cloud Run Secret Manager | `VOICE_RELAY_SECRET`(T23.5 — 32자 이상, 예: `openssl rand -hex 32`) | **같은 값**을 Supabase Edge 시크릿 `VOICE_RELAY_SECRET` 에도 넣는다. 값이 다르면 모든 세션 시작이 403 |
 | Cloud Run 환경변수 | `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` | 공개값. service_role 키 금지 |
 | (기본값 사용) | `PORT`(Cloud Run 이 8080 주입 · Dockerfile 도 8080) · `VOICE_RELAY_BIND`(이미지에 `0.0.0.0`) | 설정 불필요 |
 

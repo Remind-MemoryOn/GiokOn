@@ -2,9 +2,11 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { describe, expect, it, vi } from 'vitest'
+import * as liveTokenHandler from '../../../supabase/functions/live-token/handler'
 
 // Edge 함수 소스를 그대로 실행하되 Deno.env/Auth/fetch는 합성 값으로 격리한다.
-// 환경 파일이나 실제 공급자 키를 읽지 않는다.
+// 환경 파일이나 실제 공급자 키를 읽지 않는다. 발급 로직(handler.ts)은 실제 모듈을 그대로 연결한다.
+const RELAY_SECRET = 'synthetic-relay-secret-0123456789abcdef'
 function edge() {
   let handler: (req: Request) => Promise<Response> = async () => new Response(null, { status: 500 })
   const fetchMock = vi.fn(async () => Response.json({ name: 'auth_tokens/synthetic' }))
@@ -16,18 +18,19 @@ function edge() {
     console: { error: vi.fn() }, fetch: fetchMock,
     Deno: { env: { get: (name: string) => ({
       GEMINI_API_KEY: 'synthetic-key', GEMINI_LIVE_MODEL: 'synthetic-model',
-      SUPABASE_URL: 'https://synthetic.invalid', SUPABASE_ANON_KEY: 'synthetic-anon',
+      SUPABASE_URL: 'https://synthetic.invalid', SUPABASE_ANON_KEY: 'synthetic-anon', VOICE_RELAY_SECRET: RELAY_SECRET,
     })[name] } },
     require: (id: string) => id.includes('@supabase/supabase-js')
       ? { createClient: () => ({ auth: { getUser }, rpc }) }
+      : id === './handler.ts' ? liveTokenHandler
       : { serve: (fn: typeof handler) => { handler = fn } },
   })
   return { invoke: (req: Request) => handler(req), fetchMock, getUser, rpc }
 }
 
 const sessionId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-const request = (body = JSON.stringify({ session_id: sessionId })) => new Request('https://synthetic.invalid/live-token', {
-  method: 'POST', headers: { Authorization: 'Bearer synthetic-jwt' }, body,
+const request = (body = JSON.stringify({ session_id: sessionId }), relaySecret: string | null = RELAY_SECRET) => new Request('https://synthetic.invalid/live-token', {
+  method: 'POST', headers: { Authorization: 'Bearer synthetic-jwt', ...(relaySecret === null ? {} : { 'x-relay-secret': relaySecret }) }, body,
 })
 
 describe('Live 단기 토큰 REST 계약', () => {
@@ -49,7 +52,18 @@ describe('Live 단기 토큰 REST 계약', () => {
 
   it('인증 헤더가 없으면 공급자에 요청하지 않는다', async () => {
     const api = edge()
-    expect((await api.invoke(new Request('https://synthetic.invalid', { method: 'POST' }))).status).toBe(401)
+    expect((await api.invoke(new Request('https://synthetic.invalid', { method: 'POST', headers: { 'x-relay-secret': RELAY_SECRET } }))).status).toBe(401)
+    expect(api.fetchMock).not.toHaveBeenCalled()
+  })
+
+  // T23.5 — 배포되는 진입점 그대로: 직원 JWT 만으로는 403, 사용자 확인·한도 계량·공급자 호출 모두 없음.
+  it.each([null, '', 'wrong-relay-secret-0123456789abcdef0123'])('중계 자격 %s 로는 발급하지 않는다(403)', async (relaySecret) => {
+    const api = edge()
+    const result = await api.invoke(request(undefined, relaySecret))
+    expect(result.status).toBe(403)
+    expect(result.headers.get('Cache-Control')).toBe('no-store')
+    expect(api.getUser).not.toHaveBeenCalled()
+    expect(api.rpc).not.toHaveBeenCalled()
     expect(api.fetchMock).not.toHaveBeenCalled()
   })
 

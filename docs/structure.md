@@ -87,7 +87,7 @@
 | `apps/mobile` | ✅ 직접 모드 분기(`RELAY_MODE`)와 직접 UI · `expo-speech` | ✅ 어르신 표시 모드(`talk.tsx` 모드 전환 + `src/features/session/ElderView`) · ✅ 복귀 게이트(PIN) · ⏳ 원격 제어 수신 · ⏳ 푸시 토큰 등록 | `SESSION_BUSY`(기기 1대 = 세션 1개) |
 | `apps/web/src/pages` | `caregiver/Journal{List,Write,}Page.tsx`(요양일지) | `ProgramJournal{List,Detail}Page` · `SupervisionPage`(반응형) · 동의 부여·철회 라우트(✅ `ElderConsentsPage` — PR #17) · `OrgPage` 권한 매트릭스·역할 지정 · 보호자 페이지 표현 전환 | — |
 | `apps/voice-relay/src` | — | `relay.ts` 2초 폴 → `session_tick` · 단계 지시 주입 · 원격 제어 · 위기 이벤트 즉시 기록 | 타이머·턴 상한·수명·재생 영수증 게이팅 |
-| `supabase/functions` | — | 일지 초안 워커 · 푸시 발송 워커 · `session-report` 생성 로직 `_shared/` 추출 · 데모 허용목록 → 기관 게이트 · ⚠️ **`live-token` 중계 전용화**(지금은 JWT 만으로 토큰이 나가 중계를 건너뛸 수 있다) | `live-token` 의 DB 판정(`reserve_live_token`)·한도 |
+| `supabase/functions` | — | 일지 초안 워커 · 푸시 발송 워커 · `session-report` 생성 로직 `_shared/` 추출 · 데모 허용목록 → 기관 게이트 · ✅ **`live-token` 중계 전용화**(T23.5 2026-10-02 코드 — `x-relay-secret` 없으면 403 · 발급 로직 `live-token/handler.ts`) | `live-token` 의 DB 판정(`reserve_live_token`)·한도 |
 
 ⚠️ `packages/core` 삭제와 앱의 직접 모드 제거는 **반드시 같은 PR** 이다 — core 만 먼저 머지하면 앱이 깨진다. (✅ 2026-09-24 한 PR 로 완료 · `✅` = 완료, `⏳` = 남음)
 

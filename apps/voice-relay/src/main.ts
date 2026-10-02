@@ -6,6 +6,7 @@ import { createRelayServer } from './server'
 import type { SessionTick } from './relay'
 import { DEFAULT_GEMINI_TTS_MODEL, DEFAULT_GEMINI_TTS_VOICE } from './output'
 import { storeSafetyEvent, type SafetyEventTable } from './safety-record'
+import { MIN_RELAY_SECRET_LENGTH, requestLiveToken } from './live-token'
 
 // Process/secret-manager environment only. This entrypoint never loads .env files.
 function required(name: string) {
@@ -16,6 +17,9 @@ function required(name: string) {
 const supabaseUrl = required('SUPABASE_URL')
 if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(supabaseUrl)) throw new Error('Invalid SUPABASE_URL')
 const publishableKey = required('SUPABASE_PUBLISHABLE_KEY')
+// T23.5 — live-token 이 중계에만 토큰을 준다. Edge 시크릿과 같은 값이어야 한다(다르면 모든 세션 시작이 403).
+const relaySecret = required('VOICE_RELAY_SECRET')
+if (relaySecret.length < MIN_RELAY_SECRET_LENGTH) throw new Error('Invalid VOICE_RELAY_SECRET')
 const geminiTts = {
   apiKey: required('GEMINI_API_KEY'),
   model: process.env.GEMINI_TTS_MODEL?.trim() || DEFAULT_GEMINI_TTS_MODEL,
@@ -61,10 +65,8 @@ const service = createRelayServer({
       const chronicles = await db.from('chronicle_entries').select('*').eq('profile_id', session.data.profile_id).order('recorded_at', { ascending: false }).limit(100)
       if (profile.error || chronicles.error) throw new Error('CONTEXT_FAILED')
       // Reuse the deployed authorization/quota gate. Gemini key never leaves Supabase.
-      const tokenResponse = await timedFetch(`${supabaseUrl}/functions/v1/live-token`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, apikey: publishableKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId }) })
-      if (!tokenResponse.ok) throw new Error('TOKEN_FAILED')
-      const token = await tokenResponse.json() as { token?: unknown; model?: unknown }
-      if (typeof token.token !== 'string' || typeof token.model !== 'string') throw new Error('INVALID_TOKEN')
+      // T23.5: 중계 전용 자격(x-relay-secret)을 함께 보낸다 — 없으면 live-token 이 403.
+      const token = await requestLiveToken(timedFetch, { supabaseUrl, publishableKey, relaySecret, accessToken, sessionId })
       // 파일럿 T21.4 — 위험 발화 즉시 기록(요양보호사 권한 · 앱과 같은 RLS·동의 가드). 기관은 트리거가 채운다.
       // T25.17 — 중계가 만든 사건 id 로 넣고, 이미 있으면(응답 유실·앱 대체 기록) 비어 있는 근거만 채운다.
       const safetyTable: SafetyEventTable = {

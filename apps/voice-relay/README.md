@@ -5,9 +5,9 @@
 > 계획 SoT: [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §8 C3 · §4 D·G.
 > - **중계 단일화**: 앱의 직접 Gemini Live 모드는 폐기한다(M1). 아래 "주소가 없으면 기존 직접 Live 모드" 서술은 파일럿에서
 >   "주소가 없으면 세션 시작 차단"으로 바뀐다.
-> - ⚠️ **`live-token` 중계 전용화**(C4): 지금 이 서버는 **사용자 JWT 로** `live-token` 을 부른다(`src/main.ts`). 서버가 중계와 앱
->   직접 호출을 구분하지 못해, 구버전 앱·JWT 소지자도 토큰을 받아 출력 검열을 건너뛸 수 있다. 중계만 가진 자격(서버 시크릿)을
->   추가로 보내고 `live-token` 은 그것이 없으면 403 을 준다 — 이 서버에 **새 환경변수 1개**가 생긴다(이름은 구현 때 확정).
+> - ✅ **`live-token` 중계 전용화**(C4 · T23.5 · 2026-10-02 코드): 이 서버는 사용자 JWT 에 **더해** 공유 시크릿 `VOICE_RELAY_SECRET` 을
+>   `x-relay-secret` 헤더로 보낸다(`src/live-token.ts`). `live-token` 은 이 헤더가 없거나 틀리면 403 — 구버전 앱·JWT 소지자의 직접 발급이
+>   막힌다. ⚠️ **배포 순서: 이 서버(시크릿 포함) 먼저 → `live-token`**. 역순이면 그 사이 모든 세션 시작이 403 이다.
 > - **`session_tick` RPC**: 2초 권한 폴(`can_process_session`)을 이것으로 바꿔 `{allowed, phase, target_minutes, paused, control_request}`
 >   를 한 번에 받는다. 새 타이머·소켓·인증은 없다.
 > - **단계 지시 주입**: 단계(도입 → 회상 → 마무리·의견수렴)가 바뀌면 `clientContent{turns, turnComplete:false}` 로 지시를 넣는다 —
@@ -34,6 +34,7 @@
 | `SUPABASE_URL` | `https://ufkbzpdjomtmxjipmwub.supabase.co` |
 | `SUPABASE_PUBLISHABLE_KEY` | 해당 프로젝트의 공개 publishable 키. service_role 키를 넣지 않음 |
 | `GEMINI_API_KEY` | 중계 서버가 Gemini TTS를 호출할 **중계 전용 키**(2026-10-01 키 분리 확정 — Supabase Edge 의 `GEMINI_API_KEY` 와 다른 키. Edge 쪽 키는 `live-token`·`session-report`·`program-journal-draft` 가 쓰므로 지우지 않는다) |
+| `VOICE_RELAY_SECRET` | `live-token` 과 공유하는 중계 전용 자격(T23.5). **32자 이상**(예: `openssl rand -hex 32`) — 짧거나 없으면 시작하지 않는다. Supabase Edge 시크릿에도 **같은 값**을 넣는다 |
 | `GEMINI_TTS_MODEL` | 선택. 기본 `gemini-3.8-flash-tts` |
 | `GEMINI_TTS_VOICE` | 선택. 기본 `Kore` |
 | `VOICE_RELAY_BIND` | 기본 `127.0.0.1`; 컨테이너는 `0.0.0.0` |
@@ -51,7 +52,7 @@
 4. 자동 대화 시작 → 오프너 Gemini TTS 재생 → 마이크 → 자동 입력 저장 → 다음 Gemini TTS 재생 → 회수·저장을 확인한다. 정상 경로는 매 턴 확인 없이 진행하며 중단된 부분 입력만 담당자 확인/제외를 요청한다. 일시정지 후 자동 재개는 아직 후속이다.
 5. 거절/무음·네트워크 단절·합성 실패·권한 철회·합성 중 회수·재생 로드 중 회수를 확인한다. 중계 모드에서 원본 Gemini 음성·기기 TTS로 몰래 전환되면 실패다.
 
-주소가 없거나 형식이 틀리면 앱이 세션 시작을 막는다(M1 · 직접 Live 모드는 2026-09-24 코드에서 삭제). 다만 `live-token` 이 아직 사용자 JWT 만으로 토큰을 주므로 구버전 앱·JWT 소지자의 직접 경로 폐쇄(T23.5)는 남아 있고 R010은 계속 부분 해결이다. 중계의 실패는 안내 후 중단하며 기록 저장 경로를 남긴다.
+주소가 없거나 형식이 틀리면 앱이 세션 시작을 막는다(M1 · 직접 Live 모드는 2026-09-24 코드에서 삭제). 서버 쪽 직접 발급 차단은 T23.5(`x-relay-secret`)가 맡는다 — 새 발급만 막으므로 R010은 계속 부분 해결이다. 중계의 실패는 안내 후 중단하며 기록 저장 경로를 남긴다.
 
 ## 현재 제한
 
