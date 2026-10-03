@@ -1041,6 +1041,19 @@ export type Database = {
         Args: { p_session_id: string; p_phase: Database['public']['Enums']['session_phase']; p_prompt_version?: string | null }
         Returns: Database['public']['Enums']['session_phase']
       }
+      // T26.1 음성 세션 점유 — 중계 전용(점유 테이블은 사용자가 직접 읽지 못해 테이블 타입은 두지 않는다).
+      acquire_voice_lease: {
+        Args: { p_session_id: string; p_holder: string }
+        Returns: boolean
+      }
+      renew_voice_lease: {
+        Args: { p_session_id: string; p_holder: string }
+        Returns: boolean
+      }
+      release_voice_lease: {
+        Args: { p_session_id: string; p_holder: string }
+        Returns: undefined
+      }
       retry_journal_generation: {
         Args: { p_journal_id: string }
         Returns: undefined

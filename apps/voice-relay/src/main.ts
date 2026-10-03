@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { buildSystemPrompt, PROMPT_VERSION, type SafetyEventDraft, type SessionPhase } from '@giokon/core'
 import { toElderProfile, toChronicleEntry, toSession, type Database } from '@giokon/data'
@@ -7,6 +8,7 @@ import type { SessionTick } from './relay'
 import { DEFAULT_GEMINI_TTS_MODEL, DEFAULT_GEMINI_TTS_VOICE } from './output'
 import { storeSafetyEvent, type SafetyEventTable } from './safety-record'
 import { MIN_RELAY_SECRET_LENGTH, requestLiveToken } from './live-token'
+import { createSessionLease, tickWithLease, type LeaseRpc } from './lease'
 
 // Process/secret-manager environment only. This entrypoint never loads .env files.
 function required(name: string) {
@@ -25,14 +27,12 @@ const geminiTts = {
   model: process.env.GEMINI_TTS_MODEL?.trim() || DEFAULT_GEMINI_TTS_MODEL,
   voice: process.env.GEMINI_TTS_VOICE?.trim() || DEFAULT_GEMINI_TTS_VOICE,
 }
-const inUse = new Set<string>()
 const service = createRelayServer({
   geminiTts,
   connectProvider: url => new WebSocket(url, { maxPayload: 1024 * 1024, perMessageDeflate: false }),
   authorize: async (sessionId, accessToken) => {
-    if (inUse.has(sessionId)) throw new Error('SESSION_BUSY')
-    inUse.add(sessionId)
-    const release = () => { inUse.delete(sessionId) }
+    // T26.1 — 세션 점유는 DB 가 잡는다(여러 인스턴스·리비전 교체 중에도 세션당 연결 1개). 연결마다 holder 를 새로 만든다.
+    let release = () => {}
     try {
       const timedFetch: typeof fetch = (url, init) => fetch(url, { ...init, signal: AbortSignal.any([...(init?.signal ? [init.signal] : []), AbortSignal.timeout(5000)]) })
       const db = createClient<Database>(supabaseUrl, publishableKey, { global: { headers: { Authorization: `Bearer ${accessToken}` }, fetch: timedFetch }, auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
@@ -40,7 +40,8 @@ const service = createRelayServer({
       if (user.error || !user.data.user) throw new Error('AUTH_FAILED')
       // 파일럿 D6·C3: 2초 폴 = session_tick 하나(허용·단계·서버 경과·목표 시간·원격 제어).
       // ⚠️ 배포 순서: DB 마이그레이션 20260924040000 이 먼저다 — RPC 가 없으면 모든 세션이 거부된다(fail closed).
-      const tick = async (): Promise<SessionTick> => {
+      const lease = createSessionLease(((fn, args) => db.rpc(fn, args)) as LeaseRpc, sessionId, randomUUID())
+      const serverTick = async (): Promise<SessionTick> => {
         const result = await db.rpc('session_tick', { p_session_id: sessionId })
         const t = result.data as Record<string, unknown> | null
         if (result.error || !t || t.allowed !== true) return { allowed: false }
@@ -54,13 +55,18 @@ const service = createRelayServer({
           endRequested: t.end_requested === true,
         }
       }
+      // 2초 폴에서 점유도 함께 갱신한다 — 빼앗겼거나 갱신하지 못하면 허용하지 않는다(연결이 닫힌다).
+      const tick = (): Promise<SessionTick> => tickWithLease(serverTick, lease)
       const advancePhase = async (phase: SessionPhase) => {
         const result = await db.rpc('advance_session_phase', { p_session_id: sessionId, p_phase: phase, p_prompt_version: PROMPT_VERSION })
         return !result.error && result.data === phase
       }
-      if (!(await tick()).allowed) throw new Error('DENIED')
       const session = await db.from('sessions').select('*').eq('id', sessionId).single()
       if (session.error || session.data.user_id !== user.data.user.id) throw new Error('SESSION_NOT_OWNED')
+      // 토큰(한도 소모)·맥락 조회 전에 점유부터 — 다른 연결이 살아 있으면 SESSION_BUSY.
+      await lease.acquire()
+      release = () => lease.release()
+      if (!(await tick()).allowed) throw new Error('DENIED')
       const profile = await db.from('profiles').select('*').eq('id', session.data.profile_id).single()
       const chronicles = await db.from('chronicle_entries').select('*').eq('profile_id', session.data.profile_id).order('recorded_at', { ascending: false }).limit(100)
       if (profile.error || chronicles.error) throw new Error('CONTEXT_FAILED')

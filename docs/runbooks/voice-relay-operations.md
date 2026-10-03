@@ -36,6 +36,8 @@
 | Cloud Run 환경변수 | `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` | 공개값. service_role 키 금지 |
 | (기본값 사용) | `PORT`(Cloud Run 이 8080 주입 · Dockerfile 도 8080) · `VOICE_RELAY_BIND`(이미지에 `0.0.0.0`) | 설정 불필요 |
 
+**Gemini TTS 키는 중계에만 둔다** — Supabase Edge 함수 중 TTS 를 부르는 것은 없다(합성은 중계 `output.ts`). 그래서 CLOVA 키를 지운 자리에 Edge 쪽으로 새로 넣을 TTS 키는 없다. Cloud Run 연결 전 로컬 시험은 프로세스 환경변수로만 준다(이 서버는 `.env` 를 읽지 않는다).
+
 ⚠️ **Supabase Edge 의 `GEMINI_API_KEY` 는 지우지 않는다** — `live-token`(Live 단기 토큰 발급)·`session-report`·`program-journal-draft` 가 읽는다.
 지우면 모든 음성 세션 시작과 AI 초안이 실패한다. 로컬 `supabase/.env` 를 고쳐도 이미 배포된 Edge 시크릿은 바뀌지 않는다.
 
@@ -89,6 +91,8 @@ Cloud Scheduler 작업 2개가 서비스의 **최소 인스턴스 수**만 바�
 - 이미 처리된 공급자 사용량이나 토큰 발급 한도는 환불/취소하지 않는다. 여러 인스턴스의 같은 세션 점유 방지는 별도다.
 
 ## 배포 순서
+
+> ⚠️ DB 선행 마이그레이션: `20260924040000`(session_tick) · **`20261003000000`(T26.1 점유 RPC — 없으면 새 중계가 모든 연결을 `LEASE_FAILED` 로 거절)**. `live-token`(T23.5)은 중계 **뒤**.
 
 1. 호스팅·리전·WSS·Secret Manager를 확정한다(✅ 위 "호스팅" 절). 기존 DB 기능용 출처 계약은 [`database.md`](../database.md) "대화 기록 저장 계약"을 따른다. DB 보안 감사와 구분한다.
 2. 동일 커밋에서 중계 시험과 타입 검사를 실행한다. 컨테이너 이미지 빌드·해당 호스팅에서의 시작/종료 신호 검증은 별도 필요하다.

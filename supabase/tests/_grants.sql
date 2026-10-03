@@ -13,6 +13,9 @@ begin
     'Internal consent predicate must remain private';
   assert not has_table_privilege('authenticated', 'public.users', 'UPDATE'),
     '마이그레이션은 users 테이블 UPDATE 권한을 회수해야 함';
+  -- T26.1 음성 세션 점유 — 사용자는 RPC 로만 닿는다(직접 읽기·쓰기 권한 없음).
+  assert not has_table_privilege('authenticated', 'public.voice_session_leases', 'SELECT'), '점유 테이블 직접 조회 권한 없음';
+  assert not has_table_privilege('authenticated', 'public.voice_session_leases', 'INSERT'), '점유 테이블 직접 쓰기 권한 없음';
   assert not has_table_privilege('authenticated','public.consents','UPDATE'), 'Consent table UPDATE must be revoked';
   assert not (select prosecdef from pg_proc where oid='app.guard_record_identity()'::regprocedure),
     'Record identity guard must remain SECURITY INVOKER';
