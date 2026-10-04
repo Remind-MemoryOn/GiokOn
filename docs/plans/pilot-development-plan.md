@@ -293,7 +293,7 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 - `analysis.ts`: `opinionSignals?`·`baselineDeltas?` 추가 — 파일럿 범위 밖이지만 **데이터는 지금부터**
 
 **C3. `apps/voice-relay`**
-> ✅ **2026-09-24 1차 완료(T21.3)** — `session_tick` 폴·단계 지시 주입(턴 사이에만)·원격 일시정지/종료(`relayControl` → 2초 뒤 닫기). ✅ `safety_events` 즉시 INSERT(T21.4, 2026-09-27 — 중계 배포 후 반영). ⏳ 남음: 휴식 요청 → 마무리 전환(T21.11), 수명 10분(T21.12), ~~DB 기준 세션 점유(T26.1)~~ ✅ 2026-10-03 코드(`voice_session_leases` · DB 운영 적용 승인 대기). 배포 순서 = DB 마이그레이션 → 중계. 호스팅 = Cloud Run 서울(2026-10-01 확정 — 운영 런북 "호스팅").
+> ✅ **2026-09-24 1차 완료(T21.3)** — `session_tick` 폴·단계 지시 주입(턴 사이에만)·원격 일시정지/종료(`relayControl` → 2초 뒤 닫기). ✅ `safety_events` 즉시 INSERT(T21.4, 2026-09-27 — 중계 배포 후 반영). ⏳ 남음: 휴식 요청 → 마무리 전환(T21.11), ~~수명 10분(T21.12)~~ ✅ 2026-10-04(서버 경과 시간 · 진행 중 AI 발화 최대 30초), ~~DB 기준 세션 점유(T26.1)~~ ✅ 2026-10-03 코드(`voice_session_leases` · DB 운영 적용 승인 대기). 배포 순서 = DB 마이그레이션 → 중계. 호스팅 = Cloud Run 서울(2026-10-01 확정 — 운영 런북 "호스팅").
 - 2초 폴을 **`session_tick` RPC 로 교체** → `{allowed, phase, target_minutes, paused, control_request}` 일괄 수신(`target_minutes` 는 `coalesce(sessions.duration_minutes, org_settings.target_minutes)` 로 계산한 값이지 컬럼이 아니다)
 - 단계 전환 시 `forward({clientContent:{turns, turnComplete:false}})` 로 지시 주입 —
   **`resumeContext` 주입과 완전히 같은 경로**다. 어르신에게 들리지 않고, 출력은 여전히 서버 검증 후 Gemini TTS를 통과한다

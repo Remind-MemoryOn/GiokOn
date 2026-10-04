@@ -3,7 +3,7 @@ import { WebSocket, type RawData } from 'ws'
 import type { GeminiTtsConfig } from './output'
 import { synthesizeValidated } from './output'
 import { recordWithRetry, SAFETY_RETRY, type SafetyRetryPolicy } from './safety-record'
-import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, relaySafetySummary, safetyEventDraftFor, shouldAdvancePhase, type RelaySafetySummary, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
+import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, relaySafetySummary, safetyEventDraftFor, SESSION_MAX_MINUTES, shouldAdvancePhase, type RelaySafetySummary, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
 
 /**
  * 서버(session_tick RPC) 한 번의 판정 — 파일럿 D6·C3. 2초 폴이 이 값 하나로 허용 여부·단계·원격 제어를 함께 받는다.
@@ -46,6 +46,16 @@ export const CONTROL_CLOSE_GRACE_MS = 2000
  * 기록 재시도는 연결을 닫은 뒤에도 뒤에서 계속한다(T25.17). 앱은 같은 id 로 대체 기록을 넣는다(없을 때만).
  */
 export const SAFETY_RECORD_TIMEOUT_MS = 3000
+/**
+ * 세션 1회 상한(초) — 서버 경과 시간(`session_tick.elapsed_seconds`, DB `started_at` 기준 · 일시정지 포함)으로 판정한다(T21.12).
+ * 연결 시각이 아니라 세션 시각이라 재연결·앱 재시작으로 초기화되지 않는다. 기관 설정으로 늘릴 수 없다(core 고정값).
+ */
+export const SESSION_LIMIT_SECONDS = SESSION_MAX_MINUTES * 60
+/**
+ * 상한에 닿았을 때 이미 시작된 AI 발화(생성·합성·재생)를 마저 들려주는 최대 시간(ms) — 말 중간에 끊지 않게(2026-10-03 사용자 확정).
+ * 그동안 어르신의 새 발화는 받지 않는다. 지나면 재생 중이어도 종료를 알리고 닫는다.
+ */
+export const TIME_LIMIT_GRACE_MS = 30_000
 /** 안전 이벤트 발췌 길이 — 감지 창(여러 조각)의 끝부분을 남긴다(core 초안 규칙과 같은 120자). */
 const SAFETY_EXCERPT_WINDOW = 120
 export interface RelayDependencies {
@@ -57,6 +67,8 @@ export interface RelayDependencies {
   safetyRetry?: SafetyRetryPolicy
   /** 사건 id 생성(테스트용 주입). */
   newSafetyEventId?: () => string
+  /** 10분 상한 뒤 진행 중 AI 발화를 기다리는 최대 시간(테스트용 주입 — 기본 TIME_LIMIT_GRACE_MS). */
+  timeLimitGraceMs?: number
 }
 
 function buffer(raw: RawData): Buffer {
@@ -85,16 +97,20 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let phaseTurns = 0                      // 현재 단계에서 어르신이 **말한**(음성이 전달된) 턴 수
   let activityAudio = false
   let reviewing = false                   // 위험 발화로 멈추는 중(기록 → 알림 → 닫기)
+  // T21.12 — 세션 10분 상한: 새 발화는 받지 않고, 진행 중 AI 발화만 유예 안에서 마친 뒤 종료를 알린다.
+  let timeUp = false
+  let timeUpTimer: ReturnType<typeof setTimeout> | undefined
   const openedAt = Date.now()
   const setupTimer = setTimeout(() => close(), 30000)
-  const lifetime = setTimeout(() => close(), 25 * 60 * 1000)
+  // 안전 장치 — 판정은 서버 경과 시간(위)이 하고, 이 연결 수명은 그보다 길게만 둔다(서버 시각을 못 받는 경우 대비).
+  const lifetime = setTimeout(() => close(), SESSION_LIMIT_SECONDS * 1000 + (deps.timeLimitGraceMs ?? TIME_LIMIT_GRACE_MS) + CONTROL_CLOSE_GRACE_MS)
   const poll = setInterval(() => { if (session) void allowed().then(ok => { if (!ok) close() }) }, 2000)
 
   function close() {
     if (abort.signal.aborted) return
     abort.abort()
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
-    clearTimeout(playbackTimer); clearTimeout(responseTimer)
+    clearTimeout(playbackTimer); clearTimeout(responseTimer); clearTimeout(timeUpTimer)
     session?.release()
     upstream?.terminate()
     app.close(1000, 'VOICE_SESSION_ENDED')
@@ -122,6 +138,12 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       clearTimeout(responseTimer); clearTimeout(playbackTimer)
       send({ relayControl: { state: tick.endRequested ? 'ended' : 'paused' } })
       setTimeout(close, CONTROL_CLOSE_GRACE_MS).unref()
+      return
+    }
+    // T21.12 — 세션 경과(서버 시각)가 상한에 닿았다: 단계 진행·지시를 멈추고 마무리로 간다.
+    if (timeUp) return
+    if (typeof tick.elapsedSeconds === 'number' && tick.elapsedSeconds >= SESSION_LIMIT_SECONDS) {
+      startTimeUp()
       return
     }
     const phase = tick.phase ?? null
@@ -181,6 +203,29 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     send({ relayError: { code: 'INPUT_REVIEW_REQUIRED', ...(safetyEventId ? { safetyEventId } : {}),
       ...(pendingSafetyEventId ? { pendingSafetyEventId } : {}), ...(summary ? { safety: summary } : {}) } })
     close()
+  }
+  /**
+   * 10분 상한(T21.12) — 이 순간부터 어르신의 새 발화는 모델로 보내지 않는다. 이미 시작된 AI 발화(생성·합성·재생 확인 대기)가
+   * 있으면 유예(최대 30초) 안에서 마치기를 기다리고, 없거나 유예가 지나면 종료를 알린 뒤 닫는다.
+   * 연결 시점에 이미 상한을 넘었으면(재연결·일시정지 중 경과) 모델 연결을 열지 않고 바로 끝낸다.
+   */
+  function startTimeUp() {
+    if (timeUp || controlled || abort.signal.aborted) return
+    timeUp = true
+    directive = null
+    timeUpTimer = setTimeout(finishTimeUp, deps.timeLimitGraceMs ?? TIME_LIMIT_GRACE_MS)
+    maybeFinishTimeUp()
+  }
+  function maybeFinishTimeUp() {
+    if (timeUp && !pending && awaitingPlayback === null) finishTimeUp()
+  }
+  function finishTimeUp() {
+    if (controlled || abort.signal.aborted) return
+    controlled = true
+    clearTimeout(timeUpTimer); clearTimeout(responseTimer); clearTimeout(playbackTimer)
+    // 앱은 원격 종료와 같은 경로(멈추고 요양보호사가 저장)로 처리한다. reason 은 구버전 앱이 무시하는 추가 칸이다.
+    send({ relayControl: { state: 'ended', reason: 'time_limit' } })
+    setTimeout(close, CONTROL_CLOSE_GRACE_MS).unref()
   }
   /** 단계 지시는 **턴 사이**에만 넣는다 — 모델 생성·재생 대기·어르신 발화 중이면 다음 기회로 미룬다. */
   function flushDirective() {
@@ -310,6 +355,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             }
             send({ ...(protocolVersion >= 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
             output = ''; pending = false
+            maybeFinishTimeUp()  // v1 은 재생 확인이 없다 — 보낸 뒤 바로(v2+ 는 awaitingPlayback 이 남아 재생 확인을 기다린다)
           }).catch(close)
         })
         return
@@ -322,11 +368,13 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || receipt.result !== 'completed') return close()
         if (!await allowed()) return close()
         clearTimeout(playbackTimer); awaitingPlayback = null
+        maybeFinishTimeUp()
         flushDirective()
         return
       }
       // 원격 일시정지·종료 알림 뒤의 입력은 조용히 버린다(앱이 스스로 연결을 닫는 중이다).
-      if (controlled) return
+      // 10분 상한 뒤의 어르신 발화도 모델로 보내지 않는다(T21.12 — 진행 중 AI 발화만 마친다).
+      if (controlled || timeUp) return
       if (awaitingPlayback !== null) throw new Error('PLAYBACK_NOT_CONFIRMED')
       if (!ready || !setupSeen || !msg.realtimeInput || pending) throw new Error('INVALID_PHASE')
       const r = msg.realtimeInput

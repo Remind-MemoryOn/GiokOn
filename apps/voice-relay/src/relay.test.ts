@@ -3,7 +3,7 @@ import { once } from 'node:events'
 import type { AddressInfo } from 'node:net'
 import { WebSocket, WebSocketServer } from 'ws'
 import { createRelayServer } from './server'
-import { CONTROL_CLOSE_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, type RelayDependencies, type RelaySession, type SessionTick } from './relay'
+import { CONTROL_CLOSE_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, SESSION_LIMIT_SECONDS, type RelayDependencies, type RelaySession, type SessionTick } from './relay'
 
 const EVENT_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
@@ -286,6 +286,80 @@ describe('pilot C3 — server phases and remote control', () => {
     expect(f.connectProvider).not.toHaveBeenCalled()
     await once(f.app, 'close')
   }, CONTROL_CLOSE_GRACE_MS + 5000)
+})
+
+describe('T21.12 — 세션 10분 상한(서버 경과 시간)', () => {
+  const ended = (f: { frames: any[] }) => f.frames.filter(x => x.relayControl?.state === 'ended')
+  it('is 10 minutes', () => { expect(SESSION_LIMIT_SECONDS).toBe(600) })
+
+  it('ends at once without opening the model when the session is already past 10 minutes at (re)connect', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: 'closing', elapsedSeconds: SESSION_LIMIT_SECONDS + 120, targetMinutes: 10 })
+    f.send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt', protocolVersion: 2 } })
+    await vi.waitFor(() => expect(ended(f)).toEqual([{ relayControl: { state: 'ended', reason: 'time_limit' } }]))
+    expect(f.connectProvider).not.toHaveBeenCalled()
+    await once(f.app, 'close')
+  }, CONTROL_CLOSE_GRACE_MS + 5000)
+
+  it('when idle at the limit: tells the app it ended, forwards no new elder speech, injects no directive, then closes', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: 'closing', phaseElapsedSeconds: 60, elapsedSeconds: SESSION_LIMIT_SECONDS - 5, targetMinutes: 10 })
+    await f.start(2)
+    const directivesBefore = f.directives().length
+    f.server.elapsedSeconds = SESSION_LIMIT_SECONDS
+    await vi.waitFor(() => expect(ended(f)).toHaveLength(1), { timeout: 3000 })
+    const forwarded = f.inputs.length
+    f.turn()
+    await new Promise(r => setTimeout(r, 200))
+    expect(f.inputs.length).toBe(forwarded)
+    expect(f.directives().length).toBe(directivesBefore)
+    expect(f.advancePhase).not.toHaveBeenCalled()
+    await once(f.app, 'close')
+  }, CONTROL_CLOSE_GRACE_MS + 6000)
+
+  it('lets an AI reply already in progress finish and play, refusing new elder speech meanwhile, then ends after the playback receipt', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: 'closing', phaseElapsedSeconds: 60, elapsedSeconds: SESSION_LIMIT_SECONDS - 5, targetMinutes: 10 })
+    await f.start(2)
+    let finish!: (value: { text: string; pcm: Buffer }) => void
+    f.synthesize.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    f.turn()
+    await vi.waitFor(() => expect(f.synthesize).toHaveBeenCalledOnce())
+    f.server.elapsedSeconds = SESSION_LIMIT_SECONDS + 1
+    await new Promise(r => setTimeout(r, 2300))           // 상한을 넘긴 폴이 지나갔다
+    expect(ended(f)).toHaveLength(0)                       // 생성 중인 답은 끊지 않는다
+    const forwarded = f.inputs.length
+    f.send({ realtimeInput: { activityStart: {} } })
+    await new Promise(r => setTimeout(r, 100))
+    expect(f.inputs.length).toBe(forwarded)                // 새 발화는 모델로 가지 않는다
+    finish({ text: '오늘 이야기 고마웠어요.', pcm: Buffer.from([1, 0, 2, 0]) })
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 1)).toBe(true))
+    await new Promise(r => setTimeout(r, 100))
+    expect(ended(f)).toHaveLength(0)                       // 재생 확인 전에는 끝내지 않는다
+    f.send({ relayPlayback: { turnId: 1, result: 'completed' } })
+    await vi.waitFor(() => expect(ended(f)).toHaveLength(1))
+    await once(f.app, 'close')
+  }, CONTROL_CLOSE_GRACE_MS + 8000)
+
+  it('does not wait past the grace period when playback is never confirmed', async () => {
+    const f = await fixture(true, {}, { timeLimitGraceMs: 300 })
+    Object.assign(f.server, { phase: 'closing', phaseElapsedSeconds: 60, elapsedSeconds: SESSION_LIMIT_SECONDS - 5, targetMinutes: 10 })
+    await f.start(2)
+    f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 1)).toBe(true))
+    f.server.elapsedSeconds = SESSION_LIMIT_SECONDS
+    await vi.waitFor(() => expect(ended(f)).toHaveLength(1), { timeout: 3500 })
+    await once(f.app, 'close')
+  }, CONTROL_CLOSE_GRACE_MS + 6000)
+
+  it('keeps the normal flow before the limit (no end signal at 9:59)', async () => {
+    const f = await fixture()
+    Object.assign(f.server, { phase: 'closing', phaseElapsedSeconds: 60, elapsedSeconds: SESSION_LIMIT_SECONDS - 1, targetMinutes: 10 })
+    await f.start(2); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
+    await new Promise(r => setTimeout(r, 2200))
+    expect(ended(f)).toHaveLength(0)
+  }, 8000)
 })
 
 describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시도', () => {
