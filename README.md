@@ -97,7 +97,7 @@ bash supabase/tests/run-rls-regression.sh    # RLS 회귀 (PostgreSQL 16 실기�
 
 환경변수: 클라이언트는 공개 값만 쓴다 — 웹 `VITE_SUPABASE_URL`·`VITE_SUPABASE_PUBLISHABLE_KEY`, 앱
 `EXPO_PUBLIC_SUPABASE_*`·**`EXPO_PUBLIC_VOICE_RELAY_URL`(파일럿에서 필수)**. ⚠️ `EXPO_PUBLIC_*` 는 앱 번들에 들어가
-**공개된다** — 비밀 값을 넣지 않는다. 서버 비밀(`GEMINI_API_KEY`·`GEMINI_LIVE_MODEL`·`NCP_CLOVA_*`·`NAVER_*`)은
+**공개된다** — 비밀 값을 넣지 않는다. 서버 비밀(`GEMINI_API_KEY`·`GEMINI_LIVE_MODEL`·`VOICE_RELAY_SECRET`·`NAVER_*`)은
 Supabase secrets 와 중계 서버 환경에만 둔다. 실제 키는 커밋하지 않는다(`.env` 는 gitignore).
 
 ---

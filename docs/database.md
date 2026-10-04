@@ -23,7 +23,7 @@
 ## Files
 
 - `supabase/migrations/`: v1 스키마, 인덱스, 트리거, RLS 정책. (RLS는 `auth.uid()` 기준으로 작성한다.)
-- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `session-report`(세션 분석 생성) · `naver-auth` · `stt-transcribe`(요양일지 음성 — 기획 변경으로 재검토 대상). 파일럿에서 일지 초안 워커·푸시 발송 워커가 추가된다. 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
+- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `session-report`(세션 분석 생성) · `naver-auth`. (`stt-transcribe`(CLOVA STT)는 2026-10-04 삭제.) 파일럿에서 일지 초안 워커·푸시 발송 워커가 추가된다. 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
 - `docs/database.md`: Supabase 적용 절차와 접근 모델.
 
 ## Tables
@@ -82,7 +82,7 @@
 온보딩 단순화 + 음성 STT(`20260722150000` · Edge Function, 2026-07-25):
 
 - `complete_onboarding` 개정: **요양보호사 = 소속 기관명 입력**(새 기관+org_admin)으로 되돌림(어르신 코드 합류 토글 제거 — 코드는 보호자용). 보호자 브랜치(어르신 코드 연결) 유지. 여러 요양보호사 같은 기관 합류(연속성)는 추후 기관 초대 메커니즘으로(런북).
-- Edge Function **`stt-transcribe`**(신규 — ⚠️ 요양일지 음성 입력용이라 기획 변경 후 재검토 대상): 요양일지 음성 파일 → CLOVA CSR 인식 → `{text}`. CLOVA 키는 서버 시크릿(`NCP_CLOVA_CLIENT_ID/SECRET`). 데이터층 `transcribeAudio(file)`. 미배포 시 UI 안내.
+- ~~Edge Function `stt-transcribe`(CLOVA CSR)~~ — 2026-10-04 삭제(요양일지 음성 입력 폐기 · CLOVA 키 삭제). 되살리려면 동의·권한 규칙부터 다시 설계한다.
 
 파일럿 신규·변경(2026-09-23 기획 변경 — **2026-09-24 부터 마이그레이션 작성 중: D1 ✅ · D3 설정·권한표·역할 부여·직원 합류 ✅ · D4 기관 단위 RLS ✅ · D6 대화 단계·원격 제어·동시 4대 ✅ — 로컬 PG16 검증만, ✅ 운영 적용(2026-09-24)**. 상세·순서: [`pilot-development-plan.md`](plans/pilot-development-plan.md) §5 D1~D10):
 
@@ -201,8 +201,6 @@ OPENAI_API_KEY="sk-..."                        # 과거 공급자 예시; 초기
 GEMINI_API_KEY="AIza..."                       # Live 토큰 발급·중계 Gemini TTS 서버 전용
 GEMINI_LIVE_MODEL="gemini-3.8-live"
 GEMINI_TTS_MODEL="gemini-3.8-flash-tts"
-NCP_CLOVA_CLIENT_ID="<X-NCP-APIGW-API-KEY-ID>"     # 기존 웹 STT 보완용 Client ID
-NCP_CLOVA_CLIENT_SECRET="<X-NCP-APIGW-API-KEY>"    # 기존 웹 STT 보완용 Client Secret
 NAVER_CLIENT_ID="<...>"                         # 소셜 로그인(네이버, 커스텀 naver-auth)
 NAVER_CLIENT_SECRET="<...>"                     # 서버에만 보관
 ```

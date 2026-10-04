@@ -90,7 +90,7 @@
 - 🔒 **보안 불변식**(판정 SoT = `docs/runbooks/security-fixes.md`):
   · **R009 계정 격리** — 인증 경계마다 `QueryClient` 를 새로 만든다(`AuthQueryScope` · lease `assertCurrent()`). ⛔ 전역 `queryClient` 하나로 되돌리지 말 것.
     스토어도 `resetForAuth()` + 세대 번호로 늦은 토스트를 버린다. 회귀 `test:auth`.
-  · 웹 음성 입력은 없다(삭제). 되살리면 `stt-transcribe` 의 동의·권한 규칙도 함께 되살린다.
+  · 웹 음성 입력은 없다(삭제). 서버 STT 함수 `stt-transcribe`(CLOVA)도 2026-10-04 저장소에서 삭제했다 — 되살리려면 동의·권한 규칙(대상 어르신 `can_process_profile`)부터 다시 설계한다.
   · **R011 동의 증거 보존** — 철회·재동의가 과거 증거를 덮지 않는다.
 - **화면 폭** — 1440 캔버스는 줄어들지 않는다(`html[data-canvas=fixed] body{min-width:1440px}` · viewport `width=1440`). **반응형 예외는 감독 화면뿐**이며 규칙은
   `src/lib/viewportMode.ts`(`isFluidPath`)와 `public/viewport-mode.js`(CSP 가 인라인 스크립트를 막는다) **두 곳** — 반응형 화면을 새로 만들면 함께 고친다. 회귀 `test:viewport`.

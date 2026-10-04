@@ -106,7 +106,7 @@ URL: `https://www.figma.com/design/nLfWkg2H7dFfDH1pehcH5I/기억온?node-id=0-1`
 2. **테마**: 추출 토큰 → `packages/theme` → 앱 `tailwind.config`(NativeWind)로 브리지.
 3. **화면 구현**: §2 표 순서대로. 어르신 대화 화면은 **접근성 최우선**(큰 글자·큰 마이크·고대비).
 4. **백엔드 재사용(신규 로직 금지, 기존 것 연결)**:
-   - 대화 진행: `core` `openConversation`/`respondToUserTurn`(안전 가드 통합) + `SpeechProvider`(TTS/STT는 실연동 시 Clova/gpt-4o-transcribe provider).
+   - 대화 진행: `core` `openConversation`/`respondToUserTurn`(안전 가드 통합) + `SpeechProvider`(TTS/STT는 실연동 시 TTS 는 중계의 Gemini TTS).
    - 종료 후 분석: `core` `analyzeSession`/`recommendNextTopics`(비의료 관찰 지표) → `data` 훅으로 저장.
    - 세션·환자·동의: `data` 훅(`useProfiles`/`useSessions`/`useConsents`/`useRecordSafetyEvent` 등).
 5. **추가 화면(Figma 미포함, 필수)**: 동의 수집·게이팅(`core/consent` `canStartElderSession`), AI 이용 사전 고지(`AI_DISCLOSURE`), 위기 배너(`caregiverAlert`/`escalate`).

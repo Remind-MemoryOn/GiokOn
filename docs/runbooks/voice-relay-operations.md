@@ -36,7 +36,7 @@
 | Cloud Run 환경변수 | `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` | 공개값. service_role 키 금지 |
 | (기본값 사용) | `PORT`(Cloud Run 이 8080 주입 · Dockerfile 도 8080) · `VOICE_RELAY_BIND`(이미지에 `0.0.0.0`) | 설정 불필요 |
 
-**Gemini TTS 키는 중계에만 둔다** — Supabase Edge 함수 중 TTS 를 부르는 것은 없다(합성은 중계 `output.ts`). 그래서 CLOVA 키를 지운 자리에 Edge 쪽으로 새로 넣을 TTS 키는 없다. Cloud Run 연결 전 로컬 시험은 프로세스 환경변수로만 준다(이 서버는 `.env` 를 읽지 않는다).
+**Gemini TTS 키는 중계에만 둔다** — Supabase Edge 함수 중 TTS 를 부르는 것은 없다(합성은 중계 `output.ts`). 그래서 삭제한 CLOVA 키(2026-10-04 — 저장소의 `stt-transcribe`·설정 흔적도 함께 삭제) 자리에 Edge 쪽으로 새로 넣을 TTS 키는 없다. Cloud Run 연결 전 로컬 시험은 프로세스 환경변수로만 준다(이 서버는 `.env` 를 읽지 않는다).
 
 ⚠️ **Supabase Edge 의 `GEMINI_API_KEY` 는 지우지 않는다** — `live-token`(Live 단기 토큰 발급)·`session-report`·`program-journal-draft` 가 읽는다.
 지우면 모든 음성 세션 시작과 AI 초안이 실패한다. 로컬 `supabase/.env` 를 고쳐도 이미 배포된 Edge 시크릿은 바뀌지 않는다.

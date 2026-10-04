@@ -12,8 +12,6 @@
 #   SUPABASE_SECRET_KEY       (supabase Edge Functions)
 #   SUPABASE_JWKS_URL         (supabase — JWT 서명 검증용 공개 키 목록)
 #   OPENAI_API_KEY            (선택, Edge Functions — LLM·STT)
-#   NCP_CLOVA_CLIENT_ID       (선택, Edge Functions — CLOVA Voice/Speech, X-NCP-APIGW-API-KEY-ID)
-#   NCP_CLOVA_CLIENT_SECRET   (선택, Edge Functions — CLOVA Voice/Speech, X-NCP-APIGW-API-KEY)
 #   NAVER_CLIENT_ID/SECRET    (선택, Edge Functions — naver-auth 소셜 로그인)
 set -euo pipefail
 
@@ -53,15 +51,13 @@ else
 fi
 
 # supabase/.env — Edge Functions secrets (클라이언트 미노출)
-if [ -n "${SUPABASE_URL:-}${SUPABASE_SECRET_KEY:-}${OPENAI_API_KEY:-}${NCP_CLOVA_CLIENT_ID:-}${NCP_CLOVA_CLIENT_SECRET:-}${NAVER_CLIENT_ID:-}${NAVER_CLIENT_SECRET:-}" ]; then
+if [ -n "${SUPABASE_URL:-}${SUPABASE_SECRET_KEY:-}${OPENAI_API_KEY:-}${NAVER_CLIENT_ID:-}${NAVER_CLIENT_SECRET:-}" ]; then
   {
     echo "# 자동 생성됨: .claude/hooks/session-start.sh (환경변수 기반, 커밋 금지)"
     emit "SUPABASE_URL" "${SUPABASE_URL:-}"
     emit "SUPABASE_SECRET_KEY" "${SUPABASE_SECRET_KEY:-}"
     emit "SUPABASE_JWKS_URL" "${SUPABASE_JWKS_URL:-}"
     emit "OPENAI_API_KEY" "${OPENAI_API_KEY:-}"
-    emit "NCP_CLOVA_CLIENT_ID" "${NCP_CLOVA_CLIENT_ID:-}"
-    emit "NCP_CLOVA_CLIENT_SECRET" "${NCP_CLOVA_CLIENT_SECRET:-}"
     emit "NAVER_CLIENT_ID" "${NAVER_CLIENT_ID:-}"
     emit "NAVER_CLIENT_SECRET" "${NAVER_CLIENT_SECRET:-}"
   } > supabase/.env

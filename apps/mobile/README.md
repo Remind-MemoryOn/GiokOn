@@ -12,7 +12,7 @@
 
 - **Expo SDK 54**(`expo ~54.0.37`) · React Native 0.81 · **expo-router 6**(파일 기반 라우팅) · **NativeWind 4**.
 - 상태: 서버 상태 = TanStack Query(`@giokon/data`), 세션 런타임 = Zustand(`src/store/appStore.ts`).
-- **음성 = 중계 경로**: 앱 ↔ `apps/voice-relay`(WSS) ↔ Gemini Live → 출력 검증 → CLOVA Voice PCM → 앱 재생.
+- **음성 = 중계 경로**: 앱 ↔ `apps/voice-relay`(WSS) ↔ Gemini Live → 출력 검증 → Gemini TTS PCM → 앱 재생.
   Gemini 가 만든 오디오 원본은 재생하지 않는다. 연결 코드는 `src/lib/live/`.
 - 안전: `@giokon/core` `safety.ts`(결정론 위기 감지 → **즉시 연결 종료**). 종료 분석은 비의료 관찰 지표만.
 - 동의 게이팅: 처리 동의가 없으면 세션을 시작할 수 없다(DB 트리거가 최종 판정).

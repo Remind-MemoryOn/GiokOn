@@ -4,7 +4,7 @@
 // **현재 단계는 서버(sessions.phase)가 권위**다 — 이 모듈은 "다음 단계로 넘어갈 때인가"를 계산하고
 // (중계가 advance_session_phase 로 기록), 단계마다 모델에 넣을 **내부 지시문**을 만든다.
 // 지시문은 clientContent(turnComplete=false)로 주입되어 어르신께 들리지 않고, 모델 출력은 여전히
-// 중계의 출력 검열(screenAiUtterance)·Clova 합성을 거친다. AI 자율 판단에 단계를 맡기지 않는다.
+// 중계의 출력 검열(screenAiUtterance)·Gemini TTS 합성을 거친다. AI 자율 판단에 단계를 맡기지 않는다.
 //
 // 시간 상한은 세션 1회 **최대 10분**(사용자 확정 2026-09-24, 서버 고정). 마무리·의견수렴이 잘리지 않게
 // 마무리 진입은 목표 시간보다 CLOSING_RESERVE_SECONDS 앞에서 한다.
