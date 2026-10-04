@@ -34,7 +34,7 @@
 |---|---|
 | `SUPABASE_URL` | `https://ufkbzpdjomtmxjipmwub.supabase.co` |
 | `SUPABASE_PUBLISHABLE_KEY` | 해당 프로젝트의 공개 publishable 키. service_role 키를 넣지 않음 |
-| `GEMINI_API_KEY` | 중계 서버가 Gemini TTS를 호출할 **중계 전용 키**(2026-10-01 키 분리 확정 — Supabase Edge 의 `GEMINI_API_KEY` 와 다른 키. Edge 쪽 키는 `live-token`·`session-report`·`program-journal-draft` 가 쓰므로 지우지 않는다) |
+| `GEMINI_API_KEY` | 중계 서버가 Gemini TTS를 호출할 키 — **Supabase Edge 의 `GEMINI_API_KEY` 와 같은 값**(2026-10-04 사용자 결정 — 키 하나 공유). 교체 절차는 [운영 런북 "Gemini 키 교체"](../../docs/runbooks/voice-relay-operations.md) |
 | `VOICE_RELAY_SECRET` | `live-token` 과 공유하는 중계 전용 자격(T23.5). **32자 이상**(예: `openssl rand -hex 32`) — 짧거나 없으면 시작하지 않는다. Supabase Edge 시크릿에도 **같은 값**을 넣는다 |
 | `GEMINI_TTS_MODEL` | 선택. 기본 `gemini-3.8-flash-tts` |
 | `GEMINI_TTS_VOICE` | 선택. 기본 `Kore` |
@@ -85,7 +85,7 @@ Gemini API 결제·쿼터와 중계 서버 전용 `GEMINI_API_KEY` 등록이 필
 
 - **중계 호스팅과 WSS 주소**: Supabase Edge Functions는 실행 수명이 Free 150초/Paid 400초로 제한된다. 별도 장시간 실행 환경을 선택한다. [Supabase 제한](https://supabase.com/docs/guides/functions/limits)
 - **호스팅 ✅ 확정(2026-10-01)**: Google Cloud Run · 서울(`asia-northeast3`) · 최대 인스턴스 1 · 평일 09~18시 최소 1대(그 외 0 — 연결은 됨) · CPU 항상 할당. 이미지 빌드·업로드 명령과 전체 설정은 [운영 런북 "호스팅"](../../docs/runbooks/voice-relay-operations.md#호스팅--2026-10-01-사용자-확정). 운영 배포는 중계 개발 완료 뒤 사용자가 한다. [Cloud Run WebSocket 안내](https://docs.cloud.google.com/run/docs/triggering/websockets)
-- **인증값 등록**: Cloud Run Secret Manager에 **중계 전용으로 새로 발급한** `GEMINI_API_KEY`를 등록한다. 앱 번들·Git에는 넣지 않는다. `GEMINI_TTS_MODEL`·`GEMINI_TTS_VOICE`는 생략하면 코드 기본값을 사용한다. [Gemini TTS 안내](https://ai.google.dev/gemini-api/docs/speech-generation)
+- **인증값 등록**: Cloud Run Secret Manager에 Supabase Edge 와 **같은 값**의 `GEMINI_API_KEY`를 등록한다. 앱 번들·Git에는 넣지 않는다. `GEMINI_TTS_MODEL`·`GEMINI_TTS_VOICE`는 생략하면 코드 기본값을 사용한다. [Gemini TTS 안내](https://ai.google.dev/gemini-api/docs/speech-generation)
 - **실기기 설치·권한**: 개발 빌드 설치·마이크 허용·실제 소리 확인은 사용자 기기에서 수행한다. 코드/가상 소켓 테스트로 이 결과를 대신하지 않는다.
 
 검증 명령: `pnpm -F @giokon/voice-relay test`, `pnpm -F @giokon/voice-relay typecheck`. 테스트는 환경 파일을 읽지 않고 가상 공급자와 실제 로컬 WebSocket을 사용한다. 실제 Gemini Live/TTS 연결 성공과 구분한다.

@@ -31,15 +31,32 @@
 
 | 위치 | 이름 | 비고 |
 |---|---|---|
-| Cloud Run Secret Manager | `GEMINI_API_KEY` | **중계 전용 키를 새로 발급**(2026-10-01 사용자 동의 — 키 분리). Supabase Edge 의 키와 다른 키 |
+| Cloud Run Secret Manager | `GEMINI_API_KEY` | **Supabase Edge 의 `GEMINI_API_KEY` 와 같은 값**(2026-10-04 사용자 결정 — 키 하나 공유. 키는 모델이 아니라 Google 프로젝트에 묶여 Live·TTS 를 모두 부른다). 아래 "Gemini 키 교체" |
 | Cloud Run Secret Manager | `VOICE_RELAY_SECRET`(T23.5 — 32자 이상, 예: `openssl rand -hex 32`) | **같은 값**을 Supabase Edge 시크릿 `VOICE_RELAY_SECRET` 에도 넣는다. 값이 다르면 모든 세션 시작이 403 |
 | Cloud Run 환경변수 | `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY` | 공개값. service_role 키 금지 |
 | (기본값 사용) | `PORT`(Cloud Run 이 8080 주입 · Dockerfile 도 8080) · `VOICE_RELAY_BIND`(이미지에 `0.0.0.0`) | 설정 불필요 |
 
-**Gemini TTS 키는 중계에만 둔다** — Supabase Edge 함수 중 TTS 를 부르는 것은 없다(합성은 중계 `output.ts`). 그래서 삭제한 CLOVA 키(2026-10-04 — 저장소의 `stt-transcribe`·설정 흔적도 함께 삭제) 자리에 Edge 쪽으로 새로 넣을 TTS 키는 없다. Cloud Run 연결 전 로컬 시험은 프로세스 환경변수로만 준다(이 서버는 `.env` 를 읽지 않는다).
+**TTS 호출은 중계가 한다** — Supabase Edge 함수 중 TTS 를 부르는 것은 없다(합성은 중계 `output.ts` — 초기 CLOVA TTS 도 중계가 직접 불렀다). Edge 로 옮기지 않는다: 매 턴 한 단계 더 거쳐 응답이 늦어지고(콜드 스타트 포함), 출력 검증과 합성이 갈라진다(2026-10-04 검토). 삭제한 CLOVA 키(Edge `stt-transcribe` 용 STT)를 대신할 키는 없다. Cloud Run 연결 전 로컬 시험은 프로세스 환경변수로만 준다(이 서버는 `.env` 를 읽지 않는다).
 
 ⚠️ **Supabase Edge 의 `GEMINI_API_KEY` 는 지우지 않는다** — `live-token`(Live 단기 토큰 발급)·`session-report`·`program-journal-draft` 가 읽는다.
 지우면 모든 음성 세션 시작과 AI 초안이 실패한다. 로컬 `supabase/.env` 를 고쳐도 이미 배포된 Edge 시크릿은 바뀌지 않는다.
+
+### Gemini 키 교체 (키 하나 공유 — 2026-10-04)
+
+키 하나를 **두 곳**에 같은 값으로 둔다: ① Supabase Edge 시크릿 `GEMINI_API_KEY` ② (중계 배포 뒤) Cloud Run Secret Manager `GEMINI_API_KEY`.
+⚠️ 공유의 대가: 키가 새면 두 곳을 **동시에** 바꿔야 하고, 바꾸는 동안 음성 세션·AI 초안이 함께 멈춘다. 한도·결제는 키가 아니라 Google 프로젝트 단위다(키를 나눠도 공유된다).
+
+1. **발급** — Google AI Studio(또는 Cloud Console → API 및 서비스 → 사용자 인증 정보)에서 같은 Google 프로젝트에 새 키. 가능하면 API 제한을 Generative Language API 로만.
+2. **키 확인(배포 전, 본인 PC)** — 모델 접근이 되는지 본다(키를 명령 이력에 남기지 않게 환경변수로):
+   `curl -s -H "x-goog-api-key: $GEMINI_API_KEY" https://generativelanguage.googleapis.com/v1beta/models | grep -o '"name": *"models/gemini-3.8[^"]*"'`
+   → `gemini-3.8-live`(또는 `GEMINI_LIVE_MODEL` 값)·`gemini-3.8-flash-tts` 가 보여야 한다. 폐기한 옛 키로 같은 요청을 하면 `API_KEY_INVALID` 여야 한다.
+3. **Supabase** — 대시보드 Edge Functions → Secrets 에서 `GEMINI_API_KEY` 값을 교체(또는 `supabase secrets set GEMINI_API_KEY=… --project-ref ufkbzpdjomtmxjipmwub`).
+   함수 재배포는 보통 필요 없다(시크릿은 호출 때 읽힌다) — 반영이 안 보이면 해당 함수만 재배포.
+   같은 화면에서 `GEMINI_LIVE_MODEL`(= `gemini-3.8-live`)도 있는지 확인한다(없으면 코드 기본값).
+4. **확인** — 앱에서 시험 세션 시작이 되는지(=`live-token` 이 토큰을 줌) · Edge Functions → `live-token` 로그에 `토큰 발급 실패(4xx)`·`GEMINI_API_KEY 시크릿이 설정되지 않았습니다` 가 없는지.
+   AI 초안은 기관 스위치가 꺼져 있어(2026-10-04 기준 0곳) Gemini 를 부르지 않는다 — 스위치를 켤 때 `program-journal-draft` 로그를 함께 본다.
+5. **Cloud Run(중계 연결 때)** — Secret Manager 에 **같은 값**으로 `GEMINI_API_KEY` 를 만들고 서비스에 연결(위 표). 확인: 시험 세션에서 AI 음성이 나오는지(TTS) · 중계 로그에 `SYNTHESIS_*` 오류가 없는지.
+6. **로컬 `supabase/.env`** — CLI 로 시크릿을 올릴 때만 쓰는 파일이다. 옛 키가 남아 있으면 새 키로 바꾸거나 줄을 지운다(커밋 금지 · 다음 `--env-file` 업로드가 옛 키로 덮어쓰지 않게).
 
 ### 이미지 빌드·업로드
 

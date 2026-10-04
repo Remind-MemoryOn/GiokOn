@@ -120,7 +120,7 @@
 | ID | 작업 | 영역 | 의존 | 상태 |
 |---|---|---|---|---|
 | T26.1 | **세션 점유를 DB 기준으로** — 지금 "같은 세션 동시 연결 1개"(`SESSION_BUSY`)는 중계 프로세스 메모리(`main.ts` `inUse`)로만 막아, 인스턴스가 2개 이상이거나 리비전 교체 중이면 같은 세션이 두 번 연결될 수 있다. DB 가 점유(소유 연결·만료 시각)를 원자적으로 잡고, 중계는 연결 시 획득 · 2초 폴로 갱신 · 종료 시 해제한다. 프로세스가 죽어 해제하지 못한 점유는 만료로 풀린다. **완료 조건**: 두 연결 동시 획득 시 한 번만 성공 · 해제 뒤 재연결 성공 · 갱신이 끊긴 점유는 만료 뒤 재획득 가능 · 다른 세션·다른 사용자의 점유를 건드리지 못함(회귀) | DB·중계 | — | ✅ 2026-10-03 코드 — DB `20261003000000_voice_session_lease`: `voice_session_leases`(세션당 1행 · RLS 정책 없음 · 사용자 권한 회수) + definer RPC `acquire/renew/release_voice_lease`(시작자 본인·처리 가능 세션만 · 만료 15초 · INSERT…ON CONFLICT WHERE 로 원자적) · 중계: `src/lease.ts` — 연결마다 holder UUID · 토큰 발급 **전에** 획득(실패 시 `SESSION_BUSY`, RPC 오류는 `LEASE_FAILED` — fail closed) · 2초 폴에서 `session_tick` 과 함께 갱신(`tickWithLease` — 잃으면 닫음) · 닫을 때 해제 · 메모리 `inUse` 삭제. 회귀 `voice_lease.sql`(CI 추가) + `_grants.sql` 1차 방어 단언 · 변형 DB 6종·중계 5종 모두 검출. ✅ **운영 적용 확인 2026-10-04**(버전 일치·RLS·권한·함수 본문 대조, advisor 새 항목은 의도한 INFO·definer 2종뿐) → ⏳ 중계 배포. 프로세스가 죽으면 그 세션 재연결은 최대 15초 `SESSION_BUSY` |
-| T26.2 | **중계 호스팅 준비(사용자 작업)** — GCP 프로젝트·결제·예산 알림 · Artifact Registry(서울) · 중계 전용 `GEMINI_API_KEY` 신규 발급 → Secret Manager · Cloud Scheduler 업무 시간 작업 2개 · 서울 리전 도메인 매핑 지원 여부 확인(도메인 구매 전) | 운영 | 중계 개발 완료 | ⏳ 사용자 |
+| T26.2 | **중계 호스팅 준비(사용자 작업)** — GCP 프로젝트·결제·예산 알림 · Artifact Registry(서울) · `GEMINI_API_KEY`(Supabase Edge 와 같은 값 — 2026-10-04 키 공유 결정) → Secret Manager · Cloud Scheduler 업무 시간 작업 2개 · 서울 리전 도메인 매핑 지원 여부 확인(도메인 구매 전) | 운영 | 중계 개발 완료 | ⏳ 사용자 |
 | — | 프로세스 동시 연결 상한 4개(`server.ts`)는 파일럿 목표(동시 1~4)와 같아 **유지**, 상향은 후속 | 결정 | — | ✅ 결정 2026-10-01 |
 
 ## 2. 완료된 기반 작업 (요약)
