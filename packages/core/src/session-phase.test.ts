@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPhaseDirective,
   closingStartsAt,
+  ELDER_CLOSING_FAREWELL,
   phasePlan,
   CLOSING_RESERVE_SECONDS,
   INTRO_MAX_SECONDS,
@@ -72,5 +73,13 @@ describe('phasePlan — 세션 설계의 단계 미리보기(shouldAdvancePhase 
   it('마무리 진입 시각이 shouldAdvancePhase 와 같다', () => {
     const p = phasePlan(8)
     expect(closingStartsAt(8)).toBe(p.introSeconds + p.reminiscenceSeconds)
+  })
+})
+
+describe('ELDER_CLOSING_FAREWELL — 휴식 요청·거부 마무리 인사(T21.11)', () => {
+  it('passes the relay output screen and stays one short sentence without a question', () => {
+    expect(screenAiUtterance(ELDER_CLOSING_FAREWELL).allowed).toBe(true)
+    expect(ELDER_CLOSING_FAREWELL.length).toBeLessThanOrEqual(200)
+    expect(ELDER_CLOSING_FAREWELL).not.toMatch(/[?？]/)
   })
 })

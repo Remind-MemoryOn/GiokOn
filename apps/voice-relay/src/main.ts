@@ -85,7 +85,11 @@ const service = createRelayServer({
         level: draft.level, categories: draft.categories, matched_terms: draft.matchedTerms,
         excerpt: draft.excerpt, caregiver_alert: draft.caregiverAlert,
       })
-      return { token: token.token, model: token.model, systemInstruction: buildSystemPrompt(toElderProfile(profile.data), chronicles.data.map(toChronicleEntry), toSession(session.data).design, 'speech'), tick, advancePhase, recordSafety, release }
+      // T21.11 — 어르신 요청 마무리를 감독 화면에 남긴다(세션 시작자 권한 · 원문 없음 · 세션당 한 번). 실패해도 마무리는 진행.
+      const recordElderClosing = async (situation: 'rest_request' | 'refusal') => {
+        await db.rpc('record_elder_closing', { p_session_id: sessionId, p_situation: situation })
+      }
+      return { recordElderClosing, token: token.token, model: token.model, systemInstruction: buildSystemPrompt(toElderProfile(profile.data), chronicles.data.map(toChronicleEntry), toSession(session.data).design, 'speech'), tick, advancePhase, recordSafety, release }
     } catch (e) { release(); throw e }
   },
 })

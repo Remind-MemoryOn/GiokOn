@@ -72,6 +72,15 @@ export function buildPhaseDirective(phase: SessionPhase, reason: ClosingReason =
   }
 }
 
+/**
+ * 어르신의 휴식 요청·거부로 대화를 마칠 때(파일럿 계획 §9-5 · T21.11) 중계가 들려주는 **고정 인사 한 문장**.
+ * 모델에게 생성을 맡기지 않는다 — 새 질문·긴 말 없이 정확히 한 문장으로 끝나게. 그래도 중계 출력 검열과 TTS 를 거친다.
+ * 의견수렴("오늘 어떠셨어요?")은 하지 않는다(쉬고 싶어 하시는 분께 질문하지 않는다).
+ */
+export const ELDER_CLOSING_FAREWELL = '오늘 이야기 나눠 주셔서 고마워요. 편히 쉬세요.'
+/** 어르신 요청으로 마무리한 이유 — 감독 화면 기록(`session_interventions.detail.situation`)에 그대로 남는다(발화 원문 없음). */
+export type ElderClosingSituation = 'rest_request' | 'refusal'
+
 /** 단계별 예상 시간(초) — 웹 세션 설계의 "단계 미리보기"용. */
 export interface PhasePlan {
   /** 목표 시간(분) — 상한 10분을 건 값. */

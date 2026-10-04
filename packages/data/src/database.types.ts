@@ -937,7 +937,7 @@ export type Database = {
       }
       // 파일럿 D6 — 감독 개입 기록(읽기: 같은 기관 돌봄팀, 쓰기: RPC 전용)
       session_interventions: {
-        Row: { id: string; session_id: string; profile_id: string; org_id: string; actor_id: string | null; action: 'pause' | 'resume' | 'end' | 'phase_advance'; detail: Json | null; created_at: string }
+        Row: { id: string; session_id: string; profile_id: string; org_id: string; actor_id: string | null; action: 'pause' | 'resume' | 'end' | 'phase_advance' | 'elder_closing'; detail: Json | null; created_at: string }
         Insert: never
         Update: never
         Relationships: []
@@ -1053,6 +1053,11 @@ export type Database = {
       release_voice_lease: {
         Args: { p_session_id: string; p_holder: string }
         Returns: undefined
+      }
+      // T21.11 어르신 요청 마무리 — 중계 전용(세션 시작자 권한 · 세션당 한 번).
+      record_elder_closing: {
+        Args: { p_session_id: string; p_situation: 'rest_request' | 'refusal' }
+        Returns: boolean
       }
       retry_journal_generation: {
         Args: { p_journal_id: string }

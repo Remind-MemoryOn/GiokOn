@@ -20,6 +20,7 @@
 >   `{relayControl:{state:'paused'|'ended'}}` 송신 후 입력·출력 전달 중단, 2초(`CONTROL_CLOSE_GRACE_MS`) 뒤 닫기.
 >   ⚠️ **배포 순서: DB 마이그레이션 `20260924040000` → 이 서버** (역순이면 `session_tick` 이 없어 모든 세션이 차단된다).
 >   위기 이벤트 즉시 기록(T21.4)은 아직이다.
+> - ✅ **종료 정책(T21.11 · 2026-10-04)**: 휴식 요청·거부는 즉시 끊지 않고 고정 인사 한 문장(core `ELDER_CLOSING_FAREWELL`) → 재생 확인 뒤 `relayControl {state:'ended', reason:'elder_closing'}` + 감독 화면 기록(`record_elder_closing`). 위기·급성 고통은 즉시 정지 그대로. ⚠️ 배포 순서: DB `20261004010000` → 이 서버(RPC 가 없으면 기록만 빠지고 마무리는 진행).
 > - 손대지 않는 것: 타이머 · 턴 상한 · 연결 수명 · 재생 영수증 게이팅(v2) · `SESSION_BUSY`(기기 1대 = 세션 1개).
 > - 모델: `gemini-3.8-live`. 모델 ID 는 `live-token` 응답을 따른다(`GEMINI_LIVE_MODEL` 시크릿).
 

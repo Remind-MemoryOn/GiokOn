@@ -61,6 +61,7 @@ done
 "${PSQL[@]}" -f "$HERE/safety_evidence.sql"
 "${PSQL[@]}" -f "$HERE/session_start.sql"
 "${PSQL[@]}" -f "$HERE/voice_lease.sql"
+"${PSQL[@]}" -f "$HERE/elder_closing.sql"
 "${PSQL[@]}" -f "$HERE/audit_retention.sql"
 "${PSQL[@]}" -f "$HERE/storage_policies.sql"
 "${PSQL[@]}" -f "$HERE/share_auto_revoke.sql"

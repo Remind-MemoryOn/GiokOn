@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { once } from 'node:events'
 import type { AddressInfo } from 'node:net'
 import { WebSocket, WebSocketServer } from 'ws'
+import { ELDER_CLOSING_FAREWELL } from '@giokon/core'
 import { createRelayServer } from './server'
-import { CONTROL_CLOSE_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, SESSION_LIMIT_SECONDS, type RelayDependencies, type RelaySession, type SessionTick } from './relay'
+import { CONTROL_CLOSE_GRACE_MS, ELDER_CLOSING_GRACE_MS, SAFETY_RECORD_TIMEOUT_MS, SESSION_LIMIT_SECONDS, type RelayDependencies, type RelaySession, type SessionTick } from './relay'
 
 const EVENT_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
 
@@ -82,7 +83,7 @@ describe('real local WebSocket relay', () => {
     await new Promise(resolve=>setTimeout(resolve,10));
     expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(false);
   })
-  it.each([['그만할래요',undefined],['죽고 싶어요',{ level: 'crisis', categories: ['self_harm'], alert: 'self_harm' }]] as const)('ends even an idle playback wait when late input requires intervention: %s',async (text,safety)=>{
+  it.each([['죽고 싶어요',{ level: 'crisis', categories: ['self_harm'], alert: 'self_harm' }]] as const)('ends even an idle playback wait when late input requires intervention: %s',async (text,safety)=>{
     const f=await fixture();await f.start(2);f.turn();
     await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
     const closed=once(f.app,'close');
@@ -90,6 +91,19 @@ describe('real local WebSocket relay', () => {
     expect(f.frames.at(-1)).toEqual({relayError:{code:'INPUT_REVIEW_REQUIRED',...(safety ? {safety} : {})}});
     expect(f.release).toHaveBeenCalledOnce();
   })
+  // T21.11(2026-10-04): 휴식 요청은 즉시 정지가 아니라 마무리 — 이미 들려준 답이 마지막이 되고, 재생 확인 뒤 종료한다.
+  it('a late rest request during the playback wait ends after the playback receipt, not as a stop for review',async()=>{
+    const f=await fixture();await f.start(2);f.turn();
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'그만할래요'}}}));
+    await new Promise(r=>setTimeout(r,100));
+    expect(f.frames.some(x=>x.relayControl)).toBe(false);
+    const closed=once(f.app,'close');
+    f.send({relayPlayback:{turnId:1,result:'completed'}});await closed;
+    expect(f.frames.some(x=>x.relayError)).toBe(false);
+    expect(f.frames.filter(x=>x.relayControl)).toEqual([{relayControl:{state:'ended',reason:'elder_closing'}}]);
+    expect(f.release).toHaveBeenCalledOnce();
+  }, CONTROL_CLOSE_GRACE_MS + 5000)
   it('clears the response deadline once the completed turn enters playback',async()=>{
     const f=await fixture(); await f.start(2); vi.useFakeTimers(); f.turn();
     await vi.waitFor(()=>expect(f.frames.some(x=>x.serverContent?.turnComplete)).toBe(true));
@@ -362,6 +376,93 @@ describe('T21.12 — 세션 10분 상한(서버 경과 시간)', () => {
   }, 8000)
 })
 
+describe('T21.11 — 휴식 요청·거부는 인사 한 문장 뒤 종료(위기·급성 고통은 즉시 정지 유지)', () => {
+  const ended = (f: { frames: any[] }) => f.frames.filter(x => x.relayControl?.state === 'ended')
+  const outputs = (f: { frames: any[] }) => f.frames.filter(x => x.serverContent?.turnComplete).map(x => x.serverContent.outputTranscription.text)
+  /** 어르신이 말씀하는 중에 휴식 요청 전사가 오고, 그 뒤 말씀이 끝난다. */
+  async function sayDuringTurn(f: Awaited<ReturnType<typeof fixture>>, transcript: string) {
+    f.send({ realtimeInput: { activityStart: {} } })
+    f.send({ realtimeInput: { audio: { data: 'AQACAA==', mimeType: 'audio/pcm;rate=16000' } } })
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.audio)).toBe(true))
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: transcript } } }))
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.inputTranscription?.text === transcript)).toBe(true))
+    f.send({ realtimeInput: { activityEnd: {} } })
+  }
+
+  it.each([['rest_request', '이제 그만할래요'], ['refusal', '듣기 싫어요']] as const)(
+    '%s: answers with the fixed farewell instead of the model reply, logs the closing for supervisors, then ends after playback', async (situation, said) => {
+      const recordElderClosing = vi.fn(async () => {}), recordSafety = vi.fn(async () => {})
+      const f = await fixture(true, { recordElderClosing, recordSafety })
+      Object.assign(f.server, { phase: 'reminiscence', phaseElapsedSeconds: 30, elapsedSeconds: 120, targetMinutes: 10 })
+      await f.start(2)
+      await sayDuringTurn(f, said)
+      await vi.waitFor(() => expect(outputs(f)).toEqual([ELDER_CLOSING_FAREWELL]))
+      expect(f.synthesize).toHaveBeenCalledWith(ELDER_CLOSING_FAREWELL, expect.anything(), expect.anything())  // 출력 검열·TTS 는 그대로
+      expect(recordElderClosing).toHaveBeenCalledWith(situation)
+      expect(f.advancePhase).toHaveBeenCalledWith('closing')
+      expect(recordSafety).not.toHaveBeenCalled()
+      expect(f.frames.some(x => x.relayError)).toBe(false)
+      expect(f.directives().some(t => t.includes('마무리'))).toBe(false)  // 모델에 마무리 지시를 넣지 않는다 — 고정 인사로 끝낸다
+      expect(ended(f)).toHaveLength(0)                                    // 재생 확인 전에는 끝내지 않는다
+      f.send({ relayPlayback: { turnId: 1, result: 'completed' } })
+      await vi.waitFor(() => expect(ended(f)).toEqual([{ relayControl: { state: 'ended', reason: 'elder_closing' } }]))
+      await once(f.app, 'close')
+    }, CONTROL_CLOSE_GRACE_MS + 6000)
+
+  it('ends at once if the elder refuses again after the farewell was sent (no playback wait)', async () => {
+    const f = await fixture()
+    await f.start(2)
+    await sayDuringTurn(f, '그만할래요')
+    await vi.waitFor(() => expect(outputs(f)).toEqual([ELDER_CLOSING_FAREWELL]))
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '듣기 싫어요' } } }))
+    await vi.waitFor(() => expect(ended(f)).toHaveLength(1))
+    await once(f.app, 'close')
+  }, CONTROL_CLOSE_GRACE_MS + 6000)
+
+  it('a crisis during the farewell still takes the immediate stop-and-record path', async () => {
+    const recordSafety = vi.fn(async () => {})
+    const f = await fixture(true, { recordSafety })
+    await f.start(2)
+    await sayDuringTurn(f, '그만할래요')
+    await vi.waitFor(() => expect(outputs(f)).toEqual([ELDER_CLOSING_FAREWELL]))
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '죽고 싶어요' } } }))
+    await closed
+    expect(recordSafety).toHaveBeenCalledOnce()
+    expect(f.frames.some(x => x.relayError?.code === 'INPUT_REVIEW_REQUIRED')).toBe(true)
+  })
+
+  it('a rest request mixed with acute distress keeps the immediate stop (not a gentle closing)', async () => {
+    const recordElderClosing = vi.fn(async () => {})
+    const f = await fixture(true, { recordElderClosing })
+    await f.start(2)
+    const closed = once(f.app, 'close')
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '너무 힘들어서 못 견디겠어 그만할래' } } }))
+    await closed
+    expect(f.frames.some(x => x.relayError?.code === 'INPUT_REVIEW_REQUIRED')).toBe(true)
+    expect(recordElderClosing).not.toHaveBeenCalled()
+    expect(outputs(f)).toEqual([])
+  })
+
+  it('a late request with no turn to answer ends without a farewell', async () => {
+    const f = await fixture()
+    await f.start(2)
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '그만할래요' } } }))
+    await vi.waitFor(() => expect(ended(f)).toHaveLength(1))
+    expect(outputs(f)).toEqual([])
+  })
+
+  it('does not wait past the grace period if the elder keeps talking', async () => {
+    const f = await fixture(true, {}, { elderClosingGraceMs: 300 })
+    await f.start(2)
+    f.send({ realtimeInput: { activityStart: {} } })
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityStart)).toBe(true))
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '그만할래요' } } }))
+    await vi.waitFor(() => expect(ended(f)).toHaveLength(1), { timeout: 2000 })
+    expect(ELDER_CLOSING_GRACE_MS).toBe(45_000)
+  })
+})
+
 describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시도', () => {
   it('records the safety event under the relay-made event id before stopping and hands the id to the app', async () => {
     const recordSafety = vi.fn(async () => {})
@@ -468,13 +569,12 @@ describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시
     expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED', safetyEventId: EVENT_ID, safety: { level: 'watch', categories: [], alert: 'distress' } } })
   })
 
-  it('does not record a plain rest request as a safety event (no risk) but still stops', async () => {
+  it('does not record a plain rest request as a safety event (no risk) — it is a closing, not a stop for review (T21.11)', async () => {
     const recordSafety = vi.fn(async () => {})
     const f = await fixture(true, { recordSafety }); await f.start(2)
-    const closed = once(f.app, 'close')
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '그만할래요' } } }))
-    await closed
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayControl?.state === 'ended')).toBe(true))
     expect(recordSafety).not.toHaveBeenCalled()
-    expect(f.frames.at(-1)).toEqual({ relayError: { code: 'INPUT_REVIEW_REQUIRED' } })
+    expect(f.frames.some(x => x.relayError)).toBe(false)
   })
 })

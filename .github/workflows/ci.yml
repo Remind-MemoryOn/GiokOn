@@ -97,6 +97,8 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/session_start.sql
       - name: 음성 세션 점유 회귀 테스트(세션당 연결 1개 · 만료 · 본인만)
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/voice_lease.sql
+      - name: 어르신 요청 마무리 기록 회귀 테스트(본인만 · 세션당 한 번 · 원문 없음)
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/elder_closing.sql
 
   security-audit:
     runs-on: ubuntu-latest

@@ -3,7 +3,7 @@ import { WebSocket, type RawData } from 'ws'
 import type { GeminiTtsConfig } from './output'
 import { synthesizeValidated } from './output'
 import { recordWithRetry, SAFETY_RETRY, type SafetyRetryPolicy } from './safety-record'
-import { assessUtterance, buildPhaseDirective, parseVoiceResumeContext, relaySafetySummary, safetyEventDraftFor, SESSION_MAX_MINUTES, shouldAdvancePhase, type RelaySafetySummary, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
+import { assessUtterance, buildPhaseDirective, ELDER_CLOSING_FAREWELL, parseVoiceResumeContext, relaySafetySummary, safetyEventDraftFor, SESSION_MAX_MINUTES, shouldAdvancePhase, type ElderClosingSituation, type RelaySafetySummary, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
 
 /**
  * 서버(session_tick RPC) 한 번의 판정 — 파일럿 D6·C3. 2초 폴이 이 값 하나로 허용 여부·단계·원격 제어를 함께 받는다.
@@ -36,6 +36,11 @@ export interface RelaySession {
    * 같은 id 로 다시 불려도 사건이 늘지 않고, 이미 있는 행이면 비어 있는 근거만 채운다(`safety-record.ts`).
    */
   recordSafety?(draft: SafetyEventDraft, eventId: string): Promise<void>
+  /**
+   * 어르신의 휴식 요청·거부로 마무리한다는 사실을 감독 화면에 남긴다(T21.11 — `record_elder_closing`, 세션당 한 번).
+   * 원문은 보내지 않는다. 실패해도 마무리·종료는 그대로 진행한다.
+   */
+  recordElderClosing?(situation: ElderClosingSituation): Promise<void>
   release(): void
 }
 
@@ -56,6 +61,13 @@ export const SESSION_LIMIT_SECONDS = SESSION_MAX_MINUTES * 60
  * 그동안 어르신의 새 발화는 받지 않는다. 지나면 재생 중이어도 종료를 알리고 닫는다.
  */
 export const TIME_LIMIT_GRACE_MS = 30_000
+/**
+ * 휴식 요청·거부(T21.11) 뒤 마무리 인사 한 문장을 들려주고 재생 확인까지 기다리는 최대 시간(ms).
+ * 어르신 말씀이 끝나고(activityEnd) 인사가 합성·재생되기까지의 여유 — 지나면 인사 없이도 종료를 알린다.
+ */
+export const ELDER_CLOSING_GRACE_MS = 45_000
+/** 중계가 스스로 대화를 끝낼 때 앱에 함께 보내는 이유(`relayControl.reason` — 구버전 앱은 무시한다). */
+export type RelayEndReason = 'time_limit' | 'elder_closing'
 /** 안전 이벤트 발췌 길이 — 감지 창(여러 조각)의 끝부분을 남긴다(core 초안 규칙과 같은 120자). */
 const SAFETY_EXCERPT_WINDOW = 120
 export interface RelayDependencies {
@@ -69,6 +81,8 @@ export interface RelayDependencies {
   newSafetyEventId?: () => string
   /** 10분 상한 뒤 진행 중 AI 발화를 기다리는 최대 시간(테스트용 주입 — 기본 TIME_LIMIT_GRACE_MS). */
   timeLimitGraceMs?: number
+  /** 휴식 요청·거부 뒤 마무리 인사를 기다리는 최대 시간(테스트용 주입 — 기본 ELDER_CLOSING_GRACE_MS). */
+  elderClosingGraceMs?: number
 }
 
 function buffer(raw: RawData): Buffer {
@@ -100,6 +114,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   // T21.12 — 세션 10분 상한: 새 발화는 받지 않고, 진행 중 AI 발화만 유예 안에서 마친 뒤 종료를 알린다.
   let timeUp = false
   let timeUpTimer: ReturnType<typeof setTimeout> | undefined
+  // T21.11 — 어르신 요청 마무리: 다음 AI 응답 대신 고정 인사 한 문장 → 재생 확인 뒤 종료.
+  let closingBy: ElderClosingSituation | null = null
+  let farewellSent = false
+  let closingTimer: ReturnType<typeof setTimeout> | undefined
   const openedAt = Date.now()
   const setupTimer = setTimeout(() => close(), 30000)
   // 안전 장치 — 판정은 서버 경과 시간(위)이 하고, 이 연결 수명은 그보다 길게만 둔다(서버 시각을 못 받는 경우 대비).
@@ -110,7 +128,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     if (abort.signal.aborted) return
     abort.abort()
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
-    clearTimeout(playbackTimer); clearTimeout(responseTimer); clearTimeout(timeUpTimer)
+    clearTimeout(playbackTimer); clearTimeout(responseTimer); clearTimeout(timeUpTimer); clearTimeout(closingTimer)
     session?.release()
     upstream?.terminate()
     app.close(1000, 'VOICE_SESSION_ENDED')
@@ -213,18 +231,36 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     if (timeUp || controlled || abort.signal.aborted) return
     timeUp = true
     directive = null
-    timeUpTimer = setTimeout(finishTimeUp, deps.timeLimitGraceMs ?? TIME_LIMIT_GRACE_MS)
-    maybeFinishTimeUp()
+    timeUpTimer = setTimeout(() => finishWith('time_limit'), deps.timeLimitGraceMs ?? TIME_LIMIT_GRACE_MS)
+    maybeFinish()
   }
-  function maybeFinishTimeUp() {
-    if (timeUp && !pending && awaitingPlayback === null) finishTimeUp()
+  /**
+   * 어르신의 휴식 요청·거부(T21.11 · 계획 §9-5) — 위기·급성 고통이 아니면 즉시 끊지 않는다. 지금 말씀에 대한 AI 응답을
+   * 모델 생성문 대신 고정 인사 한 문장(core `ELDER_CLOSING_FAREWELL`)으로 들려주고, 재생 확인 뒤 종료를 알린다.
+   * 감독 화면에는 원문 없이 마무리 이유만 남긴다. 응답할 차례가 없으면(이미 답을 보낸 뒤 늦게 온 전사) 인사 없이 마친다.
+   */
+  function startElderClosing(situation: ElderClosingSituation) {
+    if (closingBy || controlled || abort.signal.aborted) return
+    closingBy = situation
+    directive = null
+    void session?.recordElderClosing?.(situation).catch(() => {})
+    void session?.advancePhase?.('closing').catch(() => false)  // 단계 기록만(지시는 넣지 않는다 — 고정 인사로 끝낸다)
+    closingTimer = setTimeout(() => finishWith('elder_closing'), deps.elderClosingGraceMs ?? ELDER_CLOSING_GRACE_MS)
+    if (!pending && !activity) farewellSent = true  // 답할 차례가 없다 — 지금 재생 중인 답(있으면)이 마지막이다
+    maybeFinish()
   }
-  function finishTimeUp() {
+  /** 마칠 조건(10분 상한, 또는 마무리 인사를 보냄)이 섰고 진행 중인 AI 발화가 없으면 종료를 알린다. */
+  function maybeFinish() {
+    if (pending || awaitingPlayback !== null) return
+    if (timeUp) finishWith('time_limit')
+    else if (closingBy && farewellSent) finishWith('elder_closing')
+  }
+  function finishWith(reason: RelayEndReason) {
     if (controlled || abort.signal.aborted) return
     controlled = true
-    clearTimeout(timeUpTimer); clearTimeout(responseTimer); clearTimeout(playbackTimer)
+    clearTimeout(timeUpTimer); clearTimeout(closingTimer); clearTimeout(responseTimer); clearTimeout(playbackTimer)
     // 앱은 원격 종료와 같은 경로(멈추고 요양보호사가 저장)로 처리한다. reason 은 구버전 앱이 무시하는 추가 칸이다.
-    send({ relayControl: { state: 'ended', reason: 'time_limit' } })
+    send({ relayControl: { state: 'ended', reason } })
     setTimeout(close, CONTROL_CLOSE_GRACE_MS).unref()
   }
   /** 단계 지시는 **턴 사이**에만 넣는다 — 모델 생성·재생 대기·어르신 발화 중이면 다음 기회로 미룬다. */
@@ -298,10 +334,17 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               const combinedInput = safetyInput + input
               const assessment = assessUtterance(combinedInput)
               safetyInput = combinedInput.slice(-4000)
-              if (assessment.escalate || assessment.hasDistressSignal ||
-                  assessment.situation === 'rest_request' || assessment.situation === 'refusal') {
+              // 위기·급성 고통(휴식 요청에 섞인 고통 신호 포함)은 지금처럼 즉시 멈춘다 — 약화하지 않는다.
+              if (assessment.escalate || assessment.hasDistressSignal) {
                 void stopForReview(safetyEventDraftFor(assessment, combinedInput.slice(-SAFETY_EXCERPT_WINDOW)), relaySafetySummary(assessment))
                 return
+              }
+              // 휴식 요청·거부(T21.11) → 인사 한 문장 뒤 종료. 감지 창을 비워 같은 말씀이 다시 걸리지 않게 하고,
+              // 인사를 보낸 뒤에 또 거부하시면 기다리지 않고 바로 마친다.
+              if (assessment.situation === 'rest_request' || assessment.situation === 'refusal') {
+                safetyInput = ''
+                if (!closingBy) startElderClosing(assessment.situation)
+                else if (farewellSent) finishWith('elder_closing')
               }
             }
           } catch { return close() }
@@ -330,12 +373,15 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             }
             if (!pending) return
             if (typeof content.outputTranscription?.text === 'string') output += content.outputTranscription.text
-            if (output.length > 200) return close()
+            // 마무리 인사로 바꿀 응답은 모델 문장을 쓰지 않으므로 길이를 보지 않는다.
+            if (output.length > 200 && !(closingBy && !farewellSent)) return close()
             if (!content.turnComplete) return
             clearTimeout(responseTimer); responseTimer = undefined
             if (!await allowed()) return close()
             let result: Awaited<ReturnType<typeof synthesizeValidated>>
-            try { result = await (deps.synthesize ?? synthesizeValidated)(output.trim(), deps.geminiTts, abort.signal) }
+            // T21.11 — 마무리 중이면 모델 응답 대신 고정 인사 한 문장(출력 검열·TTS 는 똑같이 거친다).
+            const farewell = closingBy !== null && !farewellSent
+            try { result = await (deps.synthesize ?? synthesizeValidated)(farewell ? ELDER_CLOSING_FAREWELL : output.trim(), deps.geminiTts, abort.signal) }
             catch (error) {
               if (!abort.signal.aborted) {
                 const code: VoiceFailureCode = error instanceof Error && error.message === 'OUTPUT_REJECTED' ? 'OUTPUT_REJECTED'
@@ -355,7 +401,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             }
             send({ ...(protocolVersion >= 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
             output = ''; pending = false
-            maybeFinishTimeUp()  // v1 은 재생 확인이 없다 — 보낸 뒤 바로(v2+ 는 awaitingPlayback 이 남아 재생 확인을 기다린다)
+            if (farewell) farewellSent = true
+            maybeFinish()  // v1 은 재생 확인이 없다 — 보낸 뒤 바로(v2+ 는 awaitingPlayback 이 남아 재생 확인을 기다린다)
           }).catch(close)
         })
         return
@@ -368,7 +415,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || receipt.result !== 'completed') return close()
         if (!await allowed()) return close()
         clearTimeout(playbackTimer); awaitingPlayback = null
-        maybeFinishTimeUp()
+        maybeFinish()
         flushDirective()
         return
       }
