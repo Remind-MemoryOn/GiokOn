@@ -1622,6 +1622,10 @@ begin
   update public.profile_caregivers set status = 'active', removed_at = null where profile_id = pid and caregiver_user_id = uid;
   delete from app.live_token_usage;
 
+  -- T21.14(20261004000000): 운영 한도 = 사용자 분당 8 · 사용자 일 80 · 기관 일 200 · 프로젝트 일 2,000(아래 시험이 바꾸기 전에 확인).
+  assert (select (user_minute, user_day, org_day, project_day) = (8, 80, 200, 2000) from app.live_token_limits),
+    'live-token 파일럿 한도가 8 · 80 · 200 · 2000 이어야 함(T21.14)';
+
   -- Exercise every cap independently; a later cap rejection must roll back earlier counters.
   foreach test_case in array array['user_minute','user_day','org_day','project_day'] loop
     delete from app.live_token_usage;
