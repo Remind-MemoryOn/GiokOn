@@ -53,15 +53,15 @@ export function LandingPage() {
           style={{ top: Y(616), width: 1421, height: 268 }}
         />
 
-        {/* 히어로 */}
+        {/* 히어로 — 폭 571 → 660: "프로그램 일지를 더 쉽게 관리하는,"(639px)이 한 줄에 들어가게(사용자 확정 2026-10-06 · 오른쪽 아트 @828 앞) */}
         <h1
           data-fx="6:28"
-          className="absolute left-[118px] w-[571px] text-[48px] font-bold leading-[70px] text-ink-700"
+          className="absolute left-[118px] w-[660px] text-[48px] font-bold leading-[70px] text-ink-700"
           style={{ top: Y(355) }}
         >
           AI 회상 대화와
           <br />
-          요양일지를 더 쉽게 관리하는,
+          프로그램 일지를 더 쉽게 관리하는,
         </h1>
         <img
           data-fx="12:21"
