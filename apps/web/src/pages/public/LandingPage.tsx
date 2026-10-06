@@ -11,7 +11,7 @@ import { asset } from '../../assets/ui';
 /** 중간 섹션의 "…싶으신가요?" 3묶음 — [일러스트, 좌표, 문구] */
 const PROMPTS = [
   { src: asset.landingSpot1, art: { left: 227, top: 1096, w: 167, h: 121 }, center: 310, width: 276, lines: ['AI 회상 대화 기록을 더 편리하게', '관리하고 싶으신가요?'] },
-  { src: asset.landingSpot2, art: { left: 672, top: 1096, w: 111, h: 122 }, center: 719, width: 247, lines: ['요양일지까지 한곳에서', '관리하고 싶으신가요?'] },
+  { src: asset.landingSpot2, art: { left: 672, top: 1096, w: 111, h: 122 }, center: 719, width: 247, lines: ['프로그램 일지까지 한곳에서', '관리하고 싶으신가요?'] },
   { src: asset.landingSpot3, art: { left: 1078, top: 1110, w: 108, h: 109 }, center: 1128, width: 247, lines: ['보호자와 소중한 기록을 함께', '나누고 싶으신가요?'] },
 ];
 
