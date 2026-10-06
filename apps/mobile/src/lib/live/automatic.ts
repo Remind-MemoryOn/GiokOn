@@ -1,4 +1,5 @@
-import { safeVoiceFailureMessage } from '@giokon/core';
+import { SESSION_MAX_MINUTES, safeVoiceFailureMessage } from '@giokon/core';
+import type { RelayEndReason } from './client';
 /** 감독 화면의 원격 제어(파일럿 M5) — 중계 알림(`relayControl`)과 서버 판정(`session_tick`) 공통 값. */
 export type RemoteControlState = 'running' | 'paused' | 'ended' | 'denied';
 /** 원격 일시정지 중 서버 상태를 다시 보는 간격 — 요구사항 "원격 재개가 2초 안에 반영". */
@@ -6,6 +7,16 @@ export const REMOTE_CONTROL_POLL_MS = 2000;
 export const REMOTE_PAUSE_REASON = '감독 화면에서 대화를 잠시 멈췄어요. 감독 화면에서 재개하면 자동으로 이어져요.';
 export const REMOTE_END_REASON = '감독 화면에서 대화를 끝냈어요. 기록을 저장해 주세요.';
 export const REMOTE_DENIED_REASON = '대화를 이어갈 수 없는 상태예요. 기록을 저장해 주세요.';
+/** 중계가 스스로 끝낸 대화의 안내(T21.11·T21.12) — 감독 화면이 끝낸 것처럼 보이지 않게 이유별로 알린다. */
+export const RELAY_END_REASONS: Record<RelayEndReason, string> = {
+  time_limit: `대화 시간 ${SESSION_MAX_MINUTES}분이 다 되어 마쳤어요. 기록을 저장해 주세요.`,
+  elder_closing: '어르신이 쉬고 싶어 하셔서 인사를 드리고 마쳤어요. 기록을 저장해 주세요.',
+  other: '음성 중계가 대화를 마쳤어요. 기록을 저장해 주세요.',
+};
+/** 중계의 종료 알림 문구 — 이유가 없으면 감독 화면의 원격 종료다. */
+export function relayEndMessage(reason?: RelayEndReason): string {
+  return reason ? RELAY_END_REASONS[reason] : REMOTE_END_REASON;
+}
 export type AutomaticPhase = 'idle' | 'starting' | 'processing' | 'speaking' | 'listening' | 'pausing' | 'paused' | 'stopped';
 export interface AutomaticEngine {
   requestContinuation?(): Promise<{ text: string; audioChunksB64: string[] } | null>;
@@ -21,7 +32,7 @@ export interface AutomaticPorts {
   ready(resuming: boolean): Promise<boolean>;
   resume?(engine: AutomaticEngine): Promise<'listen' | {text: string; audioChunksB64: string[]} | null>;
   connect(onInput: (text: string) => void, onFailure: (message?: string) => void, resuming: boolean,
-    onRemote?: (state: 'paused' | 'ended') => void): Promise<AutomaticEngine | null>;
+    onRemote?: (state: 'paused' | 'ended', reason?: RelayEndReason) => void): Promise<AutomaticEngine | null>;
   /** 멈춘 동안 서버의 원격 제어 상태를 읽는다(`session_tick`). 없으면 원격 재개·종료를 감지하지 않는다. */
   control?(): Promise<RemoteControlState>;
   cancelPending(): Promise<void>;
@@ -81,9 +92,9 @@ export class AutomaticConversation {
     this.watchTimer = null;
   }
   /** 중계의 원격 제어 알림 — 해당 연결 세대에서만 받는다. */
-  private remote(state: 'paused' | 'ended', generation: number): void {
+  private remote(state: 'paused' | 'ended', generation: number, reason?: RelayEndReason): void {
     if (generation !== this.generation || this.phase === 'stopped') return;
-    if (state === 'ended') { void this.stop(REMOTE_END_REASON); return; }
+    if (state === 'ended') { void this.stop(relayEndMessage(reason)); return; }
     this.remoteHeld = true;
     void this.pause();
   }
@@ -109,7 +120,7 @@ export class AutomaticConversation {
       }
       if (!this.alive(generation)) return;
       const engine = await this.ports.connect(text => { void this.receive(text, generation); }, message => { if (this.alive(generation)) void this.stop(safeVoiceFailureMessage(message)); }, resuming,
-        state => this.remote(state, generation));
+        (state, reason) => this.remote(state, generation, reason));
       if (!this.alive(generation)) { await engine?.close(); return; }
       this.engine = engine;
       if (!engine) throw new Error('connection');

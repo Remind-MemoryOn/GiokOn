@@ -34,7 +34,7 @@ type Handlers = {
   onError?: (e: unknown) => void;
   onClose?: () => void;
   /** 감독 화면의 원격 일시정지·종료(파일럿 M5). 중계는 이 알림 뒤 곧 연결을 닫는다. */
-  onRemoteControl?: (state: RelayControlState) => void;
+  onRemoteControl?: (state: RelayControlState, reason?: RelayEndReason) => void;
   /**
    * 중계가 위험 발화로 대화를 멈췄다 — 오류 알림보다 먼저 온다. 중계가 기록한 safety_events 행 id(파일럿 T21.4)와
    * 판정 요약(수준·분류·알림 종류 — 원문 없음, T25.14) 중 검증을 통과한 것만 담는다(둘 다 없으면 부르지 않는다).
@@ -53,6 +53,16 @@ export interface RelayReviewDetail {
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 
 export type RelayControlState = 'paused' | 'ended';
+/**
+ * 중계가 스스로 대화를 끝낸 이유(`relayControl.reason` — T21.11·T21.12). 없으면 감독 화면의 원격 종료다.
+ * 모르는 값(새 중계)은 'other' — 감독 화면이 끝냈다고 잘못 알리지 않게.
+ */
+export type RelayEndReason = 'time_limit' | 'elder_closing' | 'other';
+const RELAY_END_REASONS: readonly string[] = ['time_limit', 'elder_closing'];
+function relayEndReason(state: RelayControlState, reason: unknown): RelayEndReason | undefined {
+  if (state !== 'ended' || reason === undefined || reason === null) return undefined;
+  return typeof reason === 'string' && RELAY_END_REASONS.includes(reason) ? reason as RelayEndReason : 'other';
+}
 
 interface WsLike {
   send(data: string): void;
@@ -150,10 +160,13 @@ export class GeminiLiveClient {
             return;
           }
           if ('relayControl' in msg) {
-            const state = (msg.relayControl as { state?: unknown } | null)?.state;
+            const control = msg.relayControl as { state?: unknown; reason?: unknown } | null;
+            const state = control?.state;
             if (state !== 'paused' && state !== 'ended') throw new Error('음성 중계의 제어 신호를 확인하지 못했어요.');
             // 준비 전(인증 시점에 이미 정지된 세션)에도 온다 — 연결 실패가 아니라 원격 제어로 알린다.
-            this.handlers.onRemoteControl?.(state);
+            const reason = relayEndReason(state, control?.reason);
+            if (reason) this.handlers.onRemoteControl?.(state, reason);
+            else this.handlers.onRemoteControl?.(state);
             if (!settled) fail(new Error('음성 중계가 원격 제어로 연결을 멈췄어요.'));
             else this.close();
             return;

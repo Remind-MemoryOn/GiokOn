@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AutomaticConversation, REMOTE_CONTROL_POLL_MS, REMOTE_END_REASON, REMOTE_PAUSE_REASON, type AutomaticPorts, type RemoteControlState } from './automatic';
+import { AutomaticConversation, RELAY_END_REASONS, REMOTE_CONTROL_POLL_MS, REMOTE_END_REASON, REMOTE_PAUSE_REASON, type AutomaticPorts, type RemoteControlState } from './automatic';
+import type { RelayEndReason } from './client';
 
 function fixture() {
   let onInput!: (text: string) => void;
-  let onRemote: ((state: 'paused' | 'ended') => void) | undefined;
+  let onRemote: ((state: 'paused' | 'ended', reason?: RelayEndReason) => void) | undefined;
   const events: string[] = [];
   const engine = { requestOpener: vi.fn(async () => ({text:'질문',audioChunksB64:['pcm']})),
     submitUserTurn: vi.fn(async () => ({status:'ok' as const,text:'다음 질문',chunksB64:['pcm']})),
@@ -15,7 +16,7 @@ function fixture() {
     output:vi.fn(()=>{events.push('output'); return true;}),
     playback:vi.fn(), save:vi.fn(async()=>{events.push('save'); return true;}), status:vi.fn() };
   const controller=new AutomaticConversation(ports);
-  return {controller,ports,engine,events,input:(text:string)=>onInput(text),remote:(state:'paused'|'ended')=>onRemote?.(state)};
+  return {controller,ports,engine,events,input:(text:string)=>onInput(text),remote:(state:'paused'|'ended',reason?:RelayEndReason)=>onRemote?.(state,reason)};
 }
 it('automatically saves, plays and listens across two utterances without confirmation', async()=>{
   const f=fixture(); await f.controller.start();
@@ -181,6 +182,21 @@ describe('감독 화면 원격 제어(파일럿 M5)', () => {
     await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS * 3);
     expect(f.control).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+  });
+  it.each(['time_limit', 'elder_closing', 'other'] as const)('중계가 스스로 끝내면(%s) 감독 화면 종료가 아니라 그 이유로 멈춘다', async reason => {
+    const f = remoteFixture(['running']);
+    await f.controller.start();
+    f.remote('ended', reason);
+    await vi.waitFor(() => expect(f.ports.status).toHaveBeenLastCalledWith('stopped', RELAY_END_REASONS[reason]));
+    expect(f.ports.status).not.toHaveBeenCalledWith('stopped', REMOTE_END_REASON);
+    await vi.advanceTimersByTimeAsync(REMOTE_CONTROL_POLL_MS * 3);
+    expect(f.control).not.toHaveBeenCalled();
+  });
+  it('종료 이유 문구는 서로 다르고 10분 상한을 숫자로 알린다', () => {
+    const texts = Object.values(RELAY_END_REASONS);
+    expect(new Set([...texts, REMOTE_END_REASON]).size).toBe(texts.length + 1);
+    expect(RELAY_END_REASONS.time_limit).toContain('10분');
+    for (const t of texts) expect(t).toContain('기록을 저장해 주세요');
   });
   it('원격 정지 중 서버가 종료를 알리면 멈춘다', async () => {
     const f = remoteFixture(['ended']);
