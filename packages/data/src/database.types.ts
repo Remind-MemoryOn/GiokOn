@@ -948,6 +948,8 @@ export type Database = {
       // Planned functional RPC contract; not deployed or enabled by the app yet.
       save_voice_playback_v1: { Args: { p_session_id: string; p_observations: Json }; Returns: number }
       transcript_storage_version: { Args: Record<PropertyKey, never>; Returns: number }
+      // 파일럿 T24.4 — 현행 동의서 버전(core CONSENT_VERSION 과 같다 — consent-version.test.ts).
+      current_consent_version: { Args: Record<string, never>; Returns: string }
       can_process_profile: {
         Args: { p_profile_id: string }
         Returns: boolean

@@ -39,7 +39,7 @@ export interface ConsentDefinition {
   version: string
 }
 
-/** 현재 동의서 버전. 문구 변경 시 상향하고 재동의를 유도한다. */
+/** 현재 동의서 버전 — DB `public.current_consent_version()` 과 같아야 한다(T24.4 · data `consent-version.test.ts` 가 확인). 문구 변경 시 둘을 함께 상향해 재동의를 유도한다. */
 export const CONSENT_VERSION = 'v1.0'
 
 /** Evidence needed for UI validity. Server authorization remains authoritative. */

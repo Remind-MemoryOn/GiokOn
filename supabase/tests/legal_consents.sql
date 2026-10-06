@@ -104,4 +104,18 @@ begin
     '사용자는 예외 목록에 행을 넣을 수 없어야 함';
 end $$;
 
+-- T24.4 동의서 현행 버전 단일화 — 버전 글자는 public.current_consent_version() 한 곳에만 있다.
+do $$
+declare offenders text;
+begin
+  assert public.current_consent_version() ~ '^v[0-9]+\.[0-9]+$', '현행 동의서 버전 형식이 v<주>.<부> 여야 함';
+  select string_agg(n.nspname || '.' || p.proname, ', ') into offenders
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname in ('public', 'app') and p.prosrc ~ '''v[0-9]+\.[0-9]+'''
+     and p.oid <> 'public.current_consent_version()'::regprocedure;
+  assert offenders is null, '동의서 버전 글자는 public.current_consent_version() 에만 둔다(T24.4): ' || offenders;
+  assert has_function_privilege('authenticated', 'public.current_consent_version()', 'execute'),
+    '동의 저장 트리거(invoker)가 사용자 권한으로 현행 버전을 읽을 수 있어야 함';
+end $$;
+
 select 'legal consent assertions passed' as result;

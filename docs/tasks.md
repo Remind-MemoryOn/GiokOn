@@ -72,7 +72,7 @@
 | T24.1 | ⚠️ **어르신 동의 부여/철회 UI** — `ElderDetailPage.tsx:434` 가 없는 라우트를 가리킨다. **파일럿 블로커** | W7 | — | ✅ 2026-09-24 `jinwoo`(PR #17 병합 대기) · 동의 2종 추가 마이그레이션 운영 적용 |
 | T24.2 | `product_events` + 삽입 함수 — "시간 절감"의 유일한 증거. **1주차에 넣는다** | D8 | — | ⏳ |
 | T24.3 | 어르신 `care_grade` 입력(주간보호 필수) | W8 | T20.1 | ✅ 2026-09-27 웹 — 등록·수정 드롭다운(주간보호면 저장 막음) · 상세 프로필 카드 넷째 줄 · `test:grade` |
-| T24.4 | 동의 버전 단일화(`app.current_consent_version()`) | D10 | — | ⏳ |
+| T24.4 | 동의 버전 단일화(`app.current_consent_version()`) | D10 | — | ✅ 2026-10-06 코드 — `20261006000000_consent_version_single_source`: `public.current_consent_version()`(stable · 값 `v1.0`) 하나에 두고 처리 동의 판정(`app.has_processing_consent`)·동의 증거 삽입 트리거(`app.stamp_consent_evidence`)·온보딩(`complete_onboarding`)이 그것을 부른다(본문은 그대로 · 글자만 교체). 계획의 `app.` 대신 **`public.`** — 동의 트리거가 invoker 이고 운영 authenticated 에게 `app` USAGE 가 없어 `app.*` 를 이름으로 부르면 동의 저장이 깨진다. TS 는 core `CONSENT_VERSION` 유지 + data `consent-version.test.ts` 가 최신 SQL 정의와 같은지 확인. 회귀: `legal_consents.sql`(버전 글자는 그 함수에만) · `prod_privileges.sql` ④(운영 권한에서 현행 버전 저장 성공 · 옛 버전 `CURRENT_CONSENT_REQUIRED`) · 변형 3종 검출. ⏳ 운영 적용(main 병합 시 Supabase 연동이 자동 적용) |
 | T24.5 | gemini-3.8-live 기준 재검증 — Live 폴백 통일 · Gemini 3.8 Flash TTS 전환 | — | — | 🟡 2026-09-26 로컬 코드 완료 · 자동 테스트/실 API/배포 미검증 |
 | T24.6 | ✅ **결정(2026-09-24)** — 신규 화면은 기존 디자인과 최대한 같게 최소 구현, 시안이 오면 교체 | §7 | — | ✅ 결정 |
 | T24.7 | ✅ **결정(2026-09-24)** — 태블릿 지원(`supportsTablet: true` 반영 완료) · 세션 최대 10분 · 요양보호사 1명당 동시 최대 4대 | §2 | — | ✅ 결정 |

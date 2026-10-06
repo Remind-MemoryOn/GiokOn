@@ -143,7 +143,7 @@
 | **D8** | `..._product_events.sql` | `product_events(event_key, payload, ...)` + definer 삽입 함수 | ⏳ |
 | **D9** | D5·D6 말미 | realtime publication 에 `program_journals`·`session_interventions` 추가. ⚠️ `if exists (pg_publication)` 가드 필수(CI는 순정 PG16) | ✅ 2026-09-24 — `session_interventions`(D6) · `program_journals`·`program_journal_photos`(D5) 운영 publication 반영 · data `realtime.ts` 세 곳 등록(일지 2종) |
 | **D11** | `20260924080000_legal_consent_types.sql` · `20260924090000_legal_consent_requirements.sql` | (계획 외 · 법률 문서 확정본, 사용자 확정 2026-09-24) `consent_type` += `terms_required`·`elder_privacy_required`. 세션 처리에 어르신 개인정보 동의 필수 — **적용 시점 등록 어르신은 `app.elder_privacy_grandfathered` 로 이 항목만 면제**(증거는 만들지 않는다). 가입은 `terms_required` 를 받되 아직 필수 아님(배포 전환기 보호 — 웹 배포 뒤 필수화 후속) | ✅ 2026-09-24 **운영 적용** · 회귀 `supabase/tests/legal_consents.sql` · ⏳ `terms_required` DB 필수화 |
-| **D10** | 권고 | `app.current_consent_version()` 1개로 통일 — 지금 `'v1.0'` 이 SQL·TS 양쪽에 하드코딩돼 드리프트한다 | ⏳ |
+| **D10** | `20261006000000_consent_version_single_source.sql` | `public.current_consent_version()` 1개로 통일(`app.` 이 아닌 이유: 동의 트리거가 invoker · 운영 authenticated 에 `app` USAGE 없음) — SQL 3곳이 이 함수를 부르고, TS `CONSENT_VERSION` 은 data `consent-version.test.ts` 가 대조 | ✅ 2026-10-06 코드(T24.4) |
 
 ### 직원 합류와 역할 부여 (D3 · W6 · W9)
 

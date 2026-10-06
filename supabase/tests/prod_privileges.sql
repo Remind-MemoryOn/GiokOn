@@ -8,6 +8,7 @@
 --   ① 구조: 트리거로 쓰이는 invoker 함수는 본문에서 app.* 를 부르지 않는다(허용 목록 제외)
 --   ② 일지: 요양보호사 저장(진행자 포함) · 관리자 확정 · 확정 후 사유와 함께 수정(이력) — 운영 권한에서 성공
 --   ③ 공개 철회·보호자 연결 승인(T25.4): 권한 표 밖 역할은 코드 오류로 거부 · 권한 표 안 역할은 성공 — 운영 권한에서
+--   ④ 동의 증거 저장(T24.4): 현행 버전은 성공 · 옛 버전은 CURRENT_CONSENT_REQUIRED — 운영 권한에서
 
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
@@ -105,6 +106,24 @@ begin
    where profile_id = (select pid from pp) and status = 'pending';
   get diagnostics n = row_count;
   assert n = 1, '권한 표 안 역할은 연결을 승인할 수 있어야 함';
+  reset role;
+end $$;
+
+-- ④ 동의 증거 저장(T24.4) — invoker 트리거 app.stamp_consent_evidence 가 현행 버전을 public 함수로 읽는다(운영 권한에서 성공).
+do $$
+declare blocked text;
+begin
+  set local role authenticated;
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000001', true);
+  insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+    values ((select pid from pp), (select org from pp), auth.uid(), 'ai_processing', true, public.current_consent_version(), 'capable');
+  blocked := null;
+  begin
+    insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+      values ((select pid from pp), (select org from pp), auth.uid(), 'ai_processing', true, 'v0.9', 'capable');
+  exception when others then blocked := sqlerrm;
+  end;
+  assert blocked = 'CURRENT_CONSENT_REQUIRED', '옛 버전 동의는 CURRENT_CONSENT_REQUIRED 로 거절돼야 함: ' || coalesce(blocked, '허용됨');
   reset role;
 end $$;
 
