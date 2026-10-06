@@ -17,6 +17,10 @@ begin
   assert not has_table_privilege('authenticated', 'public.voice_session_leases', 'SELECT'), '점유 테이블 직접 조회 권한 없음';
   assert not has_table_privilege('authenticated', 'public.voice_session_leases', 'INSERT'), '점유 테이블 직접 쓰기 권한 없음';
   assert not has_table_privilege('authenticated','public.consents','UPDATE'), 'Consent table UPDATE must be revoked';
+  -- T24.2 제품 이벤트 — 서버 트리거만 기록한다(클라이언트 직접 읽기·쓰기 권한 없음 · 삽입 함수 비공개).
+  assert not has_table_privilege('authenticated', 'public.product_events', 'SELECT'), '제품 이벤트 직접 조회 권한 없음';
+  assert not has_table_privilege('authenticated', 'public.product_events', 'INSERT'), '제품 이벤트 직접 쓰기 권한 없음';
+  assert not has_function_privilege('authenticated', 'app.record_product_event(uuid,text,uuid,jsonb)', 'EXECUTE'), '제품 이벤트 삽입 함수 비공개';
   assert not (select prosecdef from pg_proc where oid='app.guard_record_identity()'::regprocedure),
     'Record identity guard must remain SECURITY INVOKER';
   assert has_column_privilege('authenticated','public.consents','revoked_at','UPDATE'), 'Withdrawal must remain possible';
