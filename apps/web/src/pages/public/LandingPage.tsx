@@ -139,7 +139,7 @@ export function LandingPage() {
           className="absolute left-[118px] w-[695px] text-[45px] font-bold leading-[70px] text-ink-900"
           style={{ top: Y(1652) }}
         >
-          AI 회상 대화부터 프로그램일지 자동작성까지,
+          AI 회상 대화부터 프로그램 일지,
           <br />
           보호자 공유까지, 하나의 인지 활동 관리
           <br />웹 서비스,
