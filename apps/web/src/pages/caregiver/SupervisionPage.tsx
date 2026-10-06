@@ -13,10 +13,15 @@
 // ⚠️ 미확인 위기는 **세션 상태와 무관하게 확인할 때까지** 남긴다(T25.6) — 진행 중 세션의 위기는 그 카드 안에,
 //    끝난(또는 세션이 없는) 위기는 위쪽 '확인하지 않은 안전 알림'에. 세션이 저장돼 카드가 사라져도 확인 버튼이 남는다.
 // ⚠️ 안전 알림 조회가 실패하면 '알림 없음'처럼 보이지 않게 따로 알린다(셸 밖이라 공용 조회 실패 배너가 없다).
+// ⚠️ 어르신 요청으로 마무리(T21.11 · elder_closing)는 중계가 세션 시작자의 토큰으로 남긴다 — actor_id 가 그 직원이지만
+//    직원의 개입이 아니므로 기록에는 '어르신'으로 적는다. 중계는 인사 뒤 연결을 끊고 앱이 저장을 기다리므로 카드는
+//    저장 전까지 남는다 → 카드 상태를 '어르신 요청으로 마무리'로 바꾸고, 끊긴 연결에 대한 제어 버튼은 숨긴다.
+//    위기가 아니다 — 위험 색·토스트를 쓰지 않는다(위기 카드와 구분, 2026-10-06 사용자 확정).
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   elapsedLabel,
+  elderClosingOf,
   sessionTargetMinutes,
   supervisionState,
   toElderProfile,
@@ -31,6 +36,7 @@ import {
   useSessionInterventions,
   useUnacknowledgedSafetyEvents,
   SESSION_PHASE_LABEL,
+  type ElderClosing,
   type SafetyEventRow,
   type SessionControlAction,
   type SessionInterventionRow,
@@ -53,6 +59,24 @@ const ACTION_LABEL: Record<string, string> = {
   end: '종료 요청',
   phase_advance: '단계 전환',
 };
+
+/** 어르신 요청으로 마무리(T21.11) — 이유별 기록 문구. 이유를 모르면 이유 없이 적는다. */
+function elderClosingLabel(situation: ElderClosing['situation']): string {
+  return situation === 'rest_request'
+    ? '쉬고 싶다고 하셔서 마무리'
+    : situation === 'refusal'
+      ? '원치 않으셔서 마무리'
+      : '요청으로 마무리';
+}
+function elderClosingNotice(c: ElderClosing): string {
+  const why =
+    c.situation === 'rest_request'
+      ? '어르신이 쉬고 싶어 하셔서'
+      : c.situation === 'refusal'
+        ? '어르신이 대화를 원치 않으셔서'
+        : '어르신 요청으로';
+  return `${timeHM(c.at)}에 ${why} 대화를 마쳤어요. 기기에서 기록을 저장하면 이 목록에서 사라집니다.`;
+}
 
 const CONTROL_ERRORS: Record<string, string> = {
   SESSION_CONTROL_NOT_FOUND: '이 세션을 찾을 수 없어요. 이미 끝났거나 우리 기관 세션이 아니에요.',
@@ -135,6 +159,7 @@ function SessionCard({
   elderName,
   alerts,
   history,
+  closing,
   whoName,
   busy,
   ackDisabled,
@@ -149,6 +174,8 @@ function SessionCard({
   elderName: string | undefined;
   alerts: SafetyEventRow[];
   history: SessionInterventionRow[];
+  /** 어르신 요청으로 마무리한 기록 — 있으면 카드 상태가 바뀌고 제어 버튼이 숨는다. */
+  closing: ElderClosing | null;
   whoName: (id: string | null | undefined) => string | null;
   busy: boolean;
   ackDisabled: boolean;
@@ -190,9 +217,13 @@ function SessionCard({
         <span
           className={cn(
             'inline-flex shrink-0 items-center gap-2 rounded-pill px-3 py-1 text-w-label font-semibold text-ink-900',
-            state === 'running' && 'bg-live-soft',
-            state === 'paused' && 'bg-accent-soft',
-            state === 'ending' && 'bg-mute',
+            closing
+              ? 'bg-accent-soft'
+              : [
+                  state === 'running' && 'bg-live-soft',
+                  state === 'paused' && 'bg-accent-soft',
+                  state === 'ending' && 'bg-mute',
+                ],
           )}
         >
           {/* 상태 색은 점으로만 — 색 글자는 연한 배경 위 대비가 모자란다(감독 화면 대비 보정 2026-09-25) */}
@@ -200,12 +231,12 @@ function SessionCard({
             aria-hidden
             className={cn(
               'h-2 w-2 rounded-full',
-              state === 'running' && 'bg-live',
-              state === 'paused' && 'bg-accent',
-              state === 'ending' && 'bg-ink-400',
+              closing
+                ? 'bg-accent'
+                : [state === 'running' && 'bg-live', state === 'paused' && 'bg-accent', state === 'ending' && 'bg-ink-400'],
             )}
           />
-          {state === 'running' ? '진행 중' : state === 'paused' ? '일시정지' : '종료 요청됨'}
+          {closing ? '어르신 요청으로 마무리' : state === 'running' ? '진행 중' : state === 'paused' ? '일시정지' : '종료 요청됨'}
         </span>
       </header>
 
@@ -234,7 +265,11 @@ function SessionCard({
         </div>
       </dl>
 
-      {state === 'paused' ? (
+      {closing ? (
+        <p role="status" className="mt-3 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
+          {elderClosingNotice(closing)}
+        </p>
+      ) : state === 'paused' ? (
         <p className="mt-3 text-w-label leading-[22px] text-ink-700" style={{ wordBreak: 'keep-all' }}>
           {row.paused_at ? `${timeHM(row.paused_at)}에 ` : ''}{pausedBy === '나' ? '내가 ' : pausedBy ? `${pausedBy} 님이 ` : ''}멈췄어요
           {row.pause_reason ? ` — ${row.pause_reason}` : ''}. 재개하면 어르신 화면이 이어집니다.
@@ -245,28 +280,33 @@ function SessionCard({
         </p>
       ) : null}
 
-      <div className="mt-4 flex gap-2">
-        {state === 'running' ? (
-          <Button size="sm" variant="outline" className="flex-1" disabled={busy} onClick={onPause}>
-            일시정지
-          </Button>
-        ) : state === 'paused' ? (
-          <Button size="sm" className="flex-1 !text-ink-900" disabled={busy} onClick={onResume}>
-            재개
-          </Button>
-        ) : null}
-        {state !== 'ending' ? (
-          <Button size="sm" variant="danger" className="flex-1 !text-ink-900" disabled={busy} onClick={onEnd}>
-            종료
-          </Button>
-        ) : null}
-      </div>
+      {/* 마무리 뒤에는 중계가 연결을 끊었다 — 멈춤·종료 요청이 닿을 곳이 없다 */}
+      {closing ? null : (
+        <div className="mt-4 flex gap-2">
+          {state === 'running' ? (
+            <Button size="sm" variant="outline" className="flex-1" disabled={busy} onClick={onPause}>
+              일시정지
+            </Button>
+          ) : state === 'paused' ? (
+            <Button size="sm" className="flex-1 !text-ink-900" disabled={busy} onClick={onResume}>
+              재개
+            </Button>
+          ) : null}
+          {state !== 'ending' ? (
+            <Button size="sm" variant="danger" className="flex-1 !text-ink-900" disabled={busy} onClick={onEnd}>
+              종료
+            </Button>
+          ) : null}
+        </div>
+      )}
 
       {history.length > 0 ? (
         <ol aria-label="개입 기록" className="mt-4 space-y-1 border-t border-line pt-3 text-w-label text-ink-500">
           {history.map((h) => (
             <li key={h.id}>
-              {timeHM(h.created_at)} · {whoName(h.actor_id) ?? '직원'} · {ACTION_LABEL[h.action] ?? h.action}
+              {h.action === 'elder_closing'
+                ? `${timeHM(h.created_at)} · 어르신 · ${elderClosingLabel(elderClosingOf([h])?.situation ?? null)}`
+                : `${timeHM(h.created_at)} · ${whoName(h.actor_id) ?? '직원'} · ${ACTION_LABEL[h.action] ?? h.action}`}
             </li>
           ))}
         </ol>
@@ -431,6 +471,7 @@ export function SupervisionPage() {
                 elderName={elderName.get(row.profile_id)}
                 alerts={(safety.data ?? []).filter((e) => e.session_id === row.id)}
                 history={(interventions.data ?? []).filter((i) => i.session_id === row.id).slice(0, 3)}
+                closing={elderClosingOf((interventions.data ?? []).filter((i) => i.session_id === row.id))}
                 whoName={whoName}
                 busy={control.isPending}
                 ackDisabled={ack.isPending || !me.data?.id}

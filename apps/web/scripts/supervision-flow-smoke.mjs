@@ -5,6 +5,8 @@
 //   ② 대화가 저장돼 진행 목록에서 사라져도 미확인 위기와 확인 버튼은 남는다(확인하면 그 알림만 확인 처리).
 //   ③ 안전 알림 조회만 실패하면 '알림 없음'처럼 보이지 않고 실패를 알린다 · 다시 확인하면 사라진다.
 //   ④ 발화 근거(발췌)가 비어 있으면 감지 직후는 '저장하는 중', 2분이 지나면 '저장 실패'라고 그대로 알린다(T25.17 — 안내 문구로 덮지 않는다).
+//   ⑤ 어르신 요청으로 마무리(T21.11 · elder_closing) — 카드 상태가 바뀌고 이유가 보이며, 끊긴 연결에 대한 제어 버튼이 숨는다.
+//      기록에는 직원(세션 시작자 = actor_id)이 아니라 '어르신'으로 적고, 위기 표시(alert)는 생기지 않는다.
 import { build, preview } from 'vite';
 import { chromium } from 'playwright';
 import { existsSync } from 'node:fs';
@@ -49,6 +51,7 @@ try {
       event('ev-saving', 's-old3', null, 0.2), // 방금 감지 · 근거 아직 없음 → 저장하는 중
     ],
     safetyFails: false,
+    interventions: [],
   };
   const acks = [];
   await page.route('https://**/*', async (route) => {
@@ -67,7 +70,7 @@ try {
       Object.assign(ev, req.postDataJSON());
       return json(ev);
     }
-    if (url.pathname.endsWith('/rest/v1/session_interventions')) return json([]);
+    if (url.pathname.endsWith('/rest/v1/session_interventions')) return json(state.interventions);
     return route.abort();
   });
   const detached = page.getByRole('region', { name: '확인하지 않은 안전 알림' });
@@ -107,7 +110,38 @@ try {
   await page.getByRole('button', { name: '안전 알림 다시 확인' }).click();
   await page.getByText('안전 알림을 확인하지 못했어요.', { exact: false }).waitFor({ state: 'detached', ...SLOW });
 
-  console.log('PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인 · 빈 발췌는 저장 중/저장 실패로 표시. 합성 API 만 사용.');
+  // ⑤ 어르신 요청으로 마무리 — 중계가 시작자(u1)의 토큰으로 남긴 기록. 위기 알림은 모두 확인된 상태로 둔다.
+  for (const e of state.events) e.acknowledged_at = at(0);
+  state.sessions = [session('s-close', 'e1')];
+  state.interventions = [
+    { id: 'iv-close', session_id: 's-close', profile_id: 'e1', org_id: 'o1', actor_id: 'u1', action: 'elder_closing', detail: { situation: 'rest_request' }, created_at: at(0.5) },
+    { id: 'iv-phase', session_id: 's-close', profile_id: 'e1', org_id: 'o1', actor_id: 'u1', action: 'phase_advance', detail: { from: 'intro', to: 'reminiscence' }, created_at: at(4) },
+  ];
+  await page.reload();
+  const closing = page.getByRole('article');
+  await closing.getByText('어르신 요청으로 마무리').waitFor(SLOW);
+  await closing.getByRole('status').filter({ hasText: '어르신이 쉬고 싶어 하셔서 대화를 마쳤어요.' }).waitFor();
+  const log = closing.getByRole('list', { name: '개입 기록' });
+  assert.match(await log.innerText(), / · 어르신 · 쉬고 싶다고 하셔서 마무리/, '마무리 기록은 어르신으로 적어야 함');
+  assert.equal(await log.getByText('elder_closing').count(), 0, '영문 행동 코드가 보이면 안 됨');
+  assert.equal((await log.getByRole('listitem').allInnerTexts()).filter((t) => t.includes('마무리') && !t.includes(' · 어르신 · ')).length, 0,
+    '마무리 기록을 직원 이름으로 적으면 안 됨');
+  await log.getByText('단계 전환', { exact: false }).waitFor(); // 다른 기록은 그대로
+  for (const name of ['일시정지', '재개', '종료']) {
+    assert.equal(await closing.getByRole('button', { name, exact: true }).count(), 0, `마무리 뒤 '${name}' 버튼은 숨겨야 함`);
+  }
+  assert.equal(await closing.getByRole('alert').count(), 0, '어르신 요청 마무리는 위기 표시가 아님(카드 안)');
+  assert.doesNotMatch((await closing.getAttribute('class')) ?? '', /ring-alert/, '카드에 위기 테두리가 생기면 안 됨');
+  // 이유가 거부면 거부로 · 모르는 이유면 이유를 지어내지 않는다
+  state.interventions[0].detail = { situation: 'refusal' };
+  await page.reload();
+  await closing.getByRole('status').filter({ hasText: '어르신이 대화를 원치 않으셔서 대화를 마쳤어요.' }).waitFor(SLOW);
+  state.interventions[0].detail = { situation: 'something_new' };
+  await page.reload();
+  await closing.getByRole('status').filter({ hasText: '어르신 요청으로 대화를 마쳤어요.' }).waitFor(SLOW);
+  assert.match(await log.innerText(), / · 어르신 · 요청으로 마무리/);
+
+  console.log('PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인 · 빈 발췌는 저장 중/저장 실패로 표시 · 어르신 요청 마무리는 카드 상태·이유·어르신 기록으로(제어 버튼 숨김·위기 표시 없음). 합성 API 만 사용.');
 } finally {
   await browser.close();
   await new Promise((resolve) => server.httpServer.close(resolve));

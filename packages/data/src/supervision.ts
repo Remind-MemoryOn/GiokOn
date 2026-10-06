@@ -3,7 +3,8 @@
 // 세션 행의 D6 컬럼(phase·paused_at·control_request)을 화면 상태로 바꾼다. 판정·권한의 최종 근거는
 // 서버(request_session_control·session_tick)이고, 여기서는 **보여 줄 말**만 정한다.
 
-import type { SessionRow } from './database.types'
+import type { ElderClosingSituation } from '@giokon/core'
+import type { Database, SessionRow } from './database.types'
 
 type Phase = NonNullable<SessionRow['phase']>
 
@@ -48,4 +49,25 @@ export function elapsedLabel(startedAt: string, now: number = Date.now()): strin
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${m}:${String(s).padStart(2, '0')}`
+}
+
+type InterventionRow = Database['public']['Tables']['session_interventions']['Row']
+
+/** 어르신 요청으로 마무리한 기록(T21.11) — 중계가 record_elder_closing 으로 세션당 한 번 남긴다. */
+export interface ElderClosing {
+  at: string
+  /** 서버가 받는 두 값 밖이면(앞으로 늘어날 이유 등) null — 이유를 지어내지 않는다. */
+  situation: ElderClosingSituation | null
+}
+
+/**
+ * 한 세션의 개입 기록에서 '어르신 요청으로 마무리'를 찾는다. 없으면 null.
+ * 이 기록의 actor_id 는 **세션을 시작한 직원**(중계가 그 사람의 토큰으로 쓴다)이지 마무리를 요청한 사람이 아니다 —
+ * 화면은 이 기록을 직원의 개입으로 표시하면 안 된다.
+ */
+export function elderClosingOf(rows: readonly Pick<InterventionRow, 'action' | 'detail' | 'created_at'>[]): ElderClosing | null {
+  const row = rows.find((r) => r.action === 'elder_closing')
+  if (!row) return null
+  const raw = row.detail && typeof row.detail === 'object' && !Array.isArray(row.detail) ? row.detail.situation : null
+  return { at: row.created_at, situation: raw === 'rest_request' || raw === 'refusal' ? raw : null }
 }
