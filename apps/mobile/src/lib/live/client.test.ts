@@ -286,6 +286,24 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
       expect(onRemoteControl).toHaveBeenCalledWith('paused');
       expect(onError).not.toHaveBeenCalled();
     });
+    it.each([
+      [{ state: 'ended', reason: 'time_limit' }, ['ended', 'time_limit']],
+      [{ state: 'ended', reason: 'elder_closing' }, ['ended', 'elder_closing']],
+      // 새 중계의 모르는 이유 — 감독 화면이 끝냈다고 잘못 알리지 않게 'other' 로.
+      [{ state: 'ended', reason: 'future_reason' }, ['ended', 'other']],
+      [{ state: 'ended', reason: 7 }, ['ended', 'other']],
+      [{ state: 'ended' }, ['ended']],
+      // 종료 이유는 종료에만 붙는다.
+      [{ state: 'paused', reason: 'time_limit' }, ['paused']],
+    ] as const)('중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) %o', async (control, expected) => {
+      const onRemoteControl = vi.fn(), onError = vi.fn();
+      const client = new GeminiLiveClient({ onRemoteControl, onError }, RELAY);
+      const connecting = client.connect(); const socket = Socket.all[0];
+      socket.onopen!(); await socket.receive({ setupComplete: {} }); await connecting;
+      await socket.receive({ relayControl: control });
+      expect(onRemoteControl.mock.calls).toEqual([expected]);
+      expect(onError).not.toHaveBeenCalled(); expect(client.isConnected).toBe(false);
+    });
     it.each([{ state: 'resume' }, {}, null])('모르는 제어 신호 %o 는 오류로 닫는다', async control => {
       const { client, socket, onError } = await connected();
       await socket.receive({ relayControl: control });

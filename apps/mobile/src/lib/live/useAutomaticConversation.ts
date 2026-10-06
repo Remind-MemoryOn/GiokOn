@@ -60,8 +60,8 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
               useApp.getState().requireRelayReview({ ...(eventId ? { remoteId: eventId } : {}),
                 ...(pendingEventId ? { pendingId: pendingEventId } : {}), ...(safety ? { safety } : {}) });
           },
-          onRemoteControl: state => {
-            if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id) onRemote?.(state);
+          onRemoteControl: (state, reason) => {
+            if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id) onRemote?.(state, reason);
           },
           onDraftInterrupted: text => {
             if (generation === connectionGeneration && !disposed && lease.current() && useApp.getState().active?.session.id === id)

@@ -12,7 +12,7 @@
 
 import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
-import { GeminiLiveClient, type LiveTurnResult, type RelayControlState, type RelayReviewDetail, type VoiceRelayConnection } from './client';
+import { GeminiLiveClient, type LiveTurnResult, type RelayControlState, type RelayEndReason, type RelayReviewDetail, type VoiceRelayConnection } from './client';
 import { hasMicPermission, micStreamingSupported, startMicStream } from './mic';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 import { InputEndpoint, pcmLevel } from './endpoint';
@@ -35,7 +35,7 @@ export interface LiveEngineCallbacks {
    * 감독 화면의 원격 일시정지·종료(파일럿 M5). 오류가 아니다 — 이 알림 뒤의 연결 실패·끊김은
    * onError 로 다시 알리지 않는다. 핸들러가 없으면 오류로 알리고 닫는다(조용히 멈추지 않게).
    */
-  onRemoteControl?: (state: RelayControlState) => void;
+  onRemoteControl?: (state: RelayControlState, reason?: RelayEndReason) => void;
   /** 중계가 위험 발화로 멈춘 사건의 기록 id(T21.4)·판정 요약(T25.14) — 같은 사건을 다시 기록하지 않고, 위기 종류별 안내를 띄우게. */
   onRelayReview?: (detail: RelayReviewDetail) => void;
 }
@@ -136,12 +136,13 @@ export class LiveConversationEngine {
       },
       onError: (e) => this.callbacks.onError?.(e instanceof Error ? e.message : String(e)),
       onRelayReview: (detail) => this.callbacks.onRelayReview?.(detail),
-      onRemoteControl: (state) => {
+      onRemoteControl: (state, reason) => {
         if (this.closing || this.remoteControl) return;
         this.remoteControl = state;
         const handler = this.callbacks.onRemoteControl;
-        if (handler) { handler(state); return; }
-        this.callbacks.onError?.(state === 'ended' ? '감독 화면에서 대화를 끝냈어요.' : '감독 화면에서 대화를 잠시 멈췄어요.');
+        if (handler) { if (reason) handler(state, reason); else handler(state); return; }
+        // 핸들러 없는 호출부의 대체 안내 — 이유별 문구는 자동 대화(automatic.ts)가 맡는다. 중계가 끝낸 것을 감독 화면 탓으로 돌리지 않는다.
+        this.callbacks.onError?.(state === 'paused' ? '감독 화면에서 대화를 잠시 멈췄어요.' : reason ? '음성 중계가 대화를 마쳤어요.' : '감독 화면에서 대화를 끝냈어요.');
         void this.close();
       },
       onClose: () => {
