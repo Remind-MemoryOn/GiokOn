@@ -64,6 +64,9 @@
 3. **Supabase** — 대시보드 Edge Functions → Secrets 에서 `GEMINI_API_KEY` 값을 교체(또는 `supabase secrets set GEMINI_API_KEY=… --project-ref ufkbzpdjomtmxjipmwub`).
    함수 재배포는 보통 필요 없다(시크릿은 호출 때 읽힌다) — 반영이 안 보이면 해당 함수만 재배포.
    같은 화면에서 `GEMINI_LIVE_MODEL`(= `gemini-3.8-live`)도 있는지 확인한다(없으면 코드 기본값).
+   **실호출 확인(cmd)** — 위 목록 확인 뒤, 중계·`live-token` 과 **같은 요청 형식**으로 TTS 합성 · 단기 토큰 · Live 연결 · Live 응답 1턴을 실제로 부른다(키는 숨김 입력, 저장·출력 안 함):
+   `powershell -NoProfile -ExecutionPolicy Bypass -File apps\voice-relay\scripts\gemini-smoke.ps1`
+   → `[OK]` 4줄 + `All checks passed.` · TTS 줄의 header 가 `RIFF`(중계는 WAV 를 기대) · Live 줄에 audio chunks ≥ 1. `[FAIL]` 이면 그 줄의 오류 문구가 원인이다.
 4. **확인** — 앱에서 시험 세션 시작이 되는지(=`live-token` 이 토큰을 줌) · Edge Functions → `live-token` 로그에 `토큰 발급 실패(4xx)`·`GEMINI_API_KEY 시크릿이 설정되지 않았습니다` 가 없는지.
    AI 초안은 기관 스위치가 꺼져 있어(2026-10-04 기준 0곳) Gemini 를 부르지 않는다 — 스위치를 켤 때 `program-journal-draft` 로그를 함께 본다.
 5. **Cloud Run(중계 연결 때)** — Secret Manager 에 **같은 값**으로 `GEMINI_API_KEY` 를 만들고 서비스에 연결(위 표). 확인: 시험 세션에서 AI 음성이 나오는지(TTS) · 중계 로그에 `SYNTHESIS_*` 오류가 없는지.
