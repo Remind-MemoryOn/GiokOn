@@ -59,7 +59,8 @@
    ```
    → 오류 줄 없음 · Live(bidiGenerateContent) 지원 모델이 1개 이상(그 이름이 `GEMINI_LIVE_MODEL` 값 — `models/` 는 빼고) · 이름에 `tts` 가 든 모델(중계 `GEMINI_TTS_MODEL`) ·
    마지막 요청이 `"name": "auth_tokens/…"` 를 돌려줘야 v1beta 단기 토큰이 된다(404 면 `v1alpha` 로 다시 — 코드의 API 버전을 바꿔야 한다).
-   폐기한 옛 키로 첫 요청을 하면 `API_KEY_INVALID` 여야 한다. ⚠️ `gemini-3.8-live`·`gemini-3.8-flash-tts` 이름은 실 API 로 확인된 적이 없다(T24.5) — 이 단계에서 확정한다.
+   폐기한 옛 키로 첫 요청을 하면 `API_KEY_INVALID` 여야 한다. ✅ 2026-10-07 확인: `gemini-3.8-live`·`gemini-3.8-flash-tts` 존재 · v1beta 단기 토큰 발급 성공.
+   ⚠️ 목록에는 `models/` 가 붙어 보이지만 **`GEMINI_LIVE_MODEL` 시크릿에는 `models/` 를 빼고**(`gemini-3.8-live`) 넣는다 — `live-token` 이 앞에 `models/` 를 붙인다(넣으면 `models/models/…` 로 실패).
 3. **Supabase** — 대시보드 Edge Functions → Secrets 에서 `GEMINI_API_KEY` 값을 교체(또는 `supabase secrets set GEMINI_API_KEY=… --project-ref ufkbzpdjomtmxjipmwub`).
    함수 재배포는 보통 필요 없다(시크릿은 호출 때 읽힌다) — 반영이 안 보이면 해당 함수만 재배포.
    같은 화면에서 `GEMINI_LIVE_MODEL`(= `gemini-3.8-live`)도 있는지 확인한다(없으면 코드 기본값).
