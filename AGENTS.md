@@ -62,6 +62,7 @@
   계획과 다르게 구현했으면 그 차이도 같은 자리에 적는다. 이 파일에는 **현재 위치**만 갱신한다.
 - **리팩토링 원칙**(앱·웹 공통, 사용자 확정): 외부 동작·공개 이름·반환 형식·오류 문구 불변 · 의존성 추가 없음 ·
   게이트(`check:design`·`check:figma`)가 소스 문자열로 고정한 코드는 제자리 · 앱의 **비동기 핵심 `src/lib/live/*` 는 제외**.
+- **사용자에게 주는 실행 명령은 Windows cmd 용으로 쓴다(2026-10-07 사용자 요청)** — bash 문법(`$VAR`·`$(…)`·`grep`·`jq`) 대신 `%VAR%`·`for /f`·`findstr`·`curl.exe`, JSON 거르기는 cmd 에서 `powershell -NoProfile -Command "…"` 한 줄로. 런북·README 의 사용자 실행 명령도 같다.
 - **비밀값**: 커밋 금지(`.env` gitignore) · `.env` 등 민감 파일을 읽지 않는다. 원격 세션은 세션 시작 훅이 `.env` 를 만든다
   (`.claude/hooks/session-start.sh` · `.codex/hooks/session-start.sh` **두 벌 — 함께 고친다**). 웹 로컬은 `apps/web/.env`
   (`VITE_SUPABASE_URL`·`VITE_SUPABASE_PUBLISHABLE_KEY`). **앱 변수는 `EXPO_PUBLIC_` 접두사 필수**(Metro 가 그것만 인라인) ·
