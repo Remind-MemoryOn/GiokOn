@@ -3,7 +3,7 @@
 #
 # Calls the real Gemini API with the SAME request shapes the voice stack uses:
 #   1) TTS   - apps/voice-relay/src/output.ts (generateContent, AUDIO_WAV 24kHz, voice Kore)
-#   2) token - supabase/functions/live-token/handler.ts (v1beta auth_tokens + liveConnectConstraints)
+#   2) token - supabase/functions/live-token/handler.ts (v1beta auth_tokens + bidiGenerateContentSetup/fieldMask)
 #   3) Live  - apps/voice-relay/src/relay.ts (BidiGenerateContentConstrained + same setup) -> one text turn
 # The key is read hidden and never written to disk or printed. Cost: one short TTS + one short Live turn.
 # Messages are English on purpose: Windows PowerShell 5.1 reads BOM-less scripts as ANSI.
@@ -17,7 +17,15 @@ $base = 'https://generativelanguage.googleapis.com/v1beta'
 
 function Ok($msg) { Write-Host "[OK]   $msg" -ForegroundColor Green }
 function Fail($msg) { Write-Host "[FAIL] $msg" -ForegroundColor Red; exit 1 }
-function ErrText($e) { if ($e.ErrorDetails -and $e.ErrorDetails.Message) { $e.ErrorDetails.Message } else { $e.Exception.Message } }
+# Prints Google's JSON error body (error.message) - PS 5.1 often leaves it only in the response stream.
+function ErrText($e) {
+  if ($e.ErrorDetails -and $e.ErrorDetails.Message) { return $e.ErrorDetails.Message }
+  try {
+    $r = $e.Exception.Response
+    if ($r) { $s = $r.GetResponseStream(); if ($s.CanSeek) { $s.Position = 0 }; $t = (New-Object IO.StreamReader($s)).ReadToEnd(); if ($t) { return "$($e.Exception.Message) $t" } }
+  } catch {}
+  $e.Exception.Message
+}
 function PostJson($uri, $obj) {
   $bytes = [Text.Encoding]::UTF8.GetBytes(($obj | ConvertTo-Json -Depth 12 -Compress))
   Invoke-RestMethod -Method Post -Uri $uri -Headers @{ 'x-goog-api-key' = $script:key } -ContentType 'application/json; charset=utf-8' -Body $bytes
@@ -54,7 +62,8 @@ try {
       uses = 1
       expireTime = $now.AddMinutes(30).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
       newSessionExpireTime = $now.AddSeconds(90).ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
-      liveConnectConstraints = @{ model = "models/$LiveModel"; config = @{ sessionResumption = @{}; responseModalities = @('AUDIO') } }
+      bidiGenerateContentSetup = @{ model = "models/$LiveModel"; generationConfig = @{ responseModalities = @('AUDIO') }; sessionResumption = @{} }
+      fieldMask = 'model,generationConfig.responseModalities,sessionResumption'
     }
   } catch { Fail "auth_tokens (v1beta): $(ErrText $_)" }
   if (-not $tok.name) { Fail 'auth_tokens: no token name in response' }

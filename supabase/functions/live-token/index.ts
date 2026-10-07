@@ -37,7 +37,7 @@
 //    이 파일을 고칠 때 그 한계를 해결했다고 적지 말 것.
 //
 // 토큰 제약: 1회 사용(uses=1), 신규 세션 시작 90초, 연결 유지 30분 — 재접속
-// (sessionResumption)은 동일 토큰으로 가능하다. `liveConnectConstraints` 로 모델과
+// (sessionResumption)은 동일 토큰으로 가능하다. `bidiGenerateContentSetup`(+`fieldMask`) 로 모델과
 // 모달리티(AUDIO)를 잠가 이 토큰이 다른 모델에 쓰이지 못하게 한다. 모델명은
 // GEMINI_LIVE_MODEL 시크릿으로 결정한다(코드 고정 금지 원칙 — 교체 시 시크릿만 바꾼다).
 //
