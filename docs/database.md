@@ -49,7 +49,7 @@
 
 - `users`(변경): `org_id` **NOT NULL → NULL 허용**(미온보딩·미연결 보호자), `phone text`·`onboarded_at timestamptz` 컬럼 추가.
 - `handle_new_user`(재작업): 기관 자동생성·org_admin 강제 제거 → `(id, name, email)` **최소 insert(org_id NULL)**. 온보딩 완료 전까지 데이터 미노출.
-- `app.complete_onboarding(p_name, p_phone, p_role, p_org_name, p_elder_code)`(RPC, SECURITY DEFINER): caregiver→기관 생성+role=org_admin / guardian→role=guardian, 어르신 코드 있으면 기관 합류+`profile_guardians`(pending). 원자적.
+- `app.complete_onboarding(p_name, p_phone, p_role, p_org_name, p_elder_code)`(RPC, SECURITY DEFINER): caregiver→기관 생성+role=org_admin / guardian→role=guardian, 어르신 코드 있으면 기관 합류+`profile_guardians`(pending). 원자적. → **현행 아님**: 아래 "기관 만들기 · 합류 (2026-09-25 A안)"(요양보호사는 초대 코드 필수 · 지금 함수는 `public.complete_onboarding(..., p_invite_code)`).
 - Edge Function `naver-auth`(신규): **네이버=Supabase 비네이티브** → OAuth 콜백→프로필→Supabase Admin 사용자 매핑·세션. 구글·카카오는 네이티브 `signInWithOAuth`. 네이버 client secret 등 비밀값=서버(secrets) 보관.
 
 어르신 영속 코드 + 요양보호사 배정 재설계(2026-07-22 — 담당 변경/추가 시 데이터 연속성. 마이그레이션 `20260722100000`, 로컬 PG16 검증):
@@ -66,7 +66,7 @@
 
 요양보호사 기관 합류(**승인형**) — `20260722110000`(enum `pending` 추가)·`20260722120000`:
 
-- **온보딩(caregiver)**: 기관명 → 새 기관(org_admin) / 어르신 코드 → **기존 기관 합류 요청**(role=caregiver, org_id 확정, 배정 `status='pending'`). 코드만으로 즉시 권한을 얻지 못한다(보호자 연결과 대칭).
+- **온보딩(caregiver)**: 기관명 → 새 기관(org_admin) / 어르신 코드 → **기존 기관 합류 요청**(role=caregiver, org_id 확정, 배정 `status='pending'`). 코드만으로 즉시 권한을 얻지 못한다(보호자 연결과 대칭). → **현행 아님**: 아래 "기관 만들기 · 합류 (2026-09-25 A안)".
 - `profile_caregivers.status='pending'` 신설: `is_assigned_caregiver`(status='active' 만 인정)에 걸리지 않아 **승인 전 어떤 데이터 접근도 없음**.
 - `approve_caregiver_assignment(p_id)`(RPC): 그 어르신의 **활성 담당** 또는 **org_admin** 이 pending → active. **본인 자가승인 불가**.
 - **자가승인 3중 차단**: (a) UPDATE 정책 강화(본인 행은 'removed' 로만), (b) approve RPC 본인 배제, (c) claim 가드(활성 담당/admin 만). + 본인 배정 self-select 정책(승인 대기 상태 확인용).
@@ -81,7 +81,7 @@
 
 온보딩 단순화 + 음성 STT(`20260722150000` · Edge Function, 2026-07-25):
 
-- `complete_onboarding` 개정: **요양보호사 = 소속 기관명 입력**(새 기관+org_admin)으로 되돌림(어르신 코드 합류 토글 제거 — 코드는 보호자용). 보호자 브랜치(어르신 코드 연결) 유지. 여러 요양보호사 같은 기관 합류(연속성)는 추후 기관 초대 메커니즘으로(런북).
+- `complete_onboarding` 개정: **요양보호사 = 소속 기관명 입력**(새 기관+org_admin)으로 되돌림(어르신 코드 합류 토글 제거 — 코드는 보호자용). 보호자 브랜치(어르신 코드 연결) 유지. 여러 요양보호사 같은 기관 합류(연속성)는 추후 기관 초대 메커니즘으로(런북). → **현행 아님**: 아래 "기관 만들기 · 합류 (2026-09-25 A안)"(기관 초대 코드로 해결됨).
 - ~~Edge Function `stt-transcribe`(CLOVA CSR)~~ — 2026-10-04 삭제(요양일지 음성 입력 폐기 · CLOVA 키 삭제). 되살리려면 동의·권한 규칙부터 다시 설계한다.
 
 파일럿 신규·변경(2026-09-23 기획 변경 — **2026-09-24 부터 마이그레이션 작성 중: D1 ✅ · D3 설정·권한표·역할 부여·직원 합류 ✅ · D4 기관 단위 RLS ✅ · D6 대화 단계·원격 제어·동시 4대 ✅ — 로컬 PG16 검증만, ✅ 운영 적용(2026-09-24)**. 상세·순서: [`pilot-development-plan.md`](plans/pilot-development-plan.md) §5 D1~D10):
@@ -95,7 +95,7 @@
 - `org_settings`(시설 유형·목표 시간·기본 피할 주제·기본 프로그램 유형·기본 장소) · `org_capabilities`(일지 확정·공개 철회·보호자 연결 승인
   **3종만** 역할별 위임) · **`set_member_role(target, role)`** RPC — `users.role` 이 3중으로 잠겨 있어(`20260908000000`) 이 RPC 가 없으면
   새 역할을 가질 방법이 없다(D3).
-- ⚠️ **직원 합류(D3 — 파일럿 블로커)**: 2026-07-25 이후 `complete_onboarding` 은 요양보호사마다 **새 기관 + `org_admin`** 을 만든다.
+- ✅ **직원 합류(D3)** — 해결됨(2026-09-24 초대·승인 · 2026-09-25 A안: 기관명으로 새 기관을 만드는 경로 삭제 — 현행은 아래 "기관 만들기 · 합류"). 당시 문제: 2026-07-25 이후 `complete_onboarding` 은 요양보호사마다 **새 기관 + `org_admin`** 을 만들었다.
   `org_invites`(초대 코드 — `app.generate_invite_code()` 재사용, 합류 후 역할, 만료·회수) · `org_join_requests`(pending) ·
   `approve_org_join`(`org_admin`·`center_director` 만, 자기 요청 불가) 을 추가하고, **`users.org_id` 는 승인 전까지 NULL** 로 둔다 —
   "org_id 가 없으면 데이터 0건" 불변식을 그대로 쓴다. 기존 어르신 단위 배정은 접근 게이트가 아니라 "내 담당" 표시로 남는다.
