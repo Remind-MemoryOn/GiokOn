@@ -44,9 +44,9 @@ describe('Live 단기 토큰 REST 계약', () => {
     const call = api.fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(call[0]).toBe('https://generativelanguage.googleapis.com/v1beta/auth_tokens')
     expect(JSON.parse(call[1].body as string)).toMatchObject({
-      uses: 1, liveConnectConstraints: { model: 'models/synthetic-model', config: {
-        sessionResumption: {}, responseModalities: ['AUDIO'],
-      } },
+      uses: 1, bidiGenerateContentSetup: { model: 'models/synthetic-model',
+        generationConfig: { responseModalities: ['AUDIO'] }, sessionResumption: {},
+      }, fieldMask: 'model,generationConfig.responseModalities,sessionResumption',
     })
   })
 

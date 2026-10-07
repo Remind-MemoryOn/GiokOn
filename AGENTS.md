@@ -62,6 +62,7 @@
   계획과 다르게 구현했으면 그 차이도 같은 자리에 적는다. 이 파일에는 **현재 위치**만 갱신한다.
 - **리팩토링 원칙**(앱·웹 공통, 사용자 확정): 외부 동작·공개 이름·반환 형식·오류 문구 불변 · 의존성 추가 없음 ·
   게이트(`check:design`·`check:figma`)가 소스 문자열로 고정한 코드는 제자리 · 앱의 **비동기 핵심 `src/lib/live/*` 는 제외**.
+- **사용자에게 주는 실행 명령은 Windows cmd 용으로 쓴다(2026-10-07 사용자 요청)** — bash 문법(`$VAR`·`$(…)`·`grep`·`jq`) 대신 `%VAR%`·`for /f`·`findstr`·`curl.exe`, JSON 거르기는 cmd 에서 `powershell -NoProfile -Command "…"` 한 줄로. 런북·README 의 사용자 실행 명령도 같다.
 - **비밀값**: 커밋 금지(`.env` gitignore) · `.env` 등 민감 파일을 읽지 않는다. 원격 세션은 세션 시작 훅이 `.env` 를 만든다
   (`.claude/hooks/session-start.sh` · `.codex/hooks/session-start.sh` **두 벌 — 함께 고친다**). 웹 로컬은 `apps/web/.env`
   (`VITE_SUPABASE_URL`·`VITE_SUPABASE_PUBLISHABLE_KEY`). **앱 변수는 `EXPO_PUBLIC_` 접두사 필수**(Metro 가 그것만 인라인) ·
@@ -171,7 +172,7 @@
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
 **사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) · Vercel 운영 배포 설정(T25.9) ·
-유출 비밀번호 보호 켜기(T25.13) · `GEMINI_LIVE_MODEL` 운영 시크릿 확인 · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
+유출 비밀번호 보호 켜기(T25.13) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — 운영 `live-token` 은 아직 옛 본문이라 중계 배포 뒤 재배포 필수) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
 
 **결정 대기**: 기관 AI 초안 스위치 켜기 · 주황 `#e9822b` 대비(2.73:1 — **배포 직전에 사용자에게 다시 여쭐 것**) · 공단 인정 전제(사람 계획 + AI 진행 + 1인 병렬 감독) ·
 지표 분모·수작업 기준선(D8) · 프로그램 일지·수정 이력 보존 기간(법무) · 서버 재시작까지 견디는 위기 근거 저장(요구 확정 시).

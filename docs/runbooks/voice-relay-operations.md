@@ -47,12 +47,26 @@
 ⚠️ 공유의 대가: 키가 새면 두 곳을 **동시에** 바꿔야 하고, 바꾸는 동안 음성 세션·AI 초안이 함께 멈춘다. 한도·결제는 키가 아니라 Google 프로젝트 단위다(키를 나눠도 공유된다).
 
 1. **발급** — Google AI Studio(또는 Cloud Console → API 및 서비스 → 사용자 인증 정보)에서 같은 Google 프로젝트에 새 키. 가능하면 API 제한을 Generative Language API 로만.
-2. **키 확인(배포 전, 본인 PC)** — 모델 접근이 되는지 본다(키를 명령 이력에 남기지 않게 환경변수로):
-   `curl -s -H "x-goog-api-key: $GEMINI_API_KEY" https://generativelanguage.googleapis.com/v1beta/models | grep -o '"name": *"models/gemini-3.8[^"]*"'`
-   → `gemini-3.8-live`(또는 `GEMINI_LIVE_MODEL` 값)·`gemini-3.8-flash-tts` 가 보여야 한다. 폐기한 옛 키로 같은 요청을 하면 `API_KEY_INVALID` 여야 한다.
+2. **키 확인(배포 전, 본인 PC · Windows cmd)** — 모델 목록은 한 번에 50개까지라 `pageSize=1000` 으로 전부 받는다:
+   ```bat
+   set /p GEMINI_API_KEY=새 Gemini 키 붙여넣기: 
+   curl.exe -s -H "x-goog-api-key: %GEMINI_API_KEY%" "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000" -o "%TEMP%\gemini_models.json"
+   findstr /c:"\"error\"" /c:"\"message\"" "%TEMP%\gemini_models.json"
+   findstr /c:"\"models/" "%TEMP%\gemini_models.json" | findstr /i "live audio tts"
+   powershell -NoProfile -Command "(Get-Content $env:TEMP\gemini_models.json -Raw | ConvertFrom-Json).models | Where-Object { $_.supportedGenerationMethods -contains 'bidiGenerateContent' } | ForEach-Object { $_.name }"
+   curl.exe -s -X POST -H "x-goog-api-key: %GEMINI_API_KEY%" -H "Content-Type: application/json" -d "{\"uses\":1}" "https://generativelanguage.googleapis.com/v1beta/auth_tokens"
+   del "%TEMP%\gemini_models.json" & set GEMINI_API_KEY=
+   ```
+   → 오류 줄 없음 · Live(bidiGenerateContent) 지원 모델이 1개 이상(그 이름이 `GEMINI_LIVE_MODEL` 값 — `models/` 는 빼고) · 이름에 `tts` 가 든 모델(중계 `GEMINI_TTS_MODEL`) ·
+   마지막 요청이 `"name": "auth_tokens/…"` 를 돌려줘야 v1beta 단기 토큰이 된다(404 면 `v1alpha` 로 다시 — 코드의 API 버전을 바꿔야 한다).
+   폐기한 옛 키로 첫 요청을 하면 `API_KEY_INVALID` 여야 한다. ✅ 2026-10-07 확인: `gemini-3.8-live`·`gemini-3.8-flash-tts` 존재 · v1beta 단기 토큰 발급 성공. 단기 토큰 요청의 잠금 필드는 REST 이름 `bidiGenerateContentSetup` + `fieldMask` 다 — SDK 이름 `liveConnectConstraints` 를 보내면 400(2026-10-07 확인·수정). 수정 본문으로 `gemini-smoke.ps1` 4단계(TTS·토큰·Live setup·Live 1턴) 모두 통과(2026-10-07).
+   ⚠️ 목록에는 `models/` 가 붙어 보이지만 **`GEMINI_LIVE_MODEL` 시크릿에는 `models/` 를 빼고**(`gemini-3.8-live`) 넣는다 — `live-token` 이 앞에 `models/` 를 붙인다(넣으면 `models/models/…` 로 실패).
 3. **Supabase** — 대시보드 Edge Functions → Secrets 에서 `GEMINI_API_KEY` 값을 교체(또는 `supabase secrets set GEMINI_API_KEY=… --project-ref ufkbzpdjomtmxjipmwub`).
    함수 재배포는 보통 필요 없다(시크릿은 호출 때 읽힌다) — 반영이 안 보이면 해당 함수만 재배포.
    같은 화면에서 `GEMINI_LIVE_MODEL`(= `gemini-3.8-live`)도 있는지 확인한다(없으면 코드 기본값).
+   **실호출 확인(cmd)** — 위 목록 확인 뒤, 중계·`live-token` 과 **같은 요청 형식**으로 TTS 합성 · 단기 토큰 · Live 연결 · Live 응답 1턴을 실제로 부른다(키는 숨김 입력, 저장·출력 안 함):
+   `powershell -NoProfile -ExecutionPolicy Bypass -File apps\voice-relay\scripts\gemini-smoke.ps1`
+   → `[OK]` 4줄 + `All checks passed.` · TTS 줄의 header 가 `RIFF`(중계는 WAV 를 기대) · Live 줄에 audio chunks ≥ 1. `[FAIL]` 이면 그 줄의 오류 문구가 원인이다.
 4. **확인** — 앱에서 시험 세션 시작이 되는지(=`live-token` 이 토큰을 줌) · Edge Functions → `live-token` 로그에 `토큰 발급 실패(4xx)`·`GEMINI_API_KEY 시크릿이 설정되지 않았습니다` 가 없는지.
    AI 초안은 기관 스위치가 꺼져 있어(2026-10-04 기준 0곳) Gemini 를 부르지 않는다 — 스위치를 켤 때 `program-journal-draft` 로그를 함께 본다.
 5. **Cloud Run(중계 연결 때)** — Secret Manager 에 **같은 값**으로 `GEMINI_API_KEY` 를 만들고 서비스에 연결(위 표). 확인: 시험 세션에서 AI 음성이 나오는지(TTS) · 중계 로그에 `SYNTHESIS_*` 오류가 없는지.
@@ -63,17 +77,18 @@
 아직 올라간 이미지는 없다(CI 는 이미지를 만들지 않는다). 이미지 주소 형식:
 `asia-northeast3-docker.pkg.dev/<GCP 프로젝트 ID>/giokon/voice-relay:<git 커밋 해시>`
 
-```bash
-# 최초 1회
+```bat
+:: 최초 1회 (Windows cmd)
 gcloud artifacts repositories create giokon --repository-format=docker --location=asia-northeast3
 gcloud auth configure-docker asia-northeast3-docker.pkg.dev
 
-# 저장소 루트에서 (마지막 `.` = 빌드 컨텍스트 — 루트 .dockerignore 가 .env·키 파일을 뺀다)
-TAG=$(git rev-parse --short HEAD)
-IMAGE=asia-northeast3-docker.pkg.dev/<프로젝트ID>/giokon/voice-relay:$TAG
-docker build --platform linux/amd64 -f apps/voice-relay/Dockerfile -t "$IMAGE" .
-docker push "$IMAGE"
+:: 저장소 루트에서 (마지막 . = 빌드 컨텍스트 — 루트 .dockerignore 가 .env·키 파일을 뺀다)
+for /f %i in ('git rev-parse --short HEAD') do set TAG=%i
+set IMAGE=asia-northeast3-docker.pkg.dev/<프로젝트ID>/giokon/voice-relay:%TAG%
+docker build --platform linux/amd64 -f apps/voice-relay/Dockerfile -t "%IMAGE%" .
+docker push "%IMAGE%"
 ```
+(`for /f` 는 cmd 창에 직접 칠 때 `%i`, `.bat` 파일 안에서는 `%%i`.)
 
 - `--platform linux/amd64` 필수 — Apple Silicon 에서 빌드하면 ARM 이미지가 되어 Cloud Run 에서 시작하지 못한다.
 - 태그는 `latest` 대신 **커밋 해시** — 떠 있는 코드 확인·롤백용.

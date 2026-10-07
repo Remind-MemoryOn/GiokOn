@@ -62,7 +62,11 @@ describe('live-token — 중계 전용 발급(T23.5)', () => {
     expect((init.headers as Record<string, string>)['x-goog-api-key']).toBe('synthetic-gemini-key')
     const sent = JSON.parse(String(init.body))
     expect(sent.uses).toBe(1)
-    expect(sent.liveConnectConstraints).toEqual({ model: 'models/gemini-3.8-live', config: { sessionResumption: {}, responseModalities: ['AUDIO'] } })
+    // REST 필드명(bidiGenerateContentSetup). SDK 이름(liveConnectConstraints)은 Google 이 400 으로 거절한다.
+    expect(sent.liveConnectConstraints).toBeUndefined()
+    expect(sent.bidiGenerateContentSetup).toEqual({ model: 'models/gemini-3.8-live', generationConfig: { responseModalities: ['AUDIO'] }, sessionResumption: {} })
+    // 잠금은 이 필드들만 — 빠지면 '전부 잠금'이 되어 중계의 systemInstruction·전사 설정이 무시될 수 있다.
+    expect(sent.fieldMask).toBe('model,generationConfig.responseModalities,sessionResumption')
   })
 
   it('still requires the staff JWT on the relay path (credential is added to, not instead of, the user check)', async () => {

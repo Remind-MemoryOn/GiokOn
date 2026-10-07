@@ -13,6 +13,8 @@ export const RELAY_SECRET_HEADER = 'x-relay-secret'
 /** 공유 시크릿 최소 길이 — 이보다 짧으면 설정 오류로 보고 발급하지 않는다(예: `openssl rand -hex 32` = 64자). */
 export const MIN_RELAY_SECRET_LENGTH = 32
 export const AUTH_TOKENS_URL = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens'
+/** 토큰에 잠그는 setup 필드(FieldMask JSON = 쉼표 구분 문자열). 나머지는 중계 setup 값이 쓰인다. */
+export const LOCKED_SETUP_FIELDS = 'model,generationConfig.responseModalities,sessionResumption'
 export const DEFAULT_MODEL = 'gemini-3.8-live'
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -120,8 +122,11 @@ export function createLiveTokenHandler(deps: LiveTokenDeps) {
     }
     if (allowed !== true) return json({ error: '세션 사용 자격을 확인할 수 없습니다.' }, 503)
 
-    // ② ephemeral token 발급 — 설정 잠금(liveConnectConstraints)으로 이 토큰이
-    //    다른 모델·모달리티에 못 쓰게 좁힌다.
+    // ② ephemeral token 발급 — 설정 잠금으로 이 토큰이 다른 모델·모달리티에 못 쓰게 좁힌다.
+    //    REST 필드는 bidiGenerateContentSetup(+fieldMask)다. SDK 의 liveConnectConstraints 는
+    //    SDK 전용 이름이라 REST 로 보내면 400 이다(2026-10-07 실 API 확인).
+    //    fieldMask 를 빼면 '전부 잠금'이 되어 중계가 setup 에서 보내는 systemInstruction·전사·
+    //    수동 VAD 설정이 무시될 수 있다 — 잠글 필드만 명시한다.
     const model = deps.model || DEFAULT_MODEL
     const issuedAt = now()
     const expireTime = new Date(issuedAt + 30 * 60 * 1000).toISOString() // 연결 유지 30분
@@ -136,13 +141,12 @@ export function createLiveTokenHandler(deps: LiveTokenDeps) {
           uses: 1,
           expireTime,
           newSessionExpireTime,
-          liveConnectConstraints: {
+          bidiGenerateContentSetup: {
             model: `models/${model}`,
-            config: {
-              sessionResumption: {},
-              responseModalities: ['AUDIO'],
-            },
+            generationConfig: { responseModalities: ['AUDIO'] },
+            sessionResumption: {},
           },
+          fieldMask: LOCKED_SETUP_FIELDS,
         }),
       })
     } catch (e) {
