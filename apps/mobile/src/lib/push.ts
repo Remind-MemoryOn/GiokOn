@@ -8,8 +8,7 @@
 // 알림 본문에는 어르신 성함·발화가 없다(서버 고정 문구). 잠금화면에 그대로 뜨기 때문이다.
 
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { registerPushToken, revokePushToken } from '@giokon/data';
 
 export type PushRegistration = 'registered' | 'denied' | 'unavailable' | 'failed';
@@ -29,7 +28,7 @@ function enqueue<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
-function installForegroundHandler(): void {
+function installForegroundHandler(Notifications: typeof import('expo-notifications')): void {
   if (handlerInstalled) return;
   handlerInstalled = true;
   // 앱을 보고 있을 때도 배너로 보인다(위기 알림을 놓치지 않게).
@@ -47,13 +46,16 @@ function projectId(): string | undefined {
 /** 이 기기를 이 사용자의 알림 수신처로 등록한다. 같은 사용자로 이미 등록했으면 다시 하지 않는다. */
 export function registerForPush(userId: string): Promise<PushRegistration> {
   return enqueue(async (): Promise<PushRegistration> => {
+    // Expo Go에서는 import 자체가 원격 푸시 경고를 발생시킨다.
+    if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return 'unavailable';
     if (registered?.userId === userId) return 'registered';
     const platform = Platform.OS;
     if (platform !== 'ios' && platform !== 'android') return 'unavailable';
     const id = projectId();
     if (!id) return 'unavailable';
     try {
-      installForegroundHandler();
+      const Notifications = await import('expo-notifications');
+      installForegroundHandler(Notifications);
       // Android 13+ 는 채널이 있어야 권한 요청이 뜬다.
       if (platform === 'android') {
         await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL, {

@@ -215,7 +215,7 @@
 | **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` | ✅ 2026-09-24 — `check:figma` 부재 규칙으로 고정 |
 | **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` | ✅ 2026-09-24 — **PIN**(4자리, 요양보호사별, 서버 미전송, 5회 실패 30초 잠금). 진입은 어르신 화면의 작은 '선생님' 버튼. 설정 화면에서 변경 |
 | **M5** | 원격 제어 수신 — `{relayControl:{state:'paused'}}` → "잠시 쉬어요" 화면 + 마이크 중단 | `src/features/session/` | ✅ 2026-09-24 — 원격 정지 중 현장 재개 불가(사용자 확정), 서버 재개는 2초 폴로 자동 반영 |
-| **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 | ✅ 2026-09-24 — ⚠️ EAS 재빌드 전에는 실기기에 없음. 발송(C4 push-dispatch)은 서버 파트 |
+| **M6** | 푸시 토큰 등록 — `expo-notifications` 권한 → `getExpoPushTokenAsync()` → `push_tokens` upsert. 로그아웃 시 `revoked_at`. ⚠️ `app.json` 플러그인 추가 → **EAS 재빌드 필요** | 신규 | ✅ 2026-09-24 · ✅ 2026-10-11 T27.1 개발 빌드·FCM 파일 연결 준비. ⏳ FCM/APNs 등록·EAS 재빌드·T25.16 실기기 검증. 발송(C4 push-dispatch)은 서버 파트 |
 | **M7** | `persistWholeSession`(폴백) 저장 순서를 `finalizeSession` 과 맞춘다(세션 생성 → 턴·분석 → `ended`). 워커 첫 시도 성공률이 오른다 | `src/data/session-persistence.ts` | ✅ 2026-09-24 — `active` → 턴 → 분석 → 이벤트 → `ended` |
 
 **기기 1대 = 세션 1개는 이미 보장된다** — 중계 `main.ts` 의 `inUse` Set 이 `SESSION_BUSY` 로

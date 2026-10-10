@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({
   os: 'android' as string,
+  environment: 'standalone',
+  loaded: vi.fn(),
   permission: { granted: true, canAskAgain: true },
   requested: { granted: true, canAskAgain: true },
   token: vi.fn(async () => ({ data: 'ExponentPushToken[synthetic]' })),
@@ -12,23 +14,27 @@ const native = vi.hoisted(() => ({
   projectId: 'project' as string | undefined,
 }));
 vi.mock('react-native', () => ({ Platform: { get OS() { return native.os; } } }));
-vi.mock('expo-constants', () => ({ default: { get expoConfig() { return { extra: { eas: { projectId: native.projectId } } }; }, easConfig: null } }));
-vi.mock('expo-notifications', () => ({
-  AndroidImportance: { HIGH: 4 },
-  setNotificationHandler: native.handler,
-  setNotificationChannelAsync: native.channel,
-  getPermissionsAsync: async () => native.permission,
-  requestPermissionsAsync: async () => { native.request(); return native.requested; },
-  getExpoPushTokenAsync: native.token,
-}));
+vi.mock('expo-constants', () => ({ ExecutionEnvironment: { StoreClient: 'storeClient' }, default: { get executionEnvironment() { return native.environment; }, get expoConfig() { return { extra: { eas: { projectId: native.projectId } } }; }, easConfig: null } }));
 vi.mock('@giokon/data', () => ({ registerPushToken: native.register, revokePushToken: native.revoke }));
 
 async function fresh() {
   vi.resetModules();
+  vi.doMock('expo-notifications', () => {
+    native.loaded();
+    return {
+      AndroidImportance: { HIGH: 4 },
+      setNotificationHandler: native.handler,
+      setNotificationChannelAsync: native.channel,
+      getPermissionsAsync: async () => native.permission,
+      requestPermissionsAsync: async () => { native.request(); return native.requested; },
+      getExpoPushTokenAsync: native.token,
+    };
+  });
   return await import('./push');
 }
 beforeEach(() => {
   vi.clearAllMocks(); vi.useRealTimers();
+  native.environment = 'standalone';
   native.os = 'android'; native.projectId = 'project';
   native.permission = { granted: true, canAskAgain: true };
   native.requested = { granted: true, canAskAgain: true };
@@ -37,6 +43,18 @@ beforeEach(() => {
 });
 
 describe('푸시 토큰 등록(M6)', () => {
+  it.each(['android', 'ios'])('Expo Go(%s)는 시작·등록·로그아웃 모두 알림 모듈을 실행하지 않는다', async os => {
+    native.os = os;
+    native.environment = 'storeClient';
+    const push = await fresh();
+    expect(native.loaded).not.toHaveBeenCalled();
+    expect(await push.registerForPush('u1')).toBe('unavailable');
+    await push.revokePushRegistration();
+    expect(native.loaded).not.toHaveBeenCalled();
+    expect(native.token).not.toHaveBeenCalled();
+    expect(native.register).not.toHaveBeenCalled();
+  });
+
   it('권한이 있으면 채널을 만들고 EAS 프로젝트 토큰을 서버 RPC 로 등록한다 — 같은 사용자는 한 번만', async () => {
     const push = await fresh();
     expect(await push.registerForPush('u1')).toBe('registered');

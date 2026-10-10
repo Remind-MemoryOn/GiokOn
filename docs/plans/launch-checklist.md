@@ -132,3 +132,18 @@
 - 사용자 제공 `디자인 수정사항.txt`: 보호자 날짜 필터·연결 어르신 선택·화살표 정렬, 가입 하단 로그인 링크, 읽은 알림 숨김·긴 텍스트 말줄임을 구현했다.
 - 웹 전체 선택 메뉴를 공통 `Select`로 통일했다. 기간 선택은 `PeriodSelect`, 세션/보호자 날짜 필터는 `DateFilter`를 공유한다. 사용자 요청으로 달라진 정렬은 Figma 검사에 사유를 기록했다.
 - 검증: `pnpm -F @giokon/web test:design-feedback` 및 `test:org`·`test:plan`·`test:grade` 통과. 운영 배포는 별도다. 구현 규칙은 `apps/web/AGENTS.md`의 같은 날짜 기록을 따른다.
+
+### 앱 빌드·푸시 개시 조건 (2026-10-11)
+
+- [x] ✅ T27.1 코드: Expo Go import 차단·개발 빌드 의존성·FCM 파일 경로 연결·실기기 preview 분리.
+- [ ] ⏳ 사용할 EAS 환경별 `GOOGLE_SERVICES_JSON` 파일과 앱 공개 설정 등록.
+- [ ] ⏳ Android FCM V1 발송 자격 증명 / iOS APNs·서명 준비.
+- [ ] ⏳ 새 개발 빌드 설치 후 실제 기기에서 음성·푸시 확인.
+- [ ] ⏳ 개발 서버 없는 배포용 빌드에서 T25.16 완료: 전경·백그라운드·미실행 수신, 권한 거부,
+  로그아웃·계정 교체, 잠금화면 민감정보 미노출, 알림 탭 화면 연결(T21.10 후속).
+- [ ] ⏳ T27.2 `expo-audio` 전환 및 재생·중단·위기 즉시 정지 검증 — SDK 55 이상 상향 전.
+
+설정·Windows cmd 실행 절차: `apps/mobile/README.md`. 자격 증명 등록·실제 빌드·배포는 아직 수행하지 않았다.
+
+- [ ] 의존성 보안 감사 재검토: 2026-10-11 `pnpm audit --audit-level high` 미통과(critical 3/high 51).
+  T27.1 전 lockfile도 같은 critical/high 수이며 새 advisory ID는 없음. 수정·영향 판단 후 재검증.

@@ -35,6 +35,9 @@ ios/
 *.p12
 *.key
 *.mobileprovision
+google-services.json
+*firebase-adminsdk*.json
+apps/mobile/credentials/
 
 # Deployment tooling
 .netlify/
