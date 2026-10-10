@@ -147,3 +147,7 @@
 
 - [ ] 의존성 보안 감사 재검토: 2026-10-11 `pnpm audit --audit-level high` 미통과(critical 3/high 51).
   T27.1 전 lockfile도 같은 critical/high 수이며 새 advisory ID는 없음. 수정·영향 판단 후 재검증.
+  → 🔶 2026-10-11 T27.3: 같은 메이저 안의 패치 오버라이드 16개(`pnpm-workspace.yaml`)로 **critical 2 / high 4** 까지 줄임(moderate 13 · low 2).
+  남은 6건 — `tinypool` ×2 critical(vitest 3 → **vitest 4 상향 필요 · T27.4 별도 과제**) · `image-size` ×2(metro, 수정판이 2.x 메이저) ·
+  `node-forge`·`braces`(수정판 없음). 모두 개발·테스트 도구 경로이며 앱 번들에 실리지 않는다(앱 번들에 실리는 유일한 항목이던 `nanoid` 는 이번에 수정).
+  앱 스토어 제출 전 `apps__mobile` 승격 시 이 6건은 예외 근거를 남기거나 상향한다.

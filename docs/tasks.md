@@ -222,6 +222,8 @@
 |---|---|---|
 | T27.1 | Expo Go 알림 import 차단·개발 빌드 기본화·FCM 파일 환경변수 연결·실기기 preview 분리 | **[코드 ✅ · DB — · 배포 ⏳ EAS · 실기기 ⏳ T25.16]** ✅ 2026-10-11. `expo-dev-client` 추가, `GOOGLE_SERVICES_JSON` 연결. ⏳ 환경별 파일 등록·FCM V1 발송 키·iOS APNs·네이티브 재빌드. 실행 절차: `apps/mobile/README.md` |
 | T27.2 | `expo-av` → `expo-audio`: 권한·턴 단위 재생·완료 영수증·즉시 정지 회귀 | ⏳ 별도 코드 과제. SDK 55 이상 업그레이드 전 완료. PCM 수집 모듈은 별도. 실기기 검증 필수 |
+| T27.3 | 의존성 보안 패치 — `pnpm audit` critical/high 를 같은 메이저 안의 패치 버전 오버라이드로 | **[코드 ✅ · DB — · 배포 ⏳ EAS 재빌드 때 반영 · 실기기 —]** ✅ 2026-10-11 — `pnpm-workspace.yaml` overrides 16개(shell-quote·xmldom·brace-expansion·browserslist·compression·js-yaml·nanoid·postcss·source-map-js·svgo·tar·undici). critical 3/high 51 → **2/4**. 검증: frozen-lockfile·typecheck·lint·test·build·check:copy/design/bom/font/figma/audit·`expo install --check`·Android/iOS Metro export. 남은 6건은 T27.4·수정판 없음(`docs/plans/launch-checklist.md`) |
+| T27.4 | vitest 3 → 4 상향(core·data·mobile·voice-relay) — `tinypool` critical 2건 해소 | ⏳ 별도 과제(2026-10-11 사용자 결정). 테스트 실행기 메이저 상향이라 설정·모킹(`vi.mock` 호이스팅·`vi.doMock`) 동작 차이를 확인한다. 테스트에서만 쓰이고 외부 입력을 받지 않는다 |
 
 T25.16의 선행 조건에 T27.1의 자격 증명·빌드 설정을 포함한다. 알림 탭 딥링크(T21.10 후속)도 여전히 선행 조건이다.
 
