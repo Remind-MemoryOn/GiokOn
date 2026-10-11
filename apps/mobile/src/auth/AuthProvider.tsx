@@ -16,7 +16,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState, Linking } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryScope } from '../lib/supabase';
 import {
@@ -31,7 +31,8 @@ import {
 } from '@giokon/data';
 import { AccessMonitor } from './accessMonitor';
 import { loadAccessSnapshot, resetAccessResources } from './accessResources';
-import { receivesCareAlerts, registerForPush, revokePushRegistration } from '../lib/push';
+import { receivesCareAlerts, registerForPush, revokePushRegistration, watchSafetyPushTaps } from '../lib/push';
+import { WEB_ROUTES, webUrl } from '../lib/webUrl';
 
 interface MobileAuthState {
   accessRevision: number;
@@ -66,6 +67,14 @@ const AuthContext = createContext<MobileAuthState>({
   refreshUserRow: async () => null,
 });
 
+
+/** 감독 화면(웹)을 연다 — 웹 주소가 설정되지 않았거나 열지 못하면 어디서 확인할지만 알린다. */
+function openSupervision(): void {
+  const href = webUrl(WEB_ROUTES.supervision);
+  const fallback = () => Alert.alert('안전 확인이 필요해요', '웹의 감독 화면에서 확인해 주세요.');
+  if (!href) { fallback(); return; }
+  Linking.openURL(href).catch(fallback);
+}
 export function AuthProvider({ children }: { children: ReactNode }) {
   const query = useSyncExternalStore(queryScope.subscribe, queryScope.getSnapshot);
   const [session, setSession] = useState<Session | null>(null);
@@ -161,6 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (uid && alerts) void registerForPush(uid);
   }, [uid, alerts]);
+
+  // 안전 알림을 탭하면 감독 화면(웹 W2)을 연다(T21.10 후속). 감독 화면은 휴대폰 브라우저용 웹 화면이라 앱에는 없다.
+  useEffect(() => (alerts ? watchSafetyPushTaps(openSupervision) : undefined), [alerts]);
 
   const authed = Boolean(session);
   const caregiverName = userRow?.name ?? session?.user?.email ?? '요양 보호사';

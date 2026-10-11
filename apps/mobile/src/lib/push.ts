@@ -89,6 +89,49 @@ export function revokePushRegistration(): Promise<void> {
   return Promise.race([revoking, limit]).finally(() => clearTimeout(timer));
 }
 
+type NotificationsModule = typeof import('expo-notifications');
+type TapResponse = { actionIdentifier: string; notification: { request: { identifier: string; content: { data?: unknown } } } };
+
+/** 이미 처리한 알림 탭 — 같은 알림으로 감독 화면을 두 번 열지 않게(재로그인·리마운트). */
+const handledTaps = new Set<string>();
+
+/** 서버 `push-dispatch` 가 보내는 안전 알림인가(`data: { type: 'safety', notificationId }`). */
+export function isSafetyPush(data: unknown): boolean {
+  return typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'safety';
+}
+
+/**
+ * 안전 알림을 탭하면 `onSafetyTap` 을 부른다(T21.10 후속 — T25.16 "알림 탭 → 감독 화면").
+ * 앱이 꺼져 있다가 탭으로 열린 경우(마지막 응답)도 한 번만 처리한다. 알림을 그냥 닫은 동작은 무시한다.
+ * Expo Go 에서는 알림 모듈을 불러오지 않는다(원격 푸시 미지원 — 불러오기만 해도 오류 로그가 난다).
+ * 반환값을 부르면 구독을 끝낸다.
+ */
+export function watchSafetyPushTaps(onSafetyTap: () => void): () => void {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return () => {};
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return () => {};
+  let active = true;
+  let subscription: { remove(): void } | null = null;
+  const handle = (Notifications: NotificationsModule, response: TapResponse | null) => {
+    if (!active || !response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    const { identifier, content } = response.notification.request;
+    if (handledTaps.has(identifier)) return;
+    handledTaps.add(identifier);
+    Notifications.clearLastNotificationResponse();
+    if (isSafetyPush(content.data)) onSafetyTap();
+  };
+  import('expo-notifications')
+    .then(Notifications => {
+      if (!active) return;
+      subscription = Notifications.addNotificationResponseReceivedListener(response => handle(Notifications, response));
+      handle(Notifications, Notifications.getLastNotificationResponse());
+    })
+    .catch(e => { console.info('[giokon] 알림 탭 처리 생략', e instanceof Error ? e.message : e); });
+  return () => {
+    active = false;
+    subscription?.remove();
+  };
+}
+
 /** 알림을 받는 역할 — 돌봄팀(기관 소속). 보호자는 받지 않는다(서버도 등록을 거부한다). */
 export function receivesCareAlerts(row: { role?: string | null; org_id?: string | null } | null): boolean {
   return Boolean(row?.org_id) && ['caregiver', 'org_admin', 'social_worker', 'center_director'].includes(row?.role ?? '');

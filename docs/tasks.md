@@ -69,7 +69,7 @@
 |---|---|---|---|---|
 | T21.8 | `push_tokens` + `notifications.pushed_at` + `notification_kind` 확장(단독 파일) | D2, D7 | — | ✅ 2026-09-24 로컬 — `20260924050000_push_tokens.sql`: `push_tokens`(본인 조회만, 쓰기는 `register_push_token`·`revoke_push_token` RPC — 돌봄팀만 등록, 기기 인계 시 주인 이동) + `notifications.pushed_at`(사용자 변경 불가). `notification_kind` 확장(D2)은 미포함 — 발송 워커와 함께 |
 | T21.9 | 워커 `push-dispatch`(Expo Push) — ⚠️ 본문에 어르신 성함·발화 금지 | C4 | T21.8, T21.4 | **[코드 ✅ · DB ✅ · 배포 ✅ Edge · 실기기 ⏳(EAS 재빌드 뒤 수신)]** ✅ 2026-09-27 — `20260927010000` 운영 적용 · pg_cron 10초 · 워커 v1(비밀값 인증, 운영 401/202 확인) · 고정 문구 · 최대 한 번 · 30분 지난 알림 제외 · 무효 토큰 회수. 안전 알림 수신자 = 담당 배정자 ∪ **세션 진행자**(사용자 결정). ⏳ 실기기 수신은 EAS 재빌드(M6) 후 · 알림 탭 딥링크 |
-| T21.10 | 앱 푸시 토큰 등록 — ⚠️ EAS 재빌드 필요 | M6 | T21.8 | ✅ 2026-09-24 `expo-notifications` — 돌봄팀 로그인 시 권한→토큰→등록, 로그아웃 전 회수(최대 3초). ⚠️ EAS 재빌드 필요 · 알림 탭 딥링크는 C4 발송 문구 확정 후 |
+| T21.10 | 앱 푸시 토큰 등록 — ⚠️ EAS 재빌드 필요 | M6 | T21.8 | ✅ 2026-09-24 `expo-notifications` — 돌봄팀 로그인 시 권한→토큰→등록, 로그아웃 전 회수(최대 3초). ⚠️ EAS 재빌드 필요 · ✅ **알림 탭 → 감독 화면 2026-10-11 코드**: `push.ts` `watchSafetyPushTaps` — 서버 `push-dispatch` 의 `data.type='safety'` 알림을 **탭**(기본 동작)하면 웹 감독 화면(`WEB_ROUTES.supervision` = `/caregiver/supervision`, `EXPO_PUBLIC_WEB_URL`)을 연다 · 앱이 꺼져 있다가 탭으로 열린 경우(마지막 응답)도 한 번 · 같은 알림 다시 열지 않음 · 닫기 동작·다른 종류 무시 · 돌봄팀 로그인 동안만 구독 · Expo Go 는 모듈을 불러오지 않음 · 웹 주소 없음/열기 실패면 '웹의 감독 화면에서 확인해 주세요' 안내. 감독 화면이 웹(휴대폰 브라우저용)에만 있어 앱 화면을 새로 만들지 않았다. 테스트 +6(탭 처리) +10(`webUrl.test.ts` — 앱이 여는 웹 경로가 실제 웹 라우트에 있는지) · 변형 6종 검출. ⏳ EAS 재빌드 뒤 실기기(T25.16) · ⚠️ **웹 파트**: 웹은 로그인 뒤 원래 경로로 돌아가지 않는다(`CaregiverGuard` → `/login`) — 휴대폰 브라우저가 로그인돼 있지 않으면 감독 화면 대신 기본 화면으로 간다(로그인 후 복귀 경로 보존은 웹 과제) |
 
 ### 공통·선결
 | ID | 작업 | 계획 | 의존 | 상태 |
@@ -225,7 +225,7 @@
 | T27.3 | 의존성 보안 패치 — `pnpm audit` critical/high 를 같은 메이저 안의 패치 버전 오버라이드로 | **[코드 ✅ · DB — · 배포 ⏳ EAS 재빌드 때 반영 · 실기기 —]** ✅ 2026-10-11 — `pnpm-workspace.yaml` overrides 16개(shell-quote·xmldom·brace-expansion·browserslist·compression·js-yaml·nanoid·postcss·source-map-js·svgo·tar·undici). critical 3/high 51 → **2/4**. 검증: frozen-lockfile·typecheck·lint·test·build·check:copy/design/bom/font/figma/audit·`expo install --check`·Android/iOS Metro export. 남은 6건은 T27.4·수정판 없음(`docs/plans/launch-checklist.md`) |
 | T27.4 | vitest 3 → 4 상향(core·data·mobile·voice-relay) — `tinypool` critical 2건 해소 | ⏳ 별도 과제(2026-10-11 사용자 결정). 테스트 실행기 메이저 상향이라 설정·모킹(`vi.mock` 호이스팅·`vi.doMock`) 동작 차이를 확인한다. 테스트에서만 쓰이고 외부 입력을 받지 않는다 |
 
-T25.16의 선행 조건에 T27.1의 자격 증명·빌드 설정을 포함한다. 알림 탭 딥링크(T21.10 후속)도 여전히 선행 조건이다.
+T25.16의 선행 조건에 T27.1의 자격 증명·빌드 설정을 포함한다. 알림 탭 → 감독 화면(T21.10 후속)은 2026-10-11 코드 완료 — 검증 전에 휴대폰 브라우저에서 웹에 로그인해 둔다(웹의 로그인 후 복귀는 미구현).
 
 
 T27.1 검증(2026-10-11): 전체 typecheck·lint·test·build 통과(앱 361개 테스트), Android/iOS Metro export 성공.

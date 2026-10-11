@@ -17,6 +17,8 @@ export const WEB_ROUTES = {
   elderAiConsent: '/consents/elder-ai',
   resetPassword: '/reset-password',
   signup: '/signup',
+  /** 감독 화면(W2) — 안전 알림을 탭하면 연다(T21.10 후속). 휴대폰 브라우저용 반응형 화면이다. */
+  supervision: '/caregiver/supervision',
 } as const;
 
 /** 설정되지 않았으면 null — 호출부는 링크 대신 안내 문구를 띄운다. */
