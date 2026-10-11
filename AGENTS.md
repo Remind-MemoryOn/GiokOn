@@ -174,7 +174,7 @@
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
 **사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) · Vercel 운영 배포 설정(T25.9) ·
-유출 비밀번호 보호 켜기(T25.13) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — 운영 `live-token` 은 아직 옛 본문이라 중계 배포 뒤 재배포 필수) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
+~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — 운영 `live-token` 은 아직 옛 본문이라 중계 배포 뒤 재배포 필수) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
 
 **결정 대기**: 기관 AI 초안 스위치 켜기 · 주황 `#e9822b` 대비(2.73:1 — **배포 직전에 사용자에게 다시 여쭐 것**) · 공단 인정 전제(사람 계획 + AI 진행 + 1인 병렬 감독) ·
 지표 분모·수작업 기준선(D8) · 프로그램 일지·수정 이력 보존 기간(법무) · 서버 재시작까지 견디는 위기 근거 저장(요구 확정 시).
