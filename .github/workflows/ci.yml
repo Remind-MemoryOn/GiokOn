@@ -67,6 +67,16 @@ jobs:
         run: docker exec "${{ job.services.postgres.id }}" psql --version
       - name: Supabase 심 적용
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/_supabase_shims.sql
+      - name: 회귀 파일 목록 대조(로컬 러너 ↔ CI — 같은 파일 · 같은 순서)
+        run: |
+          # 로컬 러너에만 있고 CI 에 없는 회귀가 다시 생기지 않게(2026-10-11 — 5개가 CI 에서 빠져 있었다).
+          ci=$(grep -o 'supabase/tests/[a-z_]*\.sql' .github/workflows/ci.yml)
+          runner=$(grep -o '\$HERE/[a-z_]*\.sql' supabase/tests/run-rls-regression.sh | sed 's|\$HERE/|supabase/tests/|')
+          if [ "$ci" != "$runner" ]; then
+            echo "회귀 파일 목록이 다르다 — 왼쪽 CI, 오른쪽 run-rls-regression.sh"
+            diff <(echo "$ci") <(echo "$runner") || true
+            exit 1
+          fi
       - name: 마이그레이션 버전 중복 검사
         run: |
           dup=$(ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1 | sort | uniq -d)
@@ -99,8 +109,20 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/voice_lease.sql
       - name: 어르신 요청 마무리 기록 회귀 테스트(본인만 · 세션당 한 번 · 원문 없음)
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/elder_closing.sql
+      - name: 감사 로그 파기 예약·파기 함수 권한 회귀 테스트(T25.8)
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/audit_retention.sql
+      - name: Storage 사진 정책 회귀 테스트(T25.1 — 경로 함수 · 기관 격리)
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/storage_policies.sql
+      - name: 공개 후 내용 변경 → 자동 공개 해제 회귀 테스트(T25.12)
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/share_auto_revoke.sql
       - name: 제품 이벤트 회귀 테스트(검토 중 고친 칸 이름만 · 서버만 기록 · 운영 권한)
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/product_events.sql
+      # ⚠️ 처리 동의를 철회한다 — 동의가 필요한 다른 회귀보다 뒤(run-rls-regression.sh 와 같은 순서).
+      - name: AI 초안 워커 동의 철회 재확인 회귀 테스트(T25.5)
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/journal_worker_consent.sql
+      # 운영 권한 그대로(authenticated 에 app 스키마 USAGE 없음) — 트랜잭션 안에서 회수하고 되돌린다. 마지막.
+      - name: 운영 권한 경로 회귀 테스트(app USAGE 없음 · 일지 · 권한 위임 · 동의 저장)
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/prod_privileges.sql
 
   security-audit:
     runs-on: ubuntu-latest
