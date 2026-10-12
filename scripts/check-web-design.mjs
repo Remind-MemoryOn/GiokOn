@@ -403,8 +403,11 @@ const SCREENS = [
 
   // ── 정밀 대조(figma-audit)로 확정한 실측 규칙 ─────────────────────────
   // 이 값들은 `pnpm -F @giokon/web figma:audit` 이 Figma 좌표와 1:1로 재서 확정했다.
-  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 라벨 x=118(아이콘 28+26+20) · 로그아웃 하단 86 · nav shrink-0(겹침 방지)', [
-    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /mb-\[86px\]/, /flex shrink-0 flex-col gap-\[22px\]/,
+  // 2026-10-12 사용자 확정: 로그아웃은 Figma 의 하단 86 대신 **브라우저 창 맨 아래**(사이드바를 상단바 아래 창 높이로 고정).
+  [`${WEB}/src/components/shell/Sidebar.tsx`, '사이드바: 라벨 x=118(아이콘 28+26+20) · 로그아웃 창 맨 아래(여백 32 · 최소 간격 22) · nav shrink-0(겹침 방지)', [
+    /ml-\[28px\]/, /ml-\[20px\] text-w-nav/, /flex shrink-0 flex-col gap-\[22px\]/,
+    /sticky top-\[122px\] z-30 flex h-\[calc\(100vh-122px\)\]/, /self-start overflow-y-auto/,
+    /min-h-\[22px\] flex-1/, /mb-\[32px\] ml-\[72px\]/,
   ]],
   [`${WEB}/src/components/Layout.tsx`, '셸: 본문 세로 flex(하단 고정) · 하단 여백 88', [
     /flex min-w-0 flex-1 flex-col pb-\[88px\]/,
