@@ -234,3 +234,17 @@ copy·BOM·font·figma·design 및 frozen-lockfile 설치 통과. Expo Go 차단
 의존성 감사는 미통과: 현재 critical 3/high 51/moderate 24/low 3. 변경 전 lockfile과 대조 시
 새 advisory ID는 없고 critical/high 수는 동일하다. 출시 전 기존 의존성 보안 과제에서 재검토해야 하며,
 이번에는 SDK·테스트 도구를 임의 상향하지 않았다.
+
+
+### T27.1 후속 — Android 개발 실행 오류 (2026-10-12)
+
+✅ 코드·설정: 모바일 지원 플랫폼을 Android/iOS로 명시해 웹 번들 오실행 차단.
+`pnpm android`를 `expo run:android`로 변경(빌드·설치), `pnpm start -c`는 설치 후 개발 서버 실행.
+원인: 개발 APK 미설치와 지원하지 않는 모바일 웹의 `react-native-web` 의존성 부재가 각각 발생했다.
+로컬 JDK 17·Android SDK 지정 방법은 앱 README에 기록.
+추가로 실제 빌드에서 Windows CMake/Ninja 경로 제한을 확인했다. pnpm 가상 저장소를 루트 `.pnpm`(폴더 최대 32자)으로 옮기고,
+Windows 전용 Expo 플러그인으로 CMake 중간 산출물 경로를 단축했다. 의존성 버전·lockfile 변경 없음.
+
+✅ 검증: frozen-lockfile 설치, 전체 typecheck·lint·test·build, copy·design·BOM·font·figma 게이트,
+Android/iOS Metro export 통과. Android 네이티브 빌드 성공, 에뮬레이터 `emulator-5554`에 `kr.giokon.app` 설치 및 개발 클라이언트 열기 완료.
+⏳ 실제 태블릿 음성·푸시·안전 체인(T25.16)은 중계 배포·FCM/APNs 자격 증명·배포용 빌드 준비 후 검증한다.

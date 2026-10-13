@@ -3,6 +3,7 @@
     "name": "기억온",
     "slug": "giok-on",
     "scheme": "giokon",
+    "platforms": ["android", "ios"],
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -37,6 +38,7 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-notifications",
+      "./plugins/withWindowsCmake",
       [
         "expo-build-properties",
         {

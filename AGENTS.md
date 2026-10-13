@@ -143,6 +143,7 @@
 - **RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(항상 `'/'`) → 중계 주소는 `relay-config.ts` 정규식으로 판정. Node 테스트는 통과하니 속지 말 것.
 - **"오늘" 날짜는 `seoulDate()`(core)** — `new Date().toISOString().slice(0, 10)` 은 UTC 라 한국 00:00~08:59 에 전날이 된다(T25.7). 기기 시간대와도 무관하게 한국 날짜.
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
+- **Windows Android 빌드**: pnpm 가상 저장소는 루트 `.pnpm`, 폴더 최대 32자(긴 CMake 경로 방지). `apps/mobile/plugins/withWindowsCmake.js`가 Windows CMake 중간 산출물 경로도 단축한다. 기존 네이티브 폴더에는 `expo prebuild --platform android --no-install`로 반영. 설치 경로 변경 후 Android `build/generated/autolinking/autolinking.json` 캐시를 재생성한다.
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
 - **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 ·
   `live/player.ts` 는 `expo-file-system/legacy` · `expo-notifications` 등 네이티브 모듈 추가는 **EAS 재빌드 필요** ·
@@ -154,7 +155,7 @@
 - `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 네이버 로그인 함수 주소 파생에만 쓰인다(`social.ts`).
 - "현재 화면에서 호출하지 않는다" ≠ "서버가 허용해도 된다" — 권한 있는 사용자의 직접 API 요청으로 가능한 경로는 서버 계약 결함으로 다룬다.
 
-## 현재 위치 (2026-10-11)
+## 현재 위치 (2026-10-12)
 
 **완료된 큰 묶음**(상세·날짜는 `docs/tasks.md`): 권한 재설계(기관 단위·역할·합류) · 대화 단계·원격 제어·동시 4대 · 앱 직접 모드 제거·어르신 표시 모드·PIN ·
 프로그램 일지(D5) + 자동 초안 워커(C4) · 안전 알림 체인(중계 즉시 기록 T21.4 · 푸시 T21.9) · 웹 W1~W9 · 앱·웹 리팩토링 · 웹 선택 메뉴 통일(2026-09-28 사용자 디자인 수정).
@@ -170,7 +171,7 @@
 - 앱: ~~T21.11·T21.12 앱 문구~~(✅ 2026-10-06 — 중계 종료 이유 `time_limit`·`elder_closing` 별 안내 · 모르는 이유는 중립 문구 · EAS 재빌드에 싣는다).
 - 공통: ~~T24.4 동의 버전 단일화~~(✅ 2026-10-06 코드 — `public.current_consent_version()` · 운영 적용 2026-10-07) · ~~T24.2 제품 이벤트~~(✅ 2026-10-06 코드 — 최소 범위: 일지 확인 대기 중 사람이 고친 칸 이름만 서버가 기록 · `20261006010000` 운영 적용 2026-10-07 · 지표 계산은 분모 결정 뒤) · ~~T25.10 문서 현행화~~(✅ 2026-10-07 — 온보딩 옛 서술에 현행 표시 · W6/W9 현행·이력 분리 · `docs/tasks.md` 상태 단계 범례 `[코드 · DB · 배포 · 실기기]`). 남은 코드 과제는 T24.5(🟡 gemini-3.8 재검증 — 자동 테스트·실 API 미검증)와 T27.2(expo-audio 전환, SDK 55 상향 전)이고, 나머지는 배포·실기기(사용자 작업)·결정 대기.
 - 앱: 안전 알림 탭 → 웹 감독 화면(T21.10 후속 ✅ 2026-10-11 코드 · EAS 재빌드 뒤 실기기). 웹 로그인 후 원래 경로 복귀는 웹 과제로 남음.
-- 앱 개발 환경: T27.1 코드 준비 완료. 기본 실행은 개발 빌드, Expo Go는 화면 확인용. Firebase 앱 설정은 EAS 파일 변수 `GOOGLE_SERVICES_JSON`으로 연결(공개 앱 변수 아님). 자격 증명·재빌드·수신 검증은 대기. 절차는 `apps/mobile/README.md`. 의존성 감사: T27.3 패치 오버라이드(`pnpm-workspace.yaml`)로 critical 2/high 4 — 남은 tinypool 은 T27.4(vitest 4, 별도) · image-size·node-forge·braces 는 개발 도구·수정판 없음.
+- 앱 개발 환경: T27.1 코드 준비 완료. 기본 실행은 개발 빌드, Expo Go는 화면 확인용. 모바일 플랫폼은 Android/iOS만. 최초 설치는 `pnpm android`, 설치 후 `pnpm start -c`(로컬 JDK 17 필요). Firebase 앱 설정은 EAS 파일 변수 `GOOGLE_SERVICES_JSON`으로 연결(공개 앱 변수 아님). 자격 증명·재빌드·수신 검증은 대기. 절차는 `apps/mobile/README.md`. 의존성 감사: T27.3 패치 오버라이드(`pnpm-workspace.yaml`)로 critical 2/high 4 — 남은 tinypool 은 T27.4(vitest 4, 별도) · image-size·node-forge·braces 는 개발 도구·수정판 없음.
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
 **사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) · Vercel 운영 배포 설정(T25.9) ·

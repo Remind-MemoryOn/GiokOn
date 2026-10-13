@@ -130,3 +130,49 @@ PCM 수집 모듈 `react-native-live-audio-stream`은 별개이며 이번 변경
 
 참고: [FCM 설정](https://docs.expo.dev/push-notifications/fcm-credentials/),
 [개발 빌드](https://docs.expo.dev/develop/development-builds/introduction/).
+
+
+### Android 시작 오류 구분 (2026-10-12)
+
+`pnpm start -c`는 JS 개발 서버를 시작하고 캐시를 비운다. 개발 앱을 빌드하거나 설치하지 않는다.
+`No development build (kr.giokon.app)`은 선택한 기기에 개발 APK가 없다는 뜻이다.
+최초 설치·네이티브 의존성 변경 후에는 Android Studio에서 에뮬레이터를 켜고 아래를 실행한다.
+
+```cmd
+cd apps\mobile
+set "JAVA_HOME=C:\Program Files\Java\jdk-17"
+set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
+pnpm exec expo prebuild --platform android --no-install
+pnpm android
+```
+
+JDK 경로는 자신의 JDK 17 설치 위치에 맞춘다. 이 PC의 기본 Java는 26, Android Studio 내장 Java는 25여서
+SDK 54의 Gradle 8.14.3용으로 설치된 JDK 17을 명시했다. 위 환경변수는 현재 터미널에만 적용된다.
+`pnpm android`는 개발 APK 빌드·설치·실행을 수행한다. 다음부터는 `pnpm start -c` 후 `a`로 Android를 연다.
+Firebase 파일을 준비했다면 앞 절의 `GOOGLE_SERVICES_JSON` 경로도 설정하고 네이티브 설정을 재생성한다.
+파일 없이 로컬 개발 앱을 만들 수 있지만 원격 푸시 검증은 완료할 수 없다.
+
+모바일은 `platforms: ["android", "ios"]`로 명시했다. `w`는 사용하지 않는다.
+브라우저 관리 웹은 별도 `apps/web`이며 저장소 루트의 `pnpm web`으로 실행한다.
+모바일 웹 의존성을 추가해 음성 앱을 브라우저용으로 전환하지 않는다.
+
+
+Windows 네이티브 빌드의 긴 경로 문제를 피하려고 저장소 `pnpm-workspace.yaml`에서
+`virtualStoreDir: .pnpm`, `virtualStoreDirMaxLength: 32`를 사용한다(의존성 버전은 그대로).
+이 설정을 처음 받은 뒤에는 저장소 루트에서 `pnpm install --frozen-lockfile`을 실행하고 기존 Metro를 재시작한다.
+Windows에서는 `plugins/withWindowsCmake.js`가 네이티브 모듈의 CMake 중간 산출물도
+Android 프로젝트 아래 짧은 공통 경로에 둔다. 기존 네이티브 폴더에는 `prebuild`로 설정을 반영한다.
+이미 Android 빌드를 시도했다면 옛 의존성 경로가 남은 자동 연결 캐시만 제거한 뒤 재빌드한다:
+
+```cmd
+cd apps\mobile
+if exist android\build\generated\autolinking\autolinking.json del android\build\generated\autolinking\autolinking.json
+pnpm exec expo prebuild --platform android --no-install
+pnpm android
+```
+
+`.pnpm/`은 설치 산출물이므로 커밋하지 않는다. `build.ninja still dirty after 100 tries`가 발생하면
+경로 길이와 자동 연결 캐시에 옛 경로가 남았는지 먼저 확인한다.
+
+✅ 2026-10-12: JDK 17로 Android 개발 APK 빌드 성공, 로컬 에뮬레이터에 `kr.giokon.app` 설치 확인.
+Android/iOS Metro export도 통과했다. ⏳ 실제 태블릿의 음성·푸시·안전 체인 검증(T25.16)은 별도다.

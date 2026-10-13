@@ -2,6 +2,10 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Windows CMake/Ninja의 250자 경로 제한: 의존성 실제 경로를 짧게 유지한다.
+virtualStoreDir: .pnpm
+virtualStoreDirMaxLength: 32
+
 # pnpm 10부터 버전 오버라이드는 package.json 의 "pnpm.overrides" 가 아니라 여기에 둔다.
 # (구 위치는 무시되며 [WARN] "pnpm.overrides" ignored 경고가 난다.)
 overrides:
