@@ -18,7 +18,12 @@ const LEVELS = ['critical', 'high'];
 /** 배포되는 워크스페이스 — 이 경로에 걸리면 막는다. */
 const BLOCKING = 'apps__web';
 
-const res = spawnSync('pnpm', ['audit', '--json'], {
+// Windows의 pnpm.cmd는 실행 파일이 아니므로 cmd를 통해 고정 명령을 실행한다.
+const command = process.platform === 'win32' ? 'cmd.exe' : 'pnpm';
+const args = process.platform === 'win32'
+  ? ['/d', '/s', '/c', 'pnpm audit --json']
+  : ['audit', '--json'];
+const res = spawnSync(command, args, {
   encoding: 'utf8',
   maxBuffer: 64 * 1024 * 1024,
 });
@@ -26,7 +31,7 @@ const res = spawnSync('pnpm', ['audit', '--json'], {
 const raw = (res.stdout || '').trim();
 if (!raw) {
   console.error('✗ pnpm audit 출력을 읽지 못했습니다.');
-  console.error(res.stderr?.slice(0, 500) ?? '');
+  console.error(res.error?.message ?? res.stderr?.slice(0, 500) ?? '');
   process.exit(2);
 }
 
@@ -39,7 +44,13 @@ try {
   process.exit(2);
 }
 
-const advisories = Object.values(report.advisories ?? {}).filter((a) =>
+// 레지스트리 실패 JSON을 "취약점 0건"으로 오인하지 않는다.
+if (!report || report.error || !report.advisories || typeof report.advisories !== 'object' || Array.isArray(report.advisories)) {
+  console.error('✗ pnpm audit 결과에 유효한 advisories가 없습니다.');
+  process.exit(2);
+}
+
+const advisories = Object.values(report.advisories).filter((a) =>
   LEVELS.includes(a.severity),
 );
 
