@@ -1,5 +1,8 @@
 # 출시 점검표 — 파일럿 → 정식 출시
 
+> ✅ 2026-10-15 Android EAS Gradle 실패 수정: Reanimated의 필수 네이티브 peer `react-native-worklets@0.5.1`을 앱 직접 의존성으로 선언했다(override만으로는 앱 루트의 Gradle resolve가 보장되지 않음). `.gitignore`·`.vercelignore` 보강, 저장소 루트 `.easignore` 추가. EAS 실제 업로드 사본에서 소스·워크스페이스 보존 및 비밀/캐시/네이티브 산출물 파일 제외 확인. ⏳ 새 APK 클라우드 빌드 결과와 실기기 T25.16은 별도 확인.
+
+
 > ✅ 2026-10-15 EAS 앱 전용 프로젝트 연결: `@memoryon/giokon-mobile` · ID `00151025-03f4-47bd-b481-85577b7dd17e`. Expo 실제 소유자 식별자는 소문자 `memoryon`이며 `eas project:info`로 접근·일치를 확인했다. 기존 다른 용도 프로젝트는 변경하지 않았다. 패키지명 `kr.giokon.app` 유지. ⏳ 새 프로젝트의 preview 환경변수·Firebase 파일·FCM V1·서명·APK 빌드·실기기 검증은 별도다.
 
 

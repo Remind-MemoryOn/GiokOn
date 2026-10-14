@@ -145,7 +145,7 @@
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
 - **Windows Android 빌드**: pnpm 가상 저장소는 루트 `.pnpm`, 폴더 최대 32자(긴 CMake 경로 방지). `apps/mobile/plugins/withWindowsCmake.js`가 Windows CMake 중간 산출물 경로도 단축한다. 기존 네이티브 폴더에는 `expo prebuild --platform android --no-install`로 반영. 설치 경로 변경 후 Android `build/generated/autolinking/autolinking.json` 캐시를 재생성한다.
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
-- **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 ·
+- **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 + 앱 직접 의존성 필수(override만 두면 EAS Gradle이 찾지 못함) ·
   `live/player.ts` 는 `expo-file-system/legacy` · `expo-notifications` 등 네이티브 모듈 추가는 **EAS 재빌드 필요** ·
   `react-native-live-audio-stream@1.1.1` 의 New Architecture 호환은 실기기 미검증. RN 상향은 typecheck 가 아니라 **Metro 번들(Android·iOS) 성공**으로 증명한다.
 - **번들 ID 변경 시** EAS·구글/카카오/네이버 콘솔의 패키지명·키해시·URL 스킴도 갱신해야 한다(사용자 작업).
