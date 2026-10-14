@@ -100,5 +100,5 @@ deliverables/
 /deliverables/
 
 # Repository history and submission reference documents are not build inputs.
-/.git/
+/.git
 /submissions/
