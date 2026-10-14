@@ -1,5 +1,8 @@
 # 작업 목록
 
+> **2026-10-14 파일럿 개시 준비 갱신**: ✅ PR #55 병합·확정 기록 보호 운영 반영 확인, 기관 AI 초안 활성화. ✅ 사용자 결정: Android 직원 사전 검증부터, 주황색은 이번 파일럿 현행 유지. ⏳ 공유 시크릿 양쪽 등록·live-token 배포, Firebase/FCM·preview 설정·배포 APK·실기기 T25.16. 이전 대기 표보다 [최신 실행 기록](plans/2026-10-14-pilot-readiness.md)을 우선한다.
+
+
 ## 출시 전 코드 재검토 (2026-10-13 · T28)
 
 검토·수정 근거: [`plans/2026-10-13-final-code-review.md`](plans/2026-10-13-final-code-review.md).
