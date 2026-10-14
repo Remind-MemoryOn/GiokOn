@@ -134,7 +134,7 @@ export function analyzeSession(
   const metrics: ObservationMetrics = {
     elderTurns: elderTurns.length,
     aiTurns: aiTurns.length,
-    responseRate: aiTurns.length > 0 ? round2(answered / aiTurns.length) : 0,
+    responseRate: aiTurns.length > 0 ? round2(Math.min(1, answered / aiTurns.length)) : 0,
     participation: elderTurns.length > 0 ? round2(rich / elderTurns.length) : 0,
     avgUtteranceChars: elderTurns.length > 0 ? Math.round(totalChars / elderTurns.length) : 0,
   }
