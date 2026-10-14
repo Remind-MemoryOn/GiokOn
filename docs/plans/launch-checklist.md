@@ -1,5 +1,8 @@
 # 출시 점검표 — 파일럿 → 정식 출시
 
+> **2026-10-14 파일럿 개시 준비 갱신**: ✅ PR #55 병합·확정 기록 보호 운영 반영 확인, 기관 AI 초안 활성화. ✅ 사용자 결정: Android 직원 사전 검증부터, 주황색은 이번 파일럿 현행 유지. ⏳ 공유 시크릿 양쪽 등록·live-token 배포, Firebase/FCM·preview 설정·배포 APK·실기기 T25.16. 이전 대기 표보다 [최신 실행 기록](2026-10-14-pilot-readiness.md)을 우선한다.
+
+
 > 📌 2026-09-24 정리: `web-launch.md`(웹 배포) · `app-release-remaining.md`(앱 배포 잔여) · `app-release-plan.md`(앱 배포 계획) ·
 > `runbooks/go-live-external-setup.md`(외부 설정) 네 문서를 합쳤다. 끝난 작업·폐기된 요양일지 점검·중복 항목은 걷어 냈고
 > 원문은 git 이력에 있다. 무엇을 만들지는 [`pilot-development-plan.md`](pilot-development-plan.md) 가 SoT 다.
