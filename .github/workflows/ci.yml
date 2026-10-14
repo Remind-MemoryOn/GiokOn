@@ -16,6 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  tooling-regression:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/check-audit.test.mjs
+
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -101,6 +113,17 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/elder_closing.sql
       - name: 제품 이벤트 회귀 테스트(검토 중 고친 칸 이름만 · 서버만 기록 · 운영 권한)
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/product_events.sql
+      - name: 감사 기록 보존·Storage 기관 격리·공개 자동 철회 회귀
+        run: |
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/audit_retention.sql
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/storage_policies.sql
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/share_auto_revoke.sql
+      - name: 확정 일지 상위 삭제·Storage 변조 회귀
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/finalized_journal_integrity.sql
+      - name: 워커 동의 철회·운영 스키마 권한 회귀(동의 철회는 마지막)
+        run: |
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/journal_worker_consent.sql
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/prod_privileges.sql
 
   security-audit:
     runs-on: ubuntu-latest

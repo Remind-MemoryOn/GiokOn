@@ -40,19 +40,24 @@ export function LineChart({
     >
       {series.map((s, si) => {
         const color = webPalette.series[si % webPalette.series.length];
-        const pts = s.points
-          .map((v, i) => (v == null ? null : ([x(i), y(v)] as const)))
-          .filter((p): p is readonly [number, number] => p !== null);
+        const points = s.points.map((v, i) => (v == null ? null : ([x(i), y(v)] as const)));
+        const segments: (readonly [number, number])[][] = [[]];
+        points.forEach((point) => {
+          if (point == null) segments.push([]);
+          else segments[segments.length - 1].push(point);
+        });
+        const pts = segments.flat();
         return (
           <g key={s.label}>
-            {pts.length > 1 ? (
+            {segments.filter((segment) => segment.length > 1).map((segment, i) => (
               <polyline
-                points={pts.map(([px, py]) => `${px},${py}`).join(' ')}
+                key={i}
+                points={segment.map(([px, py]) => `${px},${py}`).join(' ')}
                 fill="none"
                 stroke={color}
                 strokeWidth={2}
               />
-            ) : null}
+            ))}
             {pts.map(([px, py]) => (
               <circle key={`${px}-${py}`} cx={px} cy={py} r={5.5} fill={color} />
             ))}

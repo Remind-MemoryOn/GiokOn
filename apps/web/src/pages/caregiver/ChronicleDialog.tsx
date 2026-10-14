@@ -19,7 +19,7 @@ import {
   useCurrentUser,
   useUpdateChronicle,
 } from '@giokon/data';
-import { CHRONICLE_TOPICS } from '@giokon/core';
+import { CHRONICLE_TOPICS, seoulDate } from '@giokon/core';
 import { asset } from '../../assets/ui';
 import { useStore } from '../../store/store';
 import { useModalA11y } from '../../lib/modalA11y';
@@ -99,7 +99,7 @@ export function ChronicleDialog({ mode }: { mode: 'add' | 'edit' }) {
       initial={{
         source: row?.source ?? 'caregiver',
         topic: row?.topic ?? CHRONICLE_TOPICS[0],
-        recordedAt: (row?.recorded_at ?? new Date().toISOString()).slice(0, 10),
+        recordedAt: seoulDate(row?.recorded_at ? new Date(row.recorded_at) : new Date()),
         title: row?.title ?? '',
         content: row?.content ?? '',
         keywords: row?.keywords ?? [],
@@ -109,12 +109,13 @@ export function ChronicleDialog({ mode }: { mode: 'add' | 'edit' }) {
         if (!elderId) return;
         if (!v.title.trim()) return toast('error', '제목을 입력해 주세요.');
         if (!v.content.trim()) return toast('error', '내용을 입력해 주세요.');
+        if (!v.recordedAt) return toast('error', '기록일을 선택해 주세요.');
         const patch = {
           topic: v.topic,
           title: v.title.trim(),
           content: v.content.trim(),
           keywords: v.keywords,
-          recorded_at: new Date(`${v.recordedAt}T00:00:00`).toISOString(),
+          recorded_at: new Date(`${v.recordedAt}T00:00:00+09:00`).toISOString(),
         };
         const done = {
           onSuccess: () => {

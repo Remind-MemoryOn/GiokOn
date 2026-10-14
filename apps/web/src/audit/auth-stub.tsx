@@ -183,10 +183,12 @@ function seedSessionList(q: typeof queryClient) {
   const analysisList =
     /^\/guardian\/analysis\/sessions$/.test(p) || /\/caregiver\/analysis\/[^/]+\/sessions$/.test(p);
   if (!analysisList && !/\/caregiver\/sessions\//.test(p)) return;
+  // 기간을 고르는 목록은 시간이 지나도 시안의 3행을 검사하도록 상대 날짜를 쓴다.
+  const listDate = (fixed: string, days: number) => analysisList ? iso(days) : fixed;
   q.setQueryData(queryKeys.sessions(E1), [
-    { ...session('s1', E1, 14, 'ended', '2026-07-30T03:00:00Z'), title: '어린 시절 집 이야기' },
-    { ...session('s2', E1, 12, 'ended', '2026-07-19T03:00:00Z'), title: '어머니와 함께했던 기억' },
-    { ...session('s3', E1, 9, analysisList ? 'ended' : 'active', '2026-07-10T03:00:00Z'), title: '학창 시절 친구 이야기' },
+    { ...session('s1', E1, 14, 'ended', listDate('2026-07-30T03:00:00Z', 0)), title: '어린 시절 집 이야기' },
+    { ...session('s2', E1, 12, 'ended', listDate('2026-07-19T03:00:00Z', 11)), title: '어머니와 함께했던 기억' },
+    { ...session('s3', E1, 9, analysisList ? 'ended' : 'active', listDate('2026-07-10T03:00:00Z', 20)), title: '학창 시절 친구 이야기' },
     // 세션 설계 흐름 시험(?audit-plan=1, 파일럿 W5) — 10분을 넘게 설계돼 있던 예정 세션 1건.
     ...(new URLSearchParams(window.location.search).get('audit-plan')
       ? [{ ...session('sp-old', E1, 0, 'planned', '2026-07-31T03:00:00Z'), title: '옛 설계', goal: '고향 이야기', duration_minutes: 30, avoid_topics: '병원' }]
@@ -239,7 +241,7 @@ function seedConversation(q: typeof queryClient) {
       metrics: { aiTurns: 7, elderTurns: 7, responseRate: 0.85, avgUtteranceChars: 62, participation: 0.78 },
       topicsEngaged: ['고향', '가족'],
       topicsLow: [],
-      topicOutcomes: [{ topic: '고향', reaction: 'engaged', turns: 4 }],
+      topicOutcomes: [{ topic: '고향', reaction: 'engaged', elderTurns: 4 }],
       interestKeywords: ['어린 시절', '감나무', '추억', '가족'],
       recommendedTopics: ['가족'],
     },
@@ -312,7 +314,7 @@ function seedAnalyses(q: typeof queryClient) {
         },
         topicsEngaged: engaged,
         topicsLow: TOPICS.slice(4),
-        topicOutcomes: TOPICS.slice(0, 3).map((t) => ({ topic: t, reaction: 'engaged', turns: 3 })),
+        topicOutcomes: TOPICS.slice(0, 3).map((t) => ({ topic: t, reaction: 'engaged', elderTurns: 3 })),
         interestKeywords: ['어린 시절', '고향', '가족', '추억', '친구'].slice(0, 3 + (i % 3)),
         recommendedTopics: ['가족'],
       },
@@ -587,6 +589,11 @@ function seed() {
   q.setQueryData(queryKeys.profiles, ELDERS);
   q.setQueryData(queryKeys.currentUser, USER);
   q.setQueryData(queryKeys.organization, ORG);
+  q.setQueryData(queryKeys.orgSettings, {
+    org_id: ORG.id, facility_type: 'nursing_home', target_minutes: 10, default_avoid_topics: [],
+    default_program_type: '인지활동 - 회상훈련', default_location: null,
+    ai_drafts_enabled: false, updated_at: '2026-09-01T00:00:00Z', updated_by: null,
+  });
   q.setQueryData(queryKeys.sessionCounts, { total: 3, byProfile: { e1: 1, e2: 1, e3: 1 } });
   q.setQueryData(queryKeys.chronicleCounts, {
     total: 2,

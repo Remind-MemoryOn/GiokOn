@@ -5,7 +5,8 @@ const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
   status: [] as unknown[], change: null as null | ((state:string)=>void),
   input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
   opener:vi.fn(async():Promise<unknown>=>({text:'고향은 어디세요?',audioChunksB64:['pcm']})),
-  control:vi.fn(async()=> 'running'), remote:null as null | ((state:'paused'|'ended')=>void),
+  control:vi.fn(async()=> 'running'), remote:null as null | ((state:'paused'|'ended',reason?:'elder_closing')=>void),
+  submit:vi.fn(async()=>({status:'ok' as const,text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']})),
   play:vi.fn(async()=> 'completed'), listen:vi.fn(async()=>{}), close:vi.fn(async()=>{}) }));
 vi.mock('react',async original=>({...await original<typeof import('react')>(),
   useEffect:(effect:()=>void|(()=>void))=>{native.effects.push(effect);},
@@ -19,19 +20,21 @@ vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version,getSessi
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
 vi.mock('./mic',()=>({ensureMicPermission:async()=>true}));
 vi.mock('./engine',()=>({closeLiveEngine:native.cancel,
-  acquireLiveEngine:async(_key:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void;onRemoteControl:(state:'paused'|'ended')=>void},_session:unknown,context:unknown)=>{
+  acquireLiveEngine:async(_key:unknown,callbacks:{onError:(message:string)=>void;onDraftFinal:(text:string)=>void;onDraftInterrupted:(text:string)=>void;onRemoteControl:(state:'paused'|'ended',reason?:'elder_closing')=>void},_session:unknown,context:unknown)=>{
     native.contexts.push(context);
     native.input=callbacks.onDraftFinal; native.failure=callbacks.onError;
     native.partial=callbacks.onDraftInterrupted; native.remote=callbacks.onRemoteControl;
     return {requestContinuation:native.continuation,requestOpener:native.opener,
-      submitUserTurn:async()=>({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']}),
+      submitUserTurn:native.submit,
       playTurn:native.play,startListening:native.listen,isListening:true,close:native.close};
   }}));
-import { DEFAULT_APPEARANCE, VOICE_FAILURE_MESSAGES } from '@giokon/core';
+import { DEFAULT_APPEARANCE, ELDER_CLOSING_FAREWELL, VOICE_FAILURE_MESSAGES } from '@giokon/core';
 import { useApp } from '../../store/appStore';
 import { useAutomaticConversation } from './useAutomaticConversation';
 beforeEach(()=>{
   vi.clearAllMocks(); native.contexts=[]; native.effects=[];native.status=[];native.input=null;native.change=null;native.version.mockResolvedValue(1);
+  native.submit.mockReset().mockResolvedValue({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']});
+  native.play.mockReset().mockResolvedValue('completed');
   useApp.getState().beginSession({id:'e',name:'테스트',birthYear:1940,avatarColor:'#fff',appearance:DEFAULT_APPEARANCE,createdAt:'',updatedAt:''},[],{title:'테스트',therapyType:'reminiscence'});
   useApp.getState().attachRemoteSession('remote');
 });
@@ -209,4 +212,97 @@ it('감독 화면 원격 일시정지를 받아 멈추고, 서버(session_tick) 
     expect(native.status.at(-1)).not.toMatchObject({remote:true});
     if (cleanup) cleanup();
   } finally { vi.useRealTimers(); }
+});
+
+it.each(['오늘은 그만하고 싶어', '듣기 싫어요'])('finishes %s through the relay farewell and never opens another capture', async text => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0]();
+  await view.start();
+  let finish!: (result: string) => void;
+  native.submit.mockResolvedValueOnce({status:'ok',text:ELDER_CLOSING_FAREWELL,chunksB64:['pcm']});
+  native.play.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  native.input!(text);
+  await vi.waitFor(() => expect(native.play).toHaveBeenCalledTimes(2));
+  expect(native.submit).toHaveBeenCalledExactlyOnceWith(text);
+  expect(useApp.getState().active!.safety).toMatchObject({recommendation:'end_session',caregiverAlert:null});
+  expect(useApp.getState().active!.turns.at(-1)?.text).toBe(ELDER_CLOSING_FAREWELL);
+  expect(native.close).not.toHaveBeenCalled();
+  finish('completed');
+  await vi.waitFor(() => expect(useApp.getState().active!.playbackByTurnId?.[useApp.getState().active!.turns.at(-1)!.id]?.result).toBe('completed'));
+  expect(native.listen).toHaveBeenCalledOnce();
+  native.remote!('ended','elder_closing');
+  await vi.waitFor(() => expect(native.status.at(-1)).toMatchObject({phase:'stopped'}));
+  await view.resume();
+  expect(native.contexts).toHaveLength(1);
+  expect(native.listen).toHaveBeenCalledOnce();
+  if (cleanup) cleanup();
+});
+
+it('rejects an ordinary model response when only the fixed farewell is allowed', async () => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0](); await view.start();
+  native.input!('듣기 싫어요');
+  await vi.waitFor(() => expect(native.status.at(-1)).toMatchObject({phase:'stopped'}));
+  expect(native.submit).toHaveBeenCalledOnce();
+  expect(native.play).toHaveBeenCalledOnce();
+  expect(useApp.getState().active!.turns.at(-1)?.speaker).toBe('Elderly');
+  if (cleanup) cleanup();
+});
+
+it.each(['죽고 싶어요','너무 힘들어서 못 견디겠어 그만할래'])('still stops immediately without asking for a farewell for %s', async text => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0](); await view.start();
+  native.input!(text);
+  await vi.waitFor(() => expect(native.status.at(-1)).toMatchObject({phase:'stopped'}));
+  expect(native.submit).not.toHaveBeenCalled();
+  expect(native.play).toHaveBeenCalledOnce();
+  expect(useApp.getState().active!.safety.caregiverAlert).toBeTruthy();
+  if (cleanup) cleanup();
+});
+
+it('allows ordinary grief to receive a response while preserving the comfort recommendation across pause and resume', async () => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0](); await view.start();
+  native.input!('고향의 골목이 그리워요.');
+  await vi.waitFor(() => expect(native.listen).toHaveBeenCalledTimes(2));
+  expect(useApp.getState().active!.safety).toMatchObject({recommendation:'comfort',caregiverAlert:null});
+  await view.pause(); await view.resume();
+  expect(native.contexts).toHaveLength(2);
+  expect(native.listen).toHaveBeenCalledTimes(3);
+  if (cleanup) cleanup();
+});
+
+it('keeps a completed farewell receipt when the relay ends before playback resolves', async () => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0](); await view.start();
+  native.submit.mockResolvedValueOnce({status:'ok',text:ELDER_CLOSING_FAREWELL,chunksB64:['pcm']});
+  native.play.mockImplementationOnce(async () => {
+    native.remote!('ended', 'elder_closing');
+    return 'completed';
+  });
+  native.input!('듣기 싫어요');
+  await vi.waitFor(() => {
+    const active = useApp.getState().active!;
+    expect(active.playbackByTurnId?.[active.turns.at(-1)!.id]?.result).toBe('completed');
+  });
+  expect(native.status.at(-1)).toMatchObject({phase:'stopped'});
+  expect(native.listen).toHaveBeenCalledOnce();
+  if (cleanup) cleanup();
+});
+
+it('never resumes or adopts a late farewell after a pause while closing', async () => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0](); await view.start();
+  let answer!: (value: {status:'ok';text:string;chunksB64:string[]}) => void;
+  native.submit.mockImplementationOnce(() => new Promise(resolve => { answer = resolve; }));
+  native.input!('오늘은 그만하고 싶어');
+  await vi.waitFor(() => expect(native.submit).toHaveBeenCalledOnce());
+  await view.pause(); await view.resume();
+  answer({status:'ok',text:ELDER_CLOSING_FAREWELL,chunksB64:['pcm']});
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(native.status.at(-1)).toMatchObject({phase:'stopped'});
+  expect(native.play).toHaveBeenCalledOnce();
+  expect(native.contexts).toHaveLength(1);
+  expect(useApp.getState().active!.turns.at(-1)?.speaker).toBe('Elderly');
+  if (cleanup) cleanup();
 });

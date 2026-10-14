@@ -27,10 +27,18 @@ const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const calls = [];
+  let finalJournalState = 'none';
   await page.route('https://**/*', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (url.pathname.endsWith('/rest/v1/program_journals') && req.method() === 'GET') {
+      calls.push('inspect:final');
+      return route.fulfill({ status: finalJournalState === 'error' ? 500 : 200,
+        contentType: 'application/json', headers: cors,
+        body: JSON.stringify(finalJournalState === 'error' ? { message: 'synthetic inspection failure' }
+          : finalJournalState === 'final' ? [{ id: 'final-journal' }] : []) });
+    }
     if (url.pathname.includes('/storage/v1/object/list/')) {
       calls.push(`list:${url.pathname.split('/').pop()}`);
       return route.fulfill({ contentType: 'application/json', headers: cors, body: '[]' });
@@ -55,14 +63,33 @@ try {
   assert.equal(calls.length, 0);
   assert.match(page.url(), /\/caregiver\/elders\/e1$/);
 
-  // ② 확인하면 Storage 파일(사진·일지 사진) → 프로필 행 순서로 파기하고 목록으로 간다
+  // ② 확정 일지 또는 확인 실패면 파일을 건드리기 전에 멈춘다.
+  finalJournalState = 'final';
+  await page.getByRole('button', { name: '어르신 정보 삭제하기' }).click();
+  await dialog.getByRole('button', { name: '삭제' }).click();
+  await page.getByText('확정된 프로그램 일지가 있어 삭제할 수 없어요. 기록 파기는 운영자에게 요청해 주세요.').waitFor();
+  assert.deepEqual(calls, ['inspect:final']);
+  assert.match(page.url(), /\/caregiver\/elders\/e1$/);
+  await go('/caregiver/elders/e1');
+  calls.length = 0;
+  finalJournalState = 'error';
+  await page.getByRole('button', { name: '어르신 정보 삭제하기' }).click();
+  await dialog.getByRole('button', { name: '삭제' }).click();
+  await page.getByText('확정 일지 여부를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.').waitFor();
+  assert.deepEqual(calls, ['inspect:final']);
+  assert.match(page.url(), /\/caregiver\/elders\/e1$/);
+  await go('/caregiver/elders/e1');
+  calls.length = 0;
+  finalJournalState = 'none';
+
+  // ③ 확인하면 확정 여부 → Storage 파일(사진·일지 사진) → 프로필 행 순서로 파기하고 목록으로 간다
   await page.getByRole('button', { name: '어르신 정보 삭제하기' }).click();
   await dialog.getByRole('button', { name: '삭제' }).click();
   await page.waitForURL(/\/caregiver\/elders$/);
   await page.getByText('어르신 정보를 삭제했어요.').waitFor();
-  assert.deepEqual(calls, ['list:elder-photos', 'list:journal-photos', 'delete:eq.e1']);
+  assert.deepEqual(calls, ['inspect:final', 'list:elder-photos', 'list:journal-photos', 'delete:eq.e1']);
 
-  console.log('PASS: 어르신 삭제 — 확인창(취소 시 무동작) · 파일 → 행 순서 파기 · 목록 복귀. 합성 API 만 사용.');
+  console.log('PASS: 어르신 삭제 — 취소 시 무동작 · 확정 일지/조회 실패 시 파일 보존 · 확인 → 파일 → 행 순서 파기 · 목록 복귀. 합성 API 만 사용.');
 } finally {
   await browser.close();
   await new Promise((resolve) => server.httpServer.close(resolve));

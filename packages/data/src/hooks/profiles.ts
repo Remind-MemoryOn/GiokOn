@@ -18,6 +18,8 @@ import type { ProfileRow, TablesInsert, TablesUpdate } from '../database.types'
 export type ProfileInsert = TablesInsert<'profiles'>
 export type ProfileUpdate = TablesUpdate<'profiles'>
 
+const FINAL_JOURNAL_DELETE_MESSAGE = '확정된 프로그램 일지가 있어 삭제할 수 없어요. 기록 파기는 운영자에게 요청해 주세요.'
+
 /** 담당 어르신 목록(최신순). enabled=false로 유휴화 가능(미설정 클라이언트 보호). */
 export function useProfiles(options?: { enabled?: boolean }): UseQueryResult<ProfileRow[]> {
   return useQuery({
@@ -99,11 +101,12 @@ export function useUpdateProfile(): UseMutationResult<
 }
 
 /**
- * 어르신 삭제 — 그 어르신에 딸린 **모든 정보**를 함께 파기한다.
+ * 어르신 삭제 — 확정 일지가 없는 어르신의 정보를 함께 파기한다.
  *
  * DB 는 profiles 를 지우면 연대기·세션·대화·분석·동의·안전 이벤트·요양일지·코드·
  * 배정·공유가 FK cascade 로 함께 사라진다. 하지만 **Storage 객체는 cascade 되지
- * 않아** 사진만 남았다(감사 지적). 그래서 파일을 먼저 지운다.
+ * 않아** 사진만 남았다(감사 지적). 확정 기록이 없는지 먼저 확인하고 파일을 지운다.
+ * 확정 일지가 있으면 승인된 운영자 파기 절차로 처리한다(DB 가 cascade 도 차단).
  *
  * ⚠️ 순서를 바꾸면 안 된다: Storage 삭제 정책이 경로의 profile_id 로 profiles 를
  * 조회해 기관을 확인하므로, 행을 먼저 지우면 파일을 지울 권한이 사라진다.
@@ -112,6 +115,16 @@ export function useDeleteProfile(): UseMutationResult<string, Error, string> {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: string) => {
+      const { data: finalJournals, error: inspectionError } = await getGiokonClient()
+        .from('program_journals')
+        .select('id')
+        .eq('profile_id', id)
+        .eq('status', 'final')
+        .limit(1)
+      if (inspectionError || !finalJournals) {
+        throw new Error('확정 일지 여부를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.')
+      }
+      if (finalJournals.length) throw new Error(FINAL_JOURNAL_DELETE_MESSAGE)
       await purgeElderFiles(id)
       // delete()만 호출하면 RLS로 대상 행이 보이지 않거나 이미 삭제된 경우에도
       // PostgREST가 오류 없이 0건 삭제로 응답할 수 있다. 삭제된 id를 돌려받아 실제
@@ -122,7 +135,10 @@ export function useDeleteProfile(): UseMutationResult<string, Error, string> {
         .eq('id', id)
         .select('id')
         .maybeSingle()
-      if (error) throw new Error(error.message)
+      if (error) {
+        throw new Error(error.message === 'JOURNAL_FINAL_DELETE_FORBIDDEN'
+          ? FINAL_JOURNAL_DELETE_MESSAGE : error.message)
+      }
       if (!data) {
         throw new Error('삭제 권한이 없거나 이미 삭제된 어르신입니다. 목록을 새로고침해 주세요.')
       }

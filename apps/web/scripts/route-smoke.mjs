@@ -47,7 +47,7 @@ async function startPreview() {
   // ⚠️ `new URL().pathname` 은 Windows 에서 `/C:/...` 이라 cwd 로 못 쓴다 → fileURLToPath.
   const child = spawn(
     process.execPath,
-    ['./node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'],
+    ['./node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'],
     { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore', detached: false },
   );
   for (let i = 0; i < 60; i++) {
@@ -139,7 +139,8 @@ const CASES = [
 const executablePath =
   process.env.CHROMIUM_PATH ??
   (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch(executablePath ? { executablePath } : {});
+const browser = await chromium.launch(executablePath ? { executablePath }
+  : process.platform === 'win32' ? { channel: 'msedge' } : {});
 const page = await browser.newPage();
 
 // ── 배포 헤더를 그대로 씌워 CSP 를 **실제로 시험한다** ──────────────────────

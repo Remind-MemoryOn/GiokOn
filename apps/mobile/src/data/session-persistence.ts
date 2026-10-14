@@ -21,6 +21,7 @@
 //     과거 미저장 묶음의 일괄 저장 경로도 현재 DB 동의 검사를 통과해야 한다.
 
 import { useCallback } from 'react';
+import { randomUUID } from 'expo-crypto';
 import {
   getGiokonClient,
   queryKeys,
@@ -283,6 +284,8 @@ async function finalizeSession(b: FinishedSessionBundle, userId: string, lease: 
 
 /** 진행 중 동기화가 겹치지 않도록 하는 간단한 잠금(턴이 빨리 이어져도 중복 쓰기 방지). */
 const syncing = new Set<string>();
+/** Keep one insert identity across retries/rerenders without retaining finished sessions. */
+const instantSessionIds = new WeakMap<object, string>();
 
 /**
  * 세션 실행 ↔ DB 브리지.
@@ -313,21 +316,49 @@ export function useSessionPersistence(): {
     const a = useApp.getState().active;
     if (!a || a.remoteId) return a?.remoteId ? null : 'failed';
     try {
-      const row = await withRetry(lease, async () => {
-        const { data, error } = await getGiokonClient()
-          .from('sessions')
-          .insert({
-            profile_id: a.elder.id,
-            user_id: user.id,
-            status: 'active',
-            turn_count: a.turns.length,
-            current_topic: a.currentTopic,
-            // started_at 은 보내지 않는다 — 실행 중 세션의 시작 시각은 서버가 정한다(T25.18, 보내도 무시된다).
-          })
-          .select('id')
-          .single();
-        if (error) throw policyRejection(error.message) ?? new Error(error.message);
+      const sessionId = instantSessionIds.get(a.session) ?? randomUUID();
+      instantSessionIds.set(a.session, sessionId);
+      const recover = async () => {
+        lease.assertCurrent();
+        const { data, error } = await getGiokonClient().from('sessions')
+          .select('id,profile_id,user_id,status,paused_at,ended_at')
+          .eq('id', sessionId).eq('user_id', user.id).eq('profile_id', a.elder.id).maybeSingle();
+        lease.assertCurrent();
+        if (error) throw new Error(error.message);
+        if (data && (data.id !== sessionId || data.user_id !== user.id || data.profile_id !== a.elder.id ||
+            data.status !== 'active' || data.paused_at !== null || data.ended_at !== null))
+          throw new PolicyRejection('already_started');
         return data;
+      };
+      const row = await withRetry(lease, async () => {
+        const existing = await recover();
+        if (existing) return existing;
+        lease.assertCurrent();
+        try {
+          const { data, error } = await getGiokonClient()
+            .from('sessions')
+            .insert({
+              id: sessionId,
+              profile_id: a.elder.id,
+              user_id: user.id,
+              status: 'active',
+              turn_count: a.turns.length,
+              current_topic: a.currentTopic,
+              // started_at 은 보내지 않는다 — 실행 중 세션의 시작 시각은 서버가 정한다(T25.18, 보내도 무시된다).
+            })
+            .select('id')
+            .single();
+          lease.assertCurrent();
+          if (error) throw policyRejection(error.message) ?? new Error(error.message);
+          if (data?.id !== sessionId) throw new Error('SESSION_CREATE_RESPONSE_INVALID');
+          return data;
+        } catch (error) {
+          // The insert may have committed even when its response was lost.
+          // Recover this exact attempt, including after the final retry.
+          const existing = await recover();
+          if (existing) return existing;
+          throw error;
+        }
       });
       if (useApp.getState().active?.session.id !== a.session.id) return 'failed';
       useApp.getState().attachRemoteSession(row.id);

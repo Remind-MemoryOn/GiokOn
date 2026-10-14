@@ -103,7 +103,7 @@ export function observationSummary(elderName: string, shares: TopicShare[]): str
     .slice(0, 2)
     .map((t) => t.label)
     .join('·')
-  return `${elderName} 어르신은 ${top} 이야기에 특히 자주 응답하셨어요. 대화 참여가 꾸준히 이어지고 있으며, 관심 주제가 조금씩 넓어지는 모습이 관찰됩니다.`
+  return `${elderName} 어르신은 ${top} 이야기에 특히 자주 응답하셨어요.`
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -179,6 +179,11 @@ function axisValues(analyses: SessionAnalysis[]): Record<ObservationAxis, number
 /** ISO 문자열을 `YYYY-MM` 으로. */
 function monthKey(iso: string): string {
   return iso.slice(0, 7)
+}
+
+/** 분석 화면의 현재 기간 경계 — 관찰 집계와 같은 1개월 = 30일 기준. */
+export function withinObservationPeriod(iso: string, months = 3, now = new Date()): boolean {
+  return new Date(iso).getTime() > now.getTime() - months * 30 * 86400000
 }
 
 /**

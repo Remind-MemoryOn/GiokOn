@@ -26,7 +26,6 @@ import {
   useAllSessions,
   useElder,
   useElderAnalyses,
-  useElderLogs,
   useElderSessions,
 } from '../../src/data/reads';
 import {
@@ -117,7 +116,6 @@ export default function Topics() {
   const overallTrend = useOverallTopicTrend(months);
   const elderSessions = useElderSessions(elderId);
   const allSessions = useAllSessions();
-  const logs = useElderLogs(elderId);
 
   const isElder = Boolean(elder);
   const topics = isElder ? elderObs.topics : overall.topTopics;
@@ -131,7 +129,6 @@ export default function Topics() {
   const { mentions, engagedRate, avgMinutes, keywords } = topicStats({
     focusTopic: focus?.label,
     analyses,
-    logs,
     sessions,
   });
 

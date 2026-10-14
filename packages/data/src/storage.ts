@@ -33,10 +33,13 @@ export async function purgeBucketFolder(bucket: string, profileId: string): Prom
     if (error) throw new Error(error.message)
     const names = (data ?? []).map((f) => `${profileId}/${f.name}`)
     if (names.length === 0) return removed
-    const { error: rmError } = await storage.remove(names)
+    const { data: deleted, error: rmError } = await storage.remove(names)
     if (rmError) throw new Error(rmError.message)
-    removed += names.length
-    if (names.length < LIST_PAGE) return removed
+    // RLS 가 삭제를 막으면 오류 없이 빈 배열이 돌아올 수 있다. 같은 첫 페이지를
+    // 무한히 반복하거나 요청한 개수를 실제 파기 개수로 보고하지 않는다.
+    if (!deleted?.length) throw new Error('삭제할 수 없는 사진이 있어 파기를 중단했어요. 운영자에게 문의해 주세요.')
+    removed += deleted.length
+    if (names.length < LIST_PAGE && deleted.length === names.length) return removed
   }
 }
 
