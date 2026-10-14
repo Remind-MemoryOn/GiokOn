@@ -99,7 +99,7 @@
   (**잠금화면 고정 문구 + 알림 id 만** — 성함·발화·위기 종류 금지).
 - **파일럿 운영 규칙(2026-09-24·28 사용자 확정)**: 세션 1회 최대 **10분**(일시정지 포함) · 요양보호사 1명당 동시 **4대** ·
   어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`, 세로 고정).
-- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app` · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
+- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app`(공개 — 시크릿 창 확인) · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
 - **Gemini 키는 하나를 두 곳에 같은 값으로(2026-10-04 사용자 결정 — 10-01 의 키 분리를 바꿈)**: Supabase Edge 시크릿(`live-token`·`session-report`·`program-journal-draft` — **지우지 않는다**) + Cloud Run Secret Manager(중계 TTS). 교체는 두 곳 동시 — 절차는 `docs/runbooks/voice-relay-operations.md` "Gemini 키 교체". TTS 는 중계가 부른다(Edge 로 옮기지 않음).
 
 ## Supabase 운영
