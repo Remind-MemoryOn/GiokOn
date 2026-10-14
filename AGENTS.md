@@ -99,7 +99,7 @@
   (**잠금화면 고정 문구 + 알림 id 만** — 성함·발화·위기 종류 금지).
 - **파일럿 운영 규칙(2026-09-24·28 사용자 확정)**: 세션 1회 최대 **10분**(일시정지 포함) · 요양보호사 1명당 동시 **4대** ·
   어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`, 세로 고정).
-- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web`) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
+- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app` · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
 - **Gemini 키는 하나를 두 곳에 같은 값으로(2026-10-04 사용자 결정 — 10-01 의 키 분리를 바꿈)**: Supabase Edge 시크릿(`live-token`·`session-report`·`program-journal-draft` — **지우지 않는다**) + Cloud Run Secret Manager(중계 TTS). 교체는 두 곳 동시 — 절차는 `docs/runbooks/voice-relay-operations.md` "Gemini 키 교체". TTS 는 중계가 부른다(Edge 로 옮기지 않음).
 
 ## Supabase 운영
@@ -174,7 +174,7 @@
 - 앱 개발 환경: T27.1 코드 준비 완료. 기본 실행은 개발 빌드, Expo Go는 화면 확인용. 모바일 플랫폼은 Android/iOS만. 최초 설치는 `pnpm android`, 설치 후 `pnpm start -c`(로컬 JDK 17 필요). Firebase 앱 설정은 EAS 파일 변수 `GOOGLE_SERVICES_JSON`으로 연결(공개 앱 변수 아님). 자격 증명·재빌드·수신 검증은 대기. 절차는 `apps/mobile/README.md`. 의존성 감사: T27.3 패치 오버라이드(`pnpm-workspace.yaml`)로 critical 2/high 4 — 남은 tinypool 은 T27.4(vitest 4, 별도) · image-size·node-forge·braces 는 개발 도구·수정판 없음.
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
-**사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) · Vercel 운영 배포 설정(T25.9) ·
+**사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) ·
 ~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — 운영 `live-token` 은 아직 옛 본문이라 중계 배포 뒤 재배포 필수) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
 
 **결정 대기**: 기관 AI 초안 스위치 켜기 · 주황 `#e9822b` 대비(2.73:1 — **배포 직전에 사용자에게 다시 여쭐 것**) · 공단 인정 전제(사람 계획 + AI 진행 + 1인 병렬 감독) ·
