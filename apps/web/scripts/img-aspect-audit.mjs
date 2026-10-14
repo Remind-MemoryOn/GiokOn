@@ -18,8 +18,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-const SPEC = '/tmp/giokon-audit/spec.json';
+const SPEC = join(process.env.AUDIT_OUT || join(tmpdir(), 'giokon-audit'), 'spec.json');
 const TOLERANCE = 0.03; // 비율 3%
 
 async function freePort() {
@@ -55,7 +57,7 @@ if (SELF) {
   }
   child = spawn(
     process.execPath,
-    ['./node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-audit', '--port', String(PORT), '--strictPort'],
+    ['./node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--outDir', 'dist-audit', '--port', String(PORT), '--strictPort'],
     { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore' },
   );
   let up = false;
@@ -79,7 +81,8 @@ const routes = [...new Set(JSON.parse(readFileSync(SPEC, 'utf8')).map((s) => s.r
 
 const exe = process.env.CHROMIUM_PATH
   || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch(exe ? { executablePath: exe } : {});
+const browser = await chromium.launch(exe ? { executablePath: exe }
+  : process.platform === 'win32' ? { channel: 'msedge' } : {});
 const page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
 
 const bad = new Map();
