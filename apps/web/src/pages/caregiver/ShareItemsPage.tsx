@@ -107,6 +107,7 @@ export function ShareItemsPage() {
   // 공개 기록 설정 모달(146:422) — 항목 단위로 무엇을 공개할지 고른다.
   // `?settings=<항목 id>` 로 바로 열 수 있다(딥링크 · 정밀 대조).
   const [setting, setSetting] = useState<ShareTarget | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   /** 비공개 전환 확인 대상 — 되돌릴 수 없어 확인을 받는다(네이티브 confirm 금지). */
   const [revoking, setRevoking] = useState<Item | null>(null);
   /** 목록 정렬 — 시안은 '최신순' 하나만 그렸지만 표시 전용이라 아무 일도 하지 않았다
@@ -187,6 +188,8 @@ export function ShareItemsPage() {
   const settingsParam = search.get('settings');
   const open = setting ?? (settingsParam ? (items.find((i) => i.id === settingsParam) ?? null) : null);
   const openPhotos = useProgramJournalPhotos(open?.type === 'journal' ? open.id : undefined);
+  const settingsLoadError = Boolean(open) && (shares.isError || (open?.type === 'journal' && openPhotos.isError));
+  const settingsLoading = Boolean(open) && !settingsLoadError && (!shares.isSuccess || (open?.type === 'journal' && !openPhotos.isSuccess));
   const openPhotoUrls = useJournalPhotoUrls((openPhotos.data ?? []).map((p) => p.path), true);
   /** 모달의 처음 체크 상태 = 지금 공개돼 있는 것 그대로. */
   const openInitial = useMemo(() => {
@@ -215,7 +218,8 @@ export function ShareItemsPage() {
     picked: { type: ShareItemType; id: string; checked: boolean }[],
     notify: boolean,
   ) {
-    if (!elderId || !me.data?.id) return;
+    if (!elderId || !me.data?.id || settingsLoading || settingsLoadError || savingSettings) return;
+    setSavingSettings(true);
     try {
       for (const p of picked) {
         const cur = activeShare.get(shareKey(p.type, p.id));
@@ -234,9 +238,12 @@ export function ShareItemsPage() {
         }
       }
       setSetting(null);
+      if (settingsParam) setSearch(tab === 'all' ? {} : { tab }, { replace: true });
       toast('success', '공개 설정을 저장했어요.');
     } catch (e) {
       toast('error', journalErrorMessage(e));
+    } finally {
+      setSavingSettings(false);
     }
   }
   /**
@@ -260,6 +267,10 @@ export function ShareItemsPage() {
   }
 
   async function revokeAll(item: Item) {
+    if (!shares.isSuccess || (item.type === 'journal' && !allPhotos.isSuccess)) {
+      toast('error', '공개된 사진 정보를 먼저 확인해 주세요.');
+      return;
+    }
     const rows = liveSharesOf(item);
     if (!rows.length || !me.data?.id) return;
     try {
@@ -426,7 +437,7 @@ export function ShareItemsPage() {
                     type="button"
                     data-fx={i === 0 ? '142:791' : undefined}
                     onClick={() => setRevoking(item)}
-                    disabled={noRevoke}
+                    disabled={noRevoke || !shares.isSuccess || (item.type === 'journal' && !allPhotos.isSuccess) || revoke.isPending}
                     title={noRevoke ? '공개 철회 권한이 없어요(기관 권한 위임 표)' : undefined}
                     className="absolute h-[57px] w-[152px] rounded-[10px] border border-accent bg-white text-w-sub font-semibold leading-[30px] text-accent disabled:opacity-50"
                     style={{ left: 909, top: Y(top + 145.76) }}
@@ -516,7 +527,10 @@ export function ShareItemsPage() {
         photos={openPhotos.data ?? []}
         photoUrls={openPhotoUrls.data}
         initial={openInitial}
-        pending={publish.isPending}
+        pending={savingSettings}
+        loading={settingsLoading}
+        loadError={settingsLoadError}
+        onRetry={() => { void shares.refetch(); if (open?.type === 'journal') void openPhotos.refetch(); }}
         onPublish={(pick) => void onPublishPicked(pick.items, pick.notifyOnView)}
       />
     </div>

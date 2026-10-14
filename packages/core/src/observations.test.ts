@@ -13,10 +13,22 @@ import {
   axisAverage,
   describeSessionTraits,
   observationSummary,
+  withinObservationPeriod,
 } from './observations'
 import { DEFAULT_APPEARANCE } from './types'
 import type { SessionAnalysis } from './analysis'
 import type { ChronicleEntry, ConversationTurn, ElderProfile, Session } from './types'
+
+describe('withinObservationPeriod', () => {
+  it('관찰 집계와 같은 90일 열린 하한을 쓰고 잘못된 날짜를 제외한다', () => {
+    const now = new Date('2026-05-01T00:00:00Z')
+    expect(withinObservationPeriod('2026-01-31T00:00:00Z', 3, now)).toBe(false)
+    expect(withinObservationPeriod('2026-01-31T00:00:00.001Z', 3, now)).toBe(true)
+    expect(withinObservationPeriod('2025-12-01T00:00:00Z', 3, now)).toBe(false)
+    expect(withinObservationPeriod('2025-12-01T00:00:00Z', 6, now)).toBe(true)
+    expect(withinObservationPeriod('invalid', 3, now)).toBe(false)
+  })
+})
 
 const elder: ElderProfile = {
   id: 'e1', name: '이순자', birthYear: 1945, hometown: '전주', family: '딸 둘',
@@ -106,6 +118,14 @@ describe('computeTopicShares', () => {
 })
 
 describe('observationSummary', () => {
+  it('한 세션의 주제 반응만으로 참여 지속·관심 확대 추세를 주장하지 않는다', () => {
+    const single = analyzeSession(elder, [
+      ai('고향'), el('전주 시장에서 이웃들과 즐겁게 이야기했던 기억이 나요'),
+    ])
+    const summary = observationSummary(elder.name, computeTopicShares([], [single]))
+    expect(summary).toBe('이순자 어르신은 고향 이야기에 특히 자주 응답하셨어요.')
+  })
+
   it('상위 2개 주제를 근거로 관찰 문장을 만든다(효능 표현 없음)', () => {
     const s = observationSummary('이순자', [{ label: '고향', percent: 100 }, { label: '가족', percent: 60 }])
     expect(s).toContain('이순자 어르신')

@@ -31,6 +31,7 @@ import {
   computeParticipationDetail,
   computeTopicShares,
   observationSummary,
+  withinObservationPeriod,
   type ObservationAxis,
 } from '@giokon/core';
 import { webPalette } from '@giokon/theme';
@@ -133,7 +134,7 @@ export function ElderAnalysisCards({ elderId, months, audience = 'caregiver' }: 
     }
     return out;
   }, [analysesQuery.data]);
-  const analyses = useMemo(() => dated.map((d) => d.analysis), [dated]);
+  const analyses = useMemo(() => dated.filter((d) => withinObservationPeriod(d.at, months)).map((d) => d.analysis), [dated, months]);
   const withAt = useMemo(() => dated.map((d) => ({ ...d.analysis, at: d.at })), [dated]);
 
   /** 끝난 세션 한 건 = 대화 한 번. 분석이 아직 없는 세션도 횟수에는 든다. */
