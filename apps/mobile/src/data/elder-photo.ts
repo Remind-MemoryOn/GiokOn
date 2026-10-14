@@ -27,8 +27,8 @@ const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
  */
 function base64ToBytes(b64: string): Uint8Array {
   const clean = b64.replace(/[^A-Za-z0-9+/]/g, '');
-  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
-  const out = new Uint8Array((clean.length * 3) / 4 - pad);
+  // clean already excludes padding, so its complete bytes need no second subtraction.
+  const out = new Uint8Array(Math.floor((clean.length * 3) / 4));
   let p = 0;
   for (let i = 0; i < clean.length; i += 4) {
     const n =

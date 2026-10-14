@@ -5,6 +5,7 @@ import { topicStats } from './topicStats';
 const analysis = (outcomes: [string, number][], keywords: string[]) => ({
   topicOutcomes: outcomes.map(([topic, elderTurns]) => ({ topic, elderTurns })),
   interestKeywords: keywords,
+  metrics: { elderTurns: 0, participation: 0 },
 });
 
 describe('topicStats', () => {
@@ -29,6 +30,21 @@ describe('topicStats', () => {
       { turns: [{ speaker: 'Elderly', text: short }] },
     ];
     expect(topicStats({ focusTopic: undefined, analyses: [], logs, sessions: [] }).engagedRate).toBe(33);
+  });
+
+  it('rates the saved analysis metrics when list logs contain no transcripts, weighted by elder turns', () => {
+    const analyses = [
+      { ...analysis([], []), metrics: { elderTurns: 4, participation: 0.25 } },
+      { ...analysis([], []), metrics: { elderTurns: 3, participation: 1 } },
+      { ...analysis([], []), metrics: { elderTurns: 0, participation: 0 } },
+    ];
+    expect(topicStats({ focusTopic: undefined, analyses, logs: [{ turns: [] }], sessions: [] }).engagedRate).toBe(57);
+  });
+
+  it('keeps no observed speech distinct from an observed zero engagement rate', () => {
+    expect(topicStats({ focusTopic: undefined, analyses: [analysis([], [])], logs: [], sessions: [] }).engagedRate).toBeNull();
+    const observed = { ...analysis([], []), metrics: { elderTurns: 4, participation: 0 } };
+    expect(topicStats({ focusTopic: undefined, analyses: [observed], logs: [], sessions: [] }).engagedRate).toBe(0);
   });
 
   it('averages session minutes (rounded) and dedupes keywords up to 8', () => {

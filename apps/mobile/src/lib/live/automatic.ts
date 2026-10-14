@@ -1,4 +1,4 @@
-import { SESSION_MAX_MINUTES, safeVoiceFailureMessage } from '@giokon/core';
+import { ELDER_CLOSING_FAREWELL, SESSION_MAX_MINUTES, safeVoiceFailureMessage } from '@giokon/core';
 import type { RelayEndReason } from './client';
 /** 감독 화면의 원격 제어(파일럿 M5) — 중계 알림(`relayControl`)과 서버 판정(`session_tick`) 공통 값. */
 export type RemoteControlState = 'running' | 'paused' | 'ended' | 'denied';
@@ -36,7 +36,7 @@ export interface AutomaticPorts {
   /** 멈춘 동안 서버의 원격 제어 상태를 읽는다(`session_tick`). 없으면 원격 재개·종료를 감지하지 않는다. */
   control?(): Promise<RemoteControlState>;
   cancelPending(): Promise<void>;
-  input(text: string): 'continue' | 'help';
+  input(text: string): 'continue' | 'closing' | 'help';
   output(text: string, opener: boolean): boolean;
   playback(result: 'completed' | 'interrupted' | 'empty'): void;
   save(): Promise<boolean>;
@@ -50,6 +50,8 @@ export class AutomaticConversation {
   private closing: Promise<void> | null = null;
   /** 원격 일시정지로 멈춤 — 서버가 재개를 알릴 때까지 현장 재개를 막는다. */
   private remoteHeld = false;
+  /** A plain rest/refusal allows only the relay farewell, with no next capture or resumption. */
+  private closingForElder = false;
   private watchTimer: ReturnType<typeof setTimeout> | null = null;
   constructor(private ports: AutomaticPorts) {}
   private alive(generation: number): boolean { return generation === this.generation && !['stopped','pausing','paused'].includes(this.phase) && this.ports.current(); }
@@ -103,7 +105,7 @@ export class AutomaticConversation {
     await this.begin(false);
   }
   async resume(): Promise<void> {
-    if (this.phase !== 'paused' || !this.ports.resume || this.remoteHeld) return;
+    if (this.phase !== 'paused' || !this.ports.resume || this.remoteHeld || this.closingForElder) return;
     this.unwatch();
     this.closing = null;
     await this.begin(true);
@@ -144,12 +146,14 @@ export class AutomaticConversation {
     try {
       if (!text.trim()) return await this.stop('말씀을 확인하지 못했어요. 담당자가 확인해 주세요.');
       const action = this.ports.input(text);
+      if (action === 'closing') this.closingForElder = true;
       if (!await this.ports.save()) throw new Error('save');
       if (!this.alive(generation)) return;
       if (action === 'help') return await this.stop('담당자의 확인이 필요해요. 대화를 회수해 주세요.');
       const response = await this.engine!.submitUserTurn(text);
       if (!this.alive(generation)) return;
       if (!response || response.status !== 'ok') throw new Error('response');
+      if (this.closingForElder && response.text !== ELDER_CLOSING_FAREWELL) throw new Error('closing response');
       await this.deliver(response.text, response.chunksB64, false, generation);
     } catch { if (this.alive(generation)) await this.stop('응답이나 기록 저장을 완료하지 못했어요. 기록을 확인하고 저장해 주세요.'); }
   }
@@ -163,6 +167,9 @@ export class AutomaticConversation {
     if (generation === this.generation && this.ports.current()) this.ports.playback(result);
     if (!this.alive(generation)) return;
     if (result !== 'completed') throw new Error('playback');
+    // The engine has sent the playback receipt. Wait for relayControl ended;
+    // reopening the microphone would violate the elder's request to finish.
+    if (this.closingForElder) return;
     await this.listen(generation);
   }
   private async listen(generation: number): Promise<void> {
@@ -172,6 +179,7 @@ export class AutomaticConversation {
     if (this.alive(generation) && !this.engine!.isListening) throw new Error('microphone');
   }
   async pause(): Promise<void> {
+    if (this.closingForElder) return this.stop();
     if (['idle','pausing','paused','stopped'].includes(this.phase)) return;
     ++this.generation;
     this.status('pausing');
