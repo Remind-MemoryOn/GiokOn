@@ -13,6 +13,7 @@ import {
   detectTurnTopic,
   evaluateUserTurn,
   resolveSessionRecommendation,
+  SESSION_TURN_LIMIT,
   screenAiUtterance,
   snapshotVoicePlayback,
   VOICE_FAILURE_MESSAGES,
@@ -156,7 +157,7 @@ interface AppState {
   setPendingStt: (text: string, source?: 'gemini_live' | 'manual' | 'unknown') => void;
   /** 확인 취소 → 대기 중 STT 폐기하고 마이크 대기 상태로. */
   discardUtterance: () => void;
-  adoptAutomaticInput: (text: string) => 'continue' | 'help';
+  adoptAutomaticInput: (text: string) => 'continue' | 'closing' | 'help';
   acceptAutomaticResponse: (text: string) => boolean;
   acceptResumedResponse: (text: string, previousTurnId: string) => boolean;
   markTurnPlayback: (turnId: string, text: string, result: 'completed' | 'interrupted' | 'empty') => boolean;
@@ -207,12 +208,16 @@ function makeTurn(
 /** 어르신 턴 평가 → 런타임 안전 상태·이벤트(자동 채택·사람 확인 경로 공용). */
 function evaluateElderTurn(a: ActiveSession, turns: ConversationTurn[], text: string) {
   const evaluated = evaluateUserTurn(turns, text);
-  const recommendation = resolveSessionRecommendation(evaluated.session.recommendation, turns.filter(t => t.speaker === 'Elderly').length);
+  const elderTurns = turns.filter(t => t.speaker === 'Elderly').length;
+  const closing = !evaluated.escalate && !evaluated.assessment.hasDistressSignal &&
+    ['rest_request', 'refusal'].includes(evaluated.assessment.situation);
+  const recommendation = closing ? 'end_session' : resolveSessionRecommendation(evaluated.session.recommendation, elderTurns);
   const safety: RuntimeSafety = { escalate: evaluated.escalate, caregiverAlert: evaluated.caregiverAlert,
     level: evaluated.event?.level ?? (evaluated.caregiverAlert ? 'watch' : null), recommendation, acknowledged: false };
   const events: SessionSafetyEvent[] = evaluated.event
     ? [...a.events, { ...evaluated.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events;
-  return { safety, events, help: Boolean(evaluated.caregiverAlert) || recommendation !== 'continue' };
+  return { safety, events, closing, help: Boolean(evaluated.caregiverAlert) || evaluated.escalate ||
+    evaluated.assessment.hasDistressSignal || !['continue', 'comfort'].includes(recommendation) || elderTurns >= SESSION_TURN_LIMIT };
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -271,9 +276,9 @@ export const useApp = create<AppState>((set, get) => ({
     const turn = makeTurn('Elderly', text, a.currentTopic);
     turn.provenance = { kind: 'automatic', presentedText: text, inputSource: 'gemini_live' };
     const turns = [...a.turns, turn];
-    const { safety, events, help } = evaluateElderTurn(a, turns, text);
+    const { safety, events, closing, help } = evaluateElderTurn(a, turns, text);
     set({ active: { ...a, turns, pendingStt: null, phase: 'processing', safety, events } });
-    return help ? 'help' : 'continue';
+    return closing ? 'closing' : help ? 'help' : 'continue';
   },
 
   acceptAutomaticResponse: (text) => {
@@ -288,7 +293,8 @@ export const useApp = create<AppState>((set, get) => ({
   acceptResumedResponse: (text, previousTurnId) => {
     const a = get().active;
     if (!a || a.pendingStt !== null || a.turns.at(-1)?.id !== previousTurnId ||
-        a.safety.caregiverAlert || a.safety.recommendation !== 'continue' ||
+        a.safety.caregiverAlert || !['continue', 'comfort'].includes(a.safety.recommendation) ||
+        a.turns.filter(turn => turn.speaker === 'Elderly').length >= SESSION_TURN_LIMIT ||
         !text.trim() || !screenAiUtterance(text).allowed) return false;
     const topic = detectTurnTopic(text) ?? a.currentTopic;
     set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,
@@ -366,7 +372,14 @@ export const useApp = create<AppState>((set, get) => ({
       active: {
         ...a,
         syncedTurns: Math.max(a.syncedTurns, turns),
-        events: a.events.map((ev, i) => events[i] ?? ev),
+        events: a.events.map((ev, i) => {
+          const synced = events[i];
+          if (!synced) return ev;
+          // A caregiver may acknowledge while this older write is still in flight.
+          const acknowledgedAt = ev.acknowledgedAt ?? synced.acknowledgedAt;
+          return { ...ev, ...synced, acknowledgedAt,
+            ackSynced: ev.ackSynced || (synced.ackSynced && synced.acknowledgedAt === acknowledgedAt) };
+        }),
       },
     });
   },

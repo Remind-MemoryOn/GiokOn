@@ -50,8 +50,8 @@ giokon/
 └─ docs/            # 기획·설계·런북
 ```
 
-**데이터·인증:** 클라이언트가 supabase-js 로 Supabase 에 직접 연동하고 RLS 로 격리한다. 격리 단위는 지금
-기관 + 담당 배정이고, 파일럿에서 **기관 + 역할**(요양보호사·사회복지사·센터장·기관 관리자)로 바뀐다.
+**데이터·인증:** 클라이언트가 supabase-js 로 Supabase 에 직접 연동하고 RLS 로 격리한다. 격리 단위는
+**기관 + 역할**(요양보호사·사회복지사·센터장·기관 관리자)이다. 배정은 알림·내 담당 표시와 일부 삭제 권한에 사용한다.
 보호자는 공개된 항목만 본다. 비밀 키는 Edge Function·중계 서버에만 둔다.
 
 **음성:** 앱 → `voice-relay` → Gemini Live → 출력 검증(`screenAiUtterance`) → Gemini 3.8 Flash TTS → 앱. Gemini Live가 만든
@@ -61,12 +61,12 @@ giokon/
 |---|---|
 | 웹 | React 19 + Vite + Tailwind CSS (요양보호사 · 보호자) |
 | 모바일 앱 | Expo SDK 54 (React Native 0.81) + NativeWind |
-| 음성 중계 | Node + ws (Docker, 호스팅 미정) |
+| 음성 중계 | Node + ws (Docker → Google Cloud Run 서울, 운영 배포 대기) |
 | 공유 로직/상태 | TypeScript + Zustand + TanStack Query |
 | 데이터·인증 | Supabase 서울 (PostgreSQL · Auth · Storage · Realtime · Edge Functions) |
 | 대화 AI | Gemini Live `gemini-3.8-live` — 모델은 서버 시크릿 `GEMINI_LIVE_MODEL` 로만 바꾼다 |
 | 음성 출력 | Gemini `gemini-3.8-flash-tts` (검증된 문장만) |
-| 푸시 | Expo Push (파일럿에서 추가) |
+| 푸시 | Expo Push (코드·워커 준비, FCM/APNs·실기기 수신 검증 대기) |
 | 디자인 | 웹 = Figma 단독 기준 |
 | 배포 | 웹: Vercel · 모바일: EAS Build |
 

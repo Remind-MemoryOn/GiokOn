@@ -167,10 +167,12 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
   const [memory, setMemory] = useState('');
 
   const memories = (chronicles.data ?? []).filter((c) => c.topic === KEY_MEMORY_TOPIC);
+  const extraMemoryHeight = Math.max(memories.length - 2, 0) * 74.05;
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   function save() {
     if (!elderId) return;
+    if (!settings.isSuccess) return toast('error', '기관 설정을 확인한 뒤 다시 저장해 주세요.');
     if (!form.name.trim()) return toast('error', '이름을 입력해 주세요.');
     if (!form.birthDate || !isBirthDate(form.birthDate))
       return toast('error', '생년월일을 선택해 주세요.');
@@ -216,7 +218,7 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
 
   return (
     // 좌표가 화면 절대값이라 본문 여백(pl-27)과 사이드바(296)를 되빼 원점을 맞춘다.
-    <div className="relative -ml-[323px] h-[1406px] w-[1440px]">
+    <div className="relative -ml-[323px] h-[1406px] w-[1440px]" style={{ height: 1406 + extraMemoryHeight }}>
       <h1
         data-fx="178:487"
         className="absolute left-[322px] whitespace-nowrap text-w-page font-bold leading-[70px] text-ink-900"
@@ -250,7 +252,7 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
       <div
         data-fx="194:129"
         className="absolute left-[322px] h-[1148px] w-[1057px] rounded-[10px] bg-white shadow-card"
-        style={{ top: Y(295) }}
+        style={{ top: Y(295), height: 1148 + extraMemoryHeight }}
       />
       <h2
         data-fx="194:130"
@@ -289,6 +291,10 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
         장기요양등급
       </Label>
       <CareGradeSelect id="f-care-grade" left={873} top={Y(594 - 57)} value={form.careGrade} onChange={set('careGrade')} required={gradeRequired} />
+      {!settings.isSuccess ? <div className="absolute left-[873px] w-[416px] text-w-label leading-[24px] text-ink-900" style={{ top: Y(401) }} role={settings.isError ? 'alert' : 'status'}>
+        {settings.isError ? '기관 설정을 불러오지 못했어요. 등급 필요 여부를 확인한 뒤 저장해 주세요.' : '기관 설정에서 등급 필요 여부를 확인하고 있어요.'}
+        {settings.isError ? <button type="button" disabled={settings.isFetching} onClick={() => void settings.refetch()} className="mt-2 block underline">기관 설정 다시 확인</button> : null}
+      </div> : null}
 
       {/* 좌열 */}
       <Label fx="194:132" left={410} top={617.4} starLeft={445} htmlFor="f-name">
@@ -409,6 +415,7 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
       ))}
 
       {/* 특이사항 — profiles.note(돌봄 참고 메모, 의료 정보 아님) */}
+      <div style={{ transform: `translateY(${extraMemoryHeight}px)` }}>
       <Label fx="194:185" left={410} top={1216.8} htmlFor="f-note">
         특이사항
       </Label>
@@ -434,13 +441,14 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
       <button
         type="button"
         onClick={save}
-        disabled={update.isPending}
+        disabled={update.isPending || !settings.isSuccess}
         data-fx="194:163"
         className="absolute flex h-[57px] w-[140px] items-center justify-center rounded-[10px] border border-accent bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-50"
         style={{ left: 1151, top: Y(1334) }}
       >
         {update.isPending ? '저장 중...' : '저장'}
       </button>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,23 @@
 # 작업 목록
 
+## 출시 전 코드 재검토 (2026-10-13 · T28)
+
+검토·수정 근거: [`plans/2026-10-13-final-code-review.md`](plans/2026-10-13-final-code-review.md).
+외부 연동만 남았다고 단정하지 않는다. 아래 수정과 운영 반영·실기기 검증을 구분한다.
+
+| ID | 작업 | 상태 |
+|---|---|---|
+| T28.1 | Windows 보안 감사 실행 복구·감사 실패 JSON 오인 방지·Linux/Windows 회귀 CI | ✅ 2026-10-13 코드·로컬 회귀 4개·차단 가드 변이 2종 검출. 실제 감사: 웹 high/critical 0, 기존 개발 도구 6건은 T27.4 및 예외 검토 유지 |
+| T28.2 | 앱 사진 바이트 보존·안전 확인 동기화 경합·휴식 요청 마무리 계약·세션 생성 응답 유실 복구·주제별 집계 | ✅ 2026-10-14 코드·앱 406개 테스트·typecheck·lint·Figma174·font·BOM·Android/iOS Metro export 통과. 휴식/거부는 고정 인사만, 위기/급성 고통 즉시 정지 유지. 동일 UUID의 본인 세션만 복구(`expo-crypto` 직접 의존성, 기존 설치 버전 재사용). ⏳ EAS 재빌드·실기기 |
+| T28.3 | 웹 공개 사진 로딩·철회 경합, 시각 비우기·기관 설정 실패·연대기 날짜·분석 기간·미측정 그래프 | ✅ 2026-10-14 코드·공개/연대기/등급/일지/그래프/분석 기간 브라우저 회귀. 기존 시안 좌표는 유지, 기억이 늘면 아래 영역을 함께 내림. ⏳ 웹 배포 |
+| T28.4 | 상위 삭제로 확정 일지·이력 삭제 우회 및 확정 첨부 Storage 변조 차단 | ✅ 2026-10-14 코드·새 PG16에 마이그레이션 84개 순차 적용·회귀 17개 통과, 보호 가드 변이 5종 검출. 삭제 전 확정 확인·Storage 무진행 실패 처리. ⏳ 운영 반영은 승인 후 main 병합·운영 대조. Storage/DB 다단계 삭제의 원자성은 별도 제약 |
+| T28.5 | 전체 파일 검토·검증·계획 문서 현행화·남은 작업 재분류 | ✅ 2026-10-14 저장소 980개 분류·본문/변경/구조/에셋 검토 방법과 제약 기록, 전용 게이트·브라우저·로컬 DB 검증·문서·푸시. [검토 PR #55·CI](https://github.com/Remind-MemoryOn/GiokOn/pull/55). ⏳ 승인 병합·운영 적용 |
+| T28.6 | 잘못된 분석 JSON 방어·응답률 100% 상한·근거 없는 장기 변화 문장 제거 | ✅ 2026-10-14 코드·core 254/data 227개 테스트 통과. 유효한 과거 분석 형식은 유지, 측정값을 만들어 채우지 않음 |
+
+**기존 스토어 출시 조건 재분류(2026-10-14)**: 앱 내 계정 삭제 요청 진입과 웹 접수 경로는 미구현이다.
+외부 콘솔 설정만 남은 것으로 보지 않는다. 자동 삭제가 아닌 운영 접수 방식도 가능하며, 연락처·본인 확인·보존 예외를
+확정한 뒤 앱/웹 경로와 처리 절차를 구현·시험한다. [출시 점검표](plans/launch-checklist.md) §5.
+
 > 📌 2026-09-24 정리: 지금 할 일(파일럿 트랙)을 맨 앞에 두고, 2026-04~08 의 작업 분해표(M0~M15)·우선순위·담당·발표 체크리스트는
 > 걷어 냈다(원문은 git 이력). 코드 주석이 `T16.x`·`T17.x`·`T19.x`·`T-E3` 를 인용하므로 그 부분만 §3 에 남겼다.
 > 무엇을 만들지는 [`plans/pilot-development-plan.md`](plans/pilot-development-plan.md), 출시 점검은 [`plans/launch-checklist.md`](plans/launch-checklist.md).
@@ -96,7 +114,7 @@
 | T25.6 | **감독 화면 안전 표시** — ① 위기 카드가 진행 중 세션 카드 안에만 있어 세션이 끝나면 **미확인 위기와 확인 버튼이 사라진다** → 미확인 안전 이벤트를 세션 상태와 무관한 목록으로 확인할 때까지 유지 ② 안전 조회가 실패해도 "알림 없음"처럼 보인다(감독 화면은 셸 밖이라 공용 조회 실패 배너도 없다) → "안전 상태를 확인하지 못했어요" + 다시 시도 + 마지막 갱신 시각. (대시보드는 셸의 `QueryErrorBanner` 가 이미 알린다.) **완료 조건**: 종료 직전·직후·나중 접속 모두 미확인 위기와 확인 버튼 유지 · 안전 요청만 실패시키면 정상 무알림과 구별 | 웹 | — | ✅ 2026-09-29 웹 — 진행 중 대화의 위기는 카드 안, 그 밖(끝난 대화·세션 없음)의 미확인 위기는 위쪽 '확인하지 않은 안전 알림'에 확인할 때까지(진행 목록을 못 읽으면 '끝났다'고 말하지 않음) · 안전 조회 실패 배너(알림 없음과 구별 · 마지막 확인 시각 · 다시 확인) · 스모크 `test:supervision`(옛 코드로 돌리면 실패 확인) |
 | T25.7 | **한국 날짜 기준** — `new Date().toISOString().slice(0,10)` 은 UTC 라 한국 00:00~08:59 에 전날이 된다. data `useDuePlannedSession`(앱이 쓰는 오늘의 설계 세션 조회 — 오늘 설계가 빠진다)·웹 `SessionPlanDialog` 기본 날짜를 core 의 Asia/Seoul 날짜 함수로. **완료 조건**: 00:00·08:59·09:00 KST 경계 테스트. (앱 쪽 "조회 중/실패를 설계 없음으로 취급"은 앱 영역 — 별도) | core·data·웹 | — | ✅ 2026-09-29 — core `seoulDate()`(UTC+9 고정 · 경계 테스트 00:00/08:59/09:00/연말) · data `useDuePlannedSession` · 웹 세션 설계 기록일·일지 운영일 기본값·내 데이터 파일명. 스모크 `test:plan` ⑤(UTC 기기·한국 08:30 — 옛 코드로 돌리면 실패). 앱의 조회 중/실패 구분은 앱 영역 |
 | T25.8 | **감사 로그 파기 예약 누락** — `20260703130000` 이 pg_cron 이 있을 때만 `purge-audit-log`(2년 초과분 주간 정리)를 등록해 운영에 **예약이 없다**(cron 목록 = 워커 2개뿐). 멱등 마이그레이션으로 재등록. 급하지 않음(가장 오래된 기록이 2년이 되기 전) | DB·작업 예약 | — | ✅ 2026-09-30 운영 적용 · 코드·로컬 회귀 — `20260930000000`: pg_cron 있으면 `purge-audit-log` 멱등 재등록(토 18:00 UTC = 일 03:00 KST) · 파기 함수 실행 권한 회수(운영 ACL 이 PUBLIC 이었음 — app 스키마 USAGE 가 없어 실제 호출은 막혀 있었다) · 회귀 `audit_retention.sql`(2년 경계 · 권한 — 마이그레이션 없이 돌리면 실패). 운영 읽기 확인: 예약 없음 · 감사 로그 279행(가장 오래된 2026-07-27) · pg_cron 1.6.4 · `cron.schedule(text,text,text)`/`unschedule(text)` 존재. 운영 적용 2026-09-30(마이그레이션 5개 — main 머지 시 GitHub 연동이 적용 · 객체 확인). |
-| T25.9 | **웹 운영 배포(사용자 작업)** — Vercel `memory-on` 의 유일한 배포가 ERROR(`jinwoo`/`769c47f`, 프레임워크 미지정 → 출력 폴더 없음). Root Directory `apps/web` · Framework Vite 로 맞추고 **main** 으로 배포 · 환경변수 2종. ⚠️ 이것이 안 되면 위 수정과 `terms_required` 필수화 모두 사용자에게 닿지 않는다 | Vercel | — | ⏳ 사용자 |
+| T25.9 | **웹 운영 배포(사용자 작업)** — Vercel `memory-on` 의 유일한 배포가 ERROR(`jinwoo`/`769c47f`, 프레임워크 미지정 → 출력 폴더 없음). Root Directory `apps/web` · Framework Vite 로 맞추고 **main** 으로 배포 · 환경변수 2종. ⚠️ 이것이 안 되면 위 수정과 `terms_required` 필수화 모두 사용자에게 닿지 않는다 | Vercel | — | ✅ 2026-10-14 운영 배포 — Vercel `memory-on` GitHub 연결(사용자) · Root `apps/web`·Vite·루트 밖 소스 포함 · 환경변수 2종(운영 URL·publishable 키) · **main `4fdc90b` 를 production 으로** 배포 READY(`dpl_9AFpxG3Y…`) → `memory-on-psi.vercel.app`. 확인: SPA 경로 200 · `vercel.json` 보안 헤더(CSP·HSTS·XFO 등) · 번들에 운영 Supabase 주소·publishable 키, 데모 주소 0 · 최신 변경(랜딩 문구·감독 마무리 표시) 포함. ⚠️ 그 전 CLI `vercel --prod` 가 미병합 `codex/final-code-review`(PR #55 — 운영 미적용 마이그레이션 포함·"승인 전 병합 금지")를 production 으로 올렸던 것을 main 으로 되돌림. 이후 main 머지마다 자동 배포 |
 | T25.10 | **문서 현행화(문서만 — 기능 PR 과 분리)** — `docs/design.md` SCR-W12·`docs/database.md` 온보딩 설명이 "새 기관 만들기"(폐기 — 운영자 `provision_org` + 초대 코드만)로 남음 · 파일럿 계획 W6/W9 행의 과거 ⏳ 문장과 ✅ 혼재 → 현행 계약과 이력 분리 · 테스크 상태를 "코드/DB 적용/배포/실기기"로 구분 | 문서 | — | ✅ 2026-10-07 — `docs/design.md` SCR-W12 두 행·트리 · `docs/database.md` 옛 온보딩 4곳에 "현행 아님 → 기관 만들기 · 합류(A안)" 표시 · 파일럿 계획 W6·W9 행을 **현행/이력**으로 나눔 + §3 ⑧·D3 절 정정 · 이 문서 맨 위에 4단계 범례 + 미완료 단계가 남은 행 19개 앞에 단계 표시(범위: 사용자 확정 "범례 + 미완료 행만"). 끝난 옛 행은 그대로 |
 | T25.11 | 🔴 **설계자 ≠ 진행자 세션 시작**(감사 P0-1) — 설계 세션을 다른 직원이 시작해도 `user_id` 가 설계자로 남아 `advance_session_phase`·중계 소유 검사·감독 한도(4대)가 설계자 기준으로 판정된다 → 교대 직원이 시작하면 대화 연결 실패. **방향 (가) 확정(2026-09-27 사용자 검토)**: `user_id` = **실제 진행자**, 설계자는 새 칸(`planned_by`)에 보존 → 중계 소유 검사는 그대로. 앱이 `user_id` 를 직접 고치지 않고 **DB 시작 RPC 하나**(`start_planned_session`)가 시작 권한·처리 동의·동시 실행 한도를 확인하고 진행자 지정 + `planned → active` 를 원자적으로 처리(기존 정체성 가드 `guard_record_identity` 와 충돌하지 않게 설계). **완료 조건**: A 설계 / B 시작에서 중계 연결·단계 전환·종료·일지 진행자까지 B 로 일치 · 두 기기 동시 시작은 한 번만 성공 · 설계자 기록 보존. 배포 순서: RPC 먼저 배포(직접 UPDATE 유지) → 앱 전환 → 직접 UPDATE 차단. **앱 측 계약(2026-09-27 확정 — 사용자 위임, 앱·중계 검증)**: ① `start_planned_session(p_session_id)` → `{session_id, started_at}` · `started_at` = 서버 `now()`(앱 시계를 쓰지 않는다) · **같은 사람이 다시 부르면 같은 값으로 성공**(앱 `withRetry` 가 응답 유실 때 재요청한다 — 멱등이 아니면 시작한 본인이 `SESSION_ALREADY_STARTED` 를 받는다) ② 오류 코드는 **기존 이름 재사용**: 동의 없음 `PROCESSING_CONSENT_REQUIRED`(기존 트리거) · 동시 4대 초과 `SESSION_SUPERVISOR_LIMIT`(기존 트리거 — 앱이 이미 이 이름으로 판정) · 새 코드 `SESSION_ALREADY_STARTED`(planned 아님 — 다른 사람이 시작·종료·취소) · `SESSION_START_FORBIDDEN`(돌봄팀 아님·없는 행·다른 기관 — 존재 여부를 구분해 알리지 않는다) · `ELDER_SESSION_ACTIVE`(같은 어르신의 다른 세션이 실행 중 — T25.19) ③ 시작 권한 = **같은 기관 돌봄팀 전체**(`app.is_care_team()` — 즉석 세션 생성 규칙과 같다). 담당 배정자로 좁히지 않는다(교대 대리 진행이 이 과제의 목적 · 좁히면 설계를 버리고 즉석 세션으로 우회한다) ④ `user_id` 의미 변경의 앱 영향 없음 — 앱은 `user_id` 를 자기 id 로 **쓰기만** 하고 설계자로 읽는 화면이 없다. 중계 소유 검사·일지 `facilitator_user_id`·안전 푸시 수신자 '진행자'·감독 화면 '시작한 사람'은 모두 실제 진행자가 되어 **오히려 맞아진다**(웹 통계의 해석은 웹 파트 확인) ⑤ 직접 UPDATE 차단 시점 = 날짜·점유율이 아니라 **조건**: RPC 를 쓰는 앱 빌드가 파일럿 기기 전부에 설치됨(푸시 때문에 어차피 필요한 EAS 재빌드에 함께 싣는다) **그리고 파일럿 개시 전**. 구버전 강제 차단 장치는 만들지 않는다(차단 뒤 구버전은 설계 세션 시작만 실패, 즉석 시작은 된다) ⑥ 백필 없음 — 운영 세션 3건 중 설계에서 시작된 세션 0건(2026-09-27 읽기 전용 집계)이고 실제 시작자 기록도 없다(`session_interventions` 에 start 없음). 아직 planned 인 행만 `planned_by = user_id`(설계자가 확실)로 채운다. **완료 조건 추가**: 응답 유실 뒤 재호출 성공 · 오류 코드 각각 앱 안내 · 차단 뒤 직접 UPDATE 거절 | DB → 앱 | — | **[코드 ✅ · DB ✅ · 배포 ⏳ 앱 EAS · 실기기 ⏳]** ✅ 코드 2026-09-29 — 마이그레이션 `20260929010000_session_start_integrity`: `planned_by` 칸(정체성 가드 대상 · planned 행만 백필) + `start_planned_session(p_session_id)` RPC(security definer · 돌봄팀·기관 확인 → `FOR UPDATE` → 같은 사람 재호출은 같은 `{session_id, started_at}` 로 성공 · 아니면 `SESSION_ALREADY_STARTED` · `user_id`=진행자 · `planned_by` 보존 · `started_at`=서버 시각). 동의·4대 한도·어르신 1세션은 기존/새 트리거가 그대로 판정. 앱 `adoptPlannedSession` 이 RPC 호출로 전환 · 거절 이유별 안내(`START_FAILURE_ALERT` — 동의 없음은 동의 화면으로). DB 회귀 `supabase/tests/session_start.sql`(A 설계/B 시작 → 단계 전환·일지 진행자 B · 재호출 · 동시 시작 · 코드별 거절) · 뮤테이션 11/11 검출. 운영 DB 적용 2026-09-29 · ⏳ 직접 `planned→active` UPDATE 차단(조건 ⑤ 충족 뒤 별도 마이그레이션) · 웹의 설계자 표시(웹 파트) · 실기기 확인 없음 |
 | T25.12 | **공개 후 내용 변경 → 자동 공개 해제**(감사 P0-2(b) → **P1 공개 무결성**으로 조정) — 공개(`guardian_shares`)는 분석 ID 만 가리키고 돌봄팀은 `session_analyses` 를 직접 UPDATE 할 수 있어, 공개 뒤 내용이 바뀌면 재승인 없이 보호자에게 보인다(발생 경로: 권한 있는 직원의 직접 API 요청 · 앱 `SessionReportPanel` 은 보고서가 **없을 때만** 자동 생성하므로 일반 화면에서 재생성은 없음). **방향(사용자 검토 2026-09-27)**: 보호자에게 보이는 내용이 **실제로 바뀐 경우에만** 같은 트랜잭션에서 그 항목의 활성 공개를 철회(사유 기록) → 명시적 재공개 필요. 같은 내용 재저장·기술 메타데이터 변경은 유지. 스냅샷 방식은 "이전 공개본 계속 열람" 요구가 생기면 재검토. **완료 조건**: 공개 A → 내용 B 로 변경 시 보호자 조회 0건(분석·요약 공개 각각) · 동일 내용 재저장은 공개 유지 · 재공개하면 B 가 보인다 · "보호자에게 보이는 필드" 목록을 구현 시 확정해 테스트에 고정 | DB | — | ✅ 2026-09-30 운영 적용 · 코드·로컬 회귀 — `20260930030000`: **보호자에게 보이는 내용 확정** — analysis 공개 = 분석 전체(`version` 키 제외) + 그 세션 원문(content·original_content·role·turn_index·topic·audio_url, 줄 추가·삭제 · 음성은 새로 붙거나 교체될 때만 — 보존기한 만료로 지우는 것(→ null)은 유지) / session_summary 공개 = 요약 문장 + 첫 주제. 바뀌면 같은 트랜잭션에서 그 공개만 해제(`revoked_at` · `revoke_reason=content_changed` · `revoked_by` 비움 · T25.4 권한 검사는 트랜잭션 설정으로 제외 후 즉시 끔) · 같은 내용 재저장·기술 칸은 유지 · 사유는 클라이언트가 못 씀(트리거 — 운영은 테이블 UPDATE 권한이 있어 컬럼 회수 무효). 웹 공개 이력에 '내용 변경' 표시. 회귀 `share_auto_revoke.sql`(원문 트리거를 빼면 실패). 운영 읽기: 활성 공개 analysis 2 · session_summary 2 · 분석 키 10종. 세션 기본 정보(시각)는 대상 밖. 운영 적용 2026-09-30(마이그레이션 5개 — main 머지 시 GitHub 연동이 적용 · 객체 확인). |
@@ -224,7 +242,7 @@
 | T27.2 | `expo-av` → `expo-audio`: 권한·턴 단위 재생·완료 영수증·즉시 정지 회귀 | ⏳ 별도 코드 과제. SDK 55 이상 업그레이드 전 완료. PCM 수집 모듈은 별도. 실기기 검증 필수 |
 | T27.3 | 의존성 보안 패치 — `pnpm audit` critical/high 를 같은 메이저 안의 패치 버전 오버라이드로 | **[코드 ✅ · DB — · 배포 ⏳ EAS 재빌드 때 반영 · 실기기 —]** ✅ 2026-10-11 — `pnpm-workspace.yaml` overrides 16개(shell-quote·xmldom·brace-expansion·browserslist·compression·js-yaml·nanoid·postcss·source-map-js·svgo·tar·undici). critical 3/high 51 → **2/4**. 검증: frozen-lockfile·typecheck·lint·test·build·check:copy/design/bom/font/figma/audit·`expo install --check`·Android/iOS Metro export. 남은 6건은 T27.4·수정판 없음(`docs/plans/launch-checklist.md`) |
 | T27.4 | vitest 3 → 4 상향(core·data·mobile·voice-relay) — `tinypool` critical 2건 해소 | ⏳ 별도 과제(2026-10-11 사용자 결정). 테스트 실행기 메이저 상향이라 설정·모킹(`vi.mock` 호이스팅·`vi.doMock`) 동작 차이를 확인한다. 테스트에서만 쓰이고 외부 입력을 받지 않는다 |
-| T27.5 | CI DB 회귀 누락 해소 — 로컬 러너(`run-rls-regression.sh`)에만 있던 5개(`audit_retention`·`storage_policies`·`share_auto_revoke`·`journal_worker_consent`·`prod_privileges`)를 CI `rls-regression` 에 같은 순서로 추가 · 두 목록을 대조하는 CI 단계 추가 | **[코드 ✅ · DB — · 배포 — · 실기기 —]** ✅ 2026-10-11 — 특히 `prod_privileges.sql`(운영처럼 `app` 스키마 USAGE 를 회수한 사용자 경로)이 CI 에서 돌지 않아, 운영 권한 회귀가 병합 전에 잡히지 않았다. 목록 대조 단계는 한 파일을 빼면 실패함을 확인 |
+| T27.5 | CI DB 회귀 누락 재발 방지 — 로컬 러너(`run-rls-regression.sh`)와 CI `rls-regression` 의 회귀 파일 목록·순서를 대조하는 CI 단계 | **[코드 ✅ · DB — · 배포 — · 실기기 —]** ✅ 2026-10-11 발견 — 러너에만 있던 5개(`audit_retention`·`storage_policies`·`share_auto_revoke`·`journal_worker_consent`·`prod_privileges`)가 CI 에서 돌지 않았다(특히 운영 권한 경로). 누락 5개는 main `aaa8b5d` 가 CI 에 넣었고, 2026-10-14 이 과제는 CI 순서를 러너와 맞추고(`product_events` 를 공개 자동 철회 뒤로) 목록 대조 단계를 더한다. 한 파일을 빼면 대조 단계가 실패함을 확인 |
 
 T25.16의 선행 조건에 T27.1의 자격 증명·빌드 설정을 포함한다. 알림 탭 → 감독 화면(T21.10 후속)은 2026-10-11 코드 완료 — 검증 전에 휴대폰 브라우저에서 웹에 로그인해 둔다(웹의 로그인 후 복귀는 미구현).
 
@@ -235,3 +253,17 @@ copy·BOM·font·figma·design 및 frozen-lockfile 설치 통과. Expo Go 차단
 의존성 감사는 미통과: 현재 critical 3/high 51/moderate 24/low 3. 변경 전 lockfile과 대조 시
 새 advisory ID는 없고 critical/high 수는 동일하다. 출시 전 기존 의존성 보안 과제에서 재검토해야 하며,
 이번에는 SDK·테스트 도구를 임의 상향하지 않았다.
+
+
+### T27.1 후속 — Android 개발 실행 오류 (2026-10-12)
+
+✅ 코드·설정: 모바일 지원 플랫폼을 Android/iOS로 명시해 웹 번들 오실행 차단.
+`pnpm android`를 `expo run:android`로 변경(빌드·설치), `pnpm start -c`는 설치 후 개발 서버 실행.
+원인: 개발 APK 미설치와 지원하지 않는 모바일 웹의 `react-native-web` 의존성 부재가 각각 발생했다.
+로컬 JDK 17·Android SDK 지정 방법은 앱 README에 기록.
+추가로 실제 빌드에서 Windows CMake/Ninja 경로 제한을 확인했다. pnpm 가상 저장소를 루트 `.pnpm`(폴더 최대 32자)으로 옮기고,
+Windows 전용 Expo 플러그인으로 CMake 중간 산출물 경로를 단축했다. 의존성 버전·lockfile 변경 없음.
+
+✅ 검증: frozen-lockfile 설치, 전체 typecheck·lint·test·build, copy·design·BOM·font·figma 게이트,
+Android/iOS Metro export 통과. Android 네이티브 빌드 성공, 에뮬레이터 `emulator-5554`에 `kr.giokon.app` 설치 및 개발 클라이언트 열기 완료.
+⏳ 실제 태블릿 음성·푸시·안전 체인(T25.16)은 중계 배포·FCM/APNs 자격 증명·배포용 빌드 준비 후 검증한다.

@@ -17,6 +17,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
+import { selectField, selectValue } from './select-control.mjs';
 
 const outDir = await mkdtemp(join(tmpdir(), 'giokon-journal-ui-'));
 await build({ envDir: false, mode: 'figma', plugins: [{ name: 'journal-test-auth', enforce: 'pre', transform(code, id) {
@@ -189,6 +190,21 @@ try {
   assert.deepEqual(attachedRows.map((r) => r.sort), [0, 1]);
 
   assert.equal(calls.filter((c) => c.kind === 'session-report').length, 0);
+  // 선택한 운영 시각은 다시 비울 수 있어야 한다. '--'가 자정(00:00)을 기록하면 안 된다.
+  await go('/caregiver/journal/e1/j1');
+  await page.evaluate(row => window.__giokonQC.setQueryData(['program_journals', 'e1'], rows => rows.map(j => j.id === row.id ? row : j)), server.get('j1'));
+  await selectValue(page, '운영 시작 시각 (시)', '09');
+  await selectValue(page, '운영 시작 시각 (분)', '15');
+  await selectValue(page, '운영 시작 시각 (시)', '');
+  assert.equal(await selectField(page, '운영 시작 시각 (시)').inputValue(), '', '시를 비우면 운영 시각 전체를 비워야 함');
+  assert.equal(await selectField(page, '운영 시작 시각 (분)').inputValue(), '');
+  await selectValue(page, '운영 시작 시각 (시)', '09');
+  await selectValue(page, '운영 시작 시각 (분)', '15');
+  await selectValue(page, '운영 시작 시각 (분)', '');
+  assert.equal(await selectField(page, '운영 시작 시각 (시)').inputValue(), '', '분을 비워도 운영 시각 전체를 비워야 함');
+  await page.getByRole('button', { name: '임시 저장', exact: true }).click();
+  await page.waitForURL(/\/caregiver\/journal\/e1$/);
+  assert.equal(calls.filter(c => c.kind === 'patch').at(-1).body.operated_from, null, '비운 운영 시각은 null로 저장해야 함');
   console.log('PASS: 초안 생성 버튼 없음 · 다시 생성은 실패 일지만 · 바꾼 칸만 저장 · 확정 권한 잠금 · 확정 후 수정 사유 · 사진 부분 실패(첫 사진 보존·일지 1건) · 버전 충돌 시 저장·승인 거절 → 최신 불러오기(내 칸 유지). 합성 API 만 사용.');
 } finally {
   await browser.close();

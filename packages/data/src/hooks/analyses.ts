@@ -19,12 +19,27 @@ import type { SessionAnalysisRow, TablesInsert } from '../database.types'
 
 export type SessionAnalysisInsert = TablesInsert<'session_analyses'>
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
 /** 저장된 JSON 을 core SessionAnalysis 로 안전 캐스팅(형식 불일치 시 null). */
 export function parseSessionAnalysis(row: SessionAnalysisRow): SessionAnalysis | null {
   const value = row.analysis
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  const candidate = value as Record<string, unknown>
-  if (typeof candidate.summary !== 'string' || typeof candidate.metrics !== 'object') return null
+  if (!isObject(value) || typeof value.summary !== 'string' || typeof value.version !== 'string'
+    || typeof value.emotionTone !== 'string'
+    || !['bright', 'longing', 'calm', 'mixed', 'quiet'].includes(value.emotionTone)) return null
+  const metrics = value.metrics
+  if (!isObject(metrics) || !['elderTurns', 'aiTurns', 'responseRate', 'participation', 'avgUtteranceChars']
+    .every(key => typeof metrics[key] === 'number' && Number.isFinite(metrics[key]))) return null
+  for (const key of ['topicsEngaged', 'topicsLow', 'interestKeywords', 'recommendedTopics']) {
+    if (!Array.isArray(value[key]) || !value[key].every(item => typeof item === 'string')) return null
+  }
+  if (!Array.isArray(value.topicOutcomes) || !value.topicOutcomes.every(outcome =>
+    isObject(outcome) && typeof outcome.topic === 'string'
+      && typeof outcome.reaction === 'string' && ['engaged', 'neutral', 'low'].includes(outcome.reaction)
+      && typeof outcome.elderTurns === 'number' && Number.isFinite(outcome.elderTurns)
+      && (outcome.excerpt === undefined || typeof outcome.excerpt === 'string'))) return null
   return value as unknown as SessionAnalysis
 }
 

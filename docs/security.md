@@ -128,17 +128,16 @@ Live 자동 진행과 Gemini TTS 검증 출력 변경에서도 세션·기관·�
 
 | 구성 | 파일럿에 필요한 것 | 상태 |
 |---|---|---|
-| 음성 중계(`apps/voice-relay`) | 컨테이너 호스팅 · **TLS(`wss://호스트/voice`)** · `/readyz`·`/healthz` · SIGTERM 드레인 · 시크릿 주입(`GEMINI_API_KEY` 중계 전용 + `VOICE_RELAY_SECRET`) | 코드 구현·로컬 검증 완료, **호스팅 미정·이미지 빌드 미검증**([운영 런북](runbooks/voice-relay-operations.md)) |
-| `live-token` | `GEMINI_LIVE_MODEL=gemini-3.8-live` 시크릿 · 중계 전용 자격 검사 | 코드 폴백도 3.8이지만 운영 시크릿·실제 응답 모델을 별도 확인한다 |
-| 워커(Edge Functions) | 일지 초안 생성·푸시 발송 — **30초 스케줄**(`pg_cron` 등). 지수 백오프(30초 → 5분), 5회 초과 시 실패 표시 | 신규 |
-| 푸시 | Expo Push — EAS 프로젝트 · FCM/APNs 자격증명(EAS 관리) · `expo-notifications` 포함 **재빌드** | 신규. Expo 는 국외 처리자 |
+| 음성 중계(`apps/voice-relay`) | 컨테이너 호스팅 · **TLS(`wss://호스트/voice`)** · `/readyz`·`/healthz` · SIGTERM 드레인 · 비밀값 주입(`GEMINI_API_KEY` Edge와 같은 값 + `VOICE_RELAY_SECRET`) | 코드·로컬 검증 준비. **Cloud Run 서울 확정, 운영 배포·실기기 대기**([운영 런북](runbooks/voice-relay-operations.md)) |
+| `live-token` | `GEMINI_LIVE_MODEL=gemini-3.8-live` 시크릿 · 중계 전용 자격 검사 | ✅ 운영 모델·실 API 확인(2026-10-07). ⏳ 중계 배포 뒤 새 요청 본문·중계 자격 코드 재배포 |
+| 워커(Edge Functions) | 일지 초안 30초·푸시 10초(`pg_cron`+`pg_net`). 지수 백오프(30초 → 5분), 5회 초과 시 실패 표시 | ✅ DB·Edge 준비. ⏳ 기관 AI 스위치·실제 푸시 종단 |
+| 푸시 | Expo Push — EAS 프로젝트 · FCM/APNs 자격증명(EAS 관리) · `expo-notifications` 포함 **재빌드** | ✅ 코드. ⏳ 자격 증명·실기기 수신. Expo는 국외 처리자 |
 | Realtime | `sessions`·`session_interventions`·`program_journals` publication · 감독 화면 두 브라우저 2초 반영 | publication 추가 + 클라이언트 3곳 등록 |
-| 동시성 | 기기 2~4대 = Gemini Live 동시 연결 2~4 · `live-token` 한도(사용자 분당 3 · 일 20 · 기관 일 200) | ⚠️ 요양보호사 1명이 여러 기기를 시작하면 **사용자 한도**에 먼저 걸릴 수 있다 — 파일럿 전 한도 재확인 |
+| 동시성 | 요양보호사당 실행 중 4개·어르신당 1개·같은 세션 연결 1개. 토큰 한도 사용자 분당 8·일 80, 기관 일 200 | ✅ DB 운영 적용. ⏳ 중계·실기기 검증 |
 | 비용 | Gemini Live 동시 세션 한도·요금(기획 §8 개발 확인 사항) · Gemini TTS 사용량 | 미확인 |
 
-⚠️ `live-token` 한도는 **토큰을 받는 사용자 기준**이다. 파일럿에서 요양보호사 1명이 기기 여러 대의 세션을 자기 계정으로
-시작하면 사용자 분당 3회·일 20회에 먼저 닿는다(`app.live_token_limits` 기본값). 기기별 계정을 쓸지, 한도를 조정할지는
-파일럿 운영 방식에 따라 정한다.
+`live-token` 한도는 **토큰을 받는 사용자 기준**이다. T21.14의 사용자 분당 8·일 80 한도는 운영 반영됐다.
+연결 수·세션 시간·토큰 발급 한도는 서로 다른 서버 가드이며 한쪽 성공으로 다른 가드를 우회하지 않는다.
 
 ### 보안 조치 이력
 

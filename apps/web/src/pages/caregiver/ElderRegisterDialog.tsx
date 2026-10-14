@@ -167,6 +167,7 @@ export function ElderRegisterDialog() {
 
   async function save() {
     if (savingRef.current) return;
+    if (!settings.isSuccess) return toast('error', '기관 설정을 확인한 뒤 다시 등록해 주세요.');
     if (!form.name.trim()) return toast('error', '이름을 입력해 주세요.');
     if (!isBirthDate(form.birthDate)) return toast('error', '생년월일을 선택해 주세요.');
     if (gradeRequired && !toCareGrade(form.careGrade)) return toast('error', '주간보호 기관은 장기요양등급을 입력해야 해요.');
@@ -322,6 +323,10 @@ export function ElderRegisterDialog() {
           장기요양등급
         </Label>
         <CareGradeSelect id="r-care-grade" left={COL.inputR} top={299 - 57} value={form.careGrade} onChange={set('careGrade')} required={gradeRequired} />
+        {!settings.isSuccess ? <div className="absolute w-[416px] text-w-label leading-[24px] text-ink-900" style={{ left: COL.inputR, top: 106 }} role={settings.isError ? 'alert' : 'status'}>
+          {settings.isError ? '기관 설정을 불러오지 못했어요. 등급 필요 여부를 확인한 뒤 등록해 주세요.' : '기관 설정에서 등급 필요 여부를 확인하고 있어요.'}
+          {settings.isError ? <button type="button" disabled={settings.isFetching} onClick={() => void settings.refetch()} className="mt-2 block underline">기관 설정 다시 확인</button> : null}
+        </div> : null}
 
         <Label fx="172:127" left={COL.labelL} top={322} star={{ left: 123, top: 313 }} htmlFor="r-name">
           이름
@@ -478,7 +483,7 @@ export function ElderRegisterDialog() {
           type="button"
           data-fx="172:280"
           onClick={save}
-          disabled={saving}
+          disabled={saving || !settings.isSuccess}
           className="absolute left-[826px] top-[776px] h-[57px] w-[140px] rounded-[10px] border border-accent bg-accent text-w-sub font-semibold leading-[30px] text-white disabled:opacity-50"
         >
           {saving ? '저장 중...' : step === 'details' ? '다음' : '동의 후 등록'}

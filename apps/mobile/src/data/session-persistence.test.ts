@@ -11,19 +11,21 @@ function fixture() {
   const active = (id: string) => ({ session: { id }, elder: { id: `elder-${id}` }, remoteId: null as string | null,
     turns: [], syncedTurns: 0, events: [] as SessionSafetyEvent[], startedAt: 'synthetic-date', currentTopic: null });
   const attach = vi.fn();
+  const randomUUID = vi.fn().mockReturnValueOnce('remote').mockReturnValue('different-request');
   const finish = vi.fn();
   const clear = vi.fn();
   const state = { active: active('a'), lastFinished: null as unknown, attachRemoteSession: attach,
     finishSession: finish, clearLastFinished: clear, markSynced: vi.fn() };
   const single = vi.fn(async () => ({ data: { id: 'remote' }, error: null }));
-  const maybeSingle = vi.fn(async (): Promise<{ data: { id: string } | null; error: { message: string } | null }> => ({ data: { id: 'planned' }, error: null }));
+  type RecoveredSession = { id: string; profile_id: string; user_id: string; status: string; paused_at: string | null; ended_at: string | null };
+  const maybeSingle = vi.fn(async (): Promise<{ data: RecoveredSession | null; error: { message: string } | null }> => ({ data: null, error: null }));
   const writes: string[] = [];
   let table = '';
   const builder = { insert: vi.fn((row: { status?: string }) => { writes.push(`${table}:insert${row.status ? `:${row.status}` : ''}`); return builder; }),
     update: vi.fn((row: { status?: string }) => { writes.push(`${table}:update${row.status ? `:${row.status}` : ''}`); return builder; }),
     upsert: vi.fn(async () => { writes.push(`${table}:upsert`); return { error: null }; }),
     delete: vi.fn(() => { writes.push(`${table}:delete`); return builder; }),
-    eq: () => builder, select: () => builder, single, maybeSingle };
+    eq: vi.fn((_key: string, _value: unknown) => builder), select: () => builder, single, maybeSingle };
   const from = vi.fn((name: string) => { table = name; return builder; });
   const rpc = vi.fn(async (_name: string, _args: unknown): Promise<{ data: { session_id: string; started_at: string } | null; error: { message: string } | null }> =>
     ({ data: { session_id: 'planned', started_at: 'server-time' }, error: null }));
@@ -34,6 +36,7 @@ function fixture() {
   }).outputText, { exports, console: { warn: vi.fn() }, setTimeout: (fn: () => void) => setTimeout(fn, 0),
     require: (name: string) => {
       if (name === 'react') return { useCallback: (fn: unknown) => fn, useMemo: (fn: () => unknown) => fn() };
+      if (name === 'expo-crypto') return { randomUUID };
       if (name === '@giokon/data') return { getGiokonClient: () => ({ from, rpc }), persistConversationTurns: persistTurns, queryKeys: { sessions: () => [], sessionAnalyses: () => [], recentSessions: [] } };
       if (name === '../lib/supabase') return { queryScope: { capture: () => {
         const captured = generation;
@@ -46,7 +49,7 @@ function fixture() {
       throw new Error(name);
     },
   });
-  return { state, builder, writes, persistTurns, api: () => exports.useSessionPersistence!(), single, maybeSingle, from, rpc, attach, finish, clear,
+  return { state, builder, writes, persistTurns, api: () => exports.useSessionPersistence!(), single, maybeSingle, from, rpc, attach, finish, clear, randomUUID,
     ready: () => { state.active.remoteId = 'remote'; },
     switchUser: () => { generation++; user = { id: 'b' }; state.active = active('b'); } };
 }
@@ -70,13 +73,15 @@ describe('session writes across account changes', () => {
     f.single.mockImplementationOnce(() => new Promise(resolve => { done = resolve; }));
     const old = f.api();
     const opening = old.openRemoteSession();
+    await vi.waitFor(() => expect(f.single).toHaveBeenCalledOnce());
     f.switchUser();
     done({ data: { id: 'remote-a' }, error: null });
     await opening;
     expect(f.attach).not.toHaveBeenCalled();
-    expect(f.from).toHaveBeenCalledOnce(); // no retry under the new credentials
+    expect(f.single).toHaveBeenCalledOnce(); // no retry under the new credentials
+    f.single.mockResolvedValue({ data: { id: 'different-request' }, error: null });
     await f.api().openRemoteSession();
-    expect(f.attach).toHaveBeenCalledExactlyOnceWith('remote');
+    expect(f.attach).toHaveBeenCalledExactlyOnceWith('different-request');
   });
   it('stale screen callbacks cannot start writes, finish or discard the new session', async () => {
     const f = fixture();
@@ -187,5 +192,79 @@ describe('start rejection reasons (pilot D6 · T21.13)', () => {
     g.single.mockResolvedValue({ data: null, error: { message: 'network down' } } as never);
     expect(await g.api().openRemoteSession()).toBe('failed');
     expect(g.single).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('instant session creation response recovery', () => {
+  const recovered = { id: 'remote', profile_id: 'elder-a', user_id: 'a', status: 'active', paused_at: null, ended_at: null };
+
+  it('recovers the same committed row after its insert response is lost, without creating another session', async () => {
+    const f = fixture();
+    f.single.mockRejectedValueOnce(new Error('response lost'));
+    f.maybeSingle.mockResolvedValueOnce({ data: null, error: null }).mockResolvedValue({ data: recovered, error: null });
+    expect(await f.api().openRemoteSession()).toBeNull();
+    expect(f.builder.insert).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'remote', profile_id: 'elder-a', user_id: 'a' }));
+    expect(f.builder.eq.mock.calls).toEqual([
+      ['id', 'remote'], ['user_id', 'a'], ['profile_id', 'elder-a'],
+      ['id', 'remote'], ['user_id', 'a'], ['profile_id', 'elder-a'],
+    ]);
+    expect(f.attach).toHaveBeenCalledExactlyOnceWith('remote');
+  });
+
+  it('uses the same id on every retry and recovers even when the final insert response is lost', async () => {
+    const f = fixture();
+    f.single.mockRejectedValue(new Error('response lost'));
+    for (let check = 0; check < 5; check++) f.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    f.maybeSingle.mockResolvedValue({ data: recovered, error: null });
+    expect(await f.api().openRemoteSession()).toBeNull();
+    expect(f.builder.insert).toHaveBeenCalledTimes(3);
+    expect(f.randomUUID).toHaveBeenCalledOnce();
+    for (const [row] of f.builder.insert.mock.calls) expect(row).toMatchObject({ id: 'remote' });
+    expect(f.attach).toHaveBeenCalledExactlyOnceWith('remote');
+  });
+
+  it('keeps the same creation id when the screen retries the same local session after a failed attempt', async () => {
+    const f = fixture();
+    f.single.mockRejectedValue(new Error('response lost'));
+    expect(await f.api().openRemoteSession()).toBe('failed');
+    // A later read can finally see the committed request; the store snapshot has
+    // changed, but its session identity is unchanged across progress updates.
+    f.state.active = { ...f.state.active };
+    f.maybeSingle.mockResolvedValue({ data: recovered, error: null });
+    expect(await f.api().openRemoteSession()).toBeNull();
+    expect(f.randomUUID).toHaveBeenCalledOnce();
+    expect(f.builder.insert).toHaveBeenCalledTimes(3);
+    expect(f.attach).toHaveBeenCalledExactlyOnceWith('remote');
+  });
+
+  it('keeps a different active session as elder_busy instead of adopting it', async () => {
+    const f = fixture();
+    f.single.mockResolvedValue({ data: null, error: { message: 'ELDER_SESSION_ACTIVE' } } as never);
+    expect(await f.api().openRemoteSession()).toBe('elder_busy');
+    expect(f.attach).not.toHaveBeenCalled();
+    expect(f.builder.eq).toHaveBeenCalledWith('id', 'remote');
+    expect(f.single).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { id: 'other' }, { user_id: 'other' }, { profile_id: 'other' },
+    { status: 'ended', ended_at: 'server-time' }, { paused_at: 'server-time' },
+  ])('does not attach an incompatible recovered row: %s', async mismatch => {
+    const f = fixture();
+    f.maybeSingle.mockResolvedValue({ data: { ...recovered, ...mismatch }, error: null });
+    expect(await f.api().openRemoteSession()).not.toBeNull();
+    expect(f.attach).not.toHaveBeenCalled();
+    expect(f.builder.insert).not.toHaveBeenCalled();
+  });
+
+  it('does not recover or attach across an account change during the lookup', async () => {
+    const f = fixture();
+    let resolve!: (value: { data: typeof recovered; error: null }) => void;
+    f.maybeSingle.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const opening = f.api().openRemoteSession();
+    f.switchUser(); resolve({ data: recovered, error: null });
+    expect(await opening).toBe('failed');
+    expect(f.builder.insert).not.toHaveBeenCalled();
+    expect(f.attach).not.toHaveBeenCalled();
   });
 });

@@ -143,3 +143,35 @@ it('never replaces an existing crisis with a generic relay review',()=>{
   expect(useApp.getState().active!.safety).toEqual(before.safety);
   expect(useApp.getState().active!.events).toEqual(before.events);
 });
+
+it('preserves an acknowledgement made while an older progress write is pending', () => {
+  useApp.getState().requireRelayReview();
+  const pending = useApp.getState().active!.events.map(event => ({ ...event }));
+  useApp.getState().acknowledgeSafety();
+  const acknowledgedAt = useApp.getState().active!.events[0].acknowledgedAt;
+  useApp.getState().markSynced({ turns: 1, events: [{ ...pending[0], remoteId: 'saved-event' }] });
+  expect(useApp.getState().active!.events[0]).toMatchObject({
+    remoteId: 'saved-event', acknowledgedAt, ackSynced: false,
+  });
+  useApp.getState().markSynced({ turns: 1, events: [{ ...useApp.getState().active!.events[0], ackSynced: true }] });
+  expect(useApp.getState().active!.events[0]).toMatchObject({ acknowledgedAt, ackSynced: true });
+});
+
+it('keeps new safety events when an earlier event snapshot finishes syncing', () => {
+  useApp.getState().requireRelayReview();
+  const pending = useApp.getState().active!.events.map(event => ({ ...event }));
+  useApp.getState().acknowledgeSafety();
+  useApp.getState().adoptAutomaticInput('죽고 싶어요');
+  const latest = useApp.getState().active!.events[1];
+  useApp.getState().markSynced({ turns: 1, events: [{ ...pending[0], remoteId: 'saved-event' }] });
+  expect(useApp.getState().active!.events).toHaveLength(2);
+  expect(useApp.getState().active!.events[1]).toBe(latest);
+});
+
+it('retains the turn cap even when every answer has a nonurgent comfort recommendation', () => {
+  for (let turn = 1; turn <= 10; turn++) {
+    expect(useApp.getState().adoptAutomaticInput('고향이 그리워요.')).toBe(turn === 10 ? 'help' : 'continue');
+    expect(useApp.getState().active!.safety.recommendation).toBe('comfort');
+    if (turn < 10) expect(useApp.getState().acceptAutomaticResponse('고향에서 무엇을 하셨어요?')).toBe(true);
+  }
+});

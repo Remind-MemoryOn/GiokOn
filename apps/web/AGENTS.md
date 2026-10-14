@@ -86,7 +86,7 @@
 - 서버 상태 = TanStack Query(`@giokon/data` 훅), UI 상태 = Zustand. 서버 데이터를 스토어에 복제하지 않는다.
 - **Supabase 미설정(.env 없음)에서도 앱은 떠야 한다** — `useAuth().isConfigured` 로 훅을 `enabled` 끄고 안내를 렌더한다.
 - Realtime 은 `useGiokonRealtime`. ⚠️ **새 테이블은 `RealtimeTable`·`DEFAULT_TABLES`·`invalidateFor` 세 곳에 모두 등록한다**(publication 에만 넣으면 아무도 안 듣는다).
-- **세션 상태 3종**: `planned`(웹 설계) · `active`(앱 진행 중) · `ended`. 대화 이력·분석 목록에 `planned` 를 세우지 않는다. 앱은 설계 행을 그대로 시작한다(새로 만들면 설계가 유령으로 남는다).
+- **세션 상태**: `planned`(웹 설계) · `active`(앱 진행 중) · `ended` · `recording`(폴백 기록 저장 전용, 실행 불가). 대화 이력·분석 목록에 `planned` 를 세우지 않는다. 앱은 설계 행을 그대로 시작한다(새로 만들면 설계가 유령으로 남는다).
 - 어르신 접근은 **기관 단위 + 역할**이다. 배정(`profile_caregivers`)은 알림·"내 담당" 필터 용도. 보호자 격리·어르신 코드(`elder_codes`)는 그대로.
 - RLS 가 최종 방어선이다. 화면에서 감추는 것으로 접근통제를 대신하지 않는다.
 - 🔒 **보안 불변식**(판정 SoT = `docs/runbooks/security-fixes.md`):

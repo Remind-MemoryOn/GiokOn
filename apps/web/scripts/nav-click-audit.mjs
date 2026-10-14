@@ -54,7 +54,7 @@ if (SELF) {
   }
   child = spawn(
     process.execPath,
-    ['./node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-audit', '--port', String(port), '--strictPort'],
+    ['./node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--outDir', 'dist-audit', '--port', String(port), '--strictPort'],
     { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: 'ignore' },
   );
   let up = false;
@@ -70,7 +70,8 @@ if (SELF) {
 
 const exe = process.env.CHROMIUM_PATH
   || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch(exe ? { executablePath: exe } : {});
+const browser = await chromium.launch(exe ? { executablePath: exe }
+  : process.platform === 'win32' ? { channel: 'msedge' } : {});
 // 1440×900 — 노트북에서 가장 흔한 크기. 세로가 짧을수록 겹침이 잘 드러난다.
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 

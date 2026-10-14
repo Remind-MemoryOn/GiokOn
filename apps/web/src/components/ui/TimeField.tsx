@@ -38,6 +38,7 @@ export function TimeField({ value, onChange, label, disabled, className, style, 
     if (!nh && !nm) return onChange('');
     onChange(`${nh || '00'}:${nm || '00'}`);
   };
+  const clear = () => onChange('');
 
   return (
     <div className={className} style={style} data-fx={rest['data-fx']}>
@@ -49,7 +50,7 @@ export function TimeField({ value, onChange, label, disabled, className, style, 
         aria-label={`${label} (시)`}
         value={h}
         disabled={disabled}
-        onChange={(e) => set(e.target.value, m)}
+        onChange={(e) => e.target.value ? set(e.target.value, m) : clear()}
         className={`${BARE} left-[20px] w-[34px]`}
       >
         <option value="">--</option>
@@ -64,7 +65,7 @@ export function TimeField({ value, onChange, label, disabled, className, style, 
         aria-label={`${label} (분)`}
         value={m}
         disabled={disabled}
-        onChange={(e) => set(h, e.target.value)}
+        onChange={(e) => e.target.value ? set(h, e.target.value) : clear()}
         className={`${BARE} left-[54px] w-[34px]`}
       >
         <option value="">--</option>

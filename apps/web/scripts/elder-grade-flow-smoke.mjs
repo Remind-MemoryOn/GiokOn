@@ -76,6 +76,48 @@ try {
   assert.equal(patches.length, 2);
   assert.equal(patches[1].care_grade, null);
 
+  // 기관 설정 대기/실패는 '등급 선택 사항'이라는 뜻이 아니다. 수정 저장을 막고 다시 조회할 길을 준다.
+  await go('/caregiver/elders/e1/edit?audit-grade=day_care');
+  const settings = await page.evaluate(() => window.__giokonQC.getQueryData(['org_settings']));
+  await page.evaluate(() => window.__giokonQC.getQueryCache().find({ queryKey: ['org_settings'] }).setState({ data: undefined, status: 'pending', fetchStatus: 'fetching', error: null }));
+  await page.waitForTimeout(50);
+  assert.equal(await page.getByRole('button', { name: '저장', exact: true }).isDisabled(), true, '기관 설정 확인 전에는 등급 필요 여부를 알 수 없어 저장을 막아야 함');
+  await page.evaluate(() => window.__giokonQC.getQueryCache().find({ queryKey: ['org_settings'] }).setState({ status: 'error', fetchStatus: 'idle', error: new Error('합성 설정 조회 실패') }));
+  await page.getByRole('button', { name: '기관 설정 다시 확인', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: '저장', exact: true }).isDisabled(), true);
+  await page.evaluate(settings => window.__giokonQC.setQueryData(['org_settings'], settings), settings);
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page.getByText('주간보호 기관은 장기요양등급을 입력해야 해요.').waitFor();
+  assert.equal(patches.length, 2);
+
+  await page.goto(`http://127.0.0.1:${PORT}/caregiver/elders/new?audit-grade=day_care`);
+  await page.getByRole('dialog', { name: '어르신 등록' }).waitFor();
+  await page.locator('#r-name').fill('박시험');
+  await page.locator('#r-birth').fill('1940-03-02');
+  await page.evaluate(() => window.__giokonQC.getQueryCache().find({ queryKey: ['org_settings'] }).setState({ data: undefined, status: 'pending', fetchStatus: 'fetching', error: null }));
+  await page.waitForTimeout(50);
+  assert.equal(await page.getByRole('button', { name: '다음', exact: true }).isDisabled(), true, '기관 설정 확인 전에는 등록 동의 단계로 넘어가면 안 됨');
+
+  // 주요 기억은 수가 늘어도 특이사항·저장 버튼 위를 덮지 않는다. 시안의 2행까지는 좌표를 그대로 둔다.
+  await go('/caregiver/elders/e1/edit?audit-grade=nursing_home');
+  const noteTop = (await page.locator('#f-note').boundingBox()).y;
+  const setMemories = async count => page.evaluate(count => {
+    const q = window.__giokonQC;
+    const template = q.getQueryData(['chronicles', 'e1'])[0];
+    q.setQueryData(['chronicles', 'e1'], Array.from({ length: count }, (_, i) => ({ ...template, id: `memory-${i}`, topic: '주요 기억', content: `추가 기억 ${i + 1}` })));
+  }, count);
+  await setMemories(2);
+  await page.getByText('추가 기억 2', { exact: true }).waitFor();
+  assert.equal((await page.locator('#f-note').boundingBox()).y, noteTop, '2개까지는 기존 시안 좌표를 보존해야 함');
+  await setMemories(5);
+  const lastMemory = page.getByText('추가 기억 5', { exact: true }).locator('..');
+  await lastMemory.waitFor();
+  const lastBox = await lastMemory.boundingBox();
+  const noteBox = await page.locator('#f-note').boundingBox();
+  const saveBox = await page.getByRole('button', { name: '저장', exact: true }).boundingBox();
+  assert.ok(noteBox.y > lastBox.y + lastBox.height, '5번째 기억 아래로 특이사항을 내려야 함');
+  assert.ok(saveBox.y > noteBox.y + noteBox.height, '저장 버튼도 특이사항 아래를 유지해야 함');
+
   console.log('PASS: 주간보호 등급 필수(상세 안내 · 수정 저장 막음 · 등록 다음 막음) · 고르면 care_grade 저장 · 요양원은 선택. 합성 API 만 사용.');
 } finally {
   await browser.close();

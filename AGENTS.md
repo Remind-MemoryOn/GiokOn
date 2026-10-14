@@ -72,7 +72,7 @@
   DB 회귀 `bash supabase/tests/run-rls-regression.sh`(로컬 PG16).
   CI 가 도는 것: typecheck·lint·**copy·design**·test·build·`test:auth` · DB 회귀(`rls_regression`·`transcript_provenance`·`pilot_access`·`legal_consents`·
   `journal_worker`·`safety_push`) · `check:audit`. **수동**: 앱 게이트 `check:figma`·`check:font`·`check:bom`, `check:a11y`·`check:figma-web` — 앱을 만졌으면 손으로 돌린다.
-  ⚠️ `storage_policies.sql` 은 로컬 러너에만 있고 CI 단계에는 아직 없다.
+  `storage_policies.sql`·`share_auto_revoke.sql`·`journal_worker_consent.sql`·`prod_privileges.sql`·확정 기록 보존 회귀도 CI에서 실행한다(T28).
 - **게이트를 코드에 맞춰 고쳐서 통과시키지 않는다.** 새 회귀 단언은 **가드를 지운 변형이 실패하는지** 확인한다.
 
 ## 기술 결정
@@ -99,7 +99,7 @@
   (**잠금화면 고정 문구 + 알림 id 만** — 성함·발화·위기 종류 금지).
 - **파일럿 운영 규칙(2026-09-24·28 사용자 확정)**: 세션 1회 최대 **10분**(일시정지 포함) · 요양보호사 1명당 동시 **4대** ·
   어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`, 세로 고정).
-- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web`) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
+- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app` · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
 - **Gemini 키는 하나를 두 곳에 같은 값으로(2026-10-04 사용자 결정 — 10-01 의 키 분리를 바꿈)**: Supabase Edge 시크릿(`live-token`·`session-report`·`program-journal-draft` — **지우지 않는다**) + Cloud Run Secret Manager(중계 TTS). 교체는 두 곳 동시 — 절차는 `docs/runbooks/voice-relay-operations.md` "Gemini 키 교체". TTS 는 중계가 부른다(Edge 로 옮기지 않음).
 
 ## Supabase 운영
@@ -143,6 +143,7 @@
 - **RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(항상 `'/'`) → 중계 주소는 `relay-config.ts` 정규식으로 판정. Node 테스트는 통과하니 속지 말 것.
 - **"오늘" 날짜는 `seoulDate()`(core)** — `new Date().toISOString().slice(0, 10)` 은 UTC 라 한국 00:00~08:59 에 전날이 된다(T25.7). 기기 시간대와도 무관하게 한국 날짜.
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
+- **Windows Android 빌드**: pnpm 가상 저장소는 루트 `.pnpm`, 폴더 최대 32자(긴 CMake 경로 방지). `apps/mobile/plugins/withWindowsCmake.js`가 Windows CMake 중간 산출물 경로도 단축한다. 기존 네이티브 폴더에는 `expo prebuild --platform android --no-install`로 반영. 설치 경로 변경 후 Android `build/generated/autolinking/autolinking.json` 캐시를 재생성한다.
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
 - **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 ·
   `live/player.ts` 는 `expo-file-system/legacy` · `expo-notifications` 등 네이티브 모듈 추가는 **EAS 재빌드 필요** ·
@@ -154,7 +155,11 @@
 - `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 네이버 로그인 함수 주소 파생에만 쓰인다(`social.ts`).
 - "현재 화면에서 호출하지 않는다" ≠ "서버가 허용해도 된다" — 권한 있는 사용자의 직접 API 요청으로 가능한 경로는 서버 계약 결함으로 다룬다.
 
-## 현재 위치 (2026-10-11)
+## 현재 위치 (2026-10-14)
+
+**출시 전 전체 검토 T28**: Android 개발 환경 수정은 main 푸시 완료. 후속 앱·웹·분석·확정 기록 보호와 검증 도구 수정은
+`codex/final-code-review`에 푸시하고 검토 PR #55로 남겼다. 새 확정 기록 보호 마이그레이션은 운영 미적용이며 승인 후 main 병합·대조한다.
+상태·검토 방법·남은 제약은 `docs/tasks.md`와 `docs/plans/2026-10-13-final-code-review.md`를 따른다.
 
 **완료된 큰 묶음**(상세·날짜는 `docs/tasks.md`): 권한 재설계(기관 단위·역할·합류) · 대화 단계·원격 제어·동시 4대 · 앱 직접 모드 제거·어르신 표시 모드·PIN ·
 프로그램 일지(D5) + 자동 초안 워커(C4) · 안전 알림 체인(중계 즉시 기록 T21.4 · 푸시 T21.9) · 웹 W1~W9 · 앱·웹 리팩토링 · 웹 선택 메뉴 통일(2026-09-28 사용자 디자인 수정).
@@ -168,12 +173,12 @@
 - 웹: ~~T25.2~~(✅ 2026-09-29 — 첨부 실패 시 그 파일만 삭제 · 새 일지는 만든 일지로 옮겨 남은 사진만 이어서 · `test:journal` ⑥) · ~~T25.3~~(✅ 2026-09-29 — 일지 저장·승인·확정은 화면이 읽은 `updated_at` 일 때만 · 충돌 시 "최신 내용 불러오기") · ~~T25.6~~(✅ 2026-09-29 — 감독 화면: 끝난 대화의 미확인 위기 유지 · 안전 조회 실패 표시 · `test:supervision`) · ~~T25.7~~(✅ 2026-09-29 — core `seoulDate()` 로 "오늘"을 한국 날짜로 통일: 설계 세션 조회·세션 설계·일지 기본값). ~~T25.17 웹 파트~~(✅ 2026-09-29 — 빈 발췌 = 감지 후 2분 '저장하는 중' → '발화 근거 저장 실패', 안내 문구로 덮지 않음). **감사 웹 과제 완료.**
 - **중계 담당 세션(2026-10-01~)**: 범위 = `apps/voice-relay` + Edge `live-token`. 순서 ~~T23.5~~(✅ 2026-10-02 코드 — `VOICE_RELAY_SECRET`·`x-relay-secret` · 배포 대기: **중계 먼저 → live-token**) → ~~T26.1~~(✅ 2026-10-03 코드 · DB 운영 적용 확인 2026-10-04 · 중계 배포 대기) → ~~T21.14~~(✅ 2026-10-04 — 분당 8·일 80 · 운영 적용됨) → ~~T21.12~~(✅ 2026-10-04 중계 코드 — 서버 경과 10분 · 진행 중 AI 발화 최대 30초 · 앱 종료 문구는 앱 파트) → ~~T21.11~~(✅ 2026-10-04 코드 — 휴식 요청·거부는 고정 인사 한 문장 뒤 종료 · 위기·급성 고통 즉시 정지 유지 · DB `20261004010000` 운영 적용됨 · 웹 라벨·앱 문구는 각 파트) → 운영 배포(사용자). Cloud Run 은 만들어만 두고 **필요해질 때 연결**(비용 — 2026-10-03 사용자). 동시 연결 4개 고정 유지 · 호스팅 확정(Cloud Run 서울, 평일 09~18시 1대) — `docs/tasks.md` "음성 중계 서버".
 - 앱: ~~T21.11·T21.12 앱 문구~~(✅ 2026-10-06 — 중계 종료 이유 `time_limit`·`elder_closing` 별 안내 · 모르는 이유는 중립 문구 · EAS 재빌드에 싣는다).
-- 공통: ~~T24.4 동의 버전 단일화~~(✅ 2026-10-06 코드 — `public.current_consent_version()` · 운영 적용 2026-10-07) · ~~T24.2 제품 이벤트~~(✅ 2026-10-06 코드 — 최소 범위: 일지 확인 대기 중 사람이 고친 칸 이름만 서버가 기록 · `20261006010000` 운영 적용 2026-10-07 · 지표 계산은 분모 결정 뒤) · ~~T25.10 문서 현행화~~(✅ 2026-10-07 — 온보딩 옛 서술에 현행 표시 · W6/W9 현행·이력 분리 · `docs/tasks.md` 상태 단계 범례 `[코드 · DB · 배포 · 실기기]`). 남은 코드 과제는 T24.5(🟡 gemini-3.8 재검증 — 자동 테스트·실 API 미검증)와 T27.2(expo-audio 전환, SDK 55 상향 전)이고, 나머지는 배포·실기기(사용자 작업)·결정 대기.
+- 공통: T24.4 동의 버전 단일화·T24.2 제품 이벤트·T25.10 문서 현행화는 코드·운영 반영 완료. T24.5는 자동 회귀와 2026-10-07 TTS·단기 토큰·Live 1턴 실 API 확인까지 완료했으며 어르신 실음성 품질 평가는 남는다. 남은 코드 과제는 T27.2(expo-audio, SDK 55 상향 전)·T27.4(Vitest 상향)·웹 로그인 후 감독 화면 복귀와 T28 검토 문서에 기록한 제약이다. 배포·실기기·기관/법무 결정도 별도다.
 - 앱: 안전 알림 탭 → 웹 감독 화면(T21.10 후속 ✅ 2026-10-11 코드 · EAS 재빌드 뒤 실기기). 웹 로그인 후 원래 경로 복귀는 웹 과제로 남음.
-- 앱 개발 환경: T27.1 코드 준비 완료. 기본 실행은 개발 빌드, Expo Go는 화면 확인용. Firebase 앱 설정은 EAS 파일 변수 `GOOGLE_SERVICES_JSON`으로 연결(공개 앱 변수 아님). 자격 증명·재빌드·수신 검증은 대기. 절차는 `apps/mobile/README.md`. 의존성 감사: T27.3 패치 오버라이드(`pnpm-workspace.yaml`)로 critical 2/high 4 — 남은 tinypool 은 T27.4(vitest 4, 별도) · image-size·node-forge·braces 는 개발 도구·수정판 없음.
+- 앱 개발 환경: T27.1 코드 준비 완료. 기본 실행은 개발 빌드, Expo Go는 화면 확인용. 모바일 플랫폼은 Android/iOS만. 최초 설치는 `pnpm android`, 설치 후 `pnpm start -c`(로컬 JDK 17 필요). Firebase 앱 설정은 EAS 파일 변수 `GOOGLE_SERVICES_JSON`으로 연결(공개 앱 변수 아님). 자격 증명·재빌드·수신 검증은 대기. 절차는 `apps/mobile/README.md`. 의존성 감사: T27.3 패치 오버라이드(`pnpm-workspace.yaml`)로 critical 2/high 4 — 남은 tinypool 은 T27.4(vitest 4, 별도) · image-size·node-forge·braces 는 개발 도구·수정판 없음.
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
-**사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) · Vercel 운영 배포 설정(T25.9) ·
+**사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) ·
 ~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — 운영 `live-token` 은 아직 옛 본문이라 중계 배포 뒤 재배포 필수) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
 
 **결정 대기**: 기관 AI 초안 스위치 켜기 · 주황 `#e9822b` 대비(2.73:1 — **배포 직전에 사용자에게 다시 여쭐 것**) · 공단 인정 전제(사람 계획 + AI 진행 + 1인 병렬 감독) ·

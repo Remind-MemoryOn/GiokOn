@@ -1,5 +1,10 @@
 # Database Setup
 
+> **2026-10-14 T28.4**: 확정 일지의 상위 세션/어르신 삭제 cascade와 확정·공개 사진의 Storage 교체·삭제를 막는
+> 마이그레이션을 검토 브랜치에 추가했다. 로컬 PG16 회귀 17개·보호 가드 변이 5종 검출 완료. **운영 미적용**.
+> 앱·웹 삭제는 파일 파기 전에 확정 일지를 확인한다. Storage와 DB는 별도 요청이라 검사 직후 다른 사람이 확정하면
+> DB가 최종 기록을 보존하더라도 앞서 지운 미확정 파일·프로필 사진까지 되돌리지는 못한다.
+
 > ## ⚠️ 2026-09-23 기획 변경 — 이 문서보다 새 계획이 우선한다
 >
 > 제품 정의가 **"요양보호사 업무 보조 도구"** 에서
@@ -16,14 +21,14 @@
 
 기억온 v1 데이터베이스는 Supabase PostgreSQL을 사용한다. 인증은 **Supabase Auth**를 사용하며, 데이터 접근은 클라이언트(웹·모바일)가 supabase-js로 직접 연동하고 **RLS(`auth.uid()`)** 로 소유자별로 격리한다. Supabase는 DB·Auth·Storage·Edge Functions를 통합 제공한다.
 
-> ⚠️ "소유자별 격리"는 v1 서술이다. 격리 모델은 두 번 바뀌었다 — **현재**(`20260722100000`)는 기관(org_id) + **담당 배정**
-> (`app.is_assigned_caregiver`), **파일럿 목표**(2026-09-23)는 기관 + **역할**(`app.is_care_team()` · `app.has_capability()`)이다.
+> ⚠️ "소유자별 격리"는 v1 서술이다. **현재**는 기관 + **역할**(`app.is_care_team()` · `app.has_capability()`),
+> `20260924030000` 운영 반영 상태다. 담당 배정은 알림·내 담당 필터와 일부 삭제 권한에 남는다.
 > 전환 전후 모두 보호자는 `guardian_shares`(공개 커밋) 경유로만 읽는다. 아래 "파일럿 신규·변경" 참조.
 
 ## Files
 
 - `supabase/migrations/`: v1 스키마, 인덱스, 트리거, RLS 정책. (RLS는 `auth.uid()` 기준으로 작성한다.)
-- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `session-report`(세션 분석 생성) · `naver-auth`. (`stt-transcribe`(CLOVA STT)는 2026-10-04 삭제.) 파일럿에서 일지 초안 워커·푸시 발송 워커가 추가된다. 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
+- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `session-report`(현재 UI 호출 없음) · `naver-auth` · `program-journal-draft` · `push-dispatch`. (`stt-transcribe`(CLOVA STT)는 2026-10-04 삭제.) 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
 - `docs/database.md`: Supabase 적용 절차와 접근 모델.
 
 ## Tables
@@ -125,23 +130,26 @@
 
 ## Access Model
 
-대부분의 요청은 클라이언트가 **supabase-js로 직접** 수행한다. 인증된 사용자의 JWT가 자동 첨부되고, RLS가 각 행의 소유자(`user_id = auth.uid()`)를 검증한다.
+대부분의 요청은 클라이언트가 **supabase-js로 직접** 수행한다. 인증된 사용자의 JWT가 자동 첨부되고,
+RLS가 기관·역할·공개 범위를 검사한다. 동의·확정·위임 등 작업별 조건은 트리거와 RPC가 추가로 집행한다.
 
 ```sql
--- 예시 정책 (모든 테이블 동일 패턴)
+-- 초기 v1 이력 예시. 현행 접근 모델로 복사하지 않는다.
 create policy profiles_select_own on profiles
   for select using (user_id = auth.uid());
 ```
 
-> ⚠️ 위 예시는 v1 패턴이다. 운영 DB 는 아직 `org_id = app.current_org_id() and <비 guardian> and (app.is_assigned_caregiver(profile_id) or app.is_org_admin())`,
-> 저장소(파일럿 D4 `20260924030000`, 로컬 검증 → 운영 적용 2026-09-24)는 아래와 같다 — 위임 권한이 필요한 쓰기(일지 확정 등)는 정책이 아니라 트리거·RPC 에서 `app.has_capability()` 로 검사한다.
+> 위 예시는 v1 이력이다. 파일럿 D4 `20260924030000`은 운영 적용됐다(2026-09-24).
+> 일반 돌봄팀 읽기는 아래 기관·역할 술어를 사용한다. 위임 권한이 필요한 쓰기(일지 확정 등)는
+> 트리거·RPC에서 `app.has_capability()`로 추가 검사하며, 보호자는 승인된 공개 항목만 읽는다.
 
 ```sql
 -- 파일럿 목표 술어(D4) — 같은 기관 돌봄팀 읽기
 using (org_id = app.current_org_id() and app.is_care_team())
 ```
 
-공급자 키는 서버에만 둔다. 현재 토큰 발급·웹 STT 등은 Edge Function이 처리한다. 새 장시간 음성 중계는 별도 실행 환경에서 호출자 권한을 집행하며, 서버 권한으로 기록하더라도 호출자·기관·대상·동의 검증을 생략하지 않는다.
+공급자 키는 서버에만 둔다. 토큰 발급·일지 초안·푸시 워커는 Edge Function이 처리한다(웹 STT는 삭제).
+음성 중계는 별도 실행 환경에서 호출자 권한을 집행하며, 서버 권한으로 기록하더라도 호출자·기관·대상·동의 검증을 생략하지 않는다.
 
 음성 중계 흐름(2026-09-13 승인 → **코드 구현·로컬 검증 완료, 운영 배포·실기기 미검증**. 2026-09-23 **유일한 음성 경로로 확정** — 앱 직접 연결은 폐기):
 

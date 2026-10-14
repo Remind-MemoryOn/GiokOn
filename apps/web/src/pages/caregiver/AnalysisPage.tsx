@@ -29,6 +29,7 @@ import {
   computeMonthlyTopicTrend,
   computeOverall,
   computeTopicDetail,
+  withinObservationPeriod,
   type ObservationAxis,
 } from '@giokon/core';
 import { webPalette } from '@giokon/theme';
@@ -95,6 +96,9 @@ export function AnalysisPage() {
 
   const elders = useMemo(() => (profilesQuery.data ?? []).map(toElderProfile), [profilesQuery.data]);
   const sessions = useMemo(() => (sessionsQuery.data ?? []).map(toSession), [sessionsQuery.data]);
+  const periodSessions = useMemo(() => (sessionsQuery.data ?? [])
+    .filter((s) => withinObservationPeriod(s.ended_at ?? s.started_at, months))
+    .map(toSession), [sessionsQuery.data, months]);
   /** 분석 + 시각(월별 집계에 필요). 파싱 실패한 행은 버린다(값을 만들지 않는다). */
   const dated = useMemo(() => {
     const out: {
@@ -108,22 +112,22 @@ export function AnalysisPage() {
     }
     return out;
   }, [analysesQuery.data]);
-  const analyses = useMemo(() => dated.map((d) => d.analysis), [dated]);
+  const analyses = useMemo(() => dated.filter((d) => withinObservationPeriod(d.at, months)).map((d) => d.analysis), [dated, months]);
   const withAt = useMemo(() => dated.map((d) => ({ ...d.analysis, at: d.at })), [dated]);
 
   const overall = useMemo(
-    () => computeOverall(elders, sessions, analyses),
-    [elders, sessions, analyses],
+    () => computeOverall(elders, periodSessions, analyses),
+    [elders, periodSessions, analyses],
   );
   const topicTrend = useMemo(
-    () => computeMonthlyTopicTrend(withAt, months),
+    () => computeMonthlyTopicTrend(withAt.filter((a) => withinObservationPeriod(a.at, months)), months),
     [withAt, months],
   );
   const axisTrend = useMemo(() => computeMonthlyAxisTrend(withAt, months), [withAt, months]);
   const axisObs = useMemo(() => computeAxisObservations(withAt, months), [withAt, months]);
 
   // 주제 선택은 상위 주제 첫 번째가 기본 — 목록이 바뀌면 따라간다.
-  const topic = topicPick ?? overall.topTopics[0]?.label ?? '';
+  const topic = overall.topTopics.find((t) => t.label === topicPick)?.label ?? overall.topTopics[0]?.label ?? '';
   const setTopic = (t: string) => setTopicPick(t);
   const secondsBySession = useMemo(() => {
     const m = new Map<string, number>();

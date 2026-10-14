@@ -62,6 +62,12 @@ describe('analyzeSession — 관찰 지표', () => {
     expect(a3.metrics.elderTurns).toBe(0)
     expect(a3.summary).toContain('많지 않')
   })
+
+  it('한 질문에 어르신 발화가 여러 번 이어져도 응답률은 100%를 넘지 않는다', () => {
+    const result = analyzeSession(elder, [ai('고향'), el('전주에서 살았어'), el('시장 옆집이었지')])
+    expect(result.metrics.elderTurns).toBe(2)
+    expect(result.metrics.responseRate).toBe(1)
+  })
 })
 
 describe('recommendNextTopics', () => {

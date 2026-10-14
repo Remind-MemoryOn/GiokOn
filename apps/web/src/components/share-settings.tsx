@@ -69,6 +69,9 @@ interface Props {
   photos: ProgramJournalPhotoRow[];
   photoUrls?: Record<string, string>;
   pending?: boolean;
+  loading?: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
   /** 이미 공개된 상태 — 모달을 열 때 그대로 체크해 둔다(없는 상태를 만들지 않는다). */
   initial?: { summary: boolean; second: boolean; notify: boolean };
   onPublish: (pick: SharePick) => void;
@@ -77,7 +80,15 @@ interface Props {
 export function ShareSettingsDialog(props: Props) {
   // 선택 상태는 항목마다 새로 시작한다 — effect 로 되심지 않고 key 로 다시 마운트한다.
   if (!props.item) return null;
-  return <SettingsForm key={props.item.id} {...props} item={props.item} />;
+  if (props.loading || props.loadError) return (
+    <Dialog open={props.open} onClose={props.onClose} title="공개 기록 설정" size="md">
+      <p role={props.loadError ? 'alert' : 'status'} className="text-w-sub leading-[28px] text-ink-900">
+        {props.loadError ? '공개 설정을 불러오지 못했어요. 기존 공개 상태를 확인한 뒤 다시 시도해 주세요.' : '기존 공개 상태와 첨부 사진을 확인하고 있어요.'}
+      </p>
+      {props.loadError ? <button type="button" onClick={props.onRetry} className="mt-4 text-w-sub underline">다시 확인</button> : null}
+    </Dialog>
+  );
+  return <SettingsForm key={`${props.item.type}:${props.item.id}`} {...props} item={props.item} />;
 }
 
 function SettingsForm({

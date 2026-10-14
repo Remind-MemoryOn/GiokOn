@@ -4,6 +4,7 @@ import { assessEngagement } from '@giokon/core';
 interface AnalysisLike {
   topicOutcomes: readonly { topic: string; elderTurns: number }[];
   interestKeywords: readonly string[];
+  metrics: { elderTurns: number; participation: number };
 }
 interface LogLike {
   turns: readonly { speaker: string; text: string }[];
@@ -26,10 +27,10 @@ export interface TopicStats {
 export function topicStats(input: {
   focusTopic: string | undefined;
   analyses: readonly AnalysisLike[];
-  logs: readonly LogLike[];
+  logs?: readonly LogLike[];
   sessions: readonly { durationMinutes: number }[];
 }): TopicStats {
-  const { focusTopic, analyses, logs, sessions } = input;
+  const { focusTopic, analyses, logs = [], sessions } = input;
   const mentions = focusTopic !== undefined
     ? analyses.reduce(
         (n, a) => n + (a.topicOutcomes.find((o) => o.topic === focusTopic)?.elderTurns ?? 0),
@@ -38,9 +39,12 @@ export function topicStats(input: {
     : 0;
   const elderUtterances = logs.flatMap((l) => l.turns.filter((t) => t.speaker === 'Elderly'));
   const rich = elderUtterances.filter((t) => assessEngagement(t.text) === 'rich').length;
-  const engagedRate = elderUtterances.length
-    ? Math.round((rich / elderUtterances.length) * 100)
-    : null;
+  // List logs intentionally omit transcripts. Saved participation uses the same
+  // rich / elder-turn definition; weight it by its observed turn count.
+  const observedTurns = analyses.reduce((n, a) => n + a.metrics.elderTurns, 0);
+  const engagedRate = observedTurns
+    ? Math.round((analyses.reduce((n, a) => n + a.metrics.participation * a.metrics.elderTurns, 0) / observedTurns) * 100)
+    : elderUtterances.length ? Math.round((rich / elderUtterances.length) * 100) : null;
   const avgMinutes = sessions.length
     ? Math.round(sessions.reduce((n, s) => n + s.durationMinutes, 0) / sessions.length)
     : null;
