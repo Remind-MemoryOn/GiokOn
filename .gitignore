@@ -32,6 +32,10 @@ coverage/
 android/
 ios/
 *.jks
+*.keystore
+*.pem
+credentials.json
+*service-account*.json
 *.p8
 *.p12
 *.key
@@ -45,6 +49,12 @@ apps/mobile/credentials/
 .vercel/
 .railway/
 supabase/.temp/
+**/supabase/.temp/
+*.apk
+*.aab
+*.ipa
+.gradle/
+.cxx/
 
 # Temporary runtime files
 tmp/

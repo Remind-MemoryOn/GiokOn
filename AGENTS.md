@@ -145,7 +145,7 @@
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
 - **Windows Android 빌드**: pnpm 가상 저장소는 루트 `.pnpm`, 폴더 최대 32자(긴 CMake 경로 방지). `apps/mobile/plugins/withWindowsCmake.js`가 Windows CMake 중간 산출물 경로도 단축한다. 기존 네이티브 폴더에는 `expo prebuild --platform android --no-install`로 반영. 설치 경로 변경 후 Android `build/generated/autolinking/autolinking.json` 캐시를 재생성한다.
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
-- **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 ·
+- **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 + 앱 직접 의존성 필수(override만 두면 EAS Gradle이 찾지 못함) ·
   `live/player.ts` 는 `expo-file-system/legacy` · `expo-notifications` 등 네이티브 모듈 추가는 **EAS 재빌드 필요** ·
   `react-native-live-audio-stream@1.1.1` 의 New Architecture 호환은 실기기 미검증. RN 상향은 typecheck 가 아니라 **Metro 번들(Android·iOS) 성공**으로 증명한다.
 - **번들 ID 변경 시** EAS·구글/카카오/네이버 콘솔의 패키지명·키해시·URL 스킴도 갱신해야 한다(사용자 작업).
@@ -155,7 +155,9 @@
 - `EXPO_PUBLIC_LIVE_TOKEN_URL` 은 이름과 달리 네이버 로그인 함수 주소 파생에만 쓰인다(`social.ts`).
 - "현재 화면에서 호출하지 않는다" ≠ "서버가 허용해도 된다" — 권한 있는 사용자의 직접 API 요청으로 가능한 경로는 서버 계약 결함으로 다룬다.
 
-## 현재 위치 (2026-10-14)
+## 현재 위치 (2026-10-15)
+
+EAS 앱 프로젝트 = `@memoryon/giokon-mobile` (`00151025-03f4-47bd-b481-85577b7dd17e`). `owner`는 표시 이름 MemoryOn이 아닌 실제 식별자 `memoryon`을 쓴다. 이전 EAS ID는 다른 용도 프로젝트라 사용하지 않는다.
 
 **출시 전 전체 검토 T28**: Android 개발 환경 수정은 main 푸시 완료. 후속 앱·웹·분석·확정 기록 보호와 검증 도구 수정은
 PR #55로 main 병합됐고 확정 기록 보호 마이그레이션·트리거·Storage 정책의 운영 반영을 2026-10-14 확인했다.

@@ -1,5 +1,11 @@
 # 파일럿 개발 계획 — 인지활동 프로그램 + 공단 일지 자동화
 
+> ✅ 2026-10-15 Android EAS Gradle 실패 수정: Reanimated의 필수 네이티브 peer `react-native-worklets@0.5.1`을 앱 직접 의존성으로 선언했다(override만으로는 앱 루트의 Gradle resolve가 보장되지 않음). `.gitignore`·`.vercelignore` 보강, 저장소 루트 `.easignore` 추가. EAS 실제 업로드 사본에서 소스·워크스페이스 보존 및 비밀/캐시/네이티브 산출물 파일 제외 확인. ⏳ 새 APK 클라우드 빌드 결과와 실기기 T25.16은 별도 확인.
+
+
+> ✅ 2026-10-15 EAS 앱 전용 프로젝트 연결: `@memoryon/giokon-mobile` · ID `00151025-03f4-47bd-b481-85577b7dd17e`. Expo 실제 소유자 식별자는 소문자 `memoryon`이며 `eas project:info`로 접근·일치를 확인했다. 기존 다른 용도 프로젝트는 변경하지 않았다. 패키지명 `kr.giokon.app` 유지. ⏳ 새 프로젝트의 preview 환경변수·Firebase 파일·FCM V1·서명·APK 빌드·실기기 검증은 별도다.
+
+
 > **2026-10-14 파일럿 개시 준비 갱신**: ✅ PR #55 병합·확정 기록 보호 운영 반영 확인, 기관 AI 초안 활성화. ✅ 사용자 결정: Android 직원 사전 검증부터, 주황색은 이번 파일럿 현행 유지. ⏳ 공유 시크릿 양쪽 등록·live-token 배포, Firebase/FCM·preview 설정·배포 APK·실기기 T25.16. 이전 대기 표보다 [최신 실행 기록](2026-10-14-pilot-readiness.md)을 우선한다.
 
 
