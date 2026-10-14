@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "기억온",
-    "slug": "giok-on",
+    "slug": "giokon-mobile",
     "scheme": "giokon",
     "platforms": ["android", "ios"],
     "version": "1.0.0",
@@ -59,9 +59,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "3877c5b5-40c9-4083-a1a3-4a6e37cf4d6b"
+        "projectId": "00151025-03f4-47bd-b481-85577b7dd17e"
       }
     },
-    "owner": "paulodybi"
+    "owner": "memoryon"
   }
 }

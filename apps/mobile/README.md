@@ -1,5 +1,8 @@
 # @giokon/mobile — 세션 진행 앱 (요양보호사 모드 + 어르신 표시 모드)
 
+> ✅ 2026-10-15 EAS 앱 전용 프로젝트 연결: `@memoryon/giokon-mobile` · ID `00151025-03f4-47bd-b481-85577b7dd17e`. Expo 실제 소유자 식별자는 소문자 `memoryon`이며 `eas project:info`로 접근·일치를 확인했다. 기존 다른 용도 프로젝트는 변경하지 않았다. 패키지명 `kr.giokon.app` 유지. ⏳ 새 프로젝트의 preview 환경변수·Firebase 파일·FCM V1·서명·APK 빌드·실기기 검증은 별도다.
+
+
 > 📌 **2026-09-23 기획 변경 반영.** "무엇을 만들지"의 SoT =
 > [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §6(앱 파트 M1~M7).
 > 화면 요구는 [`docs/design.md`](../../docs/design.md)(SCR-08 어르신 표시 모드 · SCR-09 대화 시작 전).
