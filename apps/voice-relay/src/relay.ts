@@ -83,12 +83,12 @@ export interface RelayDependencies {
   timeLimitGraceMs?: number
   /** 휴식 요청·거부 뒤 마무리 인사를 기다리는 최대 시간(테스트용 주입 — 기본 ELDER_CLOSING_GRACE_MS). */
   elderClosingGraceMs?: number
-  /** 진단 로그(테스트용 주입 — 기본 `logRelayEvent`). */
+  /** 원인 확인 로그(테스트용 주입 — 기본 `logRelayEvent`). */
   log?: RelayLog
 }
 
 /**
- * 진단 로그 — 연결이 **어느 단계에서 왜** 끝났는지만 남긴다(Cloud Run 로그). 대화 내용·전사·음성·토큰·JWT 는 넣지 않는다.
+ * 원인 확인 로그 — 연결이 **어느 단계에서 왜** 끝났는지만 남긴다(Cloud Run 로그). 대화 내용·전사·음성·토큰·JWT 는 넣지 않는다.
  * 그전에는 실패가 전부 조용한 종료라 실기기에서 대화가 시작되지 않을 때 원인을 알 수 없었다(2026-10-15).
  */
 export type RelayLog = (event: string, detail?: Record<string, string | number | undefined>) => void

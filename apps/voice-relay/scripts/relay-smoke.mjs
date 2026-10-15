@@ -44,4 +44,4 @@ const result = await Promise.race([closed, new Promise((resolve) => setTimeout((
 if (!result) { ws.terminate(); fail('가짜 인증 뒤 15초 동안 종료되지 않음 — 중계가 Supabase 에 접속하지 못하고 기다리는 중일 수 있음') }
 ok(`가짜 인증은 거절·종료됨(${Date.now() - started}ms, close ${result.code} ${result.reason}) — 중계가 인증 단계를 처리함`)
 console.log('\n다음: Cloud Run 로그에서 {"voiceRelay":"closed","stage":"auth","reason":"AUTH_FAILED"} 줄이 보이면 중계 → Supabase 경로 정상.')
-console.log('      (진단 로그가 들어간 이미지에서만 보인다.) 이어서 앱에서 대화를 시작해 보세요.')
+console.log('      (원인 확인 로그가 들어간 이미지에서만 보인다.) 이어서 앱에서 대화를 시작해 보세요.')

@@ -27,7 +27,7 @@ export async function requestLiveToken(fetcher: typeof fetch, r: LiveTokenReques
     },
     body: JSON.stringify({ session_id: r.sessionId }),
   })
-  // 상태 코드를 코드에 담는다(진단 로그용): 403 = 중계 비밀값 불일치·자격/동의 부족 · 429 = 한도 · 500 = Edge 비밀값 누락 · 502 = Gemini 오류.
+  // 상태 코드를 코드에 담는다(원인 확인 로그용): 403 = 중계 비밀값 불일치·자격/동의 부족 · 429 = 한도 · 500 = Edge 비밀값 누락 · 502 = Gemini 오류.
   if (!response.ok) throw new Error(`TOKEN_FAILED_${response.status}`)
   const token = await response.json() as { token?: unknown; model?: unknown }
   if (typeof token.token !== 'string' || typeof token.model !== 'string') throw new Error('INVALID_TOKEN')

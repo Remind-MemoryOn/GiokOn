@@ -579,7 +579,7 @@ describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시
   })
 })
 
-describe('진단 로그 — 어느 단계에서 왜 끝났는지(내용 없음)', () => {
+describe('원인 확인 로그 — 어느 단계에서 왜 끝났는지(내용 없음)', () => {
   it('인증 단계 실패는 단계와 코드만 남긴다', async () => {
     const log = vi.fn()
     const f = await fixture(true, {}, { log, authorize: vi.fn(async () => { throw new Error('TOKEN_FAILED_403') }) })
