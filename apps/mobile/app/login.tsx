@@ -104,13 +104,11 @@ export default function Login() {
 
   return (
     <View className="flex-1 bg-white">
-      {/* 워드마크 — Figma (120, 204) */}
-      <Image
-        source={wordmark}
-        style={{ position: 'absolute', left: x(120), top: top(204, height), width: x(145), height: 22.2 }}
-        resizeMode="contain"
-        accessibilityLabel="기억온"
-      />
+      {/* 워드마크 — Figma 145×22.2 · y 204. 가로는 화면 가운데(Figma x 120 은 393 폭에서 가운데보다 4 왼쪽 —
+          비율 좌표로 두면 패드에서 더 쏠려 보여 스플래시와 같이 가운데로 맞춘다, 2026-10-15). */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: top(204, height) }}>
+        <Image source={wordmark} style={{ width: 145, height: 22.2 }} resizeMode="contain" accessibilityLabel="기억온" />
+      </View>
 
       {/* 아이디 — Figma (50, 284) 292×44 */}
       <TextInput

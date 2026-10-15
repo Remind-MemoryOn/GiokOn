@@ -145,7 +145,8 @@ export function ProfileForm({
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingLeft: 28, paddingTop: 36, paddingBottom: SAVE_TO_BOTTOM }}
+        // 오른쪽 여백 28 — 입력(들여쓰기 1 포함 x29)·저장 버튼이 393 폭에서 336, 기기 폭을 따라 늘어난다.
+        contentContainerStyle={{ paddingLeft: 28, paddingTop: 36, paddingRight: 28, paddingBottom: SAVE_TO_BOTTOM }}
         keyboardShouldPersistTaps="handled"
       >
         <PhotoField uri={picked?.uri ?? photoUrl} onPress={pickPhoto} />

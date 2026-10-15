@@ -50,6 +50,7 @@ import statTime from '../assets/brand/stat-time.png';
 import statSmile from '../assets/brand/stat-smile.png';
 import statCount from '../assets/brand/stat-count.png';
 import statTrend from '../assets/brand/stat-trend.png';
+import { useContentWidth } from '../src/lib/layout';
 
 /** Figma 축 라벨(시계방향: 위 → 우 → 우하 → 좌하 → 좌). */
 const AXIS_LABEL: Record<ObservationAxis, string> = {
@@ -89,10 +90,12 @@ function AxisCard({
   value: number | null;
   delta: number | null;
 }) {
+  // Figma 103(336 폭에서 3칸 · 간격 13.5). 아래 줄 2칸도 같은 폭이라 계산으로 맞춘다.
+  const { contentW } = useContentWidth();
   return (
     <View
       style={{
-        width: 103,
+        width: (contentW - 13.5 * 2) / 3,
         height: 103,
         borderRadius: 5,
         backgroundColor: DETAIL.tileBg,
@@ -151,7 +154,8 @@ function RateCard({
   return (
     <View
       style={{
-        width: 162,
+        // Figma 162(336 폭에서 2칸 · 간격 12) — 2칸이 줄을 나눠 갖는다.
+        flex: 1,
         height: 95,
         borderRadius: 5,
         backgroundColor: DETAIL.tileBg,
@@ -189,6 +193,7 @@ const LEGEND_POS = [
 export default function Observations() {
   const { scope, id } = useLocalSearchParams<{ scope?: string; id?: string }>();
   const isElder = scope === 'elder' && Boolean(id);
+  const { contentW } = useContentWidth();
   const elder = useElder(isElder ? id : undefined);
   // 기간 pill 선택값 — 직전 동일 기간과 비교하므로 3개월 이상만 고를 수 있다.
   const [months, setMonths] = useState(3);
@@ -221,9 +226,9 @@ export default function Observations() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 31, paddingBottom: 52 }}
+        contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 31, paddingBottom: 52 }}
       >
-        <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
+        <View className="flex-row items-center justify-between">
           <SectionHeading>인지 효과 지표</SectionHeading>
           <PeriodPill
             label={periodLabel}
@@ -239,15 +244,12 @@ export default function Observations() {
         </View>
 
         {/* 지표 카드 3 + 2 (Figma 배치 순서: 기억·정서·참여 / 집중·표현) */}
-        <View
-          className="flex-row justify-between"
-          style={{ width: DETAIL.width, marginTop: 18 }}
-        >
+        <View className="flex-row" style={{ marginTop: 18, columnGap: 13.5 }}>
           {ordered.slice(0, 3).map((a) => (
             <AxisCard key={a.axis} label={AXIS_LABEL[a.axis]} value={a.value} delta={a.delta} />
           ))}
         </View>
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 14, columnGap: 13 }}>
+        <View className="flex-row" style={{ marginTop: 14, columnGap: 13.5 }}>
           {ordered.slice(3).map((a) => (
             <AxisCard key={a.axis} label={AXIS_LABEL[a.axis]} value={a.value} delta={a.delta} />
           ))}
@@ -260,7 +262,7 @@ export default function Observations() {
           <SectionHeading>종합 인지 활동 효과 분석</SectionHeading>
         </View>
 
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 18, columnGap: 12 }}>
+        <View className="flex-row" style={{ marginTop: 18, columnGap: 12 }}>
           <RateCard
             label="기억 회상 향상률"
             icon={statTrend}
@@ -274,7 +276,7 @@ export default function Observations() {
             delta={deltaOf('emotion')}
           />
         </View>
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 13, columnGap: 12 }}>
+        <View className="flex-row" style={{ marginTop: 13, columnGap: 12 }}>
           <RateCard
             label="대화 참여도 향상률"
             icon={statCount}
@@ -297,9 +299,14 @@ export default function Observations() {
         </View>
 
         {/* 범례 — 12점 + Regular 12, 3+2 배치. Figma x 가 균등하지 않아 실측 좌표로 절대 배치. */}
-        <View style={{ width: DETAIL.width, height: 62, marginTop: 8.75 }}>
+        <View style={{ height: 62, marginTop: 8.75 }}>
           {AXIS_ORDER.map((k, i) => (
-            <View key={k} className="absolute" style={LEGEND_POS[i]}>
+            <View
+              key={k}
+              className="absolute"
+              // 336 폭 기준 x 를 콘텐츠 폭 비율로 옮긴다(패드에서 왼쪽에 몰리지 않게).
+              style={{ left: (LEGEND_POS[i].left / DETAIL.width) * contentW, top: LEGEND_POS[i].top }}
+            >
               <View
                 style={{
                   position: 'absolute',
@@ -348,7 +355,7 @@ export default function Observations() {
               <SectionHeading>인지 효과 종합 평가</SectionHeading>
             </View>
 
-            <View className="items-center" style={{ width: DETAIL.width, marginTop: 22 }}>
+            <View className="items-center" style={{ marginTop: 22 }}>
               <Image source={iconSmileBig} style={{ width: 54, height: 54 }} resizeMode="contain" />
               <Text
                 className="text-[20px] font-semibold text-accent"

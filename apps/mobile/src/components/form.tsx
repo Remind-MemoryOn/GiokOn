@@ -46,7 +46,11 @@ import iconPhotoEdit from '../../assets/brand/icon-photo-edit.png';
  */
 const MEMORY_MAX = 2000;
 
-/** Figma 폼 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다. */
+/**
+ * Figma 폼 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다.
+ * `fieldW` 는 393 폭 기준값이다. 화면에서는 입력 박스·저장 버튼이 화면 좌우 여백 안에서 늘어나고
+ * 박스 안 오른쪽 아이콘은 오른쪽 끝 기준이라 함께 따라간다(기기 폭 대응, src/lib/layout.ts).
+ */
 export const FORM = {
   left: 29,
   fieldW: 336,
@@ -89,7 +93,7 @@ function FieldLabel({ label, required = false }: { label: string; required?: boo
 // ── 입력 박스(껍데기) ─────────────────────────────────────────
 function FieldBox({ children, onPress }: { children: ReactNode; onPress?: () => void }) {
   const style = {
-    width: FORM.fieldW,
+    alignSelf: 'stretch',
     height: FORM.fieldH,
     borderRadius: FORM.fieldR,
     backgroundColor: FORM.fieldBg,
@@ -402,7 +406,8 @@ export function SearchField({
           className="absolute bg-white"
           style={{
             top: 30 + FORM.labelGap + FORM.fieldH + 4,
-            width: FORM.fieldW,
+            left: 0,
+            right: 0,
             borderRadius: FORM.fieldR,
             borderWidth: 1,
             borderColor: '#cccdce',
@@ -564,7 +569,7 @@ export function SaveButton({
       disabled={disabled}
       accessibilityRole="button"
       className={`items-center justify-center active:opacity-90 ${disabled ? 'opacity-40' : ''}`}
-      style={{ width: FORM.fieldW, height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+      style={{ alignSelf: 'stretch', height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
     >
       <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
         {label}

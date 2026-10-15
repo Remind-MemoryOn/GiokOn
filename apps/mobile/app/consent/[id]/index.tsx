@@ -86,6 +86,7 @@ export default function ConsentSubject() {
         contentContainerStyle={{
           flexGrow: 1,
           paddingLeft: CONSENT_UI.left,
+          paddingRight: CONSENT_UI.right,
           paddingTop: 30,
           paddingBottom: 68,
         }}
@@ -95,7 +96,7 @@ export default function ConsentSubject() {
         </Text>
         <Text
           className="text-[14px] font-normal text-muted"
-          style={{ lineHeight: 25, width: 337, marginTop: 4 }}
+          style={{ lineHeight: 25, marginTop: 4 }}
         >
           어르신(정보주체) 또는 보호자·대리인의 동의를 확인해 주세요. (동의서 {CONSENT_VERSION})
         </Text>
@@ -111,8 +112,8 @@ export default function ConsentSubject() {
         {/* 주체 카드 — 라벨 하단 311 → 323 */}
         <View
           style={{
-            width: CONSENT_UI.cardW,
             marginTop: 12,
+            marginRight: 1, // Figma 카드 335(버튼 336보다 오른쪽 1 안쪽)
             borderRadius: CONSENT_UI.cardR,
             borderWidth: 1,
             borderColor: CONSENT_UI.border,
@@ -150,9 +151,10 @@ export default function ConsentSubject() {
         {/* 조건부 — 대리 동의자 정보(법정 대리인·보호자 공통, DB 가 성함을 요구한다) */}
         {isProxy ? (
           <View className="flex-row" style={{ marginTop: BLOCK_GAP }}>
-            <View>
+            {/* 성함·관계 칸은 Figma 156:162 비율로 줄을 나눠 갖는다(기기 폭 대응) */}
+            <View style={{ flex: CONSENT_UI.nameW }}>
               <FieldLabel label="대리 동의자 성함" required />
-              <FieldBox width={CONSENT_UI.nameW}>
+              <FieldBox>
                 <TextInput
                   value={name}
                   onChangeText={(t) => setName(t.slice(0, NAME_MAX))}
@@ -165,9 +167,9 @@ export default function ConsentSubject() {
               </FieldBox>
             </View>
 
-            <View style={{ marginLeft: CONSENT_UI.fieldGap }}>
+            <View style={{ flex: CONSENT_UI.relationW, marginLeft: CONSENT_UI.fieldGap }}>
               <FieldLabel label="어르신과의 관계" required />
-              <FieldBox width={CONSENT_UI.relationW} onPress={() => setRelationOpen(true)}>
+              <FieldBox onPress={() => setRelationOpen(true)}>
                 {relation.length === 0 ? (
                   <FieldPlaceholder text="선택해주세요" />
                 ) : (
@@ -201,7 +203,7 @@ export default function ConsentSubject() {
           accessibilityState={{ disabled: !canProceed }}
           className="items-center justify-center active:opacity-90"
           style={{
-            width: 336,
+            alignSelf: 'stretch',
             height: 57,
             borderRadius: CONSENT_UI.cardR,
             backgroundColor: CONSENT_UI.accent,

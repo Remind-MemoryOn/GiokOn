@@ -134,10 +134,10 @@ function ProfileTab({ elderId }: { elderId: string }) {
   return (
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 36, paddingBottom: BOTTOM }}
+      contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 36, paddingBottom: BOTTOM }}
     >
       {/* 사진 124 원형 — 없으면 이니셜 아바타(임의 사진 금지) */}
-      <View style={{ width: DETAIL.width, alignItems: 'center' }}>
+      <View style={{ alignItems: 'center' }}>
         {photoUrl ? (
           <Image
             source={{ uri: photoUrl }}
@@ -188,7 +188,7 @@ function ProfileTab({ elderId }: { elderId: string }) {
       ) : (
         <View
           className="flex-row flex-wrap"
-          style={{ width: DETAIL.width, marginTop: 9, columnGap: 21, rowGap: 13 }}
+          style={{ marginTop: 9, columnGap: 21, rowGap: 13 }}
         >
           {chronicles.map((c) => (
             <MemoryChip key={c.id} text={c.content} />
@@ -201,7 +201,6 @@ function ProfileTab({ elderId }: { elderId: string }) {
         accessibilityRole="button"
         className="items-center justify-center active:opacity-90"
         style={{
-          width: DETAIL.width,
           height: 57,
           borderRadius: 10,
           backgroundColor: DETAIL.accent,
@@ -224,7 +223,7 @@ function SessionsTab({ elderId }: { elderId: string }) {
   return (
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 44, paddingBottom: 44 }}
+      contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 44, paddingBottom: 44 }}
     >
       {sessions.length === 0 ? (
         <Text className="text-[16px] font-normal text-muted" style={{ lineHeight: 30 }}>
@@ -267,12 +266,12 @@ function AnalysisTab({ elderId }: { elderId: string }) {
   return (
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 27, paddingBottom: BOTTOM }}
+      contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 27, paddingBottom: BOTTOM }}
     >
       <SectionHeading>종합 대화 참여도</SectionHeading>
 
-      {/* 타일 좌우 끝을 29/365 에 고정(간격 13.5) — Figma 는 145/146 이 섞여 있다 */}
-      <View className="flex-row justify-between" style={{ width: DETAIL.width, marginTop: 14 }}>
+      {/* 타일 3칸이 줄을 나눠 갖는다(간격 13.5 — 336 폭에서 103) — Figma 는 145/146 이 섞여 있다 */}
+      <View className="flex-row" style={{ marginTop: 14, columnGap: 13.5 }}>
         <StatTile
           icon={statTime}
           iconSize={{ width: 24, height: 24 }}
@@ -329,7 +328,6 @@ function AnalysisTab({ elderId }: { elderId: string }) {
         accessibilityRole="button"
         className="items-center justify-center active:opacity-90"
         style={{
-          width: DETAIL.width,
           height: 57,
           borderRadius: 10,
           backgroundColor: DETAIL.accent,

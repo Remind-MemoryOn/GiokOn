@@ -110,7 +110,8 @@ export default function Main() {
         <View
           className="flex-row items-center"
           style={{
-            width: 335,
+            // Figma 335(x30 → 365). 기기 폭을 따라 늘어난다(좌 여백 + marginLeft 1 · 우 여백 28).
+            alignSelf: 'stretch',
             height: 46,
             borderRadius: 10,
             borderWidth: 1,

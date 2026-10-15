@@ -22,7 +22,7 @@ export default function ManagedElders() {
       <ScrollView
         className="flex-1"
         // 첫 카드 top 146 = 헤더 114 + 32
-        contentContainerStyle={{ paddingLeft: SETTINGS.left, paddingTop: 32, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingLeft: SETTINGS.left, paddingRight: SETTINGS.right, paddingTop: 32, paddingBottom: 40 }}
       >
         {elders.length === 0 ? (
           <Text

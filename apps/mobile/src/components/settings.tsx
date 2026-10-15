@@ -21,9 +21,14 @@ import { elderAge, initial, type ElderProfile } from '@giokon/core';
 import { genderLabel } from '../lib/format';
 import { useElderPhotoUrl } from '../data/elder-photo';
 
-/** Figma 설정 화면 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다. */
+/**
+ * Figma 설정 화면 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다.
+ * `cardW`·`dividerW` 는 393 폭 기준값이다. 화면에서는 좌 `left` · 우 `right` 여백 안에서 카드가 늘어나고,
+ * 카드 안 오른쪽 요소는 오른쪽 끝 기준으로 둔다(기기 폭 대응, src/lib/layout.ts).
+ */
 export const SETTINGS = {
   left: 29,
+  right: 28,
   cardW: 336,
   cardR: 10,
   cardBorder: '#e3e3e3',
@@ -60,15 +65,19 @@ export function SectionLabel({
   );
 }
 
-/** 목록 구분선 — 283×1 #d9d9d9. */
+/** 카드 안 오른쪽 열(chevron·값)의 오른쪽 여백 — Figma chevron x 319(카드 336 기준 290 + 8.75). */
+export const ROW_END_INSET = SETTINGS.cardW - 290 - 8.75;
+
+/** 목록 구분선 — Figma 283×1 #d9d9d9(카드 좌 25 · 우 28). 카드 폭을 따라 늘어난다. */
 export function Divider({ top }: { top: number }) {
+  const left = SETTINGS.dividerLeft - SETTINGS.left - 1;
   return (
     <View
       style={{
         position: 'absolute',
-        left: SETTINGS.dividerLeft - SETTINGS.left - 1,
+        left,
         top,
-        width: SETTINGS.dividerW,
+        right: SETTINGS.cardW - left - SETTINGS.dividerW,
         height: 1,
         backgroundColor: SETTINGS.divider,
       }}
@@ -118,8 +127,11 @@ function TrashGlyph() {
   return <Image source={iconTrash} style={{ width: 21, height: 21 }} resizeMode="contain" />;
 }
 
+/** 휴지통 오른쪽 여백 — Figma x 269 · 폭 21 (카드 336). */
+const TRASH_RIGHT = SETTINGS.cardW - 269 - 21;
+
 /**
- * 담당 어르신 카드(설정·담당 어르신 관리 공용) — 336×113.
+ * 담당 어르신 카드(설정·담당 어르신 관리 공용) — Figma 336×113(폭은 화면을 따른다).
  *
  * ⚠️ 값은 전부 실데이터다. Figma 의 "1938년생 (88세) / 여성 l 햇살 요양원" 은 자리표시자이므로
  * 성별이 없으면 표기를 생략하고, 기관을 모르면 성별만 쓴다(임의값을 만들지 않는다).
@@ -147,7 +159,7 @@ export function ManagedElderCard({
       accessibilityLabel={`${elder.name} 어르신`}
       className={onPress ? 'active:opacity-90' : undefined}
       style={{
-        width: SETTINGS.cardW,
+        alignSelf: 'stretch',
         height: SETTINGS.elderCardH,
         borderRadius: SETTINGS.cardR,
         backgroundColor: SETTINGS.elderCardBg,
@@ -178,7 +190,7 @@ export function ManagedElderCard({
 
       <Text
         className="absolute text-[18px] font-semibold text-black"
-        style={{ left: 124, top: 16, lineHeight: 30 }}
+        style={{ left: 124, top: 16, right: TRASH_RIGHT + 21 + 12, lineHeight: 30 }}
         numberOfLines={1}
       >
         {elder.name} 어르신
@@ -192,7 +204,7 @@ export function ManagedElderCard({
       {meta.length > 0 ? (
         <Text
           className="absolute text-[14px] font-medium"
-          style={{ left: 124, top: 71, lineHeight: 25, color: SETTINGS.muted }}
+          style={{ left: 124, top: 71, right: TRASH_RIGHT + 21 + 12, lineHeight: 25, color: SETTINGS.muted }}
           numberOfLines={1}
         >
           {meta}
@@ -205,7 +217,8 @@ export function ManagedElderCard({
         accessibilityRole="button"
         accessibilityLabel={`${elder.name} 어르신 삭제`}
         className="absolute active:opacity-60"
-        style={{ left: 269 - 12, top: 46 - 12, padding: 12 }}
+        // Figma x 269(카드 336) → 오른쪽 끝에서 46. 터치 여유 12 만큼 되뺀다.
+        style={{ right: TRASH_RIGHT - 12, top: 46 - 12, padding: 12 }}
       >
         <TrashGlyph />
       </Pressable>

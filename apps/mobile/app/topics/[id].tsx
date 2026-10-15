@@ -34,6 +34,7 @@ import {
   useOverallObservations,
   useOverallTopicTrend,
 } from '../../src/data/observations';
+import { useContentWidth } from '../../src/lib/layout';
 import { metric, NO_VALUE } from '../../src/lib/format';
 import { TOPIC_PERIODS } from '../../src/lib/period';
 import { topicStats } from '../../src/features/analysis/topicStats';
@@ -42,7 +43,10 @@ import iconShare from '../../assets/brand/icon-share.png';
 /** 주제 시계열 색(개인 인지효과분석 범례와 같은 팔레트). */
 const SERIES_COLORS = ['#e9822b', '#8cd565', '#2bc9e9', '#e92b90', '#d147dd'];
 
-/** 범례 항목 위치 — Figma 점 좌측 35/161/284 − 콘텐츠 원점 29, 행 pitch 31. */
+/**
+ * 범례 항목 위치 — Figma 점 좌측 35/161/284 − 콘텐츠 원점 29, 행 pitch 31.
+ * 가로는 336 폭 기준이라 화면에서는 콘텐츠 폭 비율로 옮긴다(패드에서 왼쪽에 몰리지 않게).
+ */
 const LEGEND_POS = [
   { left: 6, top: 0 },
   { left: 132, top: 0 },
@@ -56,7 +60,7 @@ function DetailCard({ label, value }: { label: string; value: string }) {
   return (
     <View
       style={{
-        width: 103,
+        flex: 1,
         height: 87,
         borderRadius: 5,
         backgroundColor: DETAIL.tileBg,
@@ -103,6 +107,7 @@ function KeywordChip({ text }: { text: string }) {
 
 export default function Topics() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { contentW } = useContentWidth();
   const elderId = id === 'all' ? undefined : id;
   const elder = useElder(elderId);
 
@@ -144,9 +149,9 @@ export default function Topics() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 31, paddingBottom: 44 }}
+        contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 31, paddingBottom: 44 }}
       >
-        <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
+        <View className="flex-row items-center justify-between">
           <SectionHeading>종합 관심 주제 변화</SectionHeading>
           <PeriodPill
             label={periodLabel}
@@ -157,9 +162,13 @@ export default function Topics() {
         </View>
 
         {/* 범례 — 3열 × 2행. Figma x 가 균등하지 않아 실측 좌표로 절대 배치. */}
-        <View style={{ width: DETAIL.width, height: 62, marginTop: 8.75 }}>
+        <View style={{ height: 62, marginTop: 8.75 }}>
           {trend.series.slice(0, LEGEND_POS.length).map((s, i) => (
-            <View key={s.label} className="absolute" style={LEGEND_POS[i]}>
+            <View
+              key={s.label}
+              className="absolute"
+              style={{ left: (LEGEND_POS[i].left / DETAIL.width) * contentW, top: LEGEND_POS[i].top }}
+            >
               <View
                 style={{
                   position: 'absolute',
@@ -199,14 +208,14 @@ export default function Topics() {
 
         <View
           className="flex-row items-center justify-between"
-          style={{ width: DETAIL.width, marginTop: 24 }}
+          style={{ marginTop: 24 }}
         >
           <SectionHeading>주제별 상세 분석</SectionHeading>
           <PeriodPill label={focus?.label ?? NO_VALUE} width={73} labelInset={17} />
         </View>
 
-        {/* 좌우 끝을 29/365 에 고정(간격 13.5) */}
-        <View className="flex-row justify-between" style={{ width: DETAIL.width, marginTop: 18 }}>
+        {/* 3칸이 줄을 나눠 갖는다(간격 13.5 — 336 폭에서 103) */}
+        <View className="flex-row" style={{ marginTop: 18, columnGap: 13.5 }}>
           <DetailCard label="언급 빈도" value={focus ? `${mentions}회` : NO_VALUE} />
           <DetailCard label="활발 응답률" value={metric(engagedRate, '%')} />
           <DetailCard label="평균 대화 시간" value={metric(avgMinutes, '분')} />
@@ -227,7 +236,7 @@ export default function Topics() {
         ) : (
           <View
             className="flex-row flex-wrap"
-            style={{ width: DETAIL.width, marginTop: 17, columnGap: 10, rowGap: 10 }}
+            style={{ marginTop: 17, columnGap: 10, rowGap: 10 }}
           >
             {keywords.map((k) => (
               <KeywordChip key={k} text={k} />

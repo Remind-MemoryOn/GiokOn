@@ -18,7 +18,7 @@
 //   - 아이디 = 로그인 이메일, 기관 = organizations.name, 버전 = app.json version
 //   - 간편 로그인 = **실제로 연결된 provider 만** 진하게(연결 안 된 것은 흐리게) — 소셜 3종을
 //     전부 컬러로 보여 주면 연결되지 않은 계정도 연결된 것처럼 보인다.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -28,6 +28,7 @@ import {
   Divider,
   LogoutGlyph,
   ManagedElderCard,
+  ROW_END_INSET,
   RowChevron,
   SectionLabel,
   SETTINGS,
@@ -36,7 +37,6 @@ import {
 import { useAuth } from '../../src/auth/AuthProvider';
 import { webUrl, WEB_ROUTES } from '../../src/lib/webUrl';
 import { NO_VALUE } from '../../src/lib/format';
-import { hasCaregiverPin } from '../../src/features/session/caregiverPin';
 import { CaregiverPinModal } from '../../src/features/session/CaregiverPinModal';
 import { useManagedElders } from '../../src/features/settings/useManagedElders';
 import iconEdit from '../../assets/brand/icon-edit.png';
@@ -70,21 +70,6 @@ const SOCIALS = [
 type Auth = ReturnType<typeof useAuth>;
 type ManagedElders = ReturnType<typeof useManagedElders>;
 
-/**
- * 어르신 화면 복귀 PIN(기기 보안 저장소, 요양보호사별) 설정 여부 — null = 확인 중/확인 실패.
- * `refreshKey` 가 바뀌면(PIN 편집 창 열고 닫기) 다시 확인한다.
- */
-function useCaregiverPinSet(userId: string | undefined, refreshKey: unknown): boolean | null {
-  const [pinSet, setPinSet] = useState<boolean | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    hasCaregiverPin(userId).then((v) => { if (alive) setPinSet(v); }, () => { if (alive) setPinSet(null); });
-    return () => { alive = false; };
-  }, [userId, refreshKey]);
-  return pinSet;
-}
-
 /** 법적 문서는 웹에서 연다. 웹 주소가 설정되지 않았으면 안내만 한다. */
 function openWeb(path: string, what: string) {
   const href = webUrl(path);
@@ -98,7 +83,6 @@ function openWeb(path: string, what: string) {
 export default function Settings() {
   const { userRow, user, signOut } = useAuth();
   const [pinEditing, setPinEditing] = useState(false);
-  const pinSet = useCaregiverPinSet(user?.id, pinEditing);
   const { elders, orgName, confirmDelete } = useManagedElders();
 
   /** 실제로 연결된 소셜 provider(Supabase identities). 이메일 로그인만이면 빈 집합. */
@@ -118,7 +102,7 @@ export default function Settings() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingLeft: SETTINGS.left, paddingTop: 34, paddingBottom: 49 }}
+        contentContainerStyle={{ paddingLeft: SETTINGS.left, paddingRight: SETTINGS.right, paddingTop: 34, paddingBottom: 49 }}
       >
         <ProfileSection
           userRow={userRow}
@@ -133,7 +117,7 @@ export default function Settings() {
 
         <InfoSection version={version} />
 
-        <ElderScreenSection pinSet={pinSet} onEditPin={() => { if (user?.id) setPinEditing(true); }} />
+        <ElderScreenSection onEditPin={() => { if (user?.id) setPinEditing(true); }} />
       </ScrollView>
       {user?.id ? (
         <CaregiverPinModal
@@ -170,7 +154,7 @@ function ProfileSection({
   return (
     <>
       {/* ── 프로필 ─────────────────────────────────────────── */}
-      <View style={{ width: SETTINGS.cardW }}>
+      <View>
         <SectionLabel label="프로필" lineHeight={18} />
         {/*
          * 터치 여유는 padding 이 아니라 **박스를 키우고 자식을 절대 배치**해서 준다 —
@@ -203,7 +187,8 @@ function ProfileSection({
           accessibilityRole="button"
           accessibilityLabel="로그아웃"
           className="absolute active:opacity-60"
-          style={{ left: 307 - SETTINGS.left - TAP, top: 146 - 148 - TAP, width: 58 + TAP * 2, height: 21 + TAP * 2 }}
+          // Figma x 307(카드 오른쪽 끝 365 기준) → 오른쪽 끝에 붙인다. 터치 여유 TAP 만큼 넘친다.
+          style={{ right: SETTINGS.cardW - (307 - SETTINGS.left) - 58 - TAP, top: 146 - 148 - TAP, width: 58 + TAP * 2, height: 21 + TAP * 2 }}
         >
           <View style={{ position: 'absolute', left: TAP, top: TAP + 8 }}>
             <LogoutGlyph />
@@ -224,7 +209,6 @@ function ProfileSection({
       {/* 프로필 카드 — 라벨(148..166) 아래 15 */}
       <View
         style={{
-          width: SETTINGS.cardW,
           height: 260,
           marginTop: 15,
           borderRadius: SETTINGS.cardR,
@@ -252,14 +236,15 @@ function ProfileSection({
 
         <Text
           className="absolute text-[20px] font-semibold text-black"
-          style={{ left: 123, top: 33, lineHeight: 24, width: 200 }}
+          // Figma 폭 200(카드 336 에서 오른쪽 13) — 좁은 기기에서 카드 밖으로 넘치지 않게 오른쪽 기준.
+          style={{ left: 123, top: 33, right: 13, lineHeight: 24 }}
           numberOfLines={1}
         >
           {displayName}
         </Text>
         <Text
           className="absolute text-[16px] font-medium"
-          style={{ left: 123, top: 68, lineHeight: 21, color: SETTINGS.strong, width: 200 }}
+          style={{ left: 123, top: 68, right: 13, lineHeight: 21, color: SETTINGS.strong }}
           numberOfLines={1}
         >
           {orgName ?? NO_VALUE}
@@ -274,7 +259,7 @@ function ProfileSection({
         </Text>
         <Text
           className="absolute text-[15px] font-normal text-black"
-          style={{ left: 120, top: 137, lineHeight: 30, width: 190 }}
+          style={{ left: 120, top: 137, right: 26, lineHeight: 30 }}
           numberOfLines={1}
         >
           {loginId}
@@ -325,7 +310,7 @@ function ManagedEldersSection({
   return (
     <>
       {/* ── 담당 어르신 관리 ────────────────────────────────── */}
-      <View style={{ width: SETTINGS.cardW, marginTop: 33 }}>
+      <View style={{ marginTop: 33 }}>
         <SectionLabel label="담당 어르신 관리" />
         {/* 전체보기 — 라벨 Medium 12/30 @(312,468) · chevron 6×7 @(359,480) */}
         <Pressable
@@ -333,7 +318,8 @@ function ManagedEldersSection({
           accessibilityRole="button"
           accessibilityLabel="담당 어르신 전체보기"
           className="absolute active:opacity-60"
-          style={{ left: 312 - SETTINGS.left - TAP, top: 468 - 474 - TAP, width: 53 + TAP * 2, height: 30 + TAP * 2 }}
+          // Figma x 312 → 오른쪽 끝 기준(전체보기 + chevron 폭 53).
+          style={{ right: SETTINGS.cardW - (312 - SETTINGS.left) - 53 - TAP, top: 468 - 474 - TAP, width: 53 + TAP * 2, height: 30 + TAP * 2 }}
         >
           <Text
             className="absolute text-[12px] font-medium"
@@ -381,7 +367,6 @@ function InfoSection({ version }: { version: string }) {
       {/* 라벨(789..806) 아래 13 */}
       <View
         style={{
-          width: SETTINGS.cardW,
           height: 204,
           marginTop: 13,
           borderRadius: SETTINGS.cardR,
@@ -402,7 +387,7 @@ function InfoSection({ version }: { version: string }) {
           >
             개인정보처리방침
           </Text>
-          <View style={{ position: 'absolute', left: 290, top: 19 }}>
+          <View style={{ position: 'absolute', right: ROW_END_INSET, top: 19 }}>
             <RowChevron />
           </View>
         </Pressable>
@@ -421,7 +406,7 @@ function InfoSection({ version }: { version: string }) {
           >
             이용약관
           </Text>
-          <View style={{ position: 'absolute', left: 290, top: 20 }}>
+          <View style={{ position: 'absolute', right: ROW_END_INSET, top: 20 }}>
             <RowChevron />
           </View>
         </Pressable>
@@ -436,7 +421,8 @@ function InfoSection({ version }: { version: string }) {
         </Text>
         <Text
           className="absolute text-[14px] font-normal"
-          style={{ left: 261, top: 155, lineHeight: 25, color: SETTINGS.muted }}
+          // 버전은 위 행의 chevron 열 끝에 맞춘다(Figma x 261 — 오른쪽 끝 기준으로 둔다).
+          style={{ right: ROW_END_INSET, top: 155, lineHeight: 25, color: SETTINGS.muted }}
         >
           v.{version}
         </Text>
@@ -445,14 +431,8 @@ function InfoSection({ version }: { version: string }) {
   );
 }
 
-/** 어르신 화면 — 요양보호사 PIN 정하기/바꾸기. */
-function ElderScreenSection({
-  pinSet,
-  onEditPin,
-}: {
-  pinSet: boolean | null;
-  onEditPin: () => void;
-}) {
+/** 어르신 화면 — 요양보호사 PIN 정하기/바꾸기(누르면 PIN 입력 창). 상태 문구는 두지 않는다(사용자 결정 2026-10-15). */
+function ElderScreenSection({ onEditPin }: { onEditPin: () => void }) {
   return (
     <>
       {/* ── 어르신 화면 ─────────────────────────────────────────
@@ -460,7 +440,6 @@ function ElderScreenSection({
       <SectionLabel label="어르신 화면" left={29} style={{ marginTop: 33 }} />
       <View
         style={{
-          width: SETTINGS.cardW,
           height: 64,
           marginTop: 13,
           marginBottom: 40,
@@ -473,7 +452,7 @@ function ElderScreenSection({
         <Pressable
           onPress={onEditPin}
           accessibilityRole="button"
-          accessibilityLabel="요양보호사 PIN 정하기"
+          accessibilityLabel="요양보호사 PIN 설정"
           className="absolute active:opacity-60"
           style={{ left: 0, top: 6, right: 0, height: 52, justifyContent: 'center' }}
         >
@@ -483,14 +462,7 @@ function ElderScreenSection({
           >
             요양보호사 PIN
           </Text>
-          <Text
-            className="absolute text-[14px] font-normal"
-            style={{ right: 44, top: 13, lineHeight: 25, color: SETTINGS.muted }}
-          >
-            {/* 아직 없을 때의 '정하기'는 표시하지 않는다(사용자 지적 2026-10-15) */}
-            {pinSet === null ? NO_VALUE : pinSet ? '바꾸기' : ''}
-          </Text>
-          <View style={{ position: 'absolute', left: 290, top: 19 }}>
+          <View style={{ position: 'absolute', right: ROW_END_INSET, top: 19 }}>
             <RowChevron />
           </View>
         </Pressable>

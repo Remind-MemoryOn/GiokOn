@@ -36,7 +36,7 @@ import statSmile from '../assets/brand/stat-smile.png';
 import statTime from '../assets/brand/stat-time.png';
 import statRate from '../assets/brand/stat-rate.png';
 
-/** 요약 카드(162×95) — 라벨 + [아이콘·값] 행. */
+/** 요약 카드(Figma 162×95 — 폭은 줄을 나눠 갖는다) — 라벨 + [아이콘·값] 행. */
 function SummaryCard({
   label,
   icon,
@@ -52,7 +52,8 @@ function SummaryCard({
   return (
     <View
       style={{
-        width: 162,
+        // Figma 162(336 폭에서 2칸 · 간격 12). 기기 폭에 따라 2칸이 줄을 나눠 갖는다.
+        flex: 1,
         height: 95,
         borderRadius: 5,
         backgroundColor: DETAIL.tileBg,
@@ -98,10 +99,10 @@ export default function Analytics() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 31, paddingBottom: 49 }}
+        contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 31, paddingBottom: 49 }}
       >
         {/* 전체 요약 + 기간 */}
-        <View className="flex-row items-center justify-between" style={{ width: DETAIL.width }}>
+        <View className="flex-row items-center justify-between">
           <SectionHeading>전체 요약</SectionHeading>
           <PeriodPill
             label={periodLabel}
@@ -111,7 +112,7 @@ export default function Analytics() {
           />
         </View>
 
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 23, columnGap: 12 }}>
+        <View className="flex-row" style={{ marginTop: 23, columnGap: 12 }}>
           <SummaryCard
             label="총 어르신 수"
             icon={statElders}
@@ -125,7 +126,7 @@ export default function Analytics() {
             value={`${o.totalSessions}회`}
           />
         </View>
-        <View className="flex-row" style={{ width: DETAIL.width, marginTop: 13, columnGap: 12 }}>
+        <View className="flex-row" style={{ marginTop: 13, columnGap: 12 }}>
           <SummaryCard
             label="평균 대화 시간"
             icon={statTime}
@@ -145,7 +146,6 @@ export default function Analytics() {
           accessibilityRole="button"
           className="items-center justify-center active:opacity-90"
           style={{
-            width: DETAIL.width,
             height: 57,
             borderRadius: 10,
             backgroundColor: DETAIL.accent,
@@ -183,7 +183,6 @@ export default function Analytics() {
           accessibilityRole="button"
           className="items-center justify-center active:opacity-90"
           style={{
-            width: DETAIL.width,
             height: 57,
             borderRadius: 10,
             backgroundColor: DETAIL.accent,

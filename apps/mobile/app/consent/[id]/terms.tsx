@@ -37,14 +37,13 @@ import {
 } from '@giokon/core';
 import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import { NonMedicalFootnote } from '../../../src/components/banners';
-import { CheckBox } from '../../../src/components/consent';
+import { CheckBox, CONSENT_UI } from '../../../src/components/consent';
 import { useElderView } from '../../../src/data/reads';
 import { useGrantConsents } from '../../../src/data/writes';
 import { WEB_ROUTES, webUrl } from '../../../src/lib/webUrl';
 
-/** Figma 콘텐츠 열. 카드만 335(우측 끝 364), 버튼은 336(우측 끝 365) — 원본 그대로. */
+/** Figma 콘텐츠 열. 카드만 335(우측 끝 364 — 오른쪽 1 안쪽), 버튼은 336(우측 끝 365) — 원본 그대로. 폭은 기기를 따른다. */
 const LEFT = 29;
-const CARD_W = 335;
 const CARD_H = 97;
 const CARD_GAP = 116 - CARD_H; // Figma 카드 pitch 116
 
@@ -129,7 +128,7 @@ export default function ConsentGate() {
       <ScrollView
         className="flex-1"
         // 제목 박스 top 144 = 헤더 114 + 30 · CTA 하단 784 → 프레임 하단 68
-        contentContainerStyle={{ paddingLeft: LEFT, paddingTop: 30, paddingBottom: 68 }}
+        contentContainerStyle={{ paddingLeft: LEFT, paddingRight: CONSENT_UI.right, paddingTop: 30, paddingBottom: 68 }}
       >
         <Text className="text-[19px] font-semibold text-black" style={{ lineHeight: 30 }}>
           {elder.name} 어르신과의{'\n'}대화를 위해 아래 동의가 필요해요.
@@ -137,7 +136,7 @@ export default function ConsentGate() {
 
         <Text
           className="text-[14px] font-normal text-muted"
-          style={{ lineHeight: 25, width: 337, marginTop: 4 }}
+          style={{ lineHeight: 25, marginTop: 4 }}
         >
           어르신(정보주체) 또는 보호자·대리인의 동의를 확인해 주세요. (동의서 {CONSENT_VERSION})
         </Text>
@@ -154,7 +153,8 @@ export default function ConsentGate() {
               accessibilityLabel={cardTitle(def)}
               className="active:opacity-80"
               style={{
-                width: CARD_W,
+                alignSelf: 'stretch',
+                marginRight: 1,
                 height: CARD_H,
                 borderRadius: 10,
                 backgroundColor: '#ffffff',
@@ -206,7 +206,7 @@ export default function ConsentGate() {
         <NonMedicalFootnote
           className="text-[14px] font-normal text-muted"
           // 카드 하단 602 → 617 (마지막 카드 아래 15), Figma 는 콘텐츠 열보다 10 안쪽
-          style={{ lineHeight: 25, width: 316, marginLeft: 10, marginTop: 15 }}
+          style={{ lineHeight: 25, marginLeft: 10, marginRight: 10, marginTop: 15 }}
         />
 
         <Pressable
@@ -216,7 +216,7 @@ export default function ConsentGate() {
           accessibilityState={{ disabled: !allChecked || saving }}
           className="items-center justify-center active:opacity-90"
           style={{
-            width: 336,
+            alignSelf: 'stretch',
             height: 57,
             borderRadius: 10,
             backgroundColor: '#e9822b',

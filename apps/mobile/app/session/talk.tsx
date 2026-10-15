@@ -43,6 +43,7 @@ import { ElderView } from '../../src/features/session/ElderView';
 import { QuestionCard } from '../../src/features/session/QuestionCard';
 import { CAREGIVER_STATUS, isInConversation, pauseButtonState } from '../../src/features/session/caregiverStatus';
 import iconClose from '../../assets/brand/icon-close.png';
+import { useContentWidth } from '../../src/lib/layout';
 
 const FRAME_H = 852;
 /** Interrupted relay inputs retain the full storage allowance. */
@@ -124,6 +125,8 @@ export default function Talk() {
   const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
   const automatic = useAutomaticConversation(active, syncProgress);
   const { height } = useWindowDimensions();
+  // 카드·버튼 폭 = 콘텐츠 폭(393 폭에서 Figma 336 — 기기 폭 대응).
+  const { contentW } = useContentWidth();
   const finishing = useRef(false);
   const { user } = useAuth();
   const [mode, setMode] = useState<'caregiver' | 'elder'>('caregiver');
@@ -274,7 +277,7 @@ export default function Talk() {
           onPress={automatic.phase === 'idle' ? () => void startAndHandOver() : endAndSave}
           accessibilityRole="button"
           className="items-center justify-center active:opacity-90"
-          style={{ width: 336, minHeight: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+          style={{ width: contentW, minHeight: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
         >
           <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
             {automatic.phase === 'idle' ? '자동 대화 시작' : '대화 회수·저장'}
@@ -287,7 +290,7 @@ export default function Talk() {
             accessibilityRole="button"
             accessibilityState={{ disabled: pauseButton.disabled }}
             className="items-center justify-center active:opacity-70"
-            style={{ width: 336, minHeight: 48, marginTop: 8, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
+            style={{ width: contentW, minHeight: 48, marginTop: 8, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
           >
             <Text className="text-[18px] font-semibold text-black" style={{ lineHeight: 28 }}>
               {pauseButton.label}
@@ -295,7 +298,7 @@ export default function Talk() {
           </Pressable>
         )}
         <Text className="text-[18px] font-medium text-black text-center" accessibilityLiveRegion="polite"
-          style={{ lineHeight: 28, marginTop: 8, width: 336 }}>
+          style={{ lineHeight: 28, marginTop: 8, width: contentW }}>
           {automatic.reason ?? CAREGIVER_STATUS[automatic.phase]}
         </Text>
       </View>

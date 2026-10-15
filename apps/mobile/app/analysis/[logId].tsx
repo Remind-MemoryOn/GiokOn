@@ -57,7 +57,8 @@ function TraitCard({ label, value }: { label: string; value: string }) {
   return (
     <View
       style={{
-        width: 162,
+        // Figma 162(336 폭에서 2칸 · 간격 12) — 2칸이 줄을 나눠 갖는다.
+        flex: 1,
         height: 73,
         borderRadius: 5,
         backgroundColor: DETAIL.tileBg,
@@ -139,7 +140,7 @@ export default function SingleAnalysis() {
       />
 
       {/* 크림 히어로 114..222 (h108) */}
-      <View style={{ height: 108, paddingLeft: DETAIL.left, backgroundColor: DETAIL.chipBg }}>
+      <View style={{ height: 108, paddingLeft: DETAIL.left, paddingRight: DETAIL.right, backgroundColor: DETAIL.chipBg }}>
         <Text
           className="text-[14px] font-medium text-muted"
           style={{ lineHeight: 25, marginTop: 30.25 }}
@@ -166,11 +167,11 @@ export default function SingleAnalysis() {
         >
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ paddingLeft: DETAIL.left, paddingTop: 33, paddingBottom: 50 }}
+            contentContainerStyle={{ paddingLeft: DETAIL.left, paddingRight: DETAIL.right, paddingTop: 33, paddingBottom: 50 }}
           >
             <SessionReportPanel key={logId} sessionId={logId} report={analysis.generatedReport} />
-            {/* 참여 타일 3종 — 좌우 끝을 29/365 에 고정(간격 13.5) */}
-            <View className="flex-row justify-between" style={{ width: DETAIL.width }}>
+            {/* 참여 타일 3종 — 3칸이 줄을 나눠 갖는다(간격 13.5 — 336 폭에서 103) */}
+            <View className="flex-row" style={{ columnGap: 13.5 }}>
               <StatTile
                 icon={statTime}
                 iconSize={{ width: 24, height: 24 }}
@@ -204,7 +205,7 @@ export default function SingleAnalysis() {
               </Text>
             ) : (
               bullets.map((b) => (
-                <View key={b} className="flex-row" style={{ width: DETAIL.width }}>
+                <View key={b} className="flex-row">
                   {/* 점 박스 x35.25(잉크 37.25) · 폭 13.25 → 본문 박스 x48.5 (Figma 실측) */}
                   <Text
                     className="text-[13px] font-normal text-black"
@@ -232,14 +233,14 @@ export default function SingleAnalysis() {
 
             <View
               className="flex-row"
-              style={{ width: DETAIL.width, marginTop: 11, columnGap: 12 }}
+              style={{ marginTop: 11, columnGap: 12 }}
             >
               <TraitCard label="주요 감정" value={tone.label} />
               <TraitCard label="대화 집중도" value={focusLabel(m.participation)} />
             </View>
             <View
               className="flex-row"
-              style={{ width: DETAIL.width, marginTop: 12, columnGap: 12 }}
+              style={{ marginTop: 12, columnGap: 12 }}
             >
               <TraitCard label="표현 빈도" value={expressLabel(m.avgUtteranceChars)} />
               <TraitCard label="대화 길이" value={lengthLabel(session?.durationMinutes ?? 0)} />
@@ -248,7 +249,7 @@ export default function SingleAnalysis() {
             {analysis.interestKeywords.length > 0 ? (
               <View
                 className="flex-row flex-wrap"
-                style={{ width: DETAIL.width, marginTop: 15, columnGap: 11, rowGap: 11 }}
+                style={{ marginTop: 15, columnGap: 11, rowGap: 11 }}
               >
                 {analysis.interestKeywords.slice(0, 4).map((k) => (
                   <KeywordChip key={k} text={`#${k}`} />
@@ -313,7 +314,6 @@ export default function SingleAnalysis() {
             <View
               className="flex-row"
               style={{
-                width: DETAIL.width,
                 height: 12,
                 borderRadius: 6,
                 backgroundColor: DETAIL.chipBg,

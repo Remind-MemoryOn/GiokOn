@@ -7,13 +7,16 @@
 // 첫 인사 전에는 AI 질문이 없다 — 안내 문구는 화면 표시일 뿐 대화 기록이 아니다.
 import { Text, View } from 'react-native';
 import { RobotInline } from '../../components/brand';
+import { useContentWidth } from '../../lib/layout';
 
 export function QuestionCard({ question, placeholder }: { question: string; placeholder: string }) {
+  // 카드 폭 = 콘텐츠 폭(393 폭에서 Figma 336). 질문 칸은 남은 폭을 채우고 오른쪽 여백 10.75(= 336 − 74.25 − 251).
+  const { contentW } = useContentWidth();
   return (
     <View
       className="flex-row"
       style={{
-        width: 336,
+        width: contentW,
         minHeight: 258,
         borderRadius: 10,
         backgroundColor: '#fdf3ea',
@@ -29,7 +32,7 @@ export function QuestionCard({ question, placeholder }: { question: string; plac
       <Text
         className="text-[28px] font-semibold text-black"
         accessibilityLiveRegion="polite"
-        style={{ marginLeft: 10.75, width: 251, lineHeight: 50, color: question ? undefined : '#7b7c7c' }}
+        style={{ flex: 1, marginLeft: 10.75, marginRight: 10.75, lineHeight: 50, color: question ? undefined : '#7b7c7c' }}
       >
         {question || placeholder}
       </Text>

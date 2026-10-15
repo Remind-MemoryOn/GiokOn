@@ -14,7 +14,7 @@ export function SessionReportPanel({ sessionId, report }: { sessionId: string; r
   }, [sessionId, report, mutate]);
 
   return (
-    <View style={{ width: 336, marginBottom: 20 }}>
+    <View style={{ alignSelf: 'stretch', marginBottom: 20 }}>
       <Text className="text-[14px] font-semibold text-black">
         {report ? 'AI 대화 분석' : generate.isPending ? 'AI가 대화 분석과 일지 초안을 정리하고 있어요' : 'AI 분석 확인'}
       </Text>

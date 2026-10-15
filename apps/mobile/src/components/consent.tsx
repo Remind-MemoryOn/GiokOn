@@ -23,9 +23,14 @@ import checkboxOnAccent from '../../assets/brand/checkbox-on-accent.png';
 import iconRequired from '../../assets/brand/icon-required.png';
 import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 
-/** Figma 동의 화면 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다. */
+/**
+ * Figma 동의 화면 상수 — scripts/check-figma-spec.mjs 가 이 값을 검사한다.
+ * `cardW`·`nameW`·`relationW` 는 393 폭 기준값이다. 화면에서는 카드가 좌 `left` · 우 `right` 여백 안에서
+ * 늘어나고, 성함·관계 칸은 같은 비율(156:162)로 줄을 나눠 갖는다(기기 폭 대응, src/lib/layout.ts).
+ */
 export const CONSENT_UI = {
   left: 29,
+  right: 28,
   cardW: 335,
   cardR: 10,
   border: '#d9d9d9',
@@ -85,18 +90,16 @@ export function FieldLabel({ label, required = false }: { label: string; require
   );
 }
 
-/** 흰 바탕 입력 박스(성함·관계 공용). */
+/** 흰 바탕 입력 박스(성함·관계 공용) — 폭은 감싼 칸을 채운다. */
 export function FieldBox({
-  width,
   children,
   onPress,
 }: {
-  width: number;
   children: ReactNode;
   onPress?: () => void;
 }) {
   const style = {
-    width,
+    alignSelf: 'stretch',
     height: CONSENT_UI.fieldH,
     borderRadius: CONSENT_UI.cardR,
     borderWidth: 1,
@@ -143,7 +146,7 @@ export function GuardianRiskNotice() {
   return (
     <View
       style={{
-        width: CONSENT_UI.cardW,
+        alignSelf: 'stretch',
         height: 97,
         borderRadius: CONSENT_UI.cardR,
         backgroundColor: CONSENT_UI.noticeBg,

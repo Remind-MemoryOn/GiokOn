@@ -23,6 +23,7 @@ import { useElder, useChronicles, useDuePlannedFetcher } from '../../src/data/re
 import { PLAN_UNAVAILABLE_ALERT, resolveStartPlan, START_FAILURE_ALERT } from '../../src/features/session/plannedStart';
 import { useSessionPersistence } from '../../src/data/session-persistence';
 import { VOICE_RELAY_MISSING_MESSAGE, voiceRelayUrl } from '../../src/lib/live/relay-config';
+import { useContentWidth } from '../../src/lib/layout';
 
 const FRAME_H = 852;
 
@@ -34,6 +35,8 @@ export default function SessionStart() {
   const begin = useApp((s) => s.beginSession);
   const { openRemoteSession, adoptPlannedSession } = useSessionPersistence();
   const { height } = useWindowDimensions();
+  // 버튼 폭 = 콘텐츠 폭(393 폭에서 Figma 336 — 기기 폭 대응).
+  const { contentW } = useContentWidth();
   const lease = queryScope.capture();
   const starting = useRef(false);
   const [checkingConsent, setCheckingConsent] = useState(false);
@@ -171,7 +174,7 @@ export default function SessionStart() {
           disabled={checkingConsent}
           accessibilityRole="button"
           className="items-center justify-center active:opacity-90"
-          style={{ width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
+          style={{ width: contentW, height: 57, borderRadius: 10, backgroundColor: '#e9822b' }}
         >
           <Text className="text-[18px] font-semibold text-white" style={{ lineHeight: 30 }}>
             시작하기
@@ -182,7 +185,7 @@ export default function SessionStart() {
           accessibilityRole="button"
           className="items-center justify-center active:opacity-70"
           style={{
-            width: 336,
+            width: contentW,
             height: 57,
             borderRadius: 10,
             backgroundColor: '#ffffff',

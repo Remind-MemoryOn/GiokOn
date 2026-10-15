@@ -8,6 +8,10 @@
 // 스펙 출처: Figma MCP `get_design_context` 결과(노드별 inset%→px 환산) +
 // `assets/figma/*.png`(@4x) 실측. 화면 재적용 시 이 표를 함께 갱신한다.
 //
+// 기기 폭 대응(2026-10-15 사용자 결정): Figma 는 393 폭 한 가지다. 크기·색·라운드·폰트·세로 위치는 그대로
+// 검사하고, 가로 위치는 규칙으로 검사한다 — 카드·입력·버튼 = 콘텐츠 폭(좌 29 · 우 28 여백 안에서 늘어남),
+// 오른쪽 요소 = 오른쪽 끝 기준(right), 로고·그림 = 가운데. 393 폭에서는 Figma 좌표와 같다(apps/mobile/src/lib/layout.ts).
+//
 // 사용: node scripts/check-figma-spec.mjs   (pnpm check:figma)
 
 import { readFileSync } from 'node:fs';
@@ -22,12 +26,12 @@ const SPECS = [
   [`${APP}/app/main.tsx`, '메인: 인사 SemiBold 24 / lh35', [/text-\[24px\] font-semibold/, /lineHeight: 35/]],
   // 밑줄은 절대 배치 — 줄 높이에 영향을 주면 이름이 같은 줄에서 어긋난다(사용자 지적).
   [`${APP}/app/main.tsx`, '메인: 이름 주황 밑줄 h3 @ y205(절대 배치)', [/bottom: 6,\s*height: 3,\s*backgroundColor: '#e9822b'/]],
-  [`${APP}/app/main.tsx`, '메인: 검색 335×46 r10 #cccdce @ x30', [/width: 335/, /height: 46/, /borderRadius: 10/, /borderColor: '#cccdce'/, /marginTop: 20/, /marginBottom: 31/]],
+  [`${APP}/app/main.tsx`, '메인: 검색 Figma 335×46 r10 #cccdce @ x30 — 폭은 기기를 따른다', [/alignSelf: 'stretch',\s*height: 46/, /height: 46/, /borderRadius: 10/, /borderColor: '#cccdce'/, /marginTop: 20/, /marginBottom: 31/]],
   [`${APP}/app/main.tsx`, '메인: 검색 안내 18px #7b7c7c', [/text-\[18px\]/, /placeholderTextColor="#7b7c7c"/]],
   [
     `${APP}/app/main.tsx`,
     '메인: 헤더 114-인셋 + 공용 그림자 · 워드마크 y78 / 설정 y75',
-    [/height: HEADER_H - shift, boxShadow: HEADER_SHADOW/, /top: 78 - shift/, /left: 344, top: 75 - shift/],
+    [/height: HEADER_H - shift, boxShadow: HEADER_SHADOW/, /top: 78 - shift/, /right: 31, top: 75 - shift/],
   ],
   [
     `${APP}/app/main.tsx`,
@@ -55,8 +59,8 @@ const SPECS = [
   [`${APP}/app/login.tsx`, '로그인: 링크 12px', [/text-\[12px\]/]],
   [
     `${APP}/app/login.tsx`,
-    '로그인: 절대 좌표(워드마크 120 · 링크행 80 · 소셜 89.75/168.35/246.95, 52)',
-    [/left: x\(120\)/, /left: x\(80\)/, /left: 89\.75/, /left: 168\.35/, /left: 246\.95/, /width: x\(52\), height: 52/],
+    '로그인: 워드마크 145×22.2 · 링크행 · 소셜 3종(52, 간격 26.6) 가로 가운데 · 입력·버튼 비율 좌표',
+    [/width: 145, height: 22\.2/, /left-0 right-0 flex-row items-center justify-center/, /columnGap: 26\.6/, /width: 52, height: 52/, /left: x\(50\)/, /left: x\(49\)/],
   ],
 
   // ── 스플래쉬 (Figma 130:162) ───────────────────────────────────────────
@@ -65,7 +69,7 @@ const SPECS = [
   [
     `${APP}/app/index.tsx`,
     '스플래쉬: 카피 박스 362.5 · 워드마크 (92,395) 208×31.8',
-    [/362\.5 \/ FRAME_H/, /left: 92, top: \(395 \/ FRAME_H\)/, /width: 208, height: 31\.8/],
+    [/362\.5 \/ FRAME_H/, /left-0 right-0 items-center" style=\{\{ top: \(395 \/ FRAME_H\)/, /width: 208, height: 31\.8/],
   ],
 
 
@@ -74,7 +78,7 @@ const SPECS = [
   [`${APP}/app/session/start.tsx`, '시작전: 타이틀 SemiBold 28 lh42', [/text-\[28px\] font-semibold/, /lineHeight: 42/]],
   [`${APP}/app/session/start.tsx`, '시작전: 이름 밑줄 h4 주황 @ y378(절대 배치)', [/bottom: 7,\s*height: 4,\s*backgroundColor: '#e9822b'/]],
   [`${APP}/app/session/start.tsx`, '시작전: 부제 Medium 20 lh40', [/text-\[20px\] font-medium/, /lineHeight: 40/]],
-  [`${APP}/app/session/start.tsx`, '시작전: 버튼 336×57 r10 (주황/외곽선)', [/width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
+  [`${APP}/app/session/start.tsx`, '시작전: 버튼 Figma 336(=콘텐츠 폭)×57 r10 (주황/외곽선)', [/width: contentW, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
 
   // ── 대화 (Figma 17:108) ───────────────────────────────────────────────
   [`${APP}/app/session/talk.tsx`, '대화: X 닫기 17×17 에셋', [/icon-close\.png/, /width: 17, height: 17/]],
@@ -84,7 +88,7 @@ const SPECS = [
     // 258 은 **최소** 높이 — 실제 AI 질문은 길이가 달라 카드가 늘어나야 한다(사용자 지적).
     // 로봇 (18,38) / 질문 (75.25,27) w251 은 padding·margin 합으로 동일하게 유지.
     '대화: 질문카드 336×min258 r10 #fdf3ea + 주황 테두리 · 로봇(18,38) 46.5 · 질문(75.25,27) w251',
-    [/width: 336,\s*minHeight: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /paddingTop: 26/, /marginLeft: 17, marginTop: 11/, /RobotInline size=\{46\.5\}/, /marginLeft: 10\.75, width: 251/],
+    [/width: contentW,\s*minHeight: 258/, /backgroundColor: '#fdf3ea'/, /borderColor: '#e9822b'/, /paddingTop: 26/, /marginLeft: 17, marginTop: 11/, /RobotInline size=\{46\.5\}/, /flex: 1, marginLeft: 10\.75, marginRight: 10\.75/],
   ],
   [`${APP}/src/features/session/QuestionCard.tsx`, '대화: 질문 SemiBold 28 lh50', [/text-\[28px\] font-semibold/, /lineHeight: 50/]],
   [`${APP}/app/session/talk.tsx`, '대화: 요양보호사·어르신 화면 모두 같은 질문 카드', [/<QuestionCard question=/]],
@@ -110,11 +114,11 @@ const SPECS = [
   // ── 대화저장 (Figma 28:79) ────────────────────────────────────────────
   [
     `${APP}/app/session/saved.tsx`,
-    '저장: 일러스트 164×179 @ (125,194) — 중앙 아님',
-    [/saved-illustration\.png/, /left: 125/, /width: 164,\s*height: 179/],
+    '저장: 일러스트 164×179 @ (125,194) — 화면 가운데 기준 오프셋(중앙 아님)',
+    [/saved-illustration\.png/, /left: '50%',\s*marginLeft: 125 - 393 \/ 2/, /width: 164,\s*height: 179/],
   ],
   [`${APP}/app/session/saved.tsx`, '저장: 문구 SemiBold 28 lh42', [/text-\[28px\] font-semibold/, /lineHeight: 42/]],
-  [`${APP}/app/session/saved.tsx`, '저장: 버튼 336×57 r10 (주황/외곽선)', [/width: 336, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
+  [`${APP}/app/session/saved.tsx`, '저장: 버튼 Figma 336(=콘텐츠 폭)×57 r10 (주황/외곽선)', [/width: contentW, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /borderColor: '#cccdce'/]],
 
   // ── 공용 상세 헤더 (Figma 어르신 등록/연대기 수정 등, 0..114) ──────────
   [
@@ -184,7 +188,7 @@ const SPECS = [
   [
     `${APP}/src/components/form.tsx`,
     '폼: 저장하기 336×57 r10 #e9822b · SemiBold 18 lh30',
-    [/width: FORM\.fieldW, height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /text-\[18px\] font-semibold text-white/],
+    [/alignSelf: 'stretch', height: 57, borderRadius: 10, backgroundColor: '#e9822b'/, /text-\[18px\] font-semibold text-white/],
   ],
   [
     `${APP}/src/components/ProfileForm.tsx`,
@@ -221,13 +225,14 @@ const SPECS = [
       /\{ key: 'profile', label: '프로필', x: 66, indicatorX: 40 \}/,
       /\{ key: 'sessions', label: '세션 기록', x: 169, indicatorX: 151 \}/,
       /\{ key: 'analysis', label: '종합 분석', x: 290, indicatorX: 273 \}/,
-      /width: 87,\s*height: 3/,
+      /TAB_INDICATOR_W = 87/,
+      /width: TAB_INDICATOR_W,\s*height: 3/,
     ],
   ],
   [
     `${APP}/src/components/ScreenHeader.tsx`,
     '상세 헤더: 탭 Regular/SemiBold 14 lh18 · 우측 아이콘 (347, 74~75)',
-    [/text-\[14px\]/, /lineHeight: 18/, /left: 347 - TAP_PAD, \.\.\.tapBox\(rightIconTop - shift\)/],
+    [/text-\[14px\]/, /lineHeight: 18/, /right: FRAME_W - 347 - \(rightIconSize\?\.width \?\? 18\) - TAP_PAD,\s*\.\.\.tapBox\(rightIconTop - shift\)/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
@@ -237,7 +242,7 @@ const SPECS = [
   [
     `${APP}/src/components/detail.tsx`,
     '상세: 구분선 283×1 #d9d9d9 (행 아래 9)',
-    [/width: 283,\s*height: 1/, /divider: '#d9d9d9'/, /marginTop: 9,\s*marginBottom: 9/],
+    [/height: 1,\s*backgroundColor: DETAIL\.divider,\s*marginLeft: 26,\s*marginRight: 27/, /divider: '#d9d9d9'/, /marginTop: 9,\s*marginBottom: 9/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
@@ -252,22 +257,22 @@ const SPECS = [
   [
     `${APP}/src/components/detail.tsx`,
     '상세: 세션카드 날짜/시계15/시간/화살표34 좌표',
-    [/left: 31, top: 58\.5/, /left: 137, top: 65, width: 15, height: 15/, /left: 158, top: 57\.5/, /left: 267, top: 37, width: 34, height: 34/],
+    [/left: 31, top: 58\.5/, /left: 137, top: 65, width: 15, height: 15/, /left: 158, top: 57\.5/, /right: 35, top: 37, width: 34, height: 34/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
     '분석: 타일 103×115 r5 #fefbf8 border #f8d7bb (라벨 12 / 값 16)',
-    [/width: 103,\s*height: 115,\s*borderRadius: 5/, /tileBg: '#fefbf8'/, /tileBorder: '#f8d7bb'/, /text-\[12px\] font-semibold/, /text-\[16px\] font-semibold/],
+    [/flex: 1,\s*height: 115,\s*borderRadius: 5/, /tileBg: '#fefbf8'/, /tileBorder: '#f8d7bb'/, /text-\[12px\] font-semibold/, /text-\[16px\] font-semibold/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
     '분석: 주제 막대 트랙 242×12 r6 + 순위별 농도 · 라벨/퍼센트 Regular 13',
-    [/width: trackWidth, height: 12, borderRadius: 6/, /TRACK_W = 242/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
+    [/width: Math\.max\(40, trackWidth \+ extra\), height: 12, borderRadius: 6/, /TRACK_W = 242/, /RANK_OPACITY = \[1, 0\.87, 0\.73, 0\.55, 0\.35\]/, /text-\[13px\] font-normal/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
     '분석: AI 배지 37 + 제목 SemiBold 17 + 본문 Regular 13 lh25 w271',
-    [/avatar-ai\.png/, /width: 37, height: 37/, /text-\[17px\] font-semibold/, /lineHeight: 25, width: 271/],
+    [/avatar-ai\.png/, /width: 37, height: 37/, /text-\[17px\] font-semibold/, /marginLeft: 51\.75, marginRight: 13\.25/],
   ],
   [
     `${APP}/app/elder/[id].tsx`,
@@ -321,7 +326,7 @@ const SPECS = [
   [
     `${APP}/app/analysis/[logId].tsx`,
     '대화분석: 크림 히어로 108(시트 top 222) + 흰 시트 상단 라운드 30',
-    [/height: 108, paddingLeft: DETAIL\.left, backgroundColor: DETAIL\.chipBg/, /SHEET_RADIUS = 30/, /borderTopLeftRadius: SHEET_RADIUS/],
+    [/height: 108, paddingLeft: DETAIL\.left, paddingRight: DETAIL\.right, backgroundColor: DETAIL\.chipBg/, /SHEET_RADIUS = 30/, /borderTopLeftRadius: SHEET_RADIUS/],
   ],
   [
     `${APP}/app/analysis/[logId].tsx`,
@@ -331,7 +336,7 @@ const SPECS = [
   [
     `${APP}/app/analysis/[logId].tsx`,
     '대화분석: 참여 타일 좌우 끝 29/365 고정(space-between)',
-    [/className="flex-row justify-between" style=\{\{ width: DETAIL\.width \}\}/],
+    [/className="flex-row" style=\{\{ columnGap: 13\.5 \}\}/],
   ],
   [
     `${APP}/app/analysis/[logId].tsx`,
@@ -346,7 +351,7 @@ const SPECS = [
   [
     `${APP}/app/analysis/[logId].tsx`,
     '대화분석: 특성 카드 162×73 r5 (라벨 Regular 13 잉크+20.75 / 값 SemiBold 16 잉크+40.5) gap 12',
-    [/width: 162,\s*height: 73,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /marginTop: 10\.5/, /marginTop: -9\.25/, /columnGap: 12/],
+    [/flex: 1,\s*height: 73,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /marginTop: 10\.5/, /marginTop: -9\.25/, /columnGap: 12/],
   ],
   [
     `${APP}/app/analysis/[logId].tsx`,
@@ -368,7 +373,7 @@ const SPECS = [
   [
     `${APP}/app/analytics.tsx`,
     '전체분석: 요약 카드 162×95 r5 (라벨 Regular 14 잉크+22.75 / 값 SemiBold 18 잉크+47) gap 12/13',
-    [/width: 162,\s*height: 95,\s*borderRadius: 5/, /text-\[14px\] font-normal text-black" style=\{\{ lineHeight: 30, marginTop: 13 \}\}/, /text-\[18px\] font-semibold text-black/, /marginTop: -0\.25/, /marginLeft: 12/, /marginTop: 23, columnGap: 12/, /marginTop: 13, columnGap: 12/],
+    [/flex: 1,\s*height: 95,\s*borderRadius: 5/, /text-\[14px\] font-normal text-black" style=\{\{ lineHeight: 30, marginTop: 13 \}\}/, /text-\[18px\] font-semibold text-black/, /marginTop: -0\.25/, /marginLeft: 12/, /marginTop: 23, columnGap: 12/, /marginTop: 13, columnGap: 12/],
   ],
   [
     `${APP}/src/components/detail.tsx`,
@@ -395,7 +400,7 @@ const SPECS = [
   [
     `${APP}/src/components/charts.tsx`,
     '레이더: 링 r 97.5~18.5 · 중심 (167.5,133) 블록 253.5 · 채움 #f8e3d2 + 선 #e9822b',
-    [/RADAR_R = 97\.5/, /RINGS = \[18\.5, 37\.5, 58, 77, 97\.5\]/, /RADAR_CX = 167\.5/, /RADAR_CY = 133/, /RADAR_H = 253\.5/, /fill="#f8e3d2"/, /stroke="#e9822b"/],
+    [/RADAR_R = 97\.5/, /RINGS = \[18\.5, 37\.5, 58, 77, 97\.5\]/, /RADAR_CX_BASE = 167\.5/, /RADAR_CY = 133/, /RADAR_H = 253\.5/, /fill="#f8e3d2"/, /stroke="#e9822b"/],
   ],
   [
     `${APP}/src/components/charts.tsx`,
@@ -405,7 +410,7 @@ const SPECS = [
   [
     `${APP}/src/components/charts.tsx`,
     '꺾은선: 플롯 148 · X축선 290 @42 · 점 60.5~315.5 · 블록 179 · 점 3.5 / 선 2',
-    [/PLOT_H = 148/, /AXIS_LEFT = 42/, /AXIS_W = 290/, /DOT_FIRST = 60\.5/, /DOT_LAST = 315\.5/, /TREND_H = 179/, /strokeWidth=\{2\}/],
+    [/PLOT_H = 148/, /AXIS_LEFT = 42/, /AXIS_W_BASE = 290/, /DOT_FIRST = 60\.5/, /DOT_LAST_BASE = 315\.5/, /TREND_H = 179/, /strokeWidth=\{2\}/],
   ],
   [
     `${APP}/src/components/charts.tsx`,
@@ -422,7 +427,7 @@ const SPECS = [
   [
     `${APP}/app/observations.tsx`,
     '인지효과: 지표 카드 103×103 r5 (라벨 Medium 12 잉크+21.5 / 값 SemiBold 16 잉크+46.25) 3+2',
-    [/width: 103,\s*height: 103,\s*borderRadius: 5/, /text-\[12px\] font-medium text-black/, /marginTop: 10\.75/, /text-\[16px\] font-semibold text-black/, /marginTop: -3\.5/, /className="flex-row justify-between"/, /marginTop: 14, columnGap: 13/],
+    [/width: \(contentW - 13\.5 \* 2\) \/ 3,\s*height: 103,\s*borderRadius: 5/, /text-\[12px\] font-medium text-black/, /marginTop: 10\.75/, /text-\[16px\] font-semibold text-black/, /marginTop: -3\.5/, /marginTop: 18, columnGap: 13\.5/, /marginTop: 14, columnGap: 13\.5/],
   ],
   [
     `${APP}/app/observations.tsx`,
@@ -464,7 +469,7 @@ const SPECS = [
   [
     `${APP}/app/topics/[id].tsx`,
     '주제별: 상세 카드 103×87 r5 (라벨 Regular 13 잉크+25.75 / 값 SemiBold 16 잉크+47.25)',
-    [/width: 103,\s*height: 87,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /marginTop: 15\.5/, /text-\[16px\] font-semibold text-black/, /marginTop: -7\.25/, /className="flex-row justify-between" style=\{\{ width: DETAIL\.width, marginTop: 18 \}\}/],
+    [/flex: 1,\s*height: 87,\s*borderRadius: 5/, /text-\[13px\] font-normal text-black/, /marginTop: 15\.5/, /text-\[16px\] font-semibold text-black/, /marginTop: -7\.25/, /className="flex-row" style=\{\{ marginTop: 18, columnGap: 13\.5 \}\}/],
   ],
   [
     `${APP}/app/topics/[id].tsx`,
@@ -485,7 +490,7 @@ const SPECS = [
   // ── 브랜드 요소: 코드 드로잉이 아니라 에셋을 쓰는지 ────────────────────
   [`${APP}/src/components/brand.tsx`, '브랜드: 로봇/파형/마이크/워드마크 = 에셋', [/robot-mascot\.png/, /robot-inline\.png/, /waveform\.png/, /btn-mic-wait\.png/, /btn-mic-ready\.png/, /wordmark\.png/]],
   [`${APP}/src/components/brand.tsx`, '브랜드: 인라인 로봇 비율 46.5:29.5(재크롭)', [/ROBOT_INLINE_RATIO = 46\.5 \/ 29\.5/]],
-  [`${APP}/app/session/start.tsx`, '시작전: 로봇 left 98(중앙 아님)', [/left: 98/]],
+  [`${APP}/app/session/start.tsx`, '시작전: 로봇 가로 가운데(Figma x 98 — 393 폭에서 1px 차)', [/left-0 right-0 items-center" style=\{\{ top: \(185 \/ FRAME_H\)/]],
 
   // ── 공용 컴포넌트: 화면 간 Figma 불일치의 중간값 고정 ──────────────────
   [
@@ -528,12 +533,12 @@ const SPECS = [
   [
     `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 제목 SemiBold 19/30 @144 · 부제 Regular 14/25 w337 @208',
-    [/paddingTop: 30/, /text-\[19px\] font-semibold text-black/, /lineHeight: 30/, /text-\[14px\] font-normal text-muted/, /lineHeight: 25, width: 337, marginTop: 4/],
+    [/paddingTop: 30/, /text-\[19px\] font-semibold text-black/, /lineHeight: 30/, /text-\[14px\] font-normal text-muted/, /lineHeight: 25, marginTop: 4/],
   ],
   [
     `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 카드 335×97 r10 #d9d9d9 pitch 116 @(29, 273/389/505)',
-    [/CARD_W = 335/, /CARD_H = 97/, /CARD_GAP = 116 - CARD_H/, /borderColor: '#d9d9d9'/, /marginTop: i === 0 \? 15 : CARD_GAP/],
+    [/카드만 335\(우측 끝 364/, /marginRight: 1,\s*height: CARD_H/, /CARD_H = 97/, /CARD_GAP = 116 - CARD_H/, /borderColor: '#d9d9d9'/, /marginTop: i === 0 \? 15 : CARD_GAP/],
   ],
   [
     `${APP}/app/consent/[id]/terms.tsx`,
@@ -543,7 +548,7 @@ const SPECS = [
   [
     `${APP}/app/consent/[id]/terms.tsx`,
     '동의: 비의료 고지 14/25 w316 @39 · CTA 336×57 r10 #e9822b @727',
-    [/NonMedicalFootnote/, /lineHeight: 25, width: 316, marginLeft: 10, marginTop: 15/, /width: 336,\s*height: 57,\s*borderRadius: 10,\s*backgroundColor: '#e9822b'/, /marginTop: 35/, /paddingBottom: 68/],
+    [/NonMedicalFootnote/, /lineHeight: 25, marginLeft: 10, marginRight: 10, marginTop: 15/, /alignSelf: 'stretch',\s*height: 57,\s*borderRadius: 10,\s*backgroundColor: '#e9822b'/, /marginTop: 35/, /paddingBottom: 68/],
   ],
   [
     `${APP}/app/consent/[id]/terms.tsx`,
@@ -653,9 +658,9 @@ const SPECS = [
   [`${APP}/src/components/settings.tsx`, '설정: 어르신 카드 113 bg #fdf6f0 pitch 134', [/elderCardH: 113/, /elderCardBg: '#fdf6f0'/, /elderGap: 21/]],
   [`${APP}/src/components/settings.tsx`, '설정: 어르신 카드 그림자 1 1 8 .25', [/elderCardShadow: '1px 1px 8px rgba\(106,106,106,0\.25\)'/]],
   [`${APP}/src/components/settings.tsx`, '설정: 카드 사진 73 원형 @(+27,+20)', [/left: 27,\s*top: 20,\s*width: 73,\s*height: 73,\s*borderRadius: 36\.5/]],
-  [`${APP}/src/components/settings.tsx`, '설정: 카드 이름 SemiBold 18/30 @(+124,+16)', [/text-\[18px\] font-semibold text-black/, /left: 124, top: 16, lineHeight: 30/]],
-  [`${APP}/src/components/settings.tsx`, '설정: 카드 생년/성별 Medium 14/25 #7b7c7c', [/left: 124, top: 46, lineHeight: 25/, /left: 124, top: 71, lineHeight: 25/, /muted: '#7b7c7c'/]],
-  [`${APP}/src/components/settings.tsx`, '설정: 휴지통 에셋 21 @(+269,+46)', [/iconTrash/, /width: 21, height: 21/, /left: 269 - 12, top: 46 - 12/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 이름 SemiBold 18/30 @(+124,+16)', [/text-\[18px\] font-semibold text-black/, /left: 124, top: 16, right: TRASH_RIGHT \+ 21 \+ 12, lineHeight: 30/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 카드 생년/성별 Medium 14/25 #7b7c7c', [/left: 124, top: 46, lineHeight: 25/, /left: 124, top: 71, right: TRASH_RIGHT \+ 21 \+ 12, lineHeight: 25/, /muted: '#7b7c7c'/]],
+  [`${APP}/src/components/settings.tsx`, '설정: 휴지통 에셋 21 @(+269,+46)', [/iconTrash/, /width: 21, height: 21/, /TRASH_RIGHT = SETTINGS\.cardW - 269 - 21/, /right: TRASH_RIGHT - 12, top: 46 - 12/]],
   [`${APP}/src/components/settings.tsx`, '설정: 행 chevron 8.75×13.25 / 작은 chevron 6×7 #404040', [/width=\{8\.75\} height=\{13\.25\}/, /width=\{6\} height=\{7\}/, /strong: '#404040'/]],
   [`${APP}/src/components/settings.tsx`, '설정: 로그아웃 에셋 13', [/iconLogout/, /width: 13, height: 13/]],
   [`${APP}/src/components/consent.tsx`, '동의: 체크박스 에셋 17 — 필수=검정 / 주체=주황', [/checkboxOff/, /checkboxOn/, /checkboxOnAccent/, /box: 17/]],
@@ -679,7 +684,7 @@ const SPECS = [
   [
     `${APP}/app/consent/[id]/index.tsx`,
     '주체: CTA "다음" 336×57 @727(카드 하단 504 + 여백 223)',
-    [/CTA_SPACER = 223/, /minHeight: CTA_SPACER/, /width: 336,\s*height: 57/, />\s*다음\s*</],
+    [/CTA_SPACER = 223/, /minHeight: CTA_SPACER/, /alignSelf: 'stretch',\s*height: 57/, />\s*다음\s*</],
   ],
   [
     `${APP}/app/consent/[id]/index.tsx`,
@@ -701,15 +706,15 @@ const SPECS = [
     '동의: 주체·의사능력을 함께 기록(대리동의 확인)',
     [/capacityForSubject\(subject\)/, /consentBasis\(subject\)/, /guardianName/, /guardianRelation/],
   ],
-  [`${APP}/app/settings/index.tsx`, '설정: 헤더 아래 34 · 좌 29 · 하단 49', [/paddingLeft: SETTINGS\.left, paddingTop: 34, paddingBottom: 49/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 헤더 아래 34 · 좌 29 · 하단 49', [/paddingLeft: SETTINGS\.left, paddingRight: SETTINGS\.right, paddingTop: 34, paddingBottom: 49/]],
   [`${APP}/app/settings/index.tsx`, '설정: 프로필 카드 336×260 @ 라벨 아래 15', [/height: 260,\s*marginTop: 15/]],
   [`${APP}/app/settings/index.tsx`, '설정: 아바타 79 원 @(+26,+22)', [/left: 26,\s*top: 22,\s*width: 79,\s*height: 79,\s*borderRadius: 39\.5/]],
-  [`${APP}/app/settings/index.tsx`, '설정: 이름 SemiBold 20/24 · 기관 Medium 16/21 #404040', [/text-\[20px\] font-semibold/, /left: 123, top: 33, lineHeight: 24/, /left: 123, top: 68, lineHeight: 21, color: SETTINGS\.strong/]],
+  [`${APP}/app/settings/index.tsx`, '설정: 이름 SemiBold 20/24 · 기관 Medium 16/21 #404040', [/text-\[20px\] font-semibold/, /left: 123, top: 33, right: 13, lineHeight: 24/, /left: 123, top: 68, right: 13, lineHeight: 21, color: SETTINGS\.strong/]],
   [`${APP}/app/settings/index.tsx`, '설정: 구분선 top 120 / 183 · 아이디 SemiBold 14 값 Regular 15', [/Divider top=\{120\}/, /Divider top=\{183\}/, /text-\[15px\] font-normal/]],
   [`${APP}/app/settings/index.tsx`, '설정: 소셜 41.4/41.4/41(구글 42) top 198', [/left: 161, w: 41\.4/, /left: 217\.2, w: 41\.4/, /left: 273, w: 41, h: 42/, /top: 198/]],
   [`${APP}/app/settings/index.tsx`, '설정: 정보 카드 336×204 @ 라벨 아래 13 · 구분선 69/132', [/height: 204,\s*marginTop: 13/, /Divider top=\{69\}/, /Divider top=\{132\}/]],
   [`${APP}/app/settings/index.tsx`, '설정: 어르신 미리보기 2장 · 라벨 아래 18', [/PREVIEW_ELDERS = 2/, /marginTop: i === 0 \? 18 : SETTINGS\.elderGap/]],
-  [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 첫 카드 top 146(헤더+32)', [/paddingLeft: SETTINGS\.left, paddingTop: 32/]],
+  [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 첫 카드 top 146(헤더+32)', [/paddingLeft: SETTINGS\.left, paddingRight: SETTINGS\.right, paddingTop: 32/]],
   [`${APP}/app/settings/elders.tsx`, '담당 어르신 관리: 카드 간격 21', [/marginTop: i === 0 \? 0 : SETTINGS\.elderGap/]],
   [`${APP}/app/main.tsx`, '메인: 톱니바퀴 → 설정 화면', [/router\.push\('\/settings'\)/]],
 ];

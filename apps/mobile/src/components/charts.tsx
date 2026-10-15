@@ -12,18 +12,20 @@
 //    월 라벨 Regular 12 검정 잉크 top 1330.5
 //
 // ⚠️ 값이 없는 지점(null)은 점·선을 그리지 않는다 — 없는 관찰을 이어 붙이지 않는다.
+//
+// 기기 폭 대응: 좌표는 Figma 336 폭 기준이다. 레이더는 콘텐츠 가운데로 옮기고(라벨도 함께),
+// 꺾은선은 X축선·점 간격을 콘텐츠 폭 증감만큼 늘린다(393 폭에서는 Figma 그대로).
 import React from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Polygon, Polyline } from 'react-native-svg';
-
-const CONTENT_W = 336;
+import { useContentWidth } from '../lib/layout';
 
 // ── 레이더 ────────────────────────────────────────────────────
 const RADAR_R = 97.5;
 /** 링 반지름(Figma 실측) — 20/40/60/80/100% 위치. */
 const RINGS = [18.5, 37.5, 58, 77, 97.5];
 /** 컴포넌트 로컬 중심 (Figma (196.5,318.5) − 블록 원점 (29,185.5)). */
-const RADAR_CX = 167.5;
+const RADAR_CX_BASE = 167.5;
 const RADAR_CY = 133;
 /** 블록 높이 — 다음 요소(지표 카드)가 Figma 457 에 오도록 185.5 + 253.5 + 18 = 457. */
 const RADAR_H = 253.5;
@@ -54,6 +56,10 @@ const AXIS_LABEL_POS = [
 ];
 
 export function RadarChart({ axes }: { axes: RadarAxis[] }) {
+  const { contentW, extra } = useContentWidth();
+  // 레이더를 콘텐츠 가운데로 — 336 폭에서 167.5(Figma).
+  const shiftX = extra / 2;
+  const RADAR_CX = RADAR_CX_BASE + shiftX;
   const measured = axes.filter((a) => a.value !== null);
   const dataPoints =
     measured.length === axes.length
@@ -65,8 +71,8 @@ export function RadarChart({ axes }: { axes: RadarAxis[] }) {
       : [];
 
   return (
-    <View style={{ width: CONTENT_W, height: RADAR_H }}>
-      <Svg width={CONTENT_W} height={RADAR_H}>
+    <View style={{ width: contentW, height: RADAR_H }}>
+      <Svg width={contentW} height={RADAR_H}>
         {RINGS.map((r) => (
           <Polygon
             key={r}
@@ -112,7 +118,7 @@ export function RadarChart({ axes }: { axes: RadarAxis[] }) {
           <Text
             key={a.label}
             className="absolute text-[13px] font-medium text-black"
-            style={{ left: pos.left, top: pos.top, width: pos.width, lineHeight: 38, textAlign: pos.align }}
+            style={{ left: pos.left + shiftX, top: pos.top, width: pos.width, lineHeight: 38, textAlign: pos.align }}
           >
             {a.label}
           </Text>
@@ -137,9 +143,9 @@ const PLOT_H = 148;
 /** Y 라벨 4칸(0/25/50/75/100%) 간격. */
 const Y_STEPS = [100, 75, 50, 25, 0];
 const AXIS_LEFT = 42; // Figma 71 − 29
-const AXIS_W = 290;
+const AXIS_W_BASE = 290;
 const DOT_FIRST = 60.5; // Figma 첫 점 중심 89.5 − 29
-const DOT_LAST = 315.5; // Figma 마지막 점 중심 344.5 − 29
+const DOT_LAST_BASE = 315.5; // Figma 마지막 점 중심 344.5 − 29 (336 폭 기준)
 /** 블록 높이 — 다음 구분선이 Figma 1372 에 오도록 1169 + 179 + 24 = 1372. */
 const TREND_H = 179;
 
@@ -158,14 +164,18 @@ export function TrendChart({
   labels: string[];
   series: TrendSeries[];
 }) {
+  const { contentW, extra } = useContentWidth();
+  // X축선·마지막 점을 콘텐츠 폭 증감만큼 늘린다(336 폭에서 Figma 그대로).
+  const AXIS_W = AXIS_W_BASE + extra;
+  const DOT_LAST = DOT_LAST_BASE + extra;
   const n = labels.length;
   const xOf = (i: number) => (n <= 1 ? DOT_FIRST : DOT_FIRST + (i * (DOT_LAST - DOT_FIRST)) / (n - 1));
   const yOf = (v: number) => PLOT_H - (Math.max(0, Math.min(100, v)) / 100) * PLOT_H;
   const hasData = series.some((s) => s.points.some((p) => p !== null));
 
   return (
-    <View style={{ width: CONTENT_W, height: TREND_H }}>
-      <Svg width={CONTENT_W} height={PLOT_H + 1}>
+    <View style={{ width: contentW, height: TREND_H }}>
+      <Svg width={contentW} height={PLOT_H + 1}>
         <Line x1={AXIS_LEFT} y1={PLOT_H} x2={AXIS_LEFT + AXIS_W} y2={PLOT_H} stroke="#d9d9d9" strokeWidth={1} />
         {hasData
           ? series.map((s) => {

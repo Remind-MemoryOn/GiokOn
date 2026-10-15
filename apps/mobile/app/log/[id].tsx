@@ -26,8 +26,10 @@ import { useElderPhotoUrl } from '../../src/data/elder-photo';
 import { clockLabel, longKoreanDate } from '../../src/lib/format';
 import avatarAi from '../../assets/brand/avatar-ai.png';
 import btnPlay from '../../assets/brand/btn-play.png';
+import { useContentWidth } from '../../src/lib/layout';
 
 const CONTENT_LEFT = 29;
+const CONTENT_RIGHT = 28;
 /** 버블 최대 폭(Figma 실측: AI 226 / 어르신 206 — 아바타·시간 자리를 뺀 값). */
 const MAX_AI = 226;
 const MAX_ELDER = 206;
@@ -44,6 +46,7 @@ function TimeLabel({ text, side }: { text: string; side: 'left' | 'right' }) {
 }
 
 function AiBubble({ turn }: { turn: ConversationTurn }) {
+  const { extra } = useContentWidth();
   return (
     <View className="flex-row items-end" style={{ marginBottom: 30 }}>
       <Image
@@ -54,7 +57,8 @@ function AiBubble({ turn }: { turn: ConversationTurn }) {
       />
       <View
         style={{
-          maxWidth: MAX_AI,
+          // 패드처럼 넓은 화면에서는 늘어난 폭만큼 말풍선도 넓힌다(393 폭에서 Figma 그대로).
+          maxWidth: MAX_AI + extra,
           borderRadius: 14,
           backgroundColor: '#ffffff',
           paddingHorizontal: 19,
@@ -84,12 +88,13 @@ function ElderBubble({
   name: string;
   avatarColor: string;
 }) {
+  const { extra } = useContentWidth();
   return (
     <View className="flex-row items-end justify-end" style={{ marginBottom: 30 }}>
       <TimeLabel text={clockLabel(turn.timestamp)} side="left" />
       <View
         style={{
-          maxWidth: MAX_ELDER,
+          maxWidth: MAX_ELDER + extra,
           borderRadius: 14,
           backgroundColor: '#e9822b',
           paddingHorizontal: 17,
@@ -182,12 +187,13 @@ export default function LogTranscript() {
         <View
           className="flex-row items-center"
           style={{
-            width: 336,
+            // Figma 336 — 화면 좌우 여백 안에서 늘어난다(기기 폭 대응).
             height: 57,
             borderRadius: 10,
             borderWidth: 1,
             borderColor: '#cccdce',
             marginLeft: CONTENT_LEFT,
+            marginRight: CONTENT_RIGHT,
             paddingLeft: 18,
           }}
         >
@@ -205,11 +211,11 @@ export default function LogTranscript() {
           accessibilityRole="button"
           className={`items-center justify-center active:opacity-90 ${analysis ? '' : 'opacity-40'}`}
           style={{
-            width: 336,
             height: 57,
             borderRadius: 10,
             backgroundColor: '#e9822b',
             marginLeft: 28,
+            marginRight: CONTENT_RIGHT + 1,
             marginTop: 23,
           }}
         >

@@ -16,6 +16,7 @@ import { MicIndicator, Waveform } from '../../components/brand';
 import { AiDisclosureBanner } from '../../components/banners';
 import { QuestionCard } from './QuestionCard';
 import { ELDER_STATUS } from './elderStatus';
+import { useContentWidth } from '../../lib/layout';
 
 const FRAME_H = 852;
 
@@ -30,6 +31,7 @@ export function ElderView({
   onCaregiver: () => void;
 }) {
   const { height } = useWindowDimensions();
+  const { contentW } = useContentWidth();
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {/* 선생님(요양보호사) 복귀 — 요양보호사 화면의 X 자리. 작고 흐리게, 누르면 PIN 확인. */}
@@ -59,7 +61,7 @@ export function ElderView({
         <Text
           className="text-[23px] font-medium text-black text-center"
           accessibilityLiveRegion="polite"
-          style={{ lineHeight: 42, marginTop: 3, width: 336 }}
+          style={{ lineHeight: 42, marginTop: 3, width: contentW }}
         >
           {ELDER_STATUS[phase]}
         </Text>

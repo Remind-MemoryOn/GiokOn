@@ -26,10 +26,16 @@ import { Image, Modal, Pressable, Text, View } from 'react-native';
 import iconClock from '../../assets/brand/icon-clock.png';
 import chevronGray from '../../assets/brand/btn-chevron-gray.png';
 import avatarAi from '../../assets/brand/avatar-ai.png';
+import { useContentWidth } from '../lib/layout';
 import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 
+/**
+ * 어르신 상세·분석 화면 상수. `width` 는 Figma 393 폭 기준값이다 — 화면에서는 고정 폭으로 쓰지 않고
+ * 좌 `left` · 우 `right` 여백 안에서 늘어나게 둔다(기기 폭 대응, src/lib/layout.ts).
+ */
 export const DETAIL = {
   left: 29,
+  right: 28,
   width: 336,
   cardRadius: 10,
   cardBorder: '#e3e3e3',
@@ -45,7 +51,7 @@ export function InfoCard({ rows }: { rows: { label: string; value: string }[] })
   return (
     <View
       style={{
-        width: DETAIL.width,
+        alignSelf: 'stretch',
         borderRadius: DETAIL.cardRadius,
         backgroundColor: '#ffffff',
         borderWidth: 1,
@@ -70,10 +76,11 @@ export function InfoCard({ rows }: { rows: { label: string; value: string }[] })
           {i < rows.length - 1 ? (
             <View
               style={{
-                width: 283,
+                // Figma 283 폭(좌 26 · 우 27) — 카드 폭을 따라 늘어난다.
                 height: 1,
                 backgroundColor: DETAIL.divider,
                 marginLeft: 26,
+                marginRight: 27,
                 marginTop: 9,
                 marginBottom: 9,
               }}
@@ -126,7 +133,7 @@ export function SessionCard({
       accessibilityLabel={`${title} 기록 보기`}
       className="active:opacity-90"
       style={{
-        width: DETAIL.width,
+        alignSelf: 'stretch',
         height: 108,
         borderRadius: DETAIL.cardRadius,
         backgroundColor: '#ffffff',
@@ -160,7 +167,8 @@ export function SessionCard({
       </Text>
       <Image
         source={chevronGray}
-        style={{ position: 'absolute', left: 267, top: 37, width: 34, height: 34 }}
+        // Figma x 267(카드 336) → 오른쪽 끝에서 35. 카드가 늘어나도 오른쪽에 붙는다.
+        style={{ position: 'absolute', right: 35, top: 37, width: 34, height: 34 }}
         resizeMode="contain"
       />
     </Pressable>
@@ -177,7 +185,7 @@ export function SectionHeading({ children }: { children: string }) {
 }
 
 export function Divider() {
-  return <View style={{ width: DETAIL.width, height: 1, backgroundColor: DETAIL.divider }} />;
+  return <View style={{ alignSelf: 'stretch', height: 1, backgroundColor: DETAIL.divider }} />;
 }
 
 // ── 공통: 기간/주제 선택 pill ─────────────────────────────────
@@ -309,7 +317,8 @@ export function StatTile({
   return (
     <View
       style={{
-        width: 103,
+        // Figma 103(336 폭에서 3칸 · 간격 13.5). 기기 폭에 따라 3칸이 줄을 나눠 갖는다.
+        flex: 1,
         height: 115,
         borderRadius: 5,
         backgroundColor: DETAIL.tileBg,
@@ -395,6 +404,8 @@ export function TopicBar({
   percentGap?: number;
 }) {
   const pct = Math.max(0, Math.min(100, percent));
+  // 트랙은 Figma 336 폭 기준 길이에 기기 폭 증감을 더한다(퍼센트가 행 오른쪽 끝을 따라간다).
+  const { extra } = useContentWidth();
   return (
     <View className="flex-row items-center" style={{ height: 30, marginBottom: 2.25 }}>
       <Text
@@ -405,7 +416,7 @@ export function TopicBar({
         {label}
       </Text>
       <View
-        style={{ width: trackWidth, height: 12, borderRadius: 6, backgroundColor: DETAIL.chipBg }}
+        style={{ width: Math.max(40, trackWidth + extra), height: 12, borderRadius: 6, backgroundColor: DETAIL.chipBg }}
       >
         <View
           style={{
@@ -438,7 +449,8 @@ export function AiOpinion({ paragraphs }: { paragraphs: string[] }) {
         style={{ position: 'absolute', left: -1, top: 0, width: 37, height: 37 }}
         resizeMode="contain"
       />
-      <View style={{ marginLeft: 51.75 }}>
+      {/* 본문 폭 Figma 271(336 − 51.75 − 13.25) → 오른쪽 여백 13.25 로 두어 기기 폭을 따른다 */}
+      <View style={{ marginLeft: 51.75, marginRight: 13.25 }}>
         <Text className="text-[17px] font-semibold text-black" style={{ lineHeight: 30, marginTop: 2 }}>
           AI 종합 의견
         </Text>
@@ -446,7 +458,7 @@ export function AiOpinion({ paragraphs }: { paragraphs: string[] }) {
           <Text
             key={p}
             className="text-[13px] font-normal text-black"
-            style={{ lineHeight: 25, width: 271, marginTop: i === 0 ? 9 : 11 }}
+            style={{ lineHeight: 25, marginTop: i === 0 ? 9 : 11 }}
           >
             {p}
           </Text>
