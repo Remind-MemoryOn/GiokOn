@@ -43,7 +43,9 @@
 
 ### 2026-10-15 대화 시작 장애 점검
 
-**2026-10-16 후속:** 23:20 실제 앱 요청은 인증·모델 setup까지 성공한 뒤 Gemini 1007로 종료했다. 음성 없는 첫 인사를 audio activity로 보낸 결함을 실 API 비교로 확인하고 중계에서 clientContent로 변환했다. 수동 VAD·출력 검열·재생 영수증은 유지한다. 중계 94개 통과, 수정한 실제 중계+Live/TTS 2턴 합성 성공. 기존 APK 그대로 재검증한다. 운영 배포·태블릿 마이크/저장/재생은 아직 대기다.
+**2026-10-16 후속:** 23:20 실제 앱 요청은 인증·모델 setup까지 성공한 뒤 Gemini 1007로 종료했다. 음성 없는 첫 인사를 audio activity로 보낸 결함을 실 API 비교로 확인하고 중계에서 clientContent로 변환했다. 수동 VAD·출력 검열·재생 영수증은 유지한다. 중계 94개 통과, 수정한 실제 중계+Live/TTS 2턴 합성 성공. `9881a08` → 이미지 `text-opener-9881a08`(digest `sha256:73e92d9dcfe93f1409e4427a405622246e5de035b4c7eaa3bed3e7ff096551a2`) → `voice-relay-00006-5sf` 트래픽 100% 배포 확인. 기존 앱 주소 ready·동일 Origin·가짜 인증 거절 확인. 기존 APK 그대로 재검증하며 태블릿 마이크/저장/재생은 아직 대기다.
+
+로컬 빌드 중 Docker Desktop 4.74가 오래된 `dockerInference`·`engine.sock` 소켓 접근 오류로 기동하지 못했다. 실패한 Docker 프로세스를 닫고 `%LOCALAPPDATA%\Docker\run` 및 `%LOCALAPPDATA%\docker-secrets-engine` 임시 폴더를 `*-backup-20261016*`로 보존한 뒤 재기동했다. 엔진 29.4.3·이미지 빌드·push 정상 확인. 이미지/컨테이너 삭제·초기화 및 서비스 설정 변경은 하지 않았다.
 
 **후속 23:15 KST:** Supabase 접근 복구 후 실제 21:15 요청에서 `live-token`의 JSON 키 맵 오용으로 Auth 401을 확인했다. 기본 키 추출 수정본을 운영 v23(verify_jwt=true)에 배포했다. 아래의 "원인 미확정·MCP 권한 거절"은 초기 점검 시점의 기록이며, 최신 항목별 판정은 [20개 경로 검토](../plans/2026-10-15-voice-start-investigation.md)를 따른다. 수정 후 사용자 실대화 확인은 대기다.
 
