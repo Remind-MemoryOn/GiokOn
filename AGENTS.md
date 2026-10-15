@@ -140,6 +140,7 @@
 - **폴백 저장**(`persistWholeSession`): 세션을 만들고 턴·분석·이벤트를 쓴 뒤 **마지막에** `ended`(바로 `ended` 로 넣으면 일지 초안이 발화 없이 잡힌다).
   `safety_events.session_id` 는 `on delete set null` 이라 롤백으로 안 지워진다 → 이벤트는 쓰기 단계 맨 뒤.
   2026-09-29 부터 폴백은 `recording`(실행 불가 기록 전용)으로 넣는다 — `active` 삽입은 DB 가 `started_at` 을 서버 시각으로 덮는다(구버전 앱의 폴백 기록은 시작 시각이 저장 시각이 된다).
+- **RN WebSocket 은 Origin 헤더를 자동으로 붙인다**(Android OkHttp·iOS SocketRocket — `wss://호스트` → `https://호스트`). 중계가 Origin 있는 연결을 전부 끊어 실기기 대화가 핸드셰이크에서 막혔다(2026-10-15) → 같은 출처만 허용(`server.ts` `isAllowedOrigin`). Node `ws` 테스트는 Origin 을 안 보내 통과하니 속지 말 것.
 - **RN 내장 `URL` 은 `wss://` 의 `pathname` 을 못 읽는다**(항상 `'/'`) → 중계 주소는 `relay-config.ts` 정규식으로 판정. Node 테스트는 통과하니 속지 말 것.
 - **"오늘" 날짜는 `seoulDate()`(core)** — `new Date().toISOString().slice(0, 10)` 은 UTC 라 한국 00:00~08:59 에 전날이 된다(T25.7). 기기 시간대와도 무관하게 한국 날짜.
 - **Deno**: 확장자 없는 import 를 못 읽는다 → core 의 Edge 공유 파일은 `.ts` 확장자 import(core·mobile·relay tsconfig `allowImportingTsExtensions`).
