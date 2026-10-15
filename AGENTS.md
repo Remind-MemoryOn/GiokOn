@@ -129,6 +129,8 @@
 
 ## 알려진 함정 (다시 밟지 말 것)
 
+- **Edge 복수 키 환경변수** `SUPABASE_SECRET_KEYS`는 `{ default: key, ... }` JSON 맵이다. 원문 전체를 `createClient` 키로 전달하면 유효한 사용자 JWT도 Auth 요청에서 401이 된다. JSON 파싱 후 기본 키를 꺼내며, 진입점 환경 연결도 회귀로 검증한다(`live-token-entrypoint.test.ts`).
+
 - **설치**: session-start 훅의 `pnpm install --prefer-offline` 이 `apps/voice-relay/node_modules` 를 안 만들 수 있다 →
   `pnpm install --filter @giokon/voice-relay` 먼저(안 하면 typecheck TS2688, 테스트가 중계에서 끊겨 모바일까지 안 돈다).
 - **배포 순서**: DB 마이그레이션 → `database.types` 대조 → **중계** → 앱 빌드. 역순이면 `session_tick` 부재로 전 세션이 막힌다.

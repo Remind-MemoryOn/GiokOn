@@ -52,14 +52,20 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createLiveTokenHandler } from './handler.ts'
 
-// 클라이언트 생성에는 키 이름 어느 하나만 있으면 충분하다(getUser 는 전달된
-// Authorization 헤더의 JWT 를 검증한다). 등록 명칭 차이(단수/복수·레거시)에 흔들리지
-// 않게 폴백 사슬로 읽는다.
+// 복수형은 키 자체가 아니라 { default: key, ... } JSON 맵이다.
+// 원문을 apikey 로 보내면 사용자 JWT 가 유효해도 Auth 게이트웨이가 401 로 거절한다.
+function defaultSecretKey() {
+  try {
+    const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')
+    return typeof keys?.default === 'string' ? keys.default.trim() : ''
+  } catch { return '' }
+}
+// getUser 와 RPC 모두 전달된 사용자 Authorization 을 유지한다.
 const supabaseKey =
-  Deno.env.get('SUPABASE_SECRET_KEY') ??
-  Deno.env.get('SUPABASE_SECRET_KEYS') ??
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
-  Deno.env.get('SUPABASE_ANON_KEY') ??
+  Deno.env.get('SUPABASE_SECRET_KEY')?.trim() ||
+  defaultSecretKey() ||
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ||
+  Deno.env.get('SUPABASE_ANON_KEY')?.trim() ||
   ''
 const supabaseUrl =
   Deno.env.get('SUPABASE_URL') ?? `https://${Deno.env.get('SUPABASE_PROJECT_REF') ?? ''}.supabase.co`

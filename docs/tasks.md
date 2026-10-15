@@ -1,5 +1,9 @@
 # 작업 목록
 
+> ✅ 2026-10-15 대화 시작 실제 장애 수정: `live-token`이 `SUPABASE_SECRET_KEYS` JSON 맵 전체를 apikey로 전달해 사용자 확인 401. 기본 키 추출·폴백 수정, 회귀 6개(data 전체 233)·typecheck·카피 검사 통과, 운영 v23 배포 및 verify_jwt=true 확인. ⏳ 첫 AI 응답·TTS·기기 재생·발화 저장 실검증. [20개 경로 판정](plans/2026-10-15-voice-start-investigation.md).
+
+> ✅ 2026-10-15 23:02 KST 대화 시작 장애 점검: 기존 진단 코드를 포함한 중계를 `voice-relay-00005-ggn`으로 운영 배포, 트래픽 100% 확인. 앱 관련 회귀 156개·data 26개·중계 91개 통과. 기존 주소에서 ready·같은 출처 WebSocket·가짜 인증 거절 및 `closed/auth/AUTH_FAILED` 로그 확인(실제 사용자 인증 성공을 의미하지 않음). ⏳ 실제 대화 원인 미확정: Supabase MCP 권한 복구·USB 기기 연결 또는 요양보호사 중단 사유/시각 필요. Scheduler의 누락 actAs 권한은 이미 부여된 상태 확인, 작업은 PAUSED 유지. [운영 점검 기록](runbooks/voice-relay-operations.md#2026-10-15-대화-시작-장애-점검).
+
 > ✅ 2026-10-15 Android EAS Gradle 실패 수정: Reanimated의 필수 네이티브 peer `react-native-worklets@0.5.1`을 앱 직접 의존성으로 선언했다(override만으로는 앱 루트의 Gradle resolve가 보장되지 않음). `.gitignore`·`.vercelignore` 보강, 저장소 루트 `.easignore` 추가. EAS 실제 업로드 사본에서 소스·워크스페이스 보존 및 비밀/캐시/네이티브 산출물 파일 제외 확인. ⏳ 새 APK 클라우드 빌드 결과와 실기기 T25.16은 별도 확인.
 
 

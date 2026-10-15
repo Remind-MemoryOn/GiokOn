@@ -41,6 +41,16 @@
 ⚠️ **Supabase Edge 의 `GEMINI_API_KEY` 는 지우지 않는다** — `live-token`(Live 단기 토큰 발급)·`session-report`·`program-journal-draft` 가 읽는다.
 지우면 모든 음성 세션 시작과 AI 초안이 실패한다. 로컬 `supabase/.env` 를 고쳐도 이미 배포된 Edge 시크릿은 바뀌지 않는다.
 
+### 2026-10-15 대화 시작 장애 점검
+
+**후속 23:15 KST:** Supabase 접근 복구 후 실제 21:15 요청에서 `live-token`의 JSON 키 맵 오용으로 Auth 401을 확인했다. 기본 키 추출 수정본을 운영 v23(verify_jwt=true)에 배포했다. 아래의 "원인 미확정·MCP 권한 거절"은 초기 점검 시점의 기록이며, 최신 항목별 판정은 [20개 경로 검토](../plans/2026-10-15-voice-start-investigation.md)를 따른다. 수정 후 사용자 실대화 확인은 대기다.
+
+- ✅ 23:02 KST: 소스 `85a854f`(중계 진단 코드 `8a96394` 포함), 이미지 태그 `diagnostics-85a854f`, 이미지 인덱스 digest `sha256:d6d1212c50a23a96cefc65203cde41c5f88562605476345dd6b54c9cb005e233`를 기존 Cloud Run에 배포. 리비전 `voice-relay-00005-ggn`, 트래픽 100%. 기존 앱 주소 유지.
+- ✅ ready 200, 같은 출처 Origin WebSocket 연결 성공. 가짜 토큰 점검의 `upgrade_accepted` → `closed`(`stage=auth`, `reason=AUTH_FAILED`) 운영 로그 확인. 이는 거절 경로 검증이며 실제 사용자 인증·Live·TTS 성공 증거가 아니다.
+- ✅ 앱 시작·연결·중단·마이크·재생 회귀 156개, data 저장 계약/처리 권한 26개, 중계 91개 통과. 실기기 성공을 대신하지 않는다.
+- Scheduler: 과거 403은 실행 서비스 계정에 대한 `iam.serviceAccounts.actAs` 부족. 점검 시 해당 계정의 IAM에 scheduler의 `roles/iam.serviceAccountUser` 부여가 이미 존재했다. 이번 점검에서 IAM·일시중지 상태를 변경하거나 예약 작업을 실행하지 않았다.
+- ⏳ 실제 사용자 세션 실패 원인은 미확정. Supabase MCP는 권한 거절, adb 연결 기기는 0대. 운영 DB를 변경하지 않았다. 최신 리비전에서 앱 재시도 시각과 요양보호사 화면의 구체적인 사유를 받아 대조해야 한다. 이 점검에서 API 키 값은 읽거나 변경하지 않았다.
+
 ### Gemini 키 교체 (키 하나 공유 — 2026-10-04)
 
 키 하나를 **두 곳**에 같은 값으로 둔다: ① Supabase Edge 시크릿 `GEMINI_API_KEY` ② (중계 배포 뒤) Cloud Run Secret Manager `GEMINI_API_KEY`.
