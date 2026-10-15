@@ -37,7 +37,7 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
   const authorize = vi.fn(async () => ({ token: 'synthetic', model: 'test', systemInstruction: 'server context', tick, advancePhase, release, ...extra }))
   const connectProvider = vi.fn(() => new WebSocket(`ws://127.0.0.1:${(provider.address() as AddressInfo).port}`))
   const relay = createRelayServer({ authorize, connectProvider, synthesize, geminiTts: { apiKey: 'synthetic' },
-    newSafetyEventId: () => EVENT_ID, safetyRetry: { attempts: 3, baseDelayMs: 20 }, ...depsExtra })
+    newSafetyEventId: () => EVENT_ID, safetyRetry: { attempts: 3, baseDelayMs: 20 }, log: vi.fn(), ...depsExtra })
   relay.server.listen(0, '127.0.0.1'); await once(relay.server, 'listening')
   cleanup.push(relay.close)
   const app = new WebSocket(`ws://127.0.0.1:${(relay.server.address() as AddressInfo).port}/voice`)
@@ -576,5 +576,43 @@ describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시
     await vi.waitFor(() => expect(f.frames.some(x => x.relayControl?.state === 'ended')).toBe(true))
     expect(recordSafety).not.toHaveBeenCalled()
     expect(f.frames.some(x => x.relayError)).toBe(false)
+  })
+})
+
+describe('진단 로그 — 어느 단계에서 왜 끝났는지(내용 없음)', () => {
+  it('인증 단계 실패는 단계와 코드만 남긴다', async () => {
+    const log = vi.fn()
+    const f = await fixture(true, {}, { log, authorize: vi.fn(async () => { throw new Error('TOKEN_FAILED_403') }) })
+    const closed = once(f.app, 'close')
+    f.send({ relayAuth: { sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', accessToken: 'synthetic-jwt', protocolVersion: 2 } })
+    await closed
+    expect(log).toHaveBeenCalledWith('closed', { stage: 'auth', reason: 'TOKEN_FAILED_403', turns: 0 })
+    expect(JSON.stringify(log.mock.calls)).not.toContain('synthetic-jwt')
+  })
+  it('Gemini 가 연결을 닫으면 종료 코드·이유를 남기고 대화 내용은 남기지 않는다', async () => {
+    const log = vi.fn()
+    const f = await fixture(true, {}, { log })
+    await f.start(2)
+    expect(log).toHaveBeenCalledWith('authorized', { protocolVersion: 2 })
+    expect(log).toHaveBeenCalledWith('provider_open')
+    expect(log).toHaveBeenCalledWith('ready')
+    f.turn(); await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.turnComplete)).toBe(true))
+    const closed = once(f.app, 'close')
+    f.peer()!.close(1008, 'API key not valid')
+    await closed
+    expect(log).toHaveBeenCalledWith('provider_closed', { code: 1008, reason: 'API key not valid' })
+    expect(log).toHaveBeenCalledWith('closed', expect.objectContaining({ stage: 'conversation', reason: 'PROVIDER_CLOSED' }))
+    const logged = JSON.stringify(log.mock.calls)
+    expect(logged).not.toContain('오늘 어떤 이야기')
+    expect(logged).not.toContain('확인한 합성 테스트 발화')
+    expect(logged).not.toContain('synthetic-jwt')
+  })
+  it('합성 실패는 앱에 알리는 코드와 원인 코드를 남긴다', async () => {
+    const log = vi.fn()
+    const f = await fixture(true, {}, { log, synthesize: vi.fn(async () => { throw new Error('GEMINI_TTS_FAILED_400') }) })
+    await f.start(2)
+    const closed = once(f.app, 'close')
+    f.turn(); await closed
+    expect(log).toHaveBeenCalledWith('synthesis_failed', { code: 'SYNTHESIS_FAILED', cause: 'GEMINI_TTS_FAILED_400' })
   })
 })

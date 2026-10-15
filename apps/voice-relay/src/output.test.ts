@@ -15,7 +15,7 @@ const config = { apiKey: 'synthetic-key' }
 const response = (audio = wav()) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { data: audio.toString('base64'), mimeType: 'audio/wav' } }] } }] }), { headers: { 'content-type': 'application/json' } })
 
 describe('validated Gemini TTS output', () => {
-  it.each([[429,'GEMINI_TTS_RATE_LIMIT'],[503,'GEMINI_TTS_UNAVAILABLE'],[401,'GEMINI_TTS_FAILED']] as const)('rejects HTTP %s without retrying or reading its error text', async (status,code) => {
+  it.each([[429,'GEMINI_TTS_RATE_LIMIT'],[503,'GEMINI_TTS_UNAVAILABLE'],[401,'GEMINI_TTS_FAILED_401']] as const)('rejects HTTP %s without retrying or reading its error text', async (status,code) => {
     const fetcher = vi.fn(async()=>new Response('provider diagnostic must not be exposed',{status}))
     await expect(synthesizeValidated('안녕하세요.',config,new AbortController().signal,fetcher)).rejects.toThrow(code)
     expect(fetcher).toHaveBeenCalledOnce()

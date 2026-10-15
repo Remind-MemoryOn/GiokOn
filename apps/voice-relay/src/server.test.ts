@@ -38,7 +38,8 @@ it('accepts the same-origin Origin that React Native adds and refuses other orig
 })
 
 it('admits an app upgrade carrying its own origin and refuses a cross-origin browser upgrade', async () => {
-  const service = createRelayServer({authorize:vi.fn(), connectProvider:vi.fn(), geminiTts:{apiKey:'synthetic'}})
+  const log = vi.fn()
+  const service = createRelayServer({authorize:vi.fn(), connectProvider:vi.fn(), geminiTts:{apiKey:'synthetic'}, log})
   cleanups.push(service.close)
   service.server.listen(0,'127.0.0.1'); await once(service.server,'listening')
   const base = `127.0.0.1:${(service.server.address() as AddressInfo).port}`
@@ -49,5 +50,7 @@ it('admits an app upgrade carrying its own origin and refuses a cross-origin bro
   })
   expect(await outcome(`http://${base}`)).toBe('open')
   expect(await outcome('https://evil.example')).toBe('refused')
+  expect(log).toHaveBeenCalledWith('upgrade_accepted')
+  expect(log).toHaveBeenCalledWith('upgrade_refused', { reason: 'origin', origin: 'https://evil.example' })
   await service.shutdown()
 })

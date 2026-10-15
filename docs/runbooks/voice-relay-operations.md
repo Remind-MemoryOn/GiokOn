@@ -133,6 +133,22 @@ Cloud Scheduler 작업 2개가 서비스의 **최소 인스턴스 수**만 바�
 5. 전환 전 진행 중 세션을 담당자가 회수하게 안내한다. 트래픽을 새 리비전으로 옮긴 뒤 이전 프로세스에 종료 신호를 보낸다. 현재 구현은 진행 중 대화를 다른 프로세스로 옮기지 않는다.
 6. 종료 신호가 실제 Node 프로세스에 전달되는지, 플랫폼 종료 유예가 내부 5초 제한보다 충분한지 확인한다. 로그의 종료 메시지와 이전 프로세스/연결 소멸을 모두 확인한다.
 
+## 점검·진단 (2026-10-15)
+
+**앱 없이 점검** — 저장소 루트에서 `node apps/voice-relay/scripts/relay-smoke.mjs wss://<중계 호스트>/voice`
+(`pnpm install` 후). 앱과 같은 Origin(`https://<호스트>`)으로 연결해 ① `/readyz` ② 핸드셰이크 ③ 가짜 인증 거절까지 본다.
+로그인·세션·Gemini 는 쓰지 않는다(비용·DB 쓰기 없음). Gemini 키·모델은 `apps/voice-relay/scripts/gemini-smoke.ps1`.
+
+**진단 로그**(Cloud Run 로그 · JSON 한 줄 · 대화 내용·전사·음성·토큰·JWT 없음):
+
+| `voiceRelay` | 뜻 |
+|---|---|
+| `upgrade_refused` (`reason`: origin·path·capacity·draining) | 연결을 받지 않음. `origin` 이면 Origin 값도 남긴다 |
+| `upgrade_accepted` → `authorized` → `provider_open` → `ready` | 정상 진행 순서(로그인·세션 점유·토큰 → Gemini 연결 → 첫 응답 준비) |
+| `closed` (`stage`: auth·setup·conversation, `reason`) | 끝난 단계와 이유. 예: `AUTH_FAILED` · `SESSION_NOT_OWNED` · `SESSION_BUSY` · `DENIED` · `TOKEN_FAILED_403`(중계 비밀값 불일치·자격/동의) · `TOKEN_FAILED_500`(Edge 비밀값 누락) · `TOKEN_FAILED_502`(Gemini 토큰 오류) · `PROVIDER_CLOSED` · `SETUP_TIMEOUT` · `APP_CLOSED` |
+| `provider_closed` (`code`, `reason`) · `provider_error` · `provider_message` | Gemini Live 가 닫거나 오류를 보냄(키·모델·토큰 문제의 상태 문구) |
+| `synthesis_failed` (`code`, `cause`) | TTS 실패. `cause` 예: `GEMINI_TTS_FAILED_400`·`GEMINI_TTS_RATE_LIMIT`·`OUTPUT_REJECTED` |
+
 ## 장애·롤백
 
 1. 신규 시작을 중지하고 진행 중 담당자에게 회수를 안내한다. 잘못된 응답을 재생하거나 기존 Gemini 원음/기기 TTS로 자동 전환하지 않는다.

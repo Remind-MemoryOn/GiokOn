@@ -109,7 +109,7 @@ export async function synthesizeValidated(text: string, config: GeminiTtsConfig,
   const response = await untilAborted(request, requestSignal)
   if (!response.ok) {
     void response.body?.cancel().catch(() => {})
-    throw new Error(response.status === 429 ? 'GEMINI_TTS_RATE_LIMIT' : response.status >= 500 ? 'GEMINI_TTS_UNAVAILABLE' : 'GEMINI_TTS_FAILED')
+    throw new Error(response.status === 429 ? 'GEMINI_TTS_RATE_LIMIT' : response.status >= 500 ? 'GEMINI_TTS_UNAVAILABLE' : `GEMINI_TTS_FAILED_${response.status}`)
   }
   const body = await readBoundedBody(response, requestSignal)
   requestSignal.throwIfAborted()

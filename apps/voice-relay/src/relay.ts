@@ -83,6 +83,26 @@ export interface RelayDependencies {
   timeLimitGraceMs?: number
   /** 휴식 요청·거부 뒤 마무리 인사를 기다리는 최대 시간(테스트용 주입 — 기본 ELDER_CLOSING_GRACE_MS). */
   elderClosingGraceMs?: number
+  /** 진단 로그(테스트용 주입 — 기본 `logRelayEvent`). */
+  log?: RelayLog
+}
+
+/**
+ * 진단 로그 — 연결이 **어느 단계에서 왜** 끝났는지만 남긴다(Cloud Run 로그). 대화 내용·전사·음성·토큰·JWT 는 넣지 않는다.
+ * 그전에는 실패가 전부 조용한 종료라 실기기에서 대화가 시작되지 않을 때 원인을 알 수 없었다(2026-10-15).
+ */
+export type RelayLog = (event: string, detail?: Record<string, string | number | undefined>) => void
+export const logRelayEvent: RelayLog = (event, detail) => {
+  console.warn(JSON.stringify({ voiceRelay: event, ...detail }))
+}
+/** 오류 → 로그용 코드. 코드 형태(`AUTH_FAILED`·`TOKEN_FAILED_403` 등)만 그대로 쓰고 나머지 문장은 버린다. */
+export function relayErrorCode(error: unknown): string {
+  if (error instanceof Error) {
+    if (/^[A-Z][A-Z0-9_]{2,40}$/.test(error.message)) return error.message
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') return error.name
+    if (error instanceof SyntaxError) return 'INVALID_JSON'
+  }
+  return 'UNEXPECTED'
 }
 
 function buffer(raw: RawData): Buffer {
@@ -119,14 +139,21 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let farewellSent = false
   let closingTimer: ReturnType<typeof setTimeout> | undefined
   const openedAt = Date.now()
-  const setupTimer = setTimeout(() => close(), 30000)
+  const log = deps.log ?? logRelayEvent
+  const setupTimer = setTimeout(() => close('SETUP_TIMEOUT'), 30000)
   // 안전 장치 — 판정은 서버 경과 시간(위)이 하고, 이 연결 수명은 그보다 길게만 둔다(서버 시각을 못 받는 경우 대비).
   const lifetime = setTimeout(() => close(), SESSION_LIMIT_SECONDS * 1000 + (deps.timeLimitGraceMs ?? TIME_LIMIT_GRACE_MS) + CONTROL_CLOSE_GRACE_MS)
   const poll = setInterval(() => { if (session) void allowed().then(ok => { if (!ok) close() }) }, 2000)
 
-  function close() {
+  function close(reason?: unknown) {
     if (abort.signal.aborted) return
     abort.abort()
+    // 단계: 인증 전 → 모델 준비 전 → 대화 중. 이유가 없는 종료는 정상 종료·검사 실패(로그 없음 경로)다.
+    log('closed', {
+      stage: !authenticated ? 'auth' : !ready ? 'setup' : 'conversation',
+      reason: reason === undefined ? 'unspecified' : typeof reason === 'string' ? reason : relayErrorCode(reason),
+      turns,
+    })
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
     clearTimeout(playbackTimer); clearTimeout(responseTimer); clearTimeout(timeUpTimer); clearTimeout(closingTimer)
     session?.release()
@@ -282,7 +309,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     upstream.send(JSON.stringify(value))
   }
 
-  app.on('close', close); app.on('error', close)
+  app.on('close', () => close('APP_CLOSED')); app.on('error', () => close('APP_ERROR'))
   app.on('message', (data, binary) => {
     const raw = buffer(data)
     queuedBytes += raw.length
@@ -306,10 +333,14 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         session = acquired
         if (!await allowed()) throw new Error('DENIED')
         authenticated = true
+        log('authorized', { protocolVersion })
         // 연결 시점에 이미 일시정지·종료 상태면 모델 연결을 열지 않는다(알림은 react 가 보냈고 곧 닫힌다).
         if (controlled) return
         upstream = deps.connectProvider(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=${encodeURIComponent(session.token)}`)
-        upstream.on('error', close); upstream.on('close', close)
+        // Gemini 가 연결을 거절·종료하면 이유를 남긴다(예: 키·모델·토큰 문제 — 내용 없는 상태 문구뿐).
+        upstream.on('error', error => { log('provider_error', { message: (error instanceof Error ? error.message : String(error)).slice(0, 200) }); close('PROVIDER_ERROR') })
+        upstream.on('close', (code: number, why: Buffer) => { log('provider_closed', { code, reason: why.toString().slice(0, 200) }); close('PROVIDER_CLOSED') })
+        upstream.on('open', () => log('provider_open'))
         upstream.on('open', () => forward({ setup: {
           model: session!.model.startsWith('models/') ? session!.model : `models/${session!.model}`,
           systemInstruction: { parts: [{ text: session!.systemInstruction + '\n각 응답은 180자 이내의 짧은 질문 하나로 말합니다.' }] },
@@ -351,7 +382,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
           outputChain = outputChain.then(async () => {
             outputQueued -= rawProvider.length
             if (abort.signal.aborted) return
-            if (p.error || p.goAway) return close()
+            if (p.error || p.goAway) {
+              log('provider_message', { kind: p.error ? 'error' : 'goAway', status: typeof p.error?.status === 'string' ? p.error.status : undefined, message: typeof p.error?.message === 'string' ? p.error.message.slice(0, 200) : undefined })
+              return close(p.error ? 'PROVIDER_ERROR_MESSAGE' : 'PROVIDER_GO_AWAY')
+            }
             if (p.setupComplete) {
               if (ready) return close()
               if (resumeContext) {
@@ -360,6 +394,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
                 if (abort.signal.aborted) return
               }
               ready = true; clearTimeout(setupTimer); send({ setupComplete: { relayProtocolVersion: protocolVersion } })
+              log('ready')
               flushDirective(); return
             }
             const content = p.serverContent
@@ -389,8 +424,9 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
                   : error instanceof Error && error.message === 'GEMINI_TTS_UNAVAILABLE' ? 'SYNTHESIS_UNAVAILABLE'
                   : error instanceof Error && error.name === 'TimeoutError' ? 'SYNTHESIS_TIMEOUT' : 'SYNTHESIS_FAILED'
                 send({relayError:{code}})
+                log('synthesis_failed', { code, cause: relayErrorCode(error) })
               }
-              return close()
+              return close('SYNTHESIS_FAILED')
             }
             if (!await allowed()) return close()
             // 원격 일시정지·종료를 알린 뒤에는 새 AI 음성을 어르신께 보내지 않는다.
