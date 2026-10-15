@@ -22,7 +22,7 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
     ws.on('message', raw => {
       const msg = JSON.parse(raw.toString()); inputs.push(msg)
       if (msg.setup) ws.send(JSON.stringify({ setupComplete: {} }))
-      if (respond && msg.realtimeInput?.activityEnd) ws.send(JSON.stringify({ serverContent: {
+      if (respond && (msg.realtimeInput?.activityEnd || msg.clientContent?.turnComplete)) ws.send(JSON.stringify({ serverContent: {
         outputTranscription: { text: '오늘 어떤 이야기를 나눌까요?' },
         modelTurn: { parts: [{ inlineData: { data: 'GEMINI_RAW_AUDIO' } }] }, turnComplete: true,
       } }))
@@ -60,6 +60,43 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('converts the installed app text-only opener into a content turn, then keeps audio streaming and playback gates', async () => {
+    const f = await fixture(); await f.start(2)
+    f.send({ realtimeInput: { activityStart: {} } })
+    f.send({ realtimeInput: { text: '(내부 지시) 첫 말씀을 건네주세요.' } })
+    f.send({ realtimeInput: { activityEnd: {} } })
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 1)).toBe(true))
+    expect(f.inputs.filter(x => x.realtimeInput)).toEqual([])
+    expect(f.inputs.find(x => x.clientContent?.turnComplete)).toEqual({ clientContent: {
+      turns: [{ role: 'user', parts: [{ text: '(내부 지시) 첫 말씀을 건네주세요.' }] }], turnComplete: true,
+    } })
+    f.send({ relayPlayback: { turnId: 1, result: 'completed' } }); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 2)).toBe(true))
+    expect(f.inputs.filter(x => x.realtimeInput).map(x => Object.keys(x.realtimeInput)[0])).toEqual(['activityStart', 'audio', 'text', 'activityEnd'])
+    const closed = once(f.app, 'close'); f.turn(); await closed
+    expect(f.synthesize).toHaveBeenCalledTimes(2)
+  })
+  it('does not generate a provider response for an empty activity', async () => {
+    const f = await fixture(); await f.start(2)
+    const closed = once(f.app, 'close')
+    f.send({ realtimeInput: { activityStart: {} } }); f.send({ realtimeInput: { activityEnd: {} } })
+    await closed
+    expect(f.inputs.filter(x => x.realtimeInput || x.clientContent?.turnComplete)).toEqual([])
+    expect(f.synthesize).not.toHaveBeenCalled()
+  })
+  it('bounds buffered text and refuses empty PCM before opening an audio activity', async () => {
+    for (const frames of [
+      [{ text: '가'.repeat(2500) }, { text: '나'.repeat(2500) }],
+      [{ audio: { data: '', mimeType: 'audio/pcm;rate=16000' } }],
+    ]) {
+      const f = await fixture(); await f.start(2)
+      const closed = once(f.app, 'close')
+      f.send({ realtimeInput: { activityStart: {} } })
+      for (const realtimeInput of frames) f.send({ realtimeInput })
+      await closed
+      expect(f.inputs.filter(x => x.realtimeInput || x.clientContent?.turnComplete)).toEqual([])
+    }
+  })
   it('does not stop ordinary reminiscence just because input arrives during output work',async()=>{
     const f=await fixture();await f.start(2);
     f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'고향의 골목이 그리워요.'}}}));
@@ -255,7 +292,7 @@ describe('pilot C3 — server phases and remote control', () => {
     await vi.waitFor(() => expect(f.directives()).toHaveLength(1))
     // 텍스트만 있는 첫 인사 요청은 어르신 대답이 아니다
     f.send({ realtimeInput: { activityStart: {} } }); f.send({ realtimeInput: { text: '(내부 지시) 첫 말씀' } }); f.send({ realtimeInput: { activityEnd: {} } })
-    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityEnd)).toBe(true))
+    await vi.waitFor(() => expect(f.inputs.some(x => x.clientContent?.turnComplete)).toBe(true))
     await f.tick(); await new Promise(r => setTimeout(r, 2100))
     expect(f.advancePhase).not.toHaveBeenCalledWith('reminiscence')
   })
@@ -456,6 +493,7 @@ describe('T21.11 — 휴식 요청·거부는 인사 한 문장 뒤 종료(위�
     const f = await fixture(true, {}, { elderClosingGraceMs: 300 })
     await f.start(2)
     f.send({ realtimeInput: { activityStart: {} } })
+    f.send({ realtimeInput: { audio: { data: 'AQACAA==', mimeType: 'audio/pcm;rate=16000' } } })
     await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityStart)).toBe(true))
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '그만할래요' } } }))
     await vi.waitFor(() => expect(ended(f)).toHaveLength(1), { timeout: 2000 })

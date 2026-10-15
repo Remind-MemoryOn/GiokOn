@@ -1,10 +1,12 @@
 # Gemini key smoke test (Windows) - run from cmd:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File apps\voice-relay\scripts\gemini-smoke.ps1
 #
-# Calls the real Gemini API with the SAME request shapes the voice stack uses:
+# Checks provider credentials and the relay's provider-side request shapes:
 #   1) TTS   - apps/voice-relay/src/output.ts (generateContent, AUDIO_WAV 24kHz, voice Kore)
 #   2) token - supabase/functions/live-token/handler.ts (v1beta auth_tokens + bidiGenerateContentSetup/fieldMask)
 #   3) Live  - apps/voice-relay/src/relay.ts (BidiGenerateContentConstrained + same setup) -> one text turn
+# This bypasses app -> relay framing, session authorization, DB saves and device playback.
+# It is not an end-to-end app test. Text-only app activities are converted to clientContent by the relay.
 # The key is read hidden and never written to disk or printed. Cost: one short TTS + one short Live turn.
 # Messages are English on purpose: Windows PowerShell 5.1 reads BOM-less scripts as ANSI.
 param(

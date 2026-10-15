@@ -129,6 +129,8 @@
 
 ## 알려진 함정 (다시 밟지 말 것)
 
+- **Gemini 텍스트 전용 첫 인사**: 음성 없는 `activityStart → text → activityEnd`는 Live API가 setup 성공 뒤 1007로 닫는다. 중계는 첫 PCM에서만 공급자 activity를 열고, 텍스트 전용 턴은 `clientContent(turnComplete=true)`로 변환한다. 단독 Gemini 키 점검 성공은 앱→중계 프로토콜 성공이 아니다.
+
 - **Edge 복수 키 환경변수** `SUPABASE_SECRET_KEYS`는 `{ default: key, ... }` JSON 맵이다. 원문 전체를 `createClient` 키로 전달하면 유효한 사용자 JWT도 Auth 요청에서 401이 된다. JSON 파싱 후 기본 키를 꺼내며, 진입점 환경 연결도 회귀로 검증한다(`live-token-entrypoint.test.ts`).
 
 - **설치**: session-start 훅의 `pnpm install --prefer-offline` 이 `apps/voice-relay/node_modules` 를 안 만들 수 있다 →

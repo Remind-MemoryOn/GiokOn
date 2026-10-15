@@ -130,6 +130,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let advancing = false
   let phaseTurns = 0                      // 현재 단계에서 어르신이 **말한**(음성이 전달된) 턴 수
   let activityAudio = false
+  let activityText = ''
   let reviewing = false                   // 위험 발화로 멈추는 중(기록 → 알림 → 닫기)
   // T21.12 — 세션 10분 상한: 새 발화는 받지 않고, 진행 중 AI 발화만 유예 안에서 마친 뒤 종료를 알린다.
   let timeUp = false
@@ -464,19 +465,33 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (Object.keys(r).length !== 1) throw new Error('INVALID_INPUT')
       if (r.activityStart && !activity) {
         flushDirective()
-        activity = true; activityAudio = false; forward({ realtimeInput: { activityStart: {} } }); return
+        // 텍스트만 있는 첫 인사·이어가기에는 Gemini의 오디오 activity를 열지 않는다.
+        // 음성 없는 activityEnd는 실제 Live API에서 1007로 종료된다.
+        activity = true; activityAudio = false; activityText = ''; return
       }
       if (!activity) throw new Error('NO_ACTIVITY')
       if (r.audio) {
         if (r.audio.mimeType !== 'audio/pcm;rate=16000' || typeof r.audio.data !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(r.audio.data) || Buffer.from(r.audio.data, 'base64').length % 2) throw new Error('INVALID_AUDIO')
+        if (!r.audio.data) throw new Error('INVALID_AUDIO')
+        if (!activityAudio) {
+          forward({ realtimeInput: { activityStart: {} } })
+          if (activityText) forward({ realtimeInput: { text: activityText } })
+          activityText = ''
+        }
         activityAudio = true
         forward({ realtimeInput: { audio: { data: r.audio.data, mimeType: 'audio/pcm;rate=16000' } } }); return
       }
       if (typeof r.text === 'string' && r.text.trim() && r.text.length <= 4000) {
         if (!await allowed()) return close()
-        forward({ realtimeInput: { text: r.text } }); return
+        if (activityAudio) forward({ realtimeInput: { text: r.text } })
+        else {
+          if (activityText.length + r.text.length > 4000) throw new Error('INVALID_INPUT')
+          activityText += r.text
+        }
+        return
       }
       if (r.activityEnd) {
+        if (!activityAudio && !activityText) throw new Error('EMPTY_ACTIVITY')
         if (++turns > 60 || !await allowed()) return close()
         // 어르신 대답만 센다 — 첫 인사·이어가기 요청(텍스트만)은 단계 전환 근거가 아니다.
         if (activityAudio) phaseTurns++
@@ -487,7 +502,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
           send({relayError:{code:'RESPONSE_TIMEOUT'}})
           close()
         }, 45000)
-        forward({ realtimeInput: { activityEnd: {} } }); return
+        if (activityAudio) forward({ realtimeInput: { activityEnd: {} } })
+        else forward({ clientContent: { turns: [{ role: 'user', parts: [{ text: activityText }] }], turnComplete: true } })
+        activityText = ''
+        return
       }
       throw new Error('INVALID_INPUT')
     }).catch(close)

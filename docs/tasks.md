@@ -1,5 +1,7 @@
 # 작업 목록
 
+> ✅ 2026-10-16 C3 후속 장애: 인증 수정 뒤 Gemini 1007을 실 API에서 재현. 음성 없는 첫 인사 activity를 중계에서 clientContent로 변환. 기존 APK 호환, 중계 94개·typecheck·카피·BOM 통과, 새 회귀 3개 수정 제거 시 실패. 실제 중계+Live/TTS 2턴 통과(합성 점검). ⏳ 운영 배포·태블릿 마이크·저장·재생. [최신 20개 경로 판정](plans/2026-10-15-voice-start-investigation.md).
+
 > ✅ 2026-10-15 대화 시작 실제 장애 수정: `live-token`이 `SUPABASE_SECRET_KEYS` JSON 맵 전체를 apikey로 전달해 사용자 확인 401. 기본 키 추출·폴백 수정, 회귀 6개(data 전체 233)·typecheck·카피 검사 통과, 운영 v23 배포 및 verify_jwt=true 확인. ⏳ 첫 AI 응답·TTS·기기 재생·발화 저장 실검증. [20개 경로 판정](plans/2026-10-15-voice-start-investigation.md).
 
 > ✅ 2026-10-15 23:02 KST 대화 시작 장애 점검: 기존 진단 코드를 포함한 중계를 `voice-relay-00005-ggn`으로 운영 배포, 트래픽 100% 확인. 앱 관련 회귀 156개·data 26개·중계 91개 통과. 기존 주소에서 ready·같은 출처 WebSocket·가짜 인증 거절 및 `closed/auth/AUTH_FAILED` 로그 확인(실제 사용자 인증 성공을 의미하지 않음). ⏳ 실제 대화 원인 미확정: Supabase MCP 권한 복구·USB 기기 연결 또는 요양보호사 중단 사유/시각 필요. Scheduler의 누락 actAs 권한은 이미 부여된 상태 확인, 작업은 PAUSED 유지. [운영 점검 기록](runbooks/voice-relay-operations.md#2026-10-15-대화-시작-장애-점검).

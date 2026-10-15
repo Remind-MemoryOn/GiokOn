@@ -1,5 +1,7 @@
 # 파일럿 개발 계획 — 인지활동 프로그램 + 공단 일지 자동화
 
+> ✅ 2026-10-16 C3 후속: 텍스트 전용 첫 인사의 Gemini 1007 실 API 재현·중계 호환 수정·94개 회귀 통과. 실제 중계+Live/TTS 2턴 합성 검증. ⏳ 운영 배포 후 기존 APK에서 마이크·재생·저장 확인. [20개 경로 점검](2026-10-15-voice-start-investigation.md).
+
 > ✅ 2026-10-15 C3 대화 시작 차단: live-token의 복수 키 JSON 처리 오류 수정·운영 v23 배포. ⏳ 수정 후 실제 첫 응답·TTS·재생·저장은 아직 미검증. [20개 경로 점검](2026-10-15-voice-start-investigation.md).
 
 > ✅ 2026-10-15 Android EAS Gradle 실패 수정: Reanimated의 필수 네이티브 peer `react-native-worklets@0.5.1`을 앱 직접 의존성으로 선언했다(override만으로는 앱 루트의 Gradle resolve가 보장되지 않음). `.gitignore`·`.vercelignore` 보강, 저장소 루트 `.easignore` 추가. EAS 실제 업로드 사본에서 소스·워크스페이스 보존 및 비밀/캐시/네이티브 산출물 파일 제외 확인. ⏳ 새 APK 클라우드 빌드 결과와 실기기 T25.16은 별도 확인.
