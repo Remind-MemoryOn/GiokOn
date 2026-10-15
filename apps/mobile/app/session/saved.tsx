@@ -25,7 +25,9 @@ export default function SessionSaved() {
         source={savedIllustration}
         style={{
           position: 'absolute',
-          left: 125,
+          // Figma x 125(393 폭). 화면 가운데에서의 거리로 두어 기기 폭이 달라도 같은 자리에 온다.
+          left: '50%',
+          marginLeft: 125 - 393 / 2,
           top: (194 / FRAME_H) * height,
           width: 164,
           height: 179,

@@ -4,11 +4,13 @@
 //   카피 "AI 맞춤형 회상 대화 플랫폼" Bold 16 #e9822b — 잉크 top 367(가로 중앙),
 //   워드마크 208×31.8 @ (92, 395) = 에셋.
 // 두 요소를 각각 Figma y 에 절대 배치한다(카피 lineHeight 24 → 박스 top 362.5).
+// 가로는 둘 다 **화면 가운데** — 워드마크를 x 92 로 두면 폭이 393 이 아닌 기기(패드 등)에서
+// 왼쪽으로 쏠린다(사용자 지적 2026-10-15). 393 폭에서는 92 와 같은 자리다.
 // 원본에는 버튼이 없다(기존 구현의 "간편 계정 연결" 버튼은 Figma 미존재) → 스플래쉬는
 // 잠시 노출 후 자동으로 로그인으로 넘어간다. 탭해도 즉시 이동한다.
 // 상태바는 실기기 상태바를 사용한다(사용자 확정 — Figma 상태바 목업 미구현).
 import { useEffect } from 'react';
-import { Text, Pressable, Image, useWindowDimensions } from 'react-native';
+import { Text, Pressable, Image, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEnforceAppAccess } from '../src/auth/useEnforceAppAccess';
@@ -49,13 +51,10 @@ export default function Splash() {
         AI 맞춤형 회상 대화 플랫폼
       </Text>
 
-      {/* 워드마크 — Figma (92, 395) 208×31.8 */}
-      <Image
-        source={wordmark}
-        style={{ position: 'absolute', left: 92, top: (395 / FRAME_H) * height, width: 208, height: 31.8 }}
-        resizeMode="contain"
-        accessibilityLabel="기억온"
-      />
+      {/* 워드마크 — Figma 208×31.8 · y 395 · 가로 가운데 */}
+      <View className="absolute left-0 right-0 items-center" style={{ top: (395 / FRAME_H) * height }}>
+        <Image source={wordmark} style={{ width: 208, height: 31.8 }} resizeMode="contain" accessibilityLabel="기억온" />
+      </View>
     </Pressable>
   );
 }

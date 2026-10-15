@@ -11,11 +11,20 @@
 // 쓰려면 안전영역 인셋만큼 빼야 한다: 헤더를 SafeAreaView(top) 아래에 두고
 //   높이 = 114 - inset,  자식 top = (Figma y) - inset
 // 로 두면 화면 절대 좌표가 Figma 와 정확히 일치한다(인셋이 큰 iOS·작은 Android 공통).
+//
+// 가로는 기기 폭이 393 이 아닐 수 있다(작은 휴대폰·패드 — 사용자 지적 2026-10-15):
+//   뒤로 = 왼쪽 끝 기준 · 우측 아이콘 = **오른쪽 끝 기준**(Figma 393 에서의 오른쪽 여백 유지) ·
+//   탭 = 탭 중심을 화면 폭 비율로 옮긴다. 393 폭에서는 모두 Figma 좌표와 같다.
 import type { ReactNode } from 'react';
-import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native';
+import { Image, Pressable, Text, View, useWindowDimensions, type ImageSourcePropType } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import iconBack from '../../assets/brand/icon-back.png';
+
+/** Figma 프레임 폭 — 가로 좌표 환산 기준. */
+const FRAME_W = 393;
+/** 탭 활성 밑줄 폭. */
+const TAB_INDICATOR_W = 87;
 
 /** Figma 헤더 높이(상태바 포함). 탭이 있으면 155. */
 export const HEADER_H = 114;
@@ -83,7 +92,7 @@ export function ScreenHeader({
   onBack?: () => void;
   /** 임의 우측 콘텐츠(좌표를 직접 잡아야 하는 예외 화면용). */
   right?: ReactNode;
-  /** 우측 아이콘 액션 — Figma 는 (347, 74~75) 고정이라 인셋 보정을 헤더가 처리한다. */
+  /** 우측 아이콘 액션 — Figma (347, 74~75). 오른쪽 끝 기준 배치·인셋 보정을 헤더가 처리한다. */
   rightIcon?: ImageSourcePropType;
   rightIconSize?: { width: number; height: number };
   rightIconTop?: number;
@@ -95,6 +104,7 @@ export function ScreenHeader({
   onTab?: (key: string) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   // 인셋이 비정상적으로 큰 기기에서도 자식이 잘리지 않도록 상한을 둔다.
   const shift = Math.min(insets.top, 60);
   const height = (tabs ? HEADER_TABS_H : HEADER_H) - shift;
@@ -133,14 +143,17 @@ export function ScreenHeader({
         <Image source={iconBack} style={{ width: 12.7, height: 19.5 }} resizeMode="contain" />
       </Pressable>
 
-      {/* 우측 아이콘 액션 — Figma (347, 74~75) */}
+      {/* 우측 아이콘 액션 — Figma (347, 74~75). 오른쪽 끝에서 (393 − 347 − 아이콘 폭) 만큼 */}
       {rightIcon ? (
         <Pressable
           onPress={onRight}
           accessibilityRole="button"
           accessibilityLabel={rightLabel}
           className="absolute active:opacity-60"
-          style={{ left: 347 - TAP_PAD, ...tapBox(rightIconTop - shift) }}
+          style={{
+            right: FRAME_W - 347 - (rightIconSize?.width ?? 18) - TAP_PAD,
+            ...tapBox(rightIconTop - shift),
+          }}
         >
           <Image source={rightIcon} style={rightIconSize ?? { width: 18, height: 18 }} resizeMode="contain" />
         </Pressable>
@@ -149,6 +162,10 @@ export function ScreenHeader({
       {/* 탭 — 라벨 Figma x 에 좌측 정렬(활성 SemiBold 주황 / 비활성 Regular 회색) */}
       {tabs?.map((t) => {
         const active = t.key === activeTab;
+        // 탭 중심(활성 밑줄 중심)을 화면 폭 비율로 옮기고, 라벨·밑줄은 그 중심에서 Figma 와 같은 거리에 둔다.
+        const center = ((t.indicatorX + TAB_INDICATOR_W / 2) / FRAME_W) * width;
+        const indicatorLeft = center - TAB_INDICATOR_W / 2;
+        const labelLeft = indicatorLeft + (t.x - t.indicatorX);
         return (
           <View key={t.key}>
             <Pressable
@@ -159,7 +176,7 @@ export function ScreenHeader({
               // Figma 텍스트 박스 top 125 · lineHeight 18 기준 잉크 위치를 맞춘 값에
               // 터치 여유(padding)를 더하고 좌표에서 되뺀다(뒤로 버튼과 같은 규칙).
               style={{
-                left: t.x - TAB_PAD_X,
+                left: labelLeft - TAB_PAD_X,
                 top: 123.75 - shift - TAB_PAD_Y,
                 paddingHorizontal: TAB_PAD_X,
                 paddingVertical: TAB_PAD_Y,
@@ -176,9 +193,9 @@ export function ScreenHeader({
               <View
                 className="absolute"
                 style={{
-                  left: t.indicatorX,
+                  left: indicatorLeft,
                   top: 152 - shift,
-                  width: 87,
+                  width: TAB_INDICATOR_W,
                   height: 3,
                   backgroundColor: '#e9822b',
                 }}

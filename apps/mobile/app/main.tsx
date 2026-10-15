@@ -2,7 +2,7 @@
 //
 // Figma 실측(393×1291 프레임):
 //   헤더 높이 114, shadow 1px 1px 10px rgba(108,101,101,0.13)
-//     워드마크 90×13.7 @ (30, 78) · 설정 18×19 @ (344, 75)
+//     워드마크 90×13.7 @ (30, 78) · 설정 18×19 @ (344, 75) → 오른쪽 끝에서 31(393 − 362) — 오른쪽 기준으로 둔다
 //   인사 SemiBold 24/35 검정 @ (30, 144) — 이름 아래 주황 밑줄 62×3 @ (30, 205)
 //   검색 335×46 @ (30, 234) border #cccdce r10 · 아이콘 19 @ (49,247) · 안내 Regular 18 #7b7c7c
 //   카드 336×146 @ x29, top 311부터 pitch 172(gap 26)
@@ -57,7 +57,8 @@ export default function Main() {
           accessibilityLabel="설정"
           hitSlop={16}
           className="absolute active:opacity-60"
-          style={{ left: 344, top: 75 - shift }}
+          // 왼쪽 좌표(344)로 두면 폭이 다른 기기에서 아이콘이 화면 밖·가운데로 간다 → 오른쪽 끝 기준.
+          style={{ right: 31, top: 75 - shift }}
         >
           <Image source={iconSettings} style={{ width: 18, height: 19 }} resizeMode="contain" />
         </Pressable>

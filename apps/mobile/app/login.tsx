@@ -6,7 +6,9 @@
 //   버튼 293×42 @ (49, 426) #e9822b r5 · 라벨 SemiBold 13 흰색
 //   링크 Regular 12 #7b7c7c · 행 시작 x 80(중앙 88 아님) · 항목 간격 12 · 잉크 top 519
 //   소셜 @ (89.75 / 168.35 / 246.95, 642.75) — 에셋이 그림자를 포함해 52×52
-// 가로는 **Figma x 를 그대로** 쓴다(중앙 정렬로 두면 워드마크 4px·링크행 8px 이 밀린다).
+// 가로는 Figma x 를 화면 폭 비율로 환산한다. 단 링크 행과 소셜 3종은 **화면 가운데 정렬**이다 —
+// 고정 폭 요소를 비율 좌표에 두면 폭이 넓은 기기(패드)에서 왼쪽으로 쏠린다(사용자 지적 2026-10-15).
+// 393 폭에서 링크 행은 Figma 보다 약 8px 오른쪽, 소셜은 약 2px 오른쪽이다.
 // 세로 위치는 프레임 비율로 환산해 기기 높이에 맞춘다(고정 프레임 디자인 충실 재현).
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 //
@@ -167,8 +169,8 @@ export default function Login() {
         <Text className="text-[13px] font-semibold text-white">로그인</Text>
       </Pressable>
 
-      {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 — Figma 행 시작 x 80, 잉크 top 519 */}
-      <View className="absolute flex-row items-center" style={{ left: x(80), top: top(515, height) }}>
+      {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 — 가로 가운데, 잉크 top 519 */}
+      <View className="absolute left-0 right-0 flex-row items-center justify-center" style={{ top: top(515, height) }}>
         <Pressable onPress={() => notOnApp('아이디 찾기')} hitSlop={8}>
           <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
             아이디 찾기
@@ -205,25 +207,30 @@ export default function Login() {
         간편 계정 연결
       </Text>
 
-      {/* 소셜 3종 — Figma x 89.75 / 168.35 / 246.95 (pitch 78.6), 에셋은 그림자 포함 52 */}
-      {[
-        { key: 'naver', src: socialNaver, label: '네이버', left: 89.75 },
-        { key: 'kakao', src: socialKakao, label: '카카오', left: 168.35 },
-        { key: 'google', src: socialGoogle, label: '구글', left: 246.95 },
-      ].map((s) => (
-        <Pressable
-          key={s.key}
-          onPress={() => void onSocial(s.key)}
-          disabled={socialBusy !== null}
-          accessibilityRole="button"
-          accessibilityLabel={`${s.label} 로그인`}
-          accessibilityState={{ busy: socialBusy === s.key }}
-          className="absolute active:opacity-70"
-          style={{ left: x(s.left), top: top(642.75, height), opacity: socialBusy && socialBusy !== s.key ? 0.4 : 1 }}
-        >
-          <Image source={s.src} style={{ width: x(52), height: 52 }} resizeMode="contain" />
-        </Pressable>
-      ))}
+      {/* 소셜 3종 — Figma pitch 78.6(간격 26.6), 에셋은 그림자 포함 52 · 가로 가운데 */}
+      <View
+        className="absolute left-0 right-0 flex-row justify-center"
+        style={{ top: top(642.75, height), columnGap: 26.6 }}
+      >
+        {[
+          { key: 'naver', src: socialNaver, label: '네이버' },
+          { key: 'kakao', src: socialKakao, label: '카카오' },
+          { key: 'google', src: socialGoogle, label: '구글' },
+        ].map((s) => (
+          <Pressable
+            key={s.key}
+            onPress={() => void onSocial(s.key)}
+            disabled={socialBusy !== null}
+            accessibilityRole="button"
+            accessibilityLabel={`${s.label} 로그인`}
+            accessibilityState={{ busy: socialBusy === s.key }}
+            className="active:opacity-70"
+            style={{ opacity: socialBusy && socialBusy !== s.key ? 0.4 : 1 }}
+          >
+            <Image source={s.src} style={{ width: 52, height: 52 }} resizeMode="contain" />
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }

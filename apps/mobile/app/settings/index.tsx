@@ -487,7 +487,8 @@ function ElderScreenSection({
             className="absolute text-[14px] font-normal"
             style={{ right: 44, top: 13, lineHeight: 25, color: SETTINGS.muted }}
           >
-            {pinSet === null ? NO_VALUE : pinSet ? '바꾸기' : '정하기'}
+            {/* 아직 없을 때의 '정하기'는 표시하지 않는다(사용자 지적 2026-10-15) */}
+            {pinSet === null ? NO_VALUE : pinSet ? '바꾸기' : ''}
           </Text>
           <View style={{ position: 'absolute', left: 290, top: 19 }}>
             <RowChevron />
