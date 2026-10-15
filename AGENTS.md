@@ -182,7 +182,7 @@ PR #55로 main 병합됐고 확정 기록 보호 마이그레이션·트리거·
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
 **사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) ·
-~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — 운영 `live-token` 은 아직 옛 본문이라 중계 배포 뒤 재배포 필수) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
+~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — ✅ 2026-10-15 03:07 KST 운영 `live-token` v21 배포 확인(중계 공유 시크릿 검사·새 토큰 본문 포함 · verify_jwt=true). ⏳ 배포 뒤 호출 기록 없음 — 실기기 세션 연결·중계 헤더 없는 요청 403 확인은 APK 검증 때) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
 
 **파일럿 결정(2026-10-14)**: Android 직원 사전 검증부터. 기관 AI 초안 활성화 완료. 주황 대비는 이번 파일럿 현행 유지(미달 해결 아님, 정식 출시 전 재검토). 실행 상태는 `docs/plans/2026-10-14-pilot-readiness.md` 참조.
 
