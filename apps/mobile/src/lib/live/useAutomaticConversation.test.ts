@@ -3,6 +3,7 @@ const native = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[],
   failure: null as null | ((message:string)=>void),
   contexts: [] as unknown[], continuation: vi.fn(async()=>({text:'이어서 고향 이야기를 들려주시겠어요?',audioChunksB64:['pcm']})),
   status: [] as unknown[], change: null as null | ((state:string)=>void),
+  appState: 'active', listeners: new Set<(state:string)=>void>(),
   input: null as null | ((text:string)=>void), partial: null as null | ((text:string)=>void), version: vi.fn(async()=>1), cancel:vi.fn(async()=>{}),
   opener:vi.fn(async():Promise<unknown>=>({text:'고향은 어디세요?',audioChunksB64:['pcm']})),
   control:vi.fn(async()=> 'running'), remote:null as null | ((state:'paused'|'ended',reason?:'elder_closing')=>void),
@@ -13,8 +14,11 @@ vi.mock('react',async original=>({...await original<typeof import('react')>(),
   useRef:<T,>(value:T)=>({current:value}),
   useState:<T,>(value:T)=>[value,(next:T)=>{native.status.push(next);}],
 }));
-vi.mock('react-native',()=>({AppState:{currentState:'active',addEventListener:(_event:string,cb:(state:string)=>void)=>{
-  native.change=cb; return {remove:()=>{native.change=null;}};
+// AppState 감시는 여러 개일 수 있다(대화 흐름의 백그라운드 감시 + 시작 전 활성 대기). change 는 모두에게 알린다.
+vi.mock('react-native',()=>({AppState:{get currentState(){return native.appState;},addEventListener:(_event:string,cb:(state:string)=>void)=>{
+  native.listeners.add(cb);
+  native.change=(state:string)=>{native.appState=state; for (const listener of [...native.listeners]) listener(state);};
+  return {remove:()=>{native.listeners.delete(cb); if (!native.listeners.size) native.change=null;}};
 }}}));
 vi.mock('@giokon/data',()=>({getTranscriptStorageVersion:native.version,getSessionControl:native.control}));
 vi.mock('../supabase',()=>({queryScope:{capture:()=>({current:()=>true})}}));
@@ -33,6 +37,7 @@ import { useApp } from '../../store/appStore';
 import { useAutomaticConversation } from './useAutomaticConversation';
 beforeEach(()=>{
   vi.clearAllMocks(); native.contexts=[]; native.effects=[];native.status=[];native.input=null;native.change=null;native.version.mockResolvedValue(1);
+  native.appState='active'; native.listeners.clear();
   native.submit.mockReset().mockResolvedValue({status:'ok',text:'고향에서 무엇을 하셨어요?',chunksB64:['pcm']});
   native.play.mockReset().mockResolvedValue('completed');
   useApp.getState().beginSession({id:'e',name:'테스트',birthYear:1940,avatarColor:'#fff',appearance:DEFAULT_APPEARANCE,createdAt:'',updatedAt:''},[],{title:'테스트',therapyType:'reminiscence'});
@@ -74,6 +79,29 @@ it('stops the running loop on background transition',async()=>{
   native.change!('background'); native.input!('늦은 전사');
   expect(useApp.getState().active!.turns).toHaveLength(1);
   expect(native.status.at(-1)).toMatchObject({phase:'stopped'});
+  if(cleanup) cleanup();
+});
+it('a background transition before start (permission dialog, screen off) does not block the later start',async()=>{
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0]();
+  native.change!('background'); native.change!('active');
+  expect(native.status.some(s=>(s as {phase:string}).phase==='stopped')).toBe(false);
+  await view.start();
+  expect(native.listen).toHaveBeenCalled();
+  expect(native.status.at(-1)).toMatchObject({phase:'listening'});
+  if(cleanup) cleanup();
+});
+it('waits for the app to return to active right after the permission dialog instead of stopping',async()=>{
+  const view=useAutomaticConversation(useApp.getState().active,async()=>true);
+  const cleanup=native.effects[0]();
+  native.appState='background';
+  const starting=view.start();
+  await Promise.resolve();
+  expect(native.version).not.toHaveBeenCalled();
+  native.change!('active');
+  await starting;
+  expect(native.version).toHaveBeenCalled();
+  expect(native.listen).toHaveBeenCalled();
   if(cleanup) cleanup();
 });
 it('does not install automatic controls before the server session exists',async()=>{

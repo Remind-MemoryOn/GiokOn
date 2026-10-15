@@ -195,6 +195,9 @@ export class AutomaticConversation {
   async stop(reason?: string): Promise<void> {
     this.unwatch();
     this.remoteHeld = false;
+    // 시작 전(idle)에는 멈출 대화가 없다 — 'stopped' 로 바꾸면 이후 start() 가 영영 무시된다.
+    // (2026-10-15 실기기: 마이크 권한 창·화면 꺼짐으로 앱이 잠깐 백그라운드가 되며 시작 전에 멈춰, 대화가 시작되지 않았다.)
+    if (this.phase === 'idle') return;
     if (this.phase === 'stopped') { await this.cleanup().catch(() => {}); return; }
     this.status('stopped', reason);
     // Cancel a connecting singleton too; never wait for provider work to finish.

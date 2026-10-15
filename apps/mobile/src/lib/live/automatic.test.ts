@@ -28,6 +28,13 @@ it('automatically saves, plays and listens across two utterances without confirm
   await vi.waitFor(()=>expect(f.engine.startListening).toHaveBeenCalledTimes(3));
   expect(f.engine.submitUserTurn.mock.calls).toEqual([['고향 이야기'],['가족 이야기']]);
 });
+it('stop before start is a no-op so a later start still runs',async()=>{
+  const f=fixture(); await f.controller.stop('앱이 백그라운드로 전환되어 대화를 멈췄어요.');
+  expect(f.ports.status).not.toHaveBeenCalled();
+  await f.controller.start();
+  expect(f.ports.connect).toHaveBeenCalled();
+  expect(f.events).toEqual(['output','save','play','listen']);
+});
 it('does not connect without permission and the storage contract',async()=>{
   const f=fixture(); vi.mocked(f.ports.ready).mockResolvedValue(false);
   await f.controller.start(); expect(f.ports.connect).not.toHaveBeenCalled();

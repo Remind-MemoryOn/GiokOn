@@ -8,6 +8,21 @@ import { acquireLiveEngine, closeLiveEngine } from './engine';
 import { ensureMicPermission } from './mic';
 import { AutomaticConversation, type AutomaticPhase } from './automatic';
 
+/**
+ * 앱이 활성(active)인지 — 아니면 잠시 기다린다. Android 는 OS 권한 창(마이크)이 닫힌 직후에도 AppState 가
+ * 잠깐 'background' 로 남아, 곧바로 판정하면 정상 시작을 '준비 안 됨'으로 멈췄다(2026-10-15 실기기).
+ */
+export function waitForActiveApp(timeoutMs = 2000): Promise<boolean> {
+  if (AppState.currentState === 'active') return Promise.resolve(true);
+  return new Promise(resolve => {
+    const timer = setTimeout(() => { subscription.remove(); resolve(AppState.currentState === 'active'); }, timeoutMs);
+    const subscription = AppState.addEventListener('change', next => {
+      if (next !== 'active') return;
+      clearTimeout(timer); subscription.remove(); resolve(true);
+    });
+  });
+}
+
 export function useAutomaticConversation(session: ActiveSession | null, save: () => Promise<boolean>) {
   const controller = useRef<AutomaticConversation | null>(null);
   const [state, setState] = useState<{phase: AutomaticPhase; reason?: string; remote?: boolean}>({phase:'idle'});
@@ -34,7 +49,7 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
         restoringOutput=false;
         restoration=undefined;
         openerPending=false;
-        if (AppState.currentState !== 'active' || await getTranscriptStorageVersion() !== 1 || !await ensureMicPermission()) return false;
+        if (!await waitForActiveApp() || await getTranscriptStorageVersion() !== 1 || !await ensureMicPermission()) return false;
         // No local opener exists: the conversation starts empty until the relay greets.
         if (!resuming) return useApp.getState().active?.turns.length === 0;
         if (!resumable() || !await save()) return false;
