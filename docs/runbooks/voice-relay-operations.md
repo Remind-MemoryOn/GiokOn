@@ -43,6 +43,8 @@
 
 ### 2026-10-15 대화 시작 장애 점검
 
+**2026-10-16 입력 진단 배포:** `468f8dc` → `audio-diag-468f8dc`(digest `sha256:76b2631720a4db6f0bda9bea28d496e5f4e41c669c1d3b128f4b7f5f7db44ab7`) → `voice-relay-00007-q9c` 트래픽 100%, 기존 주소 ready 확인. 첫 인사·TTS는 사용자 실기기 확인 완료. 이후 입력 교착은 앱 `3949365`에서 수정했으며 새 APK가 필요하다. 기기 입력 전달 및 후속 응답 검증 상태는 [장애 기록](../plans/2026-10-15-voice-start-investigation.md)을 따른다.
+
 **2026-10-16 후속:** 23:20 실제 앱 요청은 인증·모델 setup까지 성공한 뒤 Gemini 1007로 종료했다. 음성 없는 첫 인사를 audio activity로 보낸 결함을 실 API 비교로 확인하고 중계에서 clientContent로 변환했다. 수동 VAD·출력 검열·재생 영수증은 유지한다. 중계 94개 통과, 수정한 실제 중계+Live/TTS 2턴 합성 성공. `9881a08` → 이미지 `text-opener-9881a08`(digest `sha256:73e92d9dcfe93f1409e4427a405622246e5de035b4c7eaa3bed3e7ff096551a2`) → `voice-relay-00006-5sf` 트래픽 100% 배포 확인. 기존 앱 주소 ready·동일 Origin·가짜 인증 거절 확인. 기존 APK 그대로 재검증하며 태블릿 마이크/저장/재생은 아직 대기다.
 
 로컬 빌드 중 Docker Desktop 4.74가 오래된 `dockerInference`·`engine.sock` 소켓 접근 오류로 기동하지 못했다. 실패한 Docker 프로세스를 닫고 `%LOCALAPPDATA%\Docker\run` 및 `%LOCALAPPDATA%\docker-secrets-engine` 임시 폴더를 `*-backup-20261016*`로 보존한 뒤 재기동했다. 엔진 29.4.3·이미지 빌드·push 정상 확인. 이미지/컨테이너 삭제·초기화 및 서비스 설정 변경은 하지 않았다.
@@ -162,6 +164,9 @@ Cloud Scheduler 작업 2개가 서비스의 **최소 인스턴스 수**만 바�
 | `closed` (`stage`: auth·setup·conversation, `reason`) | 끝난 단계와 이유. 예: `AUTH_FAILED` · `SESSION_NOT_OWNED` · `SESSION_BUSY` · `DENIED` · `TOKEN_FAILED_403`(중계 비밀값 불일치·자격/동의) · `TOKEN_FAILED_500`(Edge 비밀값 누락) · `TOKEN_FAILED_502`(Gemini 토큰 오류) · `PROVIDER_CLOSED` · `SETUP_TIMEOUT` · `APP_CLOSED` |
 | `provider_closed` (`code`, `reason`) · `provider_error` · `provider_message` | Gemini Live 가 닫거나 오류를 보냄(키·모델·토큰 문제의 상태 문구) |
 | `synthesis_failed` (`code`, `cause`) | TTS 실패. `cause` 예: `GEMINI_TTS_FAILED_400`·`GEMINI_TTS_RATE_LIMIT`·`OUTPUT_REJECTED` |
+| `first_audio` (`bytes`) | 해당 연결에서 첫 PCM 청크 수신. 마이크 권한 허용만으로는 이 단계를 증명하지 못함 |
+| `first_input_transcription` | 공급자의 첫 입력 전사 수신. 원문은 기록하지 않음 |
+| `closed`의 `audioChunks`·`audioBytes`·`signalChunks`·`inputTranscriptions` | ready 이후 연결의 입력 집계. signalChunks는 RMS≥0.015인 청크 수이며 사람 발화 판정이 아님. 음성이 와도 종료 신호가 없으면 수동 VAD 전사가 오지 않을 수 있음 |
 
 ## 장애·롤백
 
