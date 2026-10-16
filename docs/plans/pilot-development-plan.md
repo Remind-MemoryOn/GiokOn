@@ -231,7 +231,7 @@
 
 | # | 내용 | 파일 | 상태 |
 |---|---|---|---|
-| **M1** | **직접 모드 제거** — `RELAY_MODE` 분기·직접 UI 전체 삭제. `EXPO_PUBLIC_VOICE_RELAY_URL` 미설정 시 세션 시작 차단 | `app/session/talk.tsx`, `src/store/appStore.ts` | ✅ 2026-09-24 — 중계 전용 엔진·클라이언트, `/session/loading`·기기 TTS 삭제, 시작 화면에서 주소 검증. RN `URL` 이 `wss` 경로를 못 읽던 검사도 수정 |
+| **M1** | **직접 모드 제거** — `RELAY_MODE` 분기·직접 UI 전체 삭제. `EXPO_PUBLIC_VOICE_RELAY_URL` 미설정 시 세션 시작 차단 | `app/session/talk.tsx`, `src/store/appStore.ts` | ✅ 2026-09-24 — 중계 전용 엔진·클라이언트, `/session/loading`·기기 TTS 삭제, 시작 화면에서 주소 검증. RN `URL` 이 `wss` 경로를 못 읽던 검사도 수정. ✅ 2026-10-16 발화 종료/전사 교착 수정·실 API 검증. ⏳ 새 APK 실기기 입력/응답 검증 |
 | **M2** | **어르신 표시 모드 분리** — `talk.tsx`(요양보호사) + `app/session/elder.tsx`(표시 전용) 신설, 공용 로직은 `src/features/session/` 으로 추출 | 신규 + 기존 | ✅ 2026-09-24 — ⚠️ 별도 라우트 대신 **`talk.tsx` 안의 표시 모드 전환**(컨트롤러 수명 분리 방지). 화면 `src/features/session/ElderView.tsx`. "시작"과 동시에 전환 |
 | **M3** | 어르신 화면에서 **반드시 제거**: 위기 배너 전화번호(`talk.tsx:377-389`) · STT 수정 패널(`:570-648`) · 중계 컨트롤(`:433-466`) · 확인 없이 종료하는 X(`:371`). ⚠️ 위기 안내(전화번호·사람 연결)는 **없애는 게 아니라 옮긴다** — 요양보호사 모드와 감독 화면(W2)의 위기 카드로. 어르신 화면에서만 빠진다 | `talk.tsx` | ✅ 2026-09-24 — `check:figma` 부재 규칙으로 고정 |
 | **M4** | 복귀 게이트 — 숨김 제스처(4모서리 순차 탭) 또는 PIN(`expo-secure-store`) | `elder.tsx` | ✅ 2026-09-24 — **PIN**(4자리, 요양보호사별, 서버 미전송, 5회 실패 30초 잠금). 진입은 어르신 화면의 작은 '선생님' 버튼. 설정 화면에서 변경 |

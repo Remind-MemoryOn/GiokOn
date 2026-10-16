@@ -7,6 +7,7 @@
 검증: 앱 418개, typecheck·lint·copy·BOM·font·Figma 통과. 핵심 경계 회귀는 수정 전 실패를 확인했다. 실제 앱 엔진+클라이언트+중계+Gemini Live/TTS에 공개 샘플을 흘려 첫 인사/후속 응답 2턴 성공(입력 전사 21자, 캡처/종료 각 1회, 재생은 가상). 운영 DB·실기기 마이크·스피커 증명은 아니다.
 ✅ 진단 중계 `468f8dc` 배포: 이미지 `audio-diag-468f8dc`, digest `sha256:76b2631720a4db6f0bda9bea28d496e5f4e41c669c1d3b128f4b7f5f7db44ab7`, 리비전 `voice-relay-00007-q9c` 100%, 기존 주소 ready 확인. 태블릿 adb 재연결 완료.
 ⏳ 현재 APK 입력 전달량 실측 및 앱 수정본 APK 재빌드·교체 후 발화→응답→DB 저장 확인. 앱에 OTA 업데이트 기능이 없으므로 중계 배포만으로 앱 종료 순서는 바뀌지 않는다.
+✅ Android Metro export 성공(2,044 모듈). ⏳ EAS preview 빌드 `0e26697f-6c63-4cbe-afea-175db8529aa6`, 소스 커밋 `3949365`, 14:04 KST 시작·14:05 IN_PROGRESS 확인. 클라우드 빌드 완료 및 설치 결과는 별도로 기록한다.
 
 ✅ 2026-10-16 실기기 후속: 08:41:54 세션에서 08:42:13 첫 AI 발화 저장(1건), 마이크 RECORD_AUDIO 실행을 확인했고 사용자가 첫 인사·TTS가 들린다고 확인했다. 08:42:55 APP_CLOSED, 08:42:57 세션 ended. 첫 인사 장애는 통과했지만 **말해도 사용자 입력이 진행되지 않는 문제**는 조사 중이다.
 진단 보강: 중계 `first_audio`·`first_input_transcription` 및 종료 시 audioChunks/audioBytes/signalChunks/inputTranscriptions 집계. signalChunks는 RMS≥0.015인 청크 수이며 사람 발화 판정이 아니다. 원문·PCM·개별 음량은 기록하지 않는다. 새 회귀는 변경 전 실패, 중계 95개·typecheck 통과. ⏳ 진단 배포 및 기기 재연결 후 입력 경계 확인.
