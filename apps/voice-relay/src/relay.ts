@@ -132,6 +132,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let activityAudio = false
   let activityText = ''
   let audioChunks = 0, audioBytes = 0, signalChunks = 0, inputTranscriptions = 0
+  let zeroChunks = 0, maxRms = 0
   let reviewing = false                   // 위험 발화로 멈추는 중(기록 → 알림 → 닫기)
   // T21.12 — 세션 10분 상한: 새 발화는 받지 않고, 진행 중 AI 발화만 유예 안에서 마친 뒤 종료를 알린다.
   let timeUp = false
@@ -155,7 +156,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       stage: !authenticated ? 'auth' : !ready ? 'setup' : 'conversation',
       reason: reason === undefined ? 'unspecified' : typeof reason === 'string' ? reason : relayErrorCode(reason),
       turns,
-      ...(ready ? { audioChunks, audioBytes, signalChunks, inputTranscriptions } : {}),
+      ...(ready ? { audioChunks, audioBytes, signalChunks, inputTranscriptions, zeroChunks, maxRms: Number(maxRms.toFixed(6)) } : {}),
     })
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
     clearTimeout(playbackTimer); clearTimeout(responseTimer); clearTimeout(timeUpTimer); clearTimeout(closingTimer)
@@ -484,7 +485,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         audioBytes += pcm.length
         let energy = 0
         for (let offset = 0; offset < pcm.length; offset += 2) energy += (pcm.readInt16LE(offset) / 32768) ** 2
-        if (Math.sqrt(energy / (pcm.length / 2)) >= 0.015) signalChunks++
+        const rms = Math.sqrt(energy / (pcm.length / 2))
+        if (rms >= 0.015) signalChunks++
+        if (energy === 0) zeroChunks++
+        maxRms = Math.max(maxRms, rms)
         if (!activityAudio) {
           forward({ realtimeInput: { activityStart: {} } })
           if (activityText) forward({ realtimeInput: { text: activityText } })

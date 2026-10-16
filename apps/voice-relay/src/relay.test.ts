@@ -60,6 +60,21 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('distinguishes silent PCM from quiet PCM using only aggregate levels', async () => {
+    const log = vi.fn()
+    const f = await fixture(false, {}, { log }); await f.start(2)
+    f.send({ realtimeInput: { activityStart: {} } })
+    for (const samples of [[0, 0], [32, -32]]) {
+      const pcm = Buffer.alloc(4)
+      samples.forEach((value, index) => pcm.writeInt16LE(value, index * 2))
+      f.send({ realtimeInput: { audio: { data: pcm.toString('base64'), mimeType: 'audio/pcm;rate=16000' } } })
+    }
+    await vi.waitFor(() => expect(f.inputs.filter(x => x.realtimeInput?.audio)).toHaveLength(2))
+    f.app.close()
+    await vi.waitFor(() => expect(log).toHaveBeenCalledWith('closed', expect.objectContaining({
+      audioChunks: 2, signalChunks: 0, zeroChunks: 1, maxRms: 0.000977,
+    })))
+  })
   it('logs input delivery counts without recording PCM or transcription content', async () => {
     const log = vi.fn()
     const f = await fixture(false, {}, { log }); await f.start(2)

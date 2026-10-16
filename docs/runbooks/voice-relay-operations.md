@@ -167,6 +167,7 @@ Cloud Scheduler 작업 2개가 서비스의 **최소 인스턴스 수**만 바�
 | `first_audio` (`bytes`) | 해당 연결에서 첫 PCM 청크 수신. 마이크 권한 허용만으로는 이 단계를 증명하지 못함 |
 | `first_input_transcription` | 공급자의 첫 입력 전사 수신. 원문은 기록하지 않음 |
 | `closed`의 `audioChunks`·`audioBytes`·`signalChunks`·`inputTranscriptions` | ready 이후 연결의 입력 집계. signalChunks는 RMS≥0.015인 청크 수이며 사람 발화 판정이 아님. 음성이 와도 종료 신호가 없으면 수동 VAD 전사가 오지 않을 수 있음 |
+| `closed`의 `zeroChunks`·`maxRms` | 완전히 0인 PCM 청크 수와 연결 전체에서 가장 큰 청크 RMS(소수 6자리). 낮은 입력을 완전 무음과 구분하며, 개별 청크 음량·음성 내용은 남기지 않음 |
 
 ## 장애·롤백
 
