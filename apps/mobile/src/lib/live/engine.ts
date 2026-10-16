@@ -7,7 +7,8 @@
 // 앱의 세션 상태 머신과의 계약:
 //   - listening 중 마이크 오디오가 중계로 전달되고, 전사가 발화 경계(InputEndpoint)에서
 //     onDraftFinal 로 확정된다. 중단된 청취의 부분 전사는 onDraftInterrupted 로만 간다.
-//   - 확정 텍스트를 submitUserTurn 으로 보내고 activityEnd 로 응답 생성을 요청한다.
+//   - 발화 경계에서 activityEnd를 먼저 보내 전사·검증된 응답을 기다린다. submitUserTurn은
+//     채택·저장된 입력에 대응하는 준비된 응답을 반환한다(모델에 중복 전송하지 않는다).
 //   - 어떤 단계든 실패하면 onError 로 알리고 연결을 닫는다. 조용한 폴백은 없다.
 
 import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
@@ -45,6 +46,8 @@ export class LiveConversationEngine {
   private micStop: { stop: () => void } | null = null;
   private listeningGeneration = 0;
   private draft = '';
+  private finalizingInput = false;
+  private preparedTurn: LiveTurnResult | null = null;
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
   private endpoint: InputEndpoint | null = null;
   private closing = false;
@@ -123,7 +126,7 @@ export class LiveConversationEngine {
   private makeClient(relay: VoiceRelayConnection): GeminiLiveClient {
     return new GeminiLiveClient({
       onDraft: (text) => {
-        if (this.closing || !this.micStop) return;
+        if (this.closing || (!this.micStop && !this.finalizingInput)) return;
         // Live serverContent is incremental. Preserve segment spacing and repetition.
         // Do not turn a size limit into an apparently complete, truncated record.
         if (this.draft.length + text.length > 4000) {
@@ -191,7 +194,7 @@ export class LiveConversationEngine {
 
   /** 청취 시작 — 마이크 스트리밍 + 실시간 전사(onDraft). */
   async startListening(): Promise<void> {
-    if (this.micStop) return;
+    if (this.micStop || this.finalizingInput || this.preparedTurn) return;
     const generation = ++this.listeningGeneration;
     if (!await this.verifyProcessing() || generation !== this.listeningGeneration || !this.available || this.micStop || this.client?.playbackTurnId != null) return;
     let permitted = false;
@@ -227,7 +230,7 @@ export class LiveConversationEngine {
   }
 
   /** 청취 종료 — 확정 전사를 콜백으로 넘기고 반환한다(빈 문자열 = 미인식). */
-  stopListening(): string {
+  stopListening(notifyFinal = true): string {
     this.listeningGeneration++;
     this.clearSilenceTimer();
     const microphone = this.micStop;
@@ -239,8 +242,30 @@ export class LiveConversationEngine {
       void this.close();
       return ''; // Native failure is not a completed utterance.
     }
-    if (microphone && !this.closing) this.callbacks.onDraftFinal(text);
+    if (microphone && !this.closing && notifyFinal) this.callbacks.onDraftFinal(text);
     return text;
+  }
+
+  /** PCM 종료를 먼저 알리고, 뒤늦게 오는 전사와 검증된 응답을 같은 입력에 연결한다. */
+  private async finishListening(): Promise<void> {
+    if (!this.micStop || this.finalizingInput || this.closing) return;
+    this.finalizingInput = true;
+    this.stopListening(false);
+    const generation = this.listeningGeneration;
+    try {
+      if (!await this.verifyProcessing() || !this.client) return;
+      const turn = await this.client.sendUserTurn('', RELAY_TURN_TIMEOUT_MS);
+      if (this.closing || generation !== this.listeningGeneration) return;
+      if (turn === 'timeout' || !this.draft.trim()) throw new Error('input');
+      this.preparedTurn = turn;
+      this.finalizingInput = false;
+      this.callbacks.onDraftFinal(this.draft.trim());
+    } catch {
+      if (!this.closing) {
+        this.callbacks.onError?.('말씀을 확인하지 못했어요. 담당자가 확인해 주세요.');
+        void this.close();
+      }
+    }
   }
 
   get isListening(): boolean {
@@ -256,7 +281,13 @@ export class LiveConversationEngine {
     finalText: string,
   ): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null> {
     if (!await this.verifyProcessing() || !this.available) return null;
-    const turn = await this.client!.sendUserTurn(finalText, RELAY_TURN_TIMEOUT_MS);
+    const prepared = this.preparedTurn;
+    this.preparedTurn = null;
+    if (prepared && finalText.trim() !== this.draft.trim()) {
+      await this.close();
+      return null; // 채택한 입력이 바뀌었으면 이전 입력의 응답을 재사용하지 않는다.
+    }
+    const turn = prepared ?? await this.client!.sendUserTurn(finalText, RELAY_TURN_TIMEOUT_MS);
     if (turn === 'timeout') return { status: 'timeout' };
     return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64 };
   }
@@ -299,7 +330,9 @@ export class LiveConversationEngine {
     const client = this.client;
     this.client = null;
     let failed = this.failedStopDraft !== null;
-    const interruptedDraft = this.failedStopDraft ?? (microphone ? this.draft.trim() : '');
+    const interruptedDraft = this.failedStopDraft ?? (microphone || this.finalizingInput ? this.draft.trim() : '');
+    this.finalizingInput = false;
+    this.preparedTurn = null;
     this.failedStopDraft = null;
     // Isolate cleanup failures so a native exception cannot retain a provider connection.
     try { client?.close(); } catch { failed = true; }
@@ -335,7 +368,8 @@ export class LiveConversationEngine {
         // A forced cutoff is not a completed utterance; do not request an answer.
         this.callbacks.onError?.('한 번의 청취 시간이 길어져 대화를 멈췄어요. 담당자가 확인해 주세요.');
         void this.close();
-      } else if (result) this.stopListening();
+      } else if (result === 'complete') void this.finishListening();
+      else if (result) this.stopListening();
       else this.pollEndpoint(generation);
     }, 250);
   }

@@ -30,6 +30,27 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     return { client, socket, onError };
   }
 
+  it('ends captured audio without sending an empty text frame or starting another activity', async () => {
+    const {client, socket} = await connected();
+    client.streamAudioChunk('AQACAA==');
+    const reply = client.sendUserTurn('');
+    expect(socket.sent.slice(-3)).toEqual([
+      {realtimeInput:{activityStart:{}}},
+      {realtimeInput:{audio:{data:'AQACAA==',mimeType:'audio/pcm;rate=16000'}}},
+      {realtimeInput:{activityEnd:{}}},
+    ]);
+    await socket.receive({serverContent:{outputTranscription:{text:'응답'},modelTurn:{parts:[{inlineData:{data:'AQACAA=='}}]},turnComplete:true}});
+    expect(await reply).toEqual({text:'응답',audioChunksB64:['AQACAA==']});
+    client.close();
+  });
+  it('rejects an empty turn when no audio activity exists', async () => {
+    const {client, socket} = await connected();
+    const before = socket.sent.length;
+    await expect(client.sendUserTurn('')).rejects.toThrow('마이크 입력');
+    expect(socket.sent).toHaveLength(before);
+    client.close();
+  });
+
   it.each([['SYNTHESIS_LIMIT','요청이 많아'],['unexpected private detail','음성 연결이 중단']])('maps relay failure %s to local copy and settles the pending turn',async(code,message)=>{
     const onError=vi.fn();
     const client=new GeminiLiveClient({onError},{url:'wss://voice.example.test/voice',sessionId:'session',accessToken:'synthetic'});

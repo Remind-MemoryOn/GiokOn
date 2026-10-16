@@ -1,6 +1,13 @@
 import { expect, it } from 'vitest';
 import { InputEndpoint, pcmLevel } from './endpoint';
 
+it('ends voiced capture after a conservative pause even when transcription waits for activityEnd', () => {
+  const input = new InputEndpoint(0);
+  input.audio(1000, 0.1);
+  expect(input.check(6999, '')).toBe(null);
+  expect(input.check(7000, '')).toBe('complete');
+});
+
 it('waits through thinking time then stops an empty capture', () => {
   const input = new InputEndpoint(0);
   expect(input.check(19999, '')).toBe(null);

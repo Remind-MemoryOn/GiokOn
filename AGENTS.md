@@ -129,6 +129,8 @@
 
 ## 알려진 함정 (다시 밟지 말 것)
 
+- **수동 VAD 입력 교착**: Gemini 입력 전사는 `activityEnd` 뒤에 올 수 있다(공개 PCM 실 API 재현). 전사를 받아야 종료하는 구조는 서로 기다린다. 앱은 음량 구간 뒤 무음으로 PCM을 끝낸 뒤 전사·검증 응답을 기다린다. 입력 채택·저장 후 같은 응답을 재사용하며 모델에 전사를 중복 전송하지 않는다. 종료 뒤 전사를 버리지 않되 회수된 세대의 응답은 채택하지 않는다.
+
 - **Gemini 텍스트 전용 첫 인사**: 음성 없는 `activityStart → text → activityEnd`는 Live API가 setup 성공 뒤 1007로 닫는다. 중계는 첫 PCM에서만 공급자 activity를 열고, 텍스트 전용 턴은 `clientContent(turnComplete=true)`로 변환한다. 단독 Gemini 키 점검 성공은 앱→중계 프로토콜 성공이 아니다.
 
 - **Edge 복수 키 환경변수** `SUPABASE_SECRET_KEYS`는 `{ default: key, ... }` JSON 맵이다. 원문 전체를 `createClient` 키로 전달하면 유효한 사용자 JWT도 Auth 요청에서 401이 된다. JSON 파싱 후 기본 키를 꺼내며, 진입점 환경 연결도 회귀로 검증한다(`live-token-entrypoint.test.ts`).

@@ -277,6 +277,7 @@ export class GeminiLiveClient {
     timeoutMs = 20000,
   ): Promise<LiveTurnResult | 'timeout'> {
     if (!this.ws || !this.opened) throw new Error('Live 세션이 연결돼 있지 않아요.');
+    if (!text.trim() && !this.inputActivity) throw new Error('마이크 입력을 확인하지 못했어요. 대화를 회수해 주세요.');
     if (this.pendingTurn) throw new Error('이전 Live 응답을 기다리고 있어요.');
     if (this.awaitingPlayback !== null) throw new Error('이전 음성 재생 완료를 기다리고 있어요.');
     const result = await new Promise<LiveTurnResult | 'timeout'>((resolve) => {
@@ -294,7 +295,8 @@ export class GeminiLiveClient {
       this.pendingTurn = finish;
       try {
         this.beginAudioInput();
-        this.ws!.send(JSON.stringify({ realtimeInput: { text } }));
+        // 전사가 아직 없어도 기존 PCM activity를 끝낼 수 있다. 빈 text 프레임은 중계가 거부한다.
+        if (text.trim()) this.ws!.send(JSON.stringify({ realtimeInput: { text } }));
         this.ws!.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
         this.inputActivity = false;
       } catch (e) {

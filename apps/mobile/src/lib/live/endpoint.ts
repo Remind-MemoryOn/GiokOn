@@ -3,15 +3,19 @@ import { base64ToBytes } from './pcm';
 /** Initial field-tuning values, not a speech recognizer or a clinical measure. */
 export class InputEndpoint {
   private lastActivity: number;
+  private heardAudio = false;
   constructor(private startedAt: number) { this.lastActivity = startedAt; }
   transcript(now: number): void { this.lastActivity = now; }
   audio(now: number, level: number): void {
     // Conservative floor: ongoing noise may delay completion, never extend the cap.
-    if (level >= 0.015) this.lastActivity = now;
+    if (level >= 0.015) { this.lastActivity = now; this.heardAudio = true; }
   }
   check(now: number, text: string): 'complete' | 'no_input' | 'limit' | null {
     if (now - this.startedAt >= 60000) return 'limit';
-    if (!text.trim()) return now - this.lastActivity >= 20000 ? 'no_input' : null;
+    // 수동 VAD에서는 전사가 activityEnd 뒤에 올 수 있다. 전사 없이도 발화 경계를 닫는다.
+    if (!text.trim()) return this.heardAudio
+      ? now - this.lastActivity >= 6000 ? 'complete' : null
+      : now - this.lastActivity >= 20000 ? 'no_input' : null;
     const short = text.replace(/[\s\p{P}]/gu, '').length <= 3;
     return now - this.lastActivity >= (short ? 6000 : 3500) ? 'complete' : null;
   }

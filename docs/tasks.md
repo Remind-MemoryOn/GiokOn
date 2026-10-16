@@ -1,5 +1,7 @@
 # 작업 목록
 
+> ✅ 2026-10-16 M1 사용자 입력 교착 수정: Gemini 전사가 activityEnd 뒤에 오는 것을 실 API로 재현. 전사 도착 전에 음량/무음 경계로 발화를 닫고, 전사·검증된 응답을 같은 입력에 연결. 앱 418개·typecheck·lint·수동 앱 게이트 통과, 실제 엔진+중계+Live/TTS 공개 음성 2턴 성공(기기 재생/DB는 가상). 진단 중계 `voice-relay-00007-q9c` 운영 100%. ⏳ 새 APK·태블릿 음성 전달/저장 실검증. [근거](plans/2026-10-15-voice-start-investigation.md).
+
 > ✅ 2026-10-16 실기기에서 첫 인사·TTS 청취·AI 발화 저장 확인. ⏳ 후속 마이크 입력 미진행 조사: 내용 없는 입력 전달량·전사 수신 진단 추가, 중계 95개·typecheck 통과. 기기 재연결 및 진단 배포 후 캡처→중계→전사 경계를 확인한다. [진행 기록](plans/2026-10-15-voice-start-investigation.md).
 
 > ✅ 2026-10-16 C3 후속 장애: 인증 수정 뒤 Gemini 1007을 실 API에서 재현. 음성 없는 첫 인사 activity를 중계에서 clientContent로 변환. 기존 APK 호환, 중계 94개·typecheck·카피·BOM 통과, 새 회귀 3개 수정 제거 시 실패. 실제 중계+Live/TTS 2턴 통과(합성 점검). ✅ `9881a08` 이미지를 운영 `voice-relay-00006-5sf`에 배포·트래픽 100% 및 기존 주소 입구 확인. ⏳ 태블릿 마이크·저장·재생. [최신 20개 경로 판정](plans/2026-10-15-voice-start-investigation.md).

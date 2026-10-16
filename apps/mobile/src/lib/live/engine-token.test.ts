@@ -20,7 +20,7 @@ function engineApi(configured: string | undefined = RELAY, unset = false) {
   const reportPlayback = vi.fn()
   const canProcess = vi.fn(async () => true)
   const micPermission = vi.fn(async () => true)
-  const send = vi.fn(async () => ({ text: 'synthetic', audioChunksB64: [] }))
+  const send = vi.fn(async (): Promise<{ text: string; audioChunksB64: string[] }> => ({ text: 'synthetic', audioChunksB64: [] }))
   const streamAudio = vi.fn()
   let draft: (text: string) => void = () => {}
   let clientCallbacks: Record<string, (...args: unknown[]) => void> = {}
@@ -59,6 +59,57 @@ describe('automatic input endpoint integration', () => {
     await engine.startListening()
     return {api, engine, final, error}
   }
+  it('ends PCM before awaiting its delayed transcript and reuses the checked response after input adoption', async () => {
+    const f = await listening()
+    let reply!: (value: {text:string;audioChunksB64:string[]}) => void
+    f.api.send.mockImplementationOnce(() => new Promise(resolve => { reply = resolve }))
+    f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(f.api.micStop).toHaveBeenCalledOnce()
+    expect(f.api.send).toHaveBeenCalledExactlyOnceWith('', 60000)
+    expect(f.final).not.toHaveBeenCalled()
+    f.api.draft('고향은 '); f.api.draft('전주예요.')
+    reply({text:'응답',audioChunksB64:['AQACAA==']})
+    await vi.advanceTimersByTimeAsync(0)
+    expect(f.final).toHaveBeenCalledExactlyOnceWith('고향은 전주예요.')
+    const result = await (f.engine as ListeningEngine & {submitUserTurn(text:string):Promise<unknown>}).submitUserTurn('고향은 전주예요.')
+    expect(result).toEqual({status:'ok',text:'응답',chunksB64:['AQACAA==']})
+    expect(f.api.send).toHaveBeenCalledOnce()
+    await f.api.exports.closeLiveEngine()
+  })
+  it('does not adopt delayed transcription or a completed response after retrieval', async () => {
+    const f = await listening()
+    let reply!: (value: {text:string;audioChunksB64:string[]}) => void
+    f.api.send.mockImplementationOnce(() => new Promise(resolve => { reply = resolve }))
+    f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(f.api.send).toHaveBeenCalledOnce()
+    await f.api.exports.closeLiveEngine()
+    f.api.draft('늦은 전사'); reply({text:'늦은 응답',audioChunksB64:['AQACAA==']})
+    await vi.advanceTimersByTimeAsync(0)
+    expect(f.final).not.toHaveBeenCalled()
+  })
+  it('closes without adopting an input when the finished audio has no transcript', async () => {
+    const f = await listening()
+    f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(f.error).toHaveBeenCalledWith('말씀을 확인하지 못했어요. 담당자가 확인해 주세요.')
+    expect(f.final).not.toHaveBeenCalled()
+    expect(f.api.close).toHaveBeenCalledOnce()
+    await f.api.exports.closeLiveEngine()
+  })
+  it('does not reuse a prepared response for different adopted input', async () => {
+    const f = await listening()
+    f.api.draft('고향은 전주예요.')
+    f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
+    await vi.advanceTimersByTimeAsync(3500)
+    expect(f.final).toHaveBeenCalledExactlyOnceWith('고향은 전주예요.')
+    const result = await (f.engine as ListeningEngine & {submitUserTurn(text:string):Promise<unknown>}).submitUserTurn('바뀐 입력')
+    expect(result).toBeNull()
+    expect(f.api.send).toHaveBeenCalledOnce()
+    expect(f.api.close).toHaveBeenCalledOnce()
+    await f.api.exports.closeLiveEngine()
+  })
   it('accepts a one-syllable reply once after the extra pause', async () => {
     const f = await listening()
     f.api.draft('네')
