@@ -14,9 +14,10 @@
 import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult, type RelayControlState, type RelayEndReason, type RelayReviewDetail, type VoiceRelayConnection } from './client';
-import { hasMicPermission, micStreamingSupported, startMicStream } from './mic';
+import { hasMicPermission, micStreamingSupported, startMicStream, closeMicAudio } from './mic';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 import { InputEndpoint, pcmLevel } from './endpoint';
+import { BargeInBuffer } from './barge-in';
 import { VOICE_RELAY_MISSING_MESSAGE, voiceRelayUrl } from './relay-config';
 
 /** 중계 응답 대기 한도(오프너·턴·이어가기 공통). */
@@ -43,7 +44,12 @@ export interface LiveEngineCallbacks {
 
 export class LiveConversationEngine {
   private client: GeminiLiveClient | null = null;
-  private micStop: { stop: () => void } | null = null;
+  private micStop: { stop: () => void; ready?: Promise<void> } | null = null;
+  private playbackInput: BargeInBuffer | null = null;
+  private bargeRequested = false;
+  private bargeStop: Promise<void> | null = null;
+  private capturePrimed = false;
+  private queuedFinal: string | null = null;
   private listeningGeneration = 0;
   private draft = '';
   private finalizingInput = false;
@@ -107,7 +113,7 @@ export class LiveConversationEngine {
       const session = await getSession();
       if (!session?.access_token) throw new Error('AUTH_REQUIRED');
       const relay: VoiceRelayConnection = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token,
-        playbackReceipts: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
+        playbackReceipts: true, bargeIn: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
       if (!await this.verifyProcessing()) return false;
       this.client = this.makeClient(relay);
       await this.client.connect();
@@ -194,12 +200,23 @@ export class LiveConversationEngine {
 
   /** 청취 시작 — 마이크 스트리밍 + 실시간 전사(onDraft). */
   async startListening(): Promise<void> {
-    if (this.micStop || this.finalizingInput || this.preparedTurn) return;
-    const generation = ++this.listeningGeneration;
-    if (!await this.verifyProcessing() || generation !== this.listeningGeneration || !this.available || this.micStop || this.client?.playbackTurnId != null) return;
+    // Already capturing on the same permission lease after the playback receipt.
+    // Persistence may still have been finishing; do not reopen the recorder or lose its input.
+    if (this.capturePrimed) {
+      if (this.closing || Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
+      this.capturePrimed = false;
+      if (this.queuedFinal !== null) {
+        const text = this.queuedFinal; this.queuedFinal = null;
+        this.callbacks.onDraftFinal(text);
+      }
+      return;
+    }
+    if ((this.micStop && !this.playbackInput) || this.finalizingInput || this.preparedTurn) return;
+    const generation = this.playbackInput ? this.listeningGeneration : ++this.listeningGeneration;
+    if (!await this.verifyProcessing() || generation !== this.listeningGeneration || !this.available || this.client?.playbackTurnId != null) return;
     let permitted = false;
     try { permitted = await hasMicPermission(); } catch { /* Native permission failures deny capture. */ }
-    if (generation !== this.listeningGeneration || !this.available || this.micStop) return;
+    if (generation !== this.listeningGeneration || !this.available) return;
     if (!permitted) {
       void this.close();
       this.callbacks.onError?.('마이크 권한을 확인하지 못했어요. 기록을 저장하고 권한 설정을 확인해 주세요.');
@@ -209,11 +226,58 @@ export class LiveConversationEngine {
     if (this.client?.playbackTurnId != null) return;
     this.draft = '';
     this.endpoint = new InputEndpoint(performance.now());
+    const buffered = this.playbackInput?.drain() ?? [];
+    this.playbackInput = null;
+    for (const chunk of buffered) {
+      this.endpoint.audio(performance.now(), pcmLevel(chunk));
+      this.client?.streamAudioChunk(chunk);
+    }
+    if (!this.micStop) this.openCapture(generation);
+    await this.micStop?.ready;
+    if (this.closing || generation !== this.listeningGeneration) return;
+    this.pollEndpoint(generation);
+  }
+
+  private primeListening(): void {
+    if (this.closing || !this.available || !this.micStop || !this.playbackInput) return;
+    if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
+    const buffered = this.playbackInput.drain();
+    this.playbackInput = null;
+    this.capturePrimed = true;
+    this.queuedFinal = null;
+    this.endpoint = new InputEndpoint(performance.now());
+    for (const chunk of buffered) {
+      this.endpoint.audio(performance.now(), pcmLevel(chunk));
+      this.client?.streamAudioChunk(chunk);
+    }
+    this.pollEndpoint(this.listeningGeneration);
+  }
+
+  private emitFinal(text: string): void {
+    if (this.capturePrimed) this.queuedFinal = text;
+    else this.callbacks.onDraftFinal(text);
+  }
+
+  private openCapture(generation: number): void {
     this.micStop = startMicStream({
       onData: (chunkB64) => {
         if (this.closing || generation !== this.listeningGeneration) return;
         if (Date.now() - this.lastAccessCheck >= 5000) { this.denyProcessing(); return; }
-        try { this.endpoint?.audio(performance.now(), pcmLevel(chunkB64)); }
+        try {
+          const level = pcmLevel(chunkB64);
+          if (this.playbackInput) {
+            if (this.playbackInput.push(chunkB64, level)) {
+              this.bargeRequested = true;
+              this.bargeStop = stopPlayback();
+              void this.bargeStop.catch(() => {
+                this.callbacks.onError?.('음성 재생 중지를 확인하지 못했어요. 대화를 회수해 주세요.');
+                void this.close();
+              });
+            }
+            return; // Never send input before the server acknowledges the playback receipt.
+          }
+          this.endpoint?.audio(performance.now(), level);
+        }
         catch {
           this.callbacks.onError?.('마이크 입력을 확인하지 못했어요. 대화를 회수해 주세요.');
           void this.close();
@@ -224,9 +288,9 @@ export class LiveConversationEngine {
       onError: (e) => {
         if (this.closing || generation !== this.listeningGeneration) return;
         this.callbacks.onError?.(e instanceof Error ? e.message : String(e));
+        void this.close();
       },
     });
-    this.pollEndpoint(generation);
   }
 
   /** 청취 종료 — 확정 전사를 콜백으로 넘기고 반환한다(빈 문자열 = 미인식). */
@@ -235,6 +299,7 @@ export class LiveConversationEngine {
     this.clearSilenceTimer();
     const microphone = this.micStop;
     this.micStop = null;
+    this.playbackInput = null;
     const text = this.draft.trim();
     try { microphone?.stop(); }
     catch {
@@ -242,7 +307,7 @@ export class LiveConversationEngine {
       void this.close();
       return ''; // Native failure is not a completed utterance.
     }
-    if (microphone && !this.closing && notifyFinal) this.callbacks.onDraftFinal(text);
+    if (microphone && !this.closing && notifyFinal) this.emitFinal(text);
     return text;
   }
 
@@ -259,7 +324,7 @@ export class LiveConversationEngine {
       if (turn === 'timeout' || !this.draft.trim()) throw new Error('input');
       this.preparedTurn = turn;
       this.finalizingInput = false;
-      this.callbacks.onDraftFinal(this.draft.trim());
+      this.emitFinal(this.draft.trim());
     } catch {
       if (!this.closing) {
         this.callbacks.onError?.('말씀을 확인하지 못했어요. 담당자가 확인해 주세요.');
@@ -269,7 +334,8 @@ export class LiveConversationEngine {
   }
 
   get isListening(): boolean {
-    return this.micStop !== null;
+    // The controller's input cycle stays alive while activityEnd awaits its transcription/response.
+    return (this.micStop !== null && this.playbackInput === null) || this.finalizingInput;
   }
 
   /**
@@ -293,13 +359,27 @@ export class LiveConversationEngine {
   }
 
   /** 턴 음성(base64 PCM 청크)을 재생하고 완료를 기다린다. */
-  async playTurn(chunksB64: string[]): Promise<PlaybackResult> {
+  async playTurn(chunksB64: string[], continueListening = true): Promise<PlaybackResult | 'barge_in'> {
     if (!await this.verifyProcessing()) return 'interrupted';
     const client = this.client;
     const receipt = client?.playbackTurnId;
     try {
-      const result = await playPcmTurn(chunksB64);
+      if (!await hasMicPermission() || this.closing) throw new Error('MIC_PERMISSION');
+      this.bargeRequested = false;
+      this.bargeStop = null;
+      this.playbackInput = new BargeInBuffer();
+      this.draft = '';
+      this.openCapture(++this.listeningGeneration);
+      await this.micStop?.ready;
+      if (this.closing) return 'interrupted';
+      const result = this.bargeRequested ? 'interrupted' : await playPcmTurn(chunksB64);
+      await this.bargeStop;
       if (this.closing || this.client !== client) return 'interrupted';
+      if (this.bargeRequested && result !== 'empty') {
+        if (receipt != null) client?.reportPlayback(receipt, 'interrupted');
+        if (continueListening) this.primeListening();
+        return client?.isConnected ? 'barge_in' : 'interrupted';
+      }
       if (result !== 'completed') {
         this.callbacks.onError?.('음성 재생이 중단됐어요. 담당자가 대화를 회수해 주세요.');
         await this.close();
@@ -307,6 +387,7 @@ export class LiveConversationEngine {
         client?.reportPlayback(receipt, result);
         if (!client?.isConnected) return 'interrupted';
       }
+      if (result === 'completed' && continueListening) this.primeListening();
       return result;
     } catch (e) {
       console.warn('[giokon] 음성 재생 실패', e);
@@ -327,6 +408,9 @@ export class LiveConversationEngine {
     this.clearSilenceTimer();
     const microphone = this.micStop;
     this.micStop = null;
+    this.playbackInput = null;
+    this.capturePrimed = false;
+    this.queuedFinal = null;
     const client = this.client;
     this.client = null;
     let failed = this.failedStopDraft !== null;
@@ -342,6 +426,7 @@ export class LiveConversationEngine {
     } catch { failed = true; }
     void (async () => {
       try { await stopPlayback(); } catch { failed = true; }
+      try { await closeMicAudio(); } catch { failed = true; }
       if (failed) {
         try { this.callbacks.onError?.('오디오 정리를 완료하지 못했어요. 앱의 마이크와 재생 상태를 확인해 주세요.'); }
         catch { /* Consumer errors must not strand cleanup callers. */ }

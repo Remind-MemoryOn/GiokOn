@@ -5,6 +5,7 @@ import ts from 'typescript'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseVoiceResumeContext } from '@giokon/core'
 import { InputEndpoint, pcmLevel } from './endpoint'
+import { BargeInBuffer } from './barge-in'
 import { parseVoiceRelayUrl, VOICE_RELAY_MISSING_MESSAGE } from './relay-config'
 
 const RELAY = 'wss://voice.example.test/voice'
@@ -18,6 +19,7 @@ function engineApi(configured: string | undefined = RELAY, unset = false) {
   const stopPlayback = vi.fn(async () => {})
   const playPcmTurn = vi.fn(async (): Promise<string> => 'completed')
   const reportPlayback = vi.fn()
+  let playbackId: number | null = null
   const canProcess = vi.fn(async () => true)
   const micPermission = vi.fn(async () => true)
   const send = vi.fn(async (): Promise<{ text: string; audioChunksB64: string[] }> => ({ text: 'synthetic', audioChunksB64: [] }))
@@ -37,18 +39,111 @@ function engineApi(configured: string | undefined = RELAY, unset = false) {
     require: (name: string) => {
       if (name === '@giokon/core') return { parseVoiceResumeContext }
       if (name === '@giokon/data') return { getSession: async () => ({ access_token: 'synthetic-jwt' }), canProcessSession: canProcess }
-      if (name === './client') return { GeminiLiveClient: class { constructor(callbacks: {onDraft: (text: string) => void}, relay: unknown) { connections(relay); draft = callbacks.onDraft; clientCallbacks = callbacks as never }; isConnected = true; playbackTurnId: number | null = null; reportPlayback = reportPlayback; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
+      if (name === './client') return { GeminiLiveClient: class { constructor(callbacks: {onDraft: (text: string) => void}, relay: unknown) { connections(relay); draft = callbacks.onDraft; clientCallbacks = callbacks as never }; isConnected = true; get playbackTurnId() { return playbackId }; reportPlayback = (id: number, result: string) => {reportPlayback(id,result); playbackId=null;}; connect = connect; close = close; sendUserTurn = send; streamAudioChunk = streamAudio } }
       if (name === './relay-config') return { voiceRelayUrl: () => parseVoiceRelayUrl(relayUrl), VOICE_RELAY_MISSING_MESSAGE }
       if (name === './endpoint') return { InputEndpoint, pcmLevel }
-      if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic, hasMicPermission: micPermission }
+      if (name === './barge-in') return { BargeInBuffer }
+      if (name === './mic') return { micStreamingSupported: () => true, startMicStream: startMic, hasMicPermission: micPermission, closeMicAudio: vi.fn(async () => {}) }
       if (name === './player') return { stopPlayback, playPcmTurn }
       throw new Error(name)
     },
   })
-  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, micPermission, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval, client: () => clientCallbacks }
+  return { exports, connections, fetchMock, connect, close, stopPlayback, playPcmTurn, reportPlayback, canProcess, micPermission, send, startMic, micStop, streamAudio, draft: (text: string) => draft(text), tick: () => tick(), clearInterval, client: () => clientCallbacks, setPlaybackId: (id: number) => {playbackId=id;} }
 }
 
 afterEach(() => vi.useRealTimers())
+
+describe('post-AEC capture during TTS', () => {
+  const pcm = Buffer.alloc(640, 16).toString('base64');
+  const quiet = Buffer.alloc(640).toString('base64');
+  type Engine = ListeningEngine & {playTurn(chunks: string[]): Promise<string>; readonly isListening: boolean};
+  it('stops TTS once, reports interruption, and forwards the buffered beginning only after the receipt', async () => {
+    const api=engineApi(); const error=vi.fn();
+    const engine=await api.exports.acquireLiveEngine('key',{onDraftFinal:vi.fn(),onError:error},'session') as Engine;
+    api.setPlaybackId(1);
+    let finish!: (value:string) => void;
+    api.playPcmTurn.mockImplementation(() => new Promise(resolve=>{finish=resolve;}));
+    api.stopPlayback.mockImplementation(async () => {finish('interrupted');});
+    const playing=engine.playTurn(['pcm']);
+    await vi.waitFor(()=>expect(api.playPcmTurn).toHaveBeenCalled());
+    const audio=api.startMic.mock.calls[0][0].onData;
+    for(let i=0;i<20;i++) audio(quiet);
+    expect(api.stopPlayback).not.toHaveBeenCalled();
+    for(let i=0;i<11;i++) audio(pcm);
+    expect(api.streamAudio).not.toHaveBeenCalled();
+    expect(await playing).toBe('barge_in');
+    expect(api.reportPlayback).toHaveBeenCalledExactlyOnceWith(1,'interrupted');
+    expect(api.stopPlayback).toHaveBeenCalledOnce();
+    await engine.startListening();
+    expect(api.startMic).toHaveBeenCalledOnce();
+    expect(api.streamAudio.mock.calls.filter(([chunk])=>chunk===pcm)).toHaveLength(11);
+    expect(api.reportPlayback.mock.invocationCallOrder[0]).toBeLessThan(api.streamAudio.mock.invocationCallOrder[0]);
+    expect(error).not.toHaveBeenCalled(); await api.exports.closeLiveEngine();
+  });
+  it('keeps capture across a naturally completed playback and ignores late PCM after retrieval', async () => {
+    const api=engineApi();
+    const engine=await api.exports.acquireLiveEngine('key',{onDraftFinal:vi.fn()},'session') as Engine;
+    api.setPlaybackId(1); expect(await engine.playTurn(['pcm'])).toBe('completed');
+    const audio=api.startMic.mock.calls[0][0].onData;
+    audio(pcm); await engine.startListening();
+    expect(api.startMic).toHaveBeenCalledOnce();
+    expect(api.streamAudio).toHaveBeenCalledWith(pcm);
+    await api.exports.closeLiveEngine(); const count=api.streamAudio.mock.calls.length;
+    audio(pcm); expect(api.streamAudio).toHaveBeenCalledTimes(count);
+  });
+  it('never sends a receipt when native playback stop fails', async () => {
+    const api=engineApi(), error=vi.fn();
+    const engine=await api.exports.acquireLiveEngine('key',{onDraftFinal:vi.fn(),onError:error},'session') as Engine;
+    api.setPlaybackId(1); let finish!: (value:string) => void;
+    api.playPcmTurn.mockImplementation(() => new Promise(resolve=>{finish=resolve;}));
+    api.stopPlayback.mockImplementation(async () => {finish('interrupted'); throw new Error('native stop');});
+    const playing=engine.playTurn(['pcm']); await vi.waitFor(()=>expect(api.playPcmTurn).toHaveBeenCalled());
+    for(let i=0;i<10;i++) api.startMic.mock.calls[0][0].onData(pcm);
+    expect(await playing).toBe('interrupted'); expect(api.reportPlayback).not.toHaveBeenCalled();
+    expect(api.streamAudio).not.toHaveBeenCalled(); expect(api.close).toHaveBeenCalled();
+    await api.exports.closeLiveEngine();
+  });
+  it('streams during a slow observation save, but queues the completed input until its controller is ready', async () => {
+    vi.useFakeTimers(); const api=engineApi(), final=vi.fn(), error=vi.fn();
+    const engine=await api.exports.acquireLiveEngine('key',{onDraftFinal:final,onError:error},'session') as Engine;
+    api.setPlaybackId(1);
+    let finish!: (value:string)=>void;
+    api.playPcmTurn.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+    api.stopPlayback.mockImplementation(async()=>{finish('interrupted');});
+    const playing=engine.playTurn(['pcm']);
+    await vi.advanceTimersByTimeAsync(0);
+    const audio=api.startMic.mock.calls[0][0].onData;
+    for(let i=0;i<10;i++) audio(pcm);
+    await playing;
+    // Controller deliberately has not called startListening yet (its save is still pending).
+    for(let i=0;i<150;i++) {audio(pcm); await vi.advanceTimersByTimeAsync(20);}
+    expect(api.streamAudio).toHaveBeenCalledTimes(160);
+    api.draft('합성 시험 답변');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(final).not.toHaveBeenCalled();
+    await api.tick(); // Simulate the still-successful periodic permission lease refresh.
+    await engine.startListening();
+    expect(final).toHaveBeenCalledExactlyOnceWith('합성 시험 답변');
+    expect(error).not.toHaveBeenCalled(); await api.exports.closeLiveEngine();
+  });
+  it('keeps the input cycle alive if saving finishes while the relay response is still pending', async () => {
+    vi.useFakeTimers(); const api=engineApi(), final=vi.fn();
+    const engine=await api.exports.acquireLiveEngine('key',{onDraftFinal:final},'session') as Engine;
+    api.setPlaybackId(1); await engine.playTurn(['pcm']);
+    let respond!: (value:{text:string;audioChunksB64:string[]})=>void;
+    api.send.mockImplementationOnce(()=>new Promise(resolve=>{respond=resolve;}));
+    api.startMic.mock.calls[0][0].onData(pcm);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(api.micStop).toHaveBeenCalledOnce();
+    await engine.startListening();
+    expect(engine.isListening).toBe(true);
+    expect(final).not.toHaveBeenCalled();
+    api.draft('합성 답변'); respond({text:'검증된 응답',audioChunksB64:['AQACAA==']});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(final).toHaveBeenCalledExactlyOnceWith('합성 답변');
+    await api.exports.closeLiveEngine();
+  });
+});
 
 describe('automatic input endpoint integration', () => {
   async function listening() {
@@ -113,7 +208,7 @@ describe('automatic input endpoint integration', () => {
   it('accepts a one-syllable reply once after the extra pause', async () => {
     const f = await listening()
     f.api.draft('네')
-    await vi.advanceTimersByTimeAsync(5999)
+    await vi.advanceTimersByTimeAsync(1999)
     expect(f.final).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(251)
     expect(f.final).toHaveBeenCalledExactlyOnceWith('네')
@@ -129,9 +224,9 @@ describe('automatic input endpoint integration', () => {
   it('keeps listening while PCM continues after the last transcript', async () => {
     const f = await listening()
     f.api.draft('고향 이야기')
-    await vi.advanceTimersByTimeAsync(3000)
+    await vi.advanceTimersByTimeAsync(1000)
     f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
-    await vi.advanceTimersByTimeAsync(3000)
+    await vi.advanceTimersByTimeAsync(1500)
     expect(f.final).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(500)
     expect(f.final).toHaveBeenCalledExactlyOnceWith('고향 이야기')
@@ -296,7 +391,7 @@ describe('relay engine session binding', () => {
     const api = engineApi()
     api.playPcmTurn.mockResolvedValue(outcome)
     const engine = await api.exports.acquireLiveEngine('key', {}, 'session') as { playTurn: (chunks: string[]) => Promise<string>; client: { playbackTurnId: number | null } }
-    engine.client.playbackTurnId = 1
+    api.setPlaybackId(1)
     expect(await engine.playTurn(['synthetic'])).toBe(outcome)
     if (outcome === 'completed') expect(api.reportPlayback).toHaveBeenCalledWith(1, 'completed')
     else { expect(api.reportPlayback).not.toHaveBeenCalled(); expect(api.close).toHaveBeenCalled() }
@@ -379,7 +474,7 @@ describe('relay engine session binding', () => {
     const api = engineApi()
     await api.exports.acquireLiveEngine('key', {}, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     expect(api.connections).toHaveBeenCalledExactlyOnceWith({ url: RELAY, sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      accessToken: 'synthetic-jwt', playbackReceipts: true })
+      accessToken: 'synthetic-jwt', playbackReceipts: true, bargeIn: true })
     expect(api.connect).toHaveBeenCalledOnce()
   })
 })

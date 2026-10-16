@@ -117,6 +117,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let safetyInput = ''
   let output = '', turns = 0, queuedBytes = 0, receivedBytes = 0
   let outputQueued = 0
+  let inputEndedAt = 0
   let protocolVersion = 1, awaitingPlayback: number | null = null
   let responseTimer: ReturnType<typeof setTimeout> | undefined
   let playbackTimer: ReturnType<typeof setTimeout> | undefined
@@ -328,9 +329,9 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (!authenticated) {
         const a = msg.relayAuth
         if (!a || typeof a.sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(a.sessionId) || typeof a.accessToken !== 'string' || a.accessToken.length > 8192) throw new Error('AUTH_REQUIRED')
-        if (a.protocolVersion !== undefined && a.protocolVersion !== 2 && a.protocolVersion !== 3) throw new Error('UNSUPPORTED_PROTOCOL')
+        if (a.protocolVersion !== undefined && ![2, 3, 4].includes(a.protocolVersion)) throw new Error('UNSUPPORTED_PROTOCOL')
         protocolVersion = a.protocolVersion ?? 1
-        if (a.resumeContext !== undefined && protocolVersion !== 3) throw new Error('UNSUPPORTED_RESTORATION')
+        if (a.resumeContext !== undefined && protocolVersion < 3) throw new Error('UNSUPPORTED_RESTORATION')
         const resumeContext = a.resumeContext === undefined ? undefined : parseVoiceResumeContext(a.resumeContext)
         const acquired = await deps.authorize(a.sessionId, a.accessToken)
         if (abort.signal.aborted) { acquired.release(); return }
@@ -418,11 +419,13 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             // 마무리 인사로 바꿀 응답은 모델 문장을 쓰지 않으므로 길이를 보지 않는다.
             if (output.length > 200 && !(closingBy && !farewellSent)) return close()
             if (!content.turnComplete) return
+            const modelCompletedAt = Date.now()
             clearTimeout(responseTimer); responseTimer = undefined
             if (!await allowed()) return close()
             let result: Awaited<ReturnType<typeof synthesizeValidated>>
             // T21.11 — 마무리 중이면 모델 응답 대신 고정 인사 한 문장(출력 검열·TTS 는 똑같이 거친다).
             const farewell = closingBy !== null && !farewellSent
+            const synthesisStartedAt = Date.now()
             try { result = await (deps.synthesize ?? synthesizeValidated)(farewell ? ELDER_CLOSING_FAREWELL : output.trim(), deps.geminiTts, abort.signal) }
             catch (error) {
               if (!abort.signal.aborted) {
@@ -435,6 +438,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               }
               return close('SYNTHESIS_FAILED')
             }
+            const synthesisEndedAt = Date.now()
             if (!await allowed()) return close()
             // 원격 일시정지·종료를 알린 뒤에는 새 AI 음성을 어르신께 보내지 않는다.
             if (controlled) return
@@ -443,6 +447,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               playbackTimer = setTimeout(close, 95000)
             }
             send({ ...(protocolVersion >= 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
+            log('turn_latency', {turnId: turns, modelMs: modelCompletedAt - inputEndedAt,
+              synthesisMs: synthesisEndedAt - synthesisStartedAt, totalMs: Date.now() - inputEndedAt})
             output = ''; pending = false
             if (farewell) farewellSent = true
             maybeFinish()  // v1 은 재생 확인이 없다 — 보낸 뒤 바로(v2+ 는 awaitingPlayback 이 남아 재생 확인을 기다린다)
@@ -454,11 +460,16 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (msg.setup && !setupSeen) { setupSeen = true; return }
       if (msg.relayPlayback) {
         const receipt = msg.relayPlayback
+        const interrupted = protocolVersion >= 4 && receipt.result === 'interrupted'
         if (protocolVersion < 2 || !ready || pending || awaitingPlayback === null ||
-            Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || receipt.result !== 'completed') return close()
+            Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || (receipt.result !== 'completed' && !interrupted)) return close()
         if (!await allowed()) return close()
         clearTimeout(playbackTimer); awaitingPlayback = null
+        log('playback_receipt', {turnId: receipt.turnId, result: receipt.result})
         maybeFinish()
+        if (interrupted && !controlled && !timeUp && !closingBy) {
+          forward({clientContent:{turns:[{role:'user',parts:[{text:'(내부 지시) 직전 AI 음성의 재생이 중단되었습니다. 어르신이 끝까지 들었다고 가정하지 마세요. 이어지는 어르신 말씀부터 듣고 답하세요.'}]}],turnComplete:false}})
+        }
         flushDirective()
         return
       }
@@ -512,6 +523,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         // 어르신 대답만 센다 — 첫 인사·이어가기 요청(텍스트만)은 단계 전환 근거가 아니다.
         if (activityAudio) phaseTurns++
         pending = true; activity = false; output = ''
+        inputEndedAt = Date.now()
         // Leave the remaining 15 seconds of the app's 60-second wait for synthesis.
         // Partial output never extends this deadline.
         responseTimer = setTimeout(() => {

@@ -179,6 +179,20 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     expect(socket.sent.at(-1)).toEqual({ relayPlayback: { turnId: 1, result: 'completed' } });
     const next = client.sendUserTurn('next'); client.close(); await next;
   });
+  it('v4 reports interruption honestly and unlocks the next captured turn', async () => {
+    const client = new GeminiLiveClient({}, { ...RELAY, playbackReceipts: true, bargeIn: true });
+    const connecting = client.connect(); const socket = Socket.all[0]; socket.onopen!();
+    expect(socket.sent[0]).toEqual({relayAuth:{sessionId:'session',accessToken:'synthetic',protocolVersion:4}});
+    await socket.receive({setupComplete:{relayProtocolVersion:4}}); await connecting;
+    const turn = client.sendUserTurn('test');
+    await socket.receive({relayOutput:{turnId:1},serverContent:{outputTranscription:{text:'질문'},turnComplete:true}}); await turn;
+    client.reportPlayback(1,'interrupted');
+    expect(socket.sent.at(-1)).toEqual({relayPlayback:{turnId:1,result:'interrupted'}});
+    expect(client.isConnected).toBe(true);
+    client.streamAudioChunk('AQACAA==');
+    expect(socket.sent.at(-1)).toEqual({realtimeInput:{audio:{data:'AQACAA==',mimeType:'audio/pcm;rate=16000'}}});
+    client.close();
+  });
 
   it('refuses an old relay when playback receipts were requested', async () => {
     const client = new GeminiLiveClient({}, { url: 'wss://voice.example.test/voice', sessionId: 'session', accessToken: 'synthetic', playbackReceipts: true });

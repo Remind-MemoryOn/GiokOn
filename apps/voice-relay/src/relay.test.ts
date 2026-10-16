@@ -60,6 +60,20 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('v4 accepts an interrupted playback receipt and then a new elder turn without claiming completion', async () => {
+    const log = vi.fn()
+    const f = await fixture(true, {}, {log}); await f.start(4); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 1)).toBe(true))
+    f.send({ relayPlayback: { turnId: 1, result: 'interrupted' } })
+    f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 2)).toBe(true))
+    expect(f.inputs.some(x => x.clientContent?.turns?.[0]?.parts?.[0]?.text?.includes('재생이 중단'))).toBe(true)
+    expect(log).toHaveBeenCalledWith('playback_receipt', {turnId:1,result:'interrupted'})
+    expect(log).toHaveBeenCalledWith('turn_latency', {turnId:1,modelMs:expect.any(Number),synthesisMs:expect.any(Number),totalMs:expect.any(Number)})
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/확인한 합성|AQACAA|오늘 어떤/)
+    f.send({ relayPlayback: { turnId: 1, result: 'interrupted' } })
+    await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED))
+  })
   it('distinguishes silent PCM from quiet PCM using only aggregate levels', async () => {
     const log = vi.fn()
     const f = await fixture(false, {}, { log }); await f.start(2)
@@ -396,10 +410,10 @@ describe('T21.12 — 세션 10분 상한(서버 경과 시간)', () => {
     await once(f.app, 'close')
   }, CONTROL_CLOSE_GRACE_MS + 6000)
 
-  it('lets an AI reply already in progress finish and play, refusing new elder speech meanwhile, then ends after the playback receipt', async () => {
+  it.each([[2, 'completed'], [4, 'interrupted']] as const)('v%s lets an AI reply finish or be interrupted at the time limit, then ends without accepting more input (%s)', async (protocolVersion, result) => {
     const f = await fixture()
     Object.assign(f.server, { phase: 'closing', phaseElapsedSeconds: 60, elapsedSeconds: SESSION_LIMIT_SECONDS - 5, targetMinutes: 10 })
-    await f.start(2)
+    await f.start(protocolVersion)
     let finish!: (value: { text: string; pcm: Buffer }) => void
     f.synthesize.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
     f.turn()
@@ -415,8 +429,12 @@ describe('T21.12 — 세션 10분 상한(서버 경과 시간)', () => {
     await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 1)).toBe(true))
     await new Promise(r => setTimeout(r, 100))
     expect(ended(f)).toHaveLength(0)                       // 재생 확인 전에는 끝내지 않는다
-    f.send({ relayPlayback: { turnId: 1, result: 'completed' } })
+    f.send({ relayPlayback: { turnId: 1, result } })
     await vi.waitFor(() => expect(ended(f)).toHaveLength(1))
+    const inputsAfterReceipt = f.inputs.length
+    f.turn()
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(f.inputs).toHaveLength(inputsAfterReceipt)
     await once(f.app, 'close')
   }, CONTROL_CLOSE_GRACE_MS + 8000)
 
@@ -530,9 +548,9 @@ describe('T21.11 — 휴식 요청·거부는 인사 한 문장 뒤 종료(위�
 })
 
 describe('T21.4 · T25.17 — 위험 발화 즉시 기록 · 사건 id · 재시도', () => {
-  it('records the safety event under the relay-made event id before stopping and hands the id to the app', async () => {
+  it.each([2, 4])('v%s records the safety event before stopping and hands its id to the app', async protocolVersion => {
     const recordSafety = vi.fn(async () => {})
-    const f = await fixture(true, { recordSafety }); await f.start(2)
+    const f = await fixture(true, { recordSafety }); await f.start(protocolVersion)
     const closed = once(f.app, 'close')
     // 조각으로 나뉘어 와도 감지 창(연결 단위)으로 잡는다 — "죽고 " + "싶어요"
     f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '요즘은 그냥 죽고 ' } } }))

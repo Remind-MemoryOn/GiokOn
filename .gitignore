@@ -31,6 +31,8 @@ coverage/
 .expo-shared/
 android/
 ios/
+!apps/mobile/modules/giokon-duplex/android/
+!apps/mobile/modules/giokon-duplex/ios/
 *.jks
 *.keystore
 *.pem

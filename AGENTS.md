@@ -84,6 +84,7 @@
   - 키는 앱에 없다. Edge **`live-token`** 이 JWT·자격·동의·사용량을 검사해 ephemeral token 과 **모델 ID** 를 준다.
     **모델 교체는 `GEMINI_LIVE_MODEL` 시크릿으로만**(`.env.example` 은 런타임에 안 읽힌다). 자동 VAD off·NO_INTERRUPTION 은 중계 `relay.ts` setup 에만 있다.
   - 단계 진행(`session_tick`·`advance_session_phase`)·원격 제어·턴 식별·재생 영수증(v2)·복구 맥락(v3)은 **서버(중계+DB)가 권위**다.
+  - 재생 중 발화는 `GiokonDuplex` 로컬 Expo 모듈(Android AEC / iOS VoiceProcessing)로 처리한다. v4의 `interrupted` 영수증은 완료가 아니다. 중단 뒤 PCM은 바로 전송하되 입력 채택은 재생 관찰 저장 뒤에 한다. 새 네이티브 APK/IPA 필요, 실기기 에코 품질은 `docs/tasks.md` 상태를 따른다.
   - **생성문 검증은 재사용 자산**: `packages/core/src/generated-session.ts` 가 모든 문장에 어르신 발화 근거(`turnId`+인용)를 강제하고 진단·효능 표현을 막는다.
     프로그램 일지도 이 계약을 확장해서 쓴다(새로 만들지 말 것).
   - 안전 계층(`assessUtterance`·`screenAiUtterance`·`buildCaregiverAlert`·`buildSafetyEventDraft`/`safetyEventDraftFor`)은 **절대 유지**.
@@ -154,7 +155,7 @@
 - **Windows Android 빌드**: pnpm 가상 저장소는 루트 `.pnpm`, 폴더 최대 32자(긴 CMake 경로 방지). `apps/mobile/plugins/withWindowsCmake.js`가 Windows CMake 중간 산출물 경로도 단축한다. 기존 네이티브 폴더에는 `expo prebuild --platform android --no-install`로 반영. 설치 경로 변경 후 Android `build/generated/autolinking/autolinking.json` 캐시를 재생성한다.
 - **lockfile**: `pnpm add/remove` 가 mobile↔web 사이 eslint·vite peer(jiti·typescript) 배정을 뒤섞는다 — `--frozen-lockfile`·웹 빌드·린트·`expo export` 로 확인.
 - **Expo**: `package.json` BOM 이 `eas init` 을 깨뜨린다(`check:bom`) · Android API 36 은 `expo-build-properties` 로 명시 고정 · `react-native-worklets` 0.5.1 고정 + 앱 직접 의존성 필수(override만 두면 EAS Gradle이 찾지 못함) ·
-  `live/player.ts` 는 `expo-file-system/legacy` · `expo-notifications` 등 네이티브 모듈 추가는 **EAS 재빌드 필요** ·
+  `live/player.ts` 는 녹음과 같은 `GiokonDuplex` 경로를 사용한다(별도 expo-av 재생은 AEC 경로를 깨뜨림) · `expo-notifications` 등 네이티브 모듈 추가는 **EAS 재빌드 필요** ·
   `react-native-live-audio-stream@1.1.1` 의 New Architecture 호환은 실기기 미검증. RN 상향은 typecheck 가 아니라 **Metro 번들(Android·iOS) 성공**으로 증명한다.
 - **번들 ID 변경 시** EAS·구글/카카오/네이버 콘솔의 패키지명·키해시·URL 스킴도 갱신해야 한다(사용자 작업).
 - **R010 은 "부분 해결"** — 이미 열린 공급자 연결을 DB 변경만으로 끊었다고 주장하지 않는다(서버 통제는 중계가 맡는다).

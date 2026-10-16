@@ -8,7 +8,7 @@ function fixture() {
   const events: string[] = [];
   const engine = { requestOpener: vi.fn(async () => ({text:'질문',audioChunksB64:['pcm']})),
     submitUserTurn: vi.fn(async () => ({status:'ok' as const,text:'다음 질문',chunksB64:['pcm']})),
-    playTurn: vi.fn(async () => {events.push('play'); return 'completed' as 'completed'|'interrupted'|'empty';}),
+    playTurn: vi.fn(async () => {events.push('play'); return 'completed' as 'completed'|'interrupted'|'empty'|'barge_in';}),
     startListening: vi.fn(async () => {events.push('listen');}), isListening: true, close: vi.fn(async()=>{}) };
   const ports: AutomaticPorts = { current:()=>true, ready:vi.fn(async()=>true),
     connect:vi.fn(async (cb,_failure,_resuming,remote)=>{onInput=cb; onRemote=remote; return engine;}), cancelPending:vi.fn(async()=>{}),
@@ -58,6 +58,21 @@ it.each(['interrupted','empty'] as const)('does not open the microphone after %s
   const f=fixture(); f.engine.playTurn.mockResolvedValue(result);
   await f.controller.start(); expect(f.engine.startListening).not.toHaveBeenCalled();
   expect(f.ports.playback).toHaveBeenCalledWith(result);
+});
+it('saves interrupted playback before continuing to the buffered elder input',async()=>{
+  const f=fixture(); f.engine.playTurn.mockImplementation(async () => {f.events.push('play'); return 'barge_in';});
+  await f.controller.start();
+  expect(f.ports.playback).toHaveBeenCalledExactlyOnceWith('interrupted');
+  expect(f.events).toEqual(['output','save','play','save','listen']);
+  expect(f.engine.close).not.toHaveBeenCalled();
+});
+it('does not continue after interruption evidence fails to save',async()=>{
+  const f=fixture(); f.engine.playTurn.mockResolvedValue('barge_in');
+  vi.mocked(f.ports.save).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+  await f.controller.start();
+  expect(f.ports.playback).toHaveBeenCalledWith('interrupted');
+  expect(f.engine.startListening).not.toHaveBeenCalled();
+  expect(f.engine.close).toHaveBeenCalledOnce();
 });
 it('records completed playback before opening the next input',async()=>{
   const f=fixture();

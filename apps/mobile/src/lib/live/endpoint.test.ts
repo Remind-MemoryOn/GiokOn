@@ -4,8 +4,8 @@ import { InputEndpoint, pcmLevel } from './endpoint';
 it('ends voiced capture after a conservative pause even when transcription waits for activityEnd', () => {
   const input = new InputEndpoint(0);
   input.audio(1000, 0.1);
-  expect(input.check(6999, '')).toBe(null);
-  expect(input.check(7000, '')).toBe('complete');
+  expect(input.check(2999, '')).toBe(null);
+  expect(input.check(3000, '')).toBe('complete');
 });
 
 it('waits through thinking time then stops an empty capture', () => {
@@ -18,21 +18,21 @@ it('does not mistake a transcription delay for silence while PCM is active', () 
   input.transcript(1000);
   input.audio(4000, 0.1);
   expect(input.check(5000, '고향 이야기')).toBe(null);
-  expect(input.check(7500, '고향 이야기')).toBe('complete');
+  expect(input.check(6000, '고향 이야기')).toBe('complete');
 });
-it('gives short acknowledgements longer time without discarding one syllable', () => {
+it('accepts even a one-syllable acknowledgement after two seconds', () => {
   const input = new InputEndpoint(0);
   input.transcript(1000);
-  expect(input.check(4500, '네')).toBe(null);
-  expect(input.check(7000, '네')).toBe('complete');
+  expect(input.check(2999, '네')).toBe(null);
+  expect(input.check(3000, '네')).toBe('complete');
 });
 it('continues when speech resumes during a thinking pause', () => {
   const input = new InputEndpoint(0);
   input.transcript(1000);
-  input.audio(4000, 0.1);
-  input.transcript(5000);
-  expect(input.check(7000, '고향에 살았어요')).toBe(null);
-  expect(input.check(8500, '고향에 살았어요')).toBe('complete');
+  input.audio(2500, 0.1);
+  input.transcript(3000);
+  expect(input.check(4999, '고향에 살았어요')).toBe(null);
+  expect(input.check(5000, '고향에 살았어요')).toBe('complete');
 });
 it('bounds continuous noise and never labels a forced cutoff complete', () => {
   const input = new InputEndpoint(0);

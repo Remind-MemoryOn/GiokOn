@@ -22,7 +22,7 @@ export interface AutomaticEngine {
   requestContinuation?(): Promise<{ text: string; audioChunksB64: string[] } | null>;
   requestOpener(): Promise<{ text: string; audioChunksB64: string[] } | null>;
   submitUserTurn(text: string): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null>;
-  playTurn(chunks: string[]): Promise<'completed' | 'interrupted' | 'empty'>;
+  playTurn(chunks: string[], continueListening?: boolean): Promise<'completed' | 'interrupted' | 'empty' | 'barge_in'>;
   startListening(): Promise<void>;
   readonly isListening: boolean;
   close(): Promise<void>;
@@ -163,10 +163,13 @@ export class AutomaticConversation {
     if (!await this.ports.save()) throw new Error('save');
     if (!this.alive(generation)) return;
     this.status('speaking');
-    const result = await this.engine!.playTurn(chunks);
-    if (generation === this.generation && this.ports.current()) this.ports.playback(result);
+    const result = await this.engine!.playTurn(chunks, !this.closingForElder);
+    if (generation === this.generation && this.ports.current()) this.ports.playback(result === 'barge_in' ? 'interrupted' : result);
     if (!this.alive(generation)) return;
-    if (result !== 'completed') throw new Error('playback');
+    if (result === 'barge_in') {
+      if (!await this.ports.save()) throw new Error('save interrupted playback');
+      if (!this.alive(generation)) return;
+    } else if (result !== 'completed') throw new Error('playback');
     // The engine has sent the playback receipt. Wait for relayControl ended;
     // reopening the microphone would violate the elder's request to finish.
     if (this.closingForElder) return;
@@ -176,7 +179,7 @@ export class AutomaticConversation {
     if (!this.alive(generation)) return;
     this.status('listening');
     await this.engine!.startListening();
-    if (this.alive(generation) && !this.engine!.isListening) throw new Error('microphone');
+    if (this.alive(generation) && this.phase === 'listening' && !this.engine!.isListening) throw new Error('microphone');
   }
   async pause(): Promise<void> {
     if (this.closingForElder) return this.stop();

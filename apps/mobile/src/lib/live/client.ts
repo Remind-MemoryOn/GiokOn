@@ -24,6 +24,7 @@ export interface VoiceRelayConnection {
   sessionId: string;
   accessToken: string;
   playbackReceipts?: boolean;
+  bargeIn?: boolean;
   resumeContext?: VoiceResumeContext;
 }
 
@@ -114,7 +115,7 @@ export class GeminiLiveClient {
     let resumeContext: VoiceResumeContext | undefined;
     try { if (this.relay.resumeContext) resumeContext = parseVoiceResumeContext(this.relay.resumeContext); }
     catch { return Promise.reject(new Error('대화 복구 이력을 확인하지 못했어요.')); }
-    const protocolVersion = resumeContext ? 3 : this.relay.playbackReceipts ? 2 : 1;
+    const protocolVersion = this.relay.bargeIn ? 4 : resumeContext ? 3 : this.relay.playbackReceipts ? 2 : 1;
     const ws = new WebSocket(this.relay.url);
     this.ws = ws;
 
@@ -263,7 +264,7 @@ export class GeminiLiveClient {
   /** App playback observation, not proof a person heard the output. */
   reportPlayback(turnId: number, result: 'completed' | 'interrupted' | 'empty'): void {
     if (!this.ws || !this.opened || this.awaitingPlayback !== turnId) return;
-    if (result !== 'completed') { this.close(); return; }
+    if (result !== 'completed' && !(this.relay.bargeIn && result === 'interrupted')) { this.close(); return; }
     try {
       this.ws.send(JSON.stringify({ relayPlayback: { turnId, result } }));
       this.awaitingPlayback = null;

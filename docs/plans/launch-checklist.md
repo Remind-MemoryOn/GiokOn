@@ -1,5 +1,8 @@
 # 출시 점검표 — 파일럿 → 정식 출시
 
+> ✅ 2026-10-16 작업 브랜치 구현: TTS 중 에코 제거 녹음·발화 시 재생 중단·중단 관찰 저장·v4 중계 계약·무음 2초 경계. Android 네이티브 컴파일 및 앱 419개 회귀 통과. ⏳ main 병합·중계 배포·새 APK 설치·실제 에코/끼어들기 검증. 3초 이내 응답은 아직 달성 판정하지 않는다. [구현·검증 상태](2026-10-16-duplex-voice-implementation.md).
+
+
 > ✅ 2026-10-15 Android EAS Gradle 실패 수정: Reanimated의 필수 네이티브 peer `react-native-worklets@0.5.1`을 앱 직접 의존성으로 선언했다(override만으로는 앱 루트의 Gradle resolve가 보장되지 않음). `.gitignore`·`.vercelignore` 보강, 저장소 루트 `.easignore` 추가. EAS 실제 업로드 사본에서 소스·워크스페이스 보존 및 비밀/캐시/네이티브 산출물 파일 제외 확인. ⏳ 새 APK 클라우드 빌드 결과와 실기기 T25.16은 별도 확인.
 
 

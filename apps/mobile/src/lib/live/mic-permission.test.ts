@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({ get: vi.fn(), request: vi.fn() }));
 vi.mock('expo-av', () => ({ Audio: { getPermissionsAsync: native.get, requestPermissionsAsync: native.request } }));
+vi.mock('./duplex', () => ({duplexAudio:{}}));
 import { hasMicPermission } from './mic';
 
 afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
