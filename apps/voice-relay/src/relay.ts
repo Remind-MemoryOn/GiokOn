@@ -131,6 +131,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let phaseTurns = 0                      // 현재 단계에서 어르신이 **말한**(음성이 전달된) 턴 수
   let activityAudio = false
   let activityText = ''
+  let audioChunks = 0, audioBytes = 0, signalChunks = 0, inputTranscriptions = 0
   let reviewing = false                   // 위험 발화로 멈추는 중(기록 → 알림 → 닫기)
   // T21.12 — 세션 10분 상한: 새 발화는 받지 않고, 진행 중 AI 발화만 유예 안에서 마친 뒤 종료를 알린다.
   let timeUp = false
@@ -154,6 +155,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       stage: !authenticated ? 'auth' : !ready ? 'setup' : 'conversation',
       reason: reason === undefined ? 'unspecified' : typeof reason === 'string' ? reason : relayErrorCode(reason),
       turns,
+      ...(ready ? { audioChunks, audioBytes, signalChunks, inputTranscriptions } : {}),
     })
     clearTimeout(setupTimer); clearTimeout(lifetime); clearInterval(poll)
     clearTimeout(playbackTimer); clearTimeout(responseTimer); clearTimeout(timeUpTimer); clearTimeout(closingTimer)
@@ -360,6 +362,9 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             const input = p.serverContent?.inputTranscription?.text
             if (typeof input === 'string') {
               if (input.length > 4000) return close()
+              if (input) {
+                if (++inputTranscriptions === 1) log('first_input_transcription')
+              }
               // Transcription ordering is independent of output. Inspect immediately,
               // before the synthesis promise can hold up the normal output queue.
               // A bounded connection window also catches phrases split across frames.
@@ -473,6 +478,13 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (r.audio) {
         if (r.audio.mimeType !== 'audio/pcm;rate=16000' || typeof r.audio.data !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(r.audio.data) || Buffer.from(r.audio.data, 'base64').length % 2) throw new Error('INVALID_AUDIO')
         if (!r.audio.data) throw new Error('INVALID_AUDIO')
+        // 전달 여부와 무음 여부만 집계한다. PCM·발화·개별 음량은 로그에 남기지 않는다.
+        const pcm = Buffer.from(r.audio.data, 'base64')
+        if (++audioChunks === 1) log('first_audio', { bytes: pcm.length })
+        audioBytes += pcm.length
+        let energy = 0
+        for (let offset = 0; offset < pcm.length; offset += 2) energy += (pcm.readInt16LE(offset) / 32768) ** 2
+        if (Math.sqrt(energy / (pcm.length / 2)) >= 0.015) signalChunks++
         if (!activityAudio) {
           forward({ realtimeInput: { activityStart: {} } })
           if (activityText) forward({ realtimeInput: { text: activityText } })

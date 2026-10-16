@@ -60,6 +60,19 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('logs input delivery counts without recording PCM or transcription content', async () => {
+    const log = vi.fn()
+    const f = await fixture(false, {}, { log }); await f.start(2)
+    f.send({ realtimeInput: { activityStart: {} } })
+    f.send({ realtimeInput: { audio: { data: 'AABAQA==', mimeType: 'audio/pcm;rate=16000' } } })
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.audio)).toBe(true))
+    f.peer()!.send(JSON.stringify({ serverContent: { inputTranscription: { text: '합성 점검 발화' } } }))
+    await vi.waitFor(() => expect(f.frames.some(x => x.serverContent?.inputTranscription)).toBe(true))
+    const closed = once(f.app, 'close'); f.app.close(); await closed
+    expect(log).toHaveBeenCalledWith('first_audio', { bytes: 4 })
+    await vi.waitFor(() => expect(log).toHaveBeenCalledWith('closed', expect.objectContaining({ audioChunks: 1, audioBytes: 4, signalChunks: 1, inputTranscriptions: 1 })))
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/AABAQA|합성 점검 발화/)
+  })
   it('converts the installed app text-only opener into a content turn, then keeps audio streaming and playback gates', async () => {
     const f = await fixture(); await f.start(2)
     f.send({ realtimeInput: { activityStart: {} } })

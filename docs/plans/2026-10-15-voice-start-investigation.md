@@ -2,6 +2,9 @@
 
 ## 결론
 
+✅ 2026-10-16 실기기 후속: 08:41:54 세션에서 08:42:13 첫 AI 발화 저장(1건), 마이크 RECORD_AUDIO 실행을 확인했고 사용자가 첫 인사·TTS가 들린다고 확인했다. 08:42:55 APP_CLOSED, 08:42:57 세션 ended. 첫 인사 장애는 통과했지만 **말해도 사용자 입력이 진행되지 않는 문제**는 조사 중이다.
+진단 보강: 중계 `first_audio`·`first_input_transcription` 및 종료 시 audioChunks/audioBytes/signalChunks/inputTranscriptions 집계. signalChunks는 RMS≥0.015인 청크 수이며 사람 발화 판정이 아니다. 원문·PCM·개별 음량은 기록하지 않는다. 새 회귀는 변경 전 실패, 중계 95개·typecheck 통과. ⏳ 진단 배포 및 기기 재연결 후 입력 경계 확인.
+
 ✅ 2026-10-16 후속: 10월 15일 23:20 시도는 `authorized` → `provider_open` → `ready`까지 성공했다. 앞선 인증 수정은 통과했으며, 다음 결함은 **음성 없는 첫 인사를 audio activity로 보내는 요청 형식**이었다.
 23:20:40.794 `ready` 뒤 23:20:41.418 Gemini가 `1007 / Precondition check failed.`로 종료했다.
 동일 키·모델·setup의 실 API 비교에서 `clientContent` 텍스트 턴은 성공, `activityStart → text → activityEnd`는 단계 지시 유무와 무관하게 같은 1007로 실패했다. 음성 포함 activity는 성공했다.
@@ -51,10 +54,10 @@ Supabase API 로그의 시간은 UTC에서 KST로 변환했다. 앱은 okhttp, �
 | 14 | 맥락 조회 | 실제 중계 profiles/chronicle_entries 200 뒤 토큰 요청까지 진행 |
 | 15 | Live 토큰 | **JSON 키 결함 수정·v23 배포. 23:20 실제 요청 authorized/provider_open/ready로 통과 확인** |
 | 16 | Gemini Live | 사용자 별도 점검 성공과 별개로 실제 앱 요청은 setup 후 1007. 단독 키 점검은 앱 프로토콜을 검증하지 않았음 |
-| 17 | 첫 응답 | **텍스트 전용 audio activity 결함 실 API 재현·중계 수정. 실제 중계 코드+Gemini 첫 응답 성공. 운영 앱 재확인 대기** |
-| 18 | TTS | 수정한 실제 중계의 실 API 2턴 합성·PCM 검증 성공. 운영 앱 수신은 재확인 대기 |
-| 19 | 첫 응답 저장 | 발화 기록 0건. 세션 생성/종료 저장과 첫 AI 발화 저장은 별개, 후자 실검증 대기 |
-| 20 | 기기 재생 | 해당 실패 요청은 도달하지 못함. 회귀 통과, 실제 재생 대기 |
+| 17 | 첫 응답 | **텍스트 전용 activity 결함 수정·운영 배포, 08:41 세션 첫 인사 성공 확인** |
+| 18 | TTS | 운영 앱에서 첫 TTS 실제 청취 사용자 확인 |
+| 19 | 첫 응답 저장 | 08:42:13 운영 session_logs role=ai 1건 확인(원문 미조회) |
+| 20 | 기기 재생 | 첫 AI 음성 청취 사용자 확인. 후속 사용자 음성 인식→다음 응답은 미완료 |
 
 ## 다음 검증
 
