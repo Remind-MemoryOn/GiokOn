@@ -43,6 +43,8 @@
 
 ### 2026-10-15 대화 시작 장애 점검
 
+**2026-10-16 저녁 후속:** 구 APK의 14:11 입력은 153청크/626,688바이트 도착, 기준 음량 이상 0·전사 0이었다. `zeroChunks`·`maxRms`를 더한 `45c4f8c` → `audio-level-diag-20261016`(digest `sha256:192c38b2619cf7c495e59d567e1940dc36ecd1231cc891089bcadf0e4f25245b`) → `voice-relay-00008-ch2` 100% 배포, ready 확인. 중계 96개·typecheck 통과. 앱 `3949365`도 EAS 완료·태블릿 교체 설치했고 실제 발화 재검증을 기다린다.
+
 **2026-10-16 입력 진단 배포:** `468f8dc` → `audio-diag-468f8dc`(digest `sha256:76b2631720a4db6f0bda9bea28d496e5f4e41c669c1d3b128f4b7f5f7db44ab7`) → `voice-relay-00007-q9c` 트래픽 100%, 기존 주소 ready 확인. 첫 인사·TTS는 사용자 실기기 확인 완료. 이후 입력 교착은 앱 `3949365`에서 수정했으며 새 APK가 필요하다. 기기 입력 전달 및 후속 응답 검증 상태는 [장애 기록](../plans/2026-10-15-voice-start-investigation.md)을 따른다.
 
 **2026-10-16 후속:** 23:20 실제 앱 요청은 인증·모델 setup까지 성공한 뒤 Gemini 1007로 종료했다. 음성 없는 첫 인사를 audio activity로 보낸 결함을 실 API 비교로 확인하고 중계에서 clientContent로 변환했다. 수동 VAD·출력 검열·재생 영수증은 유지한다. 중계 94개 통과, 수정한 실제 중계+Live/TTS 2턴 합성 성공. `9881a08` → 이미지 `text-opener-9881a08`(digest `sha256:73e92d9dcfe93f1409e4427a405622246e5de035b4c7eaa3bed3e7ff096551a2`) → `voice-relay-00006-5sf` 트래픽 100% 배포 확인. 기존 앱 주소 ready·동일 Origin·가짜 인증 거절 확인. 기존 APK 그대로 재검증하며 태블릿 마이크/저장/재생은 아직 대기다.
