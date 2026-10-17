@@ -19,7 +19,7 @@
 ## 작업
 
 - [x] 1. ✅ 2026-10-16 로컬 구현·회귀. `voice-relay/src/relay.ts`·`mobile/src/lib/live/client.ts`: v4 협의와 중단 영수증. 잘못된 턴/중복/구버전 중단 거부, 중단 뒤 새 입력 허용, 위기/상한 시 입력 차단 회귀.
-- [ ] 2. ✅ Android 구현·네이티브 컴파일, Swift 구현. ⏳ iOS 네이티브 빌드·실기기. `mobile/modules/giokon-duplex`: 로컬 Expo 모듈, Android 동시 입출력+AEC/리소스 정리, iOS VoiceProcessing 동시 입출력. TypeScript 어댑터의 시작/중단 경쟁·실패 회귀, 네이티브 컴파일.
+- [ ] 2. ✅ Android 구현·네이티브 컴파일, Swift 구현 및 iOS 시뮬레이터 EAS 빌드(2026-10-17). ⏳ 실기기 음성 품질. `mobile/modules/giokon-duplex`: 로컬 Expo 모듈, Android 동시 입출력+AEC/리소스 정리, iOS VoiceProcessing 동시 입출력. TypeScript 어댑터의 시작/중단 경쟁·실패 회귀, 네이티브 컴파일.
 - [x] 3. ✅ 2026-10-16 구현·회귀. `live/engine.ts`·`automatic.ts`·`useAutomaticConversation.ts`: TTS 중 감지, 짧은 발화 시작 버퍼, 정상 끼어들기 전환, interrupted 관찰 저장, 모델로 중복 입력 방지. 기존 마이크/재생 경로를 새 네이티브 경로로 연결.
 - [x] 4. ✅ 2026-10-16 구현·회귀. `live/endpoint.ts`: 무음 2초, 연속 소음/실제 무음/짧은 대답/재발화 회귀. 지연 구간별 중계 시간 계측(내용 없음).
 - [ ] 5. 앱·중계·공유 회귀, 타입/린트/카피/수동 게이트·Android/iOS 번들. 중계 먼저 배포, 새 APK 빌드·기기 설치. TTS만 있을 때 잘못 끊기지 않음/실제 겹쳐 말하기/중단 저장 실기기 확인.
@@ -32,7 +32,9 @@
 - ✅ 가드 변이: 중단 분기 제거·2초→6초 복귀·v4 interrupted 거절 시 해당 회귀가 실패함을 확인하고 복구.
 - ✅ EAS archive에서 Android/Swift 모듈 소스 포함, native build·.tmp·.pnpm 산출물 제외 확인.
 - ✅ 별도 리뷰의 저장 지연/버퍼 경합·일시 초기화 실패 영구 잠금 수정. PCM은 중단 영수증 직후 전송하고, 저장 대기 중 완료된 전사는 보류했다가 컨트롤러가 준비되면 한 번만 채택한다. 서버 응답 대기 중 저장 완료 경합도 회귀로 고정.
-- ⏳ 중계 배포 → 새 preview APK → 기기 설치·AEC/겹쳐 말하기/DB interrupted 관찰. iOS 기기 품질도 별도다.
+- ✅ 2026-10-17 코드 `d0683c4`: Android preview 빌드 `3cccde06-752c-47ec-bcc6-2d2472115f64`, iOS 시뮬레이터 빌드 `515e75c4-3351-498f-8d3c-8a5c4d6b8789` 성공. Lenovo 태블릿에 APK 업데이트 설치 성공(10:53 KST).
+- ✅ 2026-10-17 중계 `voice-relay-00009-h2g` 배포, 트래픽 100%, Ready 및 `/readyz` 정상 확인. 이미지 `duplex-d0683c4`, digest `sha256:d09ee19d26b0ea540d895057e05dcef90c11d2cdc6a8c847559f7d7e3fb4bdfe`. DB·시크릿 변경 없음.
+- ⏳ 사용자 실제 대화로 AEC/겹쳐 말하기/DB interrupted 관찰·지연 확인. iOS 기기 품질도 별도다. main 병합 전 작업 브랜치 배포이며, 빌드 성공은 실제 음성 품질 검증을 뜻하지 않는다.
 
 ## 3초 이내 첫 응답 권고
 
