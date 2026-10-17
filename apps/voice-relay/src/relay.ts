@@ -118,6 +118,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let output = '', turns = 0, queuedBytes = 0, receivedBytes = 0
   let outputQueued = 0
   let inputEndedAt = 0
+  type SynthesisOutcome = { value: Awaited<ReturnType<typeof synthesizeValidated>> } | { error: unknown }
+  let prepared: { text: string; startedAt: number; endedAt: number; work: Promise<SynthesisOutcome> } | undefined
   let protocolVersion = 1, awaitingPlayback: number | null = null
   let responseTimer: ReturnType<typeof setTimeout> | undefined
   let playbackTimer: ReturnType<typeof setTimeout> | undefined
@@ -415,9 +417,25 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               send({ serverContent: { inputTranscription: { text } } })
             }
             if (!pending) return
-            if (typeof content.outputTranscription?.text === 'string') output += content.outputTranscription.text
+            if (typeof content.outputTranscription?.text === 'string') {
+              if (prepared && content.outputTranscription.text) return close('OUTPUT_AFTER_GENERATION_COMPLETE')
+              output += content.outputTranscription.text
+            }
             // 마무리 인사로 바꿀 응답은 모델 문장을 쓰지 않으므로 길이를 보지 않는다.
             if (output.length > 200 && !(closingBy && !farewellSent)) return close()
+            const prepare = (text: string) => {
+              const item = { text, startedAt: Date.now(), endedAt: 0, work: undefined as unknown as Promise<SynthesisOutcome> }
+              item.work = Promise.resolve().then(() => (deps.synthesize ?? synthesizeValidated)(text, deps.geminiTts, abort.signal))
+                .then(value => ({value}), error => ({error})).then(outcome => { item.endedAt = Date.now(); return outcome })
+              return item
+            }
+            if (content.generationComplete && !prepared) {
+              if (!await allowed()) return close()
+              // The provider guarantees all output transcription precedes generationComplete.
+              // Overlap validated synthesis with its playback wait; delivery still requires turnComplete.
+              prepared = prepare(closingBy && !farewellSent ? ELDER_CLOSING_FAREWELL : output.trim())
+              log('generation_ready', {turnId: turns, generationMs: Date.now() - inputEndedAt})
+            }
             if (!content.turnComplete) return
             const modelCompletedAt = Date.now()
             clearTimeout(responseTimer); responseTimer = undefined
@@ -425,8 +443,14 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             let result: Awaited<ReturnType<typeof synthesizeValidated>>
             // T21.11 — 마무리 중이면 모델 응답 대신 고정 인사 한 문장(출력 검열·TTS 는 똑같이 거친다).
             const farewell = closingBy !== null && !farewellSent
-            const synthesisStartedAt = Date.now()
-            try { result = await (deps.synthesize ?? synthesizeValidated)(farewell ? ELDER_CLOSING_FAREWELL : output.trim(), deps.geminiTts, abort.signal) }
+            const finalText = farewell ? ELDER_CLOSING_FAREWELL : output.trim()
+            const synthesis = prepared?.text === finalText ? prepared : prepare(finalText)
+            const synthesisStartedAt = synthesis.startedAt
+            try {
+              const outcome = await synthesis.work
+              if ('error' in outcome) throw outcome.error
+              result = outcome.value
+            }
             catch (error) {
               if (!abort.signal.aborted) {
                 const code: VoiceFailureCode = error instanceof Error && error.message === 'OUTPUT_REJECTED' ? 'OUTPUT_REJECTED'
@@ -438,7 +462,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               }
               return close('SYNTHESIS_FAILED')
             }
-            const synthesisEndedAt = Date.now()
+            const synthesisEndedAt = synthesis.endedAt
             if (!await allowed()) return close()
             // 원격 일시정지·종료를 알린 뒤에는 새 AI 음성을 어르신께 보내지 않는다.
             if (controlled) return
@@ -449,7 +473,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             send({ ...(protocolVersion >= 2 ? { relayOutput: { turnId: turns } } : {}), serverContent: { outputTranscription: { text: result.text }, modelTurn: { parts: [{ inlineData: { data: result.pcm.toString('base64'), mimeType: 'audio/pcm;rate=24000' } }] }, turnComplete: true } })
             log('turn_latency', {turnId: turns, modelMs: modelCompletedAt - inputEndedAt,
               synthesisMs: synthesisEndedAt - synthesisStartedAt, totalMs: Date.now() - inputEndedAt})
-            output = ''; pending = false
+            output = ''; pending = false; prepared = undefined
             if (farewell) farewellSent = true
             maybeFinish()  // v1 은 재생 확인이 없다 — 보낸 뒤 바로(v2+ 는 awaitingPlayback 이 남아 재생 확인을 기다린다)
           }).catch(close)
@@ -522,7 +546,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         if (++turns > 60 || !await allowed()) return close()
         // 어르신 대답만 센다 — 첫 인사·이어가기 요청(텍스트만)은 단계 전환 근거가 아니다.
         if (activityAudio) phaseTurns++
-        pending = true; activity = false; output = ''
+        pending = true; activity = false; output = ''; prepared = undefined
         inputEndedAt = Date.now()
         // Leave the remaining 15 seconds of the app's 60-second wait for synthesis.
         // Partial output never extends this deadline.

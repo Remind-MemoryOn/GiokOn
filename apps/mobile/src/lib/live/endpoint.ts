@@ -1,5 +1,8 @@
 import { base64ToBytes } from './pcm';
 
+// Post-AEC RMS floor. Field tuning still requires quiet-room/echo verification.
+export const SPEECH_RMS_FLOOR = 0.004;
+
 /** Initial field-tuning values, not a speech recognizer or a clinical measure. */
 export class InputEndpoint {
   private lastActivity: number;
@@ -8,7 +11,7 @@ export class InputEndpoint {
   transcript(now: number): void { this.lastActivity = now; }
   audio(now: number, level: number): void {
     // Conservative floor: ongoing noise may delay completion, never extend the cap.
-    if (level >= 0.015) { this.lastActivity = now; this.heardAudio = true; }
+    if (level >= SPEECH_RMS_FLOOR) { this.lastActivity = now; this.heardAudio = true; }
   }
   check(now: number, text: string): 'complete' | 'no_input' | 'limit' | null {
     if (now - this.startedAt >= 60000) return 'limit';

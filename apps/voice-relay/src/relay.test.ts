@@ -60,6 +60,39 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('cancels prepared synthesis on late crisis without waiting for turn completion', async () => {
+    let signal: AbortSignal | undefined;
+    const synthesize = vi.fn((_text: string, _config: unknown, abort: AbortSignal) => {
+      signal = abort;
+      return new Promise<never>((_resolve, reject) => abort.addEventListener('abort', () => reject(new Error('ABORTED')), {once:true}));
+    });
+    const f = await fixture(false, {}, {synthesize}); await f.start(4); f.turn();
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 어떤 이야기를 나눌까요?'},generationComplete:true}}));
+    await vi.waitFor(() => expect(synthesize).toHaveBeenCalledTimes(1));
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'죽고 싶어요'}}}));
+    await vi.waitFor(() => expect(signal?.aborted).toBe(true));
+    expect(f.frames.some(x => x.relayOutput)).toBe(false);
+  });
+  it('synthesizes a complete generation before provider playback wait ends, but sends only after turn completion', async () => {
+    const f = await fixture(false); await f.start(4); f.turn();
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 어떤 이야기를 나눌까요?'},generationComplete:true}}));
+    await vi.waitFor(() => expect(f.synthesize).toHaveBeenCalledTimes(1));
+    expect(f.frames.some(x => x.relayOutput)).toBe(false);
+    f.peer()!.send(JSON.stringify({serverContent:{turnComplete:true}}));
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput)).toBe(true));
+    expect(f.synthesize).toHaveBeenCalledTimes(1);
+  });
+  it('rejects text appended after generation completion instead of sending a stale synthesized answer', async () => {
+    const f = await fixture(false); await f.start(4); f.turn();
+    await vi.waitFor(() => expect(f.inputs.some(x => x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 어떤 이야기를 나눌까요?'},generationComplete:true}}));
+    await vi.waitFor(() => expect(f.synthesize).toHaveBeenCalledTimes(1));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:' 추가 문장'},turnComplete:true}}));
+    await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED));
+    expect(f.frames.some(x => x.relayOutput)).toBe(false);
+  });
   it('v4 accepts an interrupted playback receipt and then a new elder turn without claiming completion', async () => {
     const log = vi.fn()
     const f = await fixture(true, {}, {log}); await f.start(4); f.turn()

@@ -1,5 +1,11 @@
 import { expect, it } from 'vitest';
 import { InputEndpoint, pcmLevel } from './endpoint';
+it('ends a quiet answer at two seconds rather than waiting for the empty-input timeout', () => {
+  const input = new InputEndpoint(0);
+  input.audio(1000, .006);
+  expect(input.check(2999, '')).toBe(null);
+  expect(input.check(3000, '')).toBe('complete');
+});
 
 it('ends voiced capture after a conservative pause even when transcription waits for activityEnd', () => {
   const input = new InputEndpoint(0);
