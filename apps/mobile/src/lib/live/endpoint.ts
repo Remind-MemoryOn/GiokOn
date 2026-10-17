@@ -17,9 +17,9 @@ export class InputEndpoint {
     if (now - this.startedAt >= 60000) return 'limit';
     // 수동 VAD에서는 전사가 activityEnd 뒤에 올 수 있다. 전사 없이도 발화 경계를 닫는다.
     if (!text.trim()) return this.heardAudio
-      ? now - this.lastActivity >= 2000 ? 'complete' : null
+      ? now - this.lastActivity >= 1000 ? 'complete' : null
       : now - this.lastActivity >= 20000 ? 'no_input' : null;
-    return now - this.lastActivity >= 2000 ? 'complete' : null;
+    return now - this.lastActivity >= 1000 ? 'complete' : null;
   }
 }
 

@@ -208,7 +208,7 @@ describe('automatic input endpoint integration', () => {
   it('accepts a one-syllable reply once after the extra pause', async () => {
     const f = await listening()
     f.api.draft('네')
-    await vi.advanceTimersByTimeAsync(1999)
+    await vi.advanceTimersByTimeAsync(999)
     expect(f.final).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(251)
     expect(f.final).toHaveBeenCalledExactlyOnceWith('네')
@@ -224,19 +224,19 @@ describe('automatic input endpoint integration', () => {
   it('keeps listening while PCM continues after the last transcript', async () => {
     const f = await listening()
     f.api.draft('고향 이야기')
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(750)
     f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
-    await vi.advanceTimersByTimeAsync(1500)
+    await vi.advanceTimersByTimeAsync(750)
     expect(f.final).not.toHaveBeenCalled()
-    await vi.advanceTimersByTimeAsync(500)
+    await vi.advanceTimersByTimeAsync(250)
     expect(f.final).toHaveBeenCalledExactlyOnceWith('고향 이야기')
     await f.api.exports.closeLiveEngine()
   })
   it('closes at the cap without submitting a forced partial utterance', async () => {
     const f = await listening()
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 120; i++) {
       f.api.draft('아직 말하는 중')
-      await vi.advanceTimersByTimeAsync(1000)
+      await vi.advanceTimersByTimeAsync(500)
     }
     expect(f.error).toHaveBeenCalledOnce()
     expect(f.final).not.toHaveBeenCalled()
