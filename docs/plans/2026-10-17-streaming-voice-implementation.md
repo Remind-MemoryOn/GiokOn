@@ -27,10 +27,13 @@
 
 ## 배포 추적
 
-- ✅ 2026-10-18 코드 `4aa8375` 작업 브랜치 푸시. Cloud Run `voice-relay-00011-nt5` Ready·트래픽 100%·기존 주소 health 응답 확인.
+- ✅ 2026-10-18 코드 `4aa8375` 작업 브랜치 푸시. Cloud Run `voice-relay-00011-nt5` Ready·트래픽 100%·기존 주소 응답 확인.
 - 이미지 `streaming-4aa8375`, digest `sha256:7e7bdc75e1081faed7ab9a2578964080aaf95b5c4eabe5b8dc93edb468ff138e`. 이전 `voice-relay-00010-hbx`는 롤백 기준.
 - ⏳ Android preview `41fc7719-cf30-4ed9-9998-2abd49a20810`, iOS simulator `87cabe00-0c00-4384-8a42-969ecdf986a2` 빌드 진행. 둘 다 `4aa8375` 확인.
 - ⏳ 태블릿 무선 디버깅 주소 요청함. 설치 전 기존 APK는 v4 호환 경로이므로 새 스트리밍 지연 개선 검증 대상이 아니다.
 
 - 2026-10-18 후속: PCM 100ms 조각마다 DB 왕복을 기다리던 지연 위험 수정. 첫 조각·2초 이상 오래된 권한은 재검사하고 기존 2초 원격 제어 폴링·즉시 취소 유지. 회귀는 이전 코드에서 30번 추가 조회로 실패 확인.
 - ✅ 후속 중계 131개 회귀·타입 검사 통과. 앱 코드 변화 없음(기존 진행 중 APK와 호환).
+
+- ✅ 후속 `ae936e7` 중계 배포: `voice-relay-00012-b9q` 트래픽 100%·`/readyz` HTTP 200 ready 확인. digest `sha256:fd9fbcc91bbf0cfd5b8276dd650205d7366cb0e107f8d567eda8ec5dbd2babaa`.
+- ✅ iOS simulator `87cabe00-0c00-4384-8a42-969ecdf986a2` FINISHED. Android는 Gradle 빌드 진행.
