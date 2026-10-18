@@ -8,6 +8,7 @@ import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /** One communication route owns both sides, so AEC sees exactly the audio we play. */
 class GiokonDuplexModule : Module() {
@@ -18,6 +19,9 @@ class GiokonDuplexModule : Module() {
   private val capturing = AtomicBoolean(false)
   private var playbackThread: Thread? = null
   private val playing = AtomicBoolean(false)
+  private val streamChunks = ConcurrentLinkedQueue<ByteArray>()
+  @Volatile private var streamEnded = false
+  private var streamBytes = 0
   private var audioManager: AudioManager? = null
   private var oldMode = AudioManager.MODE_NORMAL
   private var oldSpeaker = false
@@ -35,6 +39,9 @@ class GiokonDuplexModule : Module() {
     AsyncFunction("startCapture") { captureId: Int -> synchronized(lock) { startCapture(captureId) } }
     AsyncFunction("stopCapture") { synchronized(lock) { stopCapture() } }
     AsyncFunction("play") { data: String, promise: Promise -> synchronized(lock) { play(data, promise) } }
+    AsyncFunction("startStream") { promise: Promise -> synchronized(lock) { startStream(promise) } }
+    AsyncFunction("appendStream") { data: String -> synchronized(lock) { appendStream(data) } }
+    AsyncFunction("finishStream") { synchronized(lock) { check(playing.get() && !streamEnded && streamBytes > 0); streamEnded = true } }
     AsyncFunction("stopPlayback") { synchronized(lock) { stopPlayback() } }
     AsyncFunction("close") { synchronized(lock) { closeAudio() } }
     OnActivityEntersBackground {
@@ -106,10 +113,22 @@ class GiokonDuplexModule : Module() {
   }
 
   private fun play(encoded: String, promise: Promise) {
+    startStream(promise)
+    try { appendStream(encoded); streamEnded = true } catch (error: Exception) { stopPlayback(); throw error }
+  }
+
+  private fun appendStream(encoded: String) {
+    check(playing.get() && !streamEnded) { "PLAYBACK_STREAM_CLOSED" }
+    val bytes = Base64.decode(encoded, Base64.DEFAULT)
+    check(bytes.isNotEmpty() && bytes.size % 2 == 0 && streamBytes + bytes.size <= 4320000) { "INVALID_PLAYBACK_PCM" }
+    streamBytes += bytes.size
+    streamChunks.add(bytes)
+  }
+
+  private fun startStream(promise: Promise) {
     stopPlayback()
     route()
-    val bytes = Base64.decode(encoded, Base64.DEFAULT)
-    check(bytes.isNotEmpty() && bytes.size % 2 == 0 && bytes.size <= 4320000) { "INVALID_PLAYBACK_PCM" }
+    streamChunks.clear(); streamBytes = 0; streamEnded = false
     val output = AudioTrack.Builder()
       .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
@@ -125,15 +144,23 @@ class GiokonDuplexModule : Module() {
       try {
         output.play()
         var offset = 0
-        val deadline = android.os.SystemClock.elapsedRealtime() + bytes.size / 48 + 5000
+        var chunk: ByteArray? = null
+        var written = 0L
+        val deadline = android.os.SystemClock.elapsedRealtime() + 216000
         while (playing.get()) {
           check(android.os.SystemClock.elapsedRealtime() < deadline) { "PLAYBACK_TIMEOUT" }
-          if (offset < bytes.size) {
-            val count = output.write(bytes, offset, minOf(1920, bytes.size - offset), AudioTrack.WRITE_NON_BLOCKING)
+          if (chunk == null) { chunk = streamChunks.poll(); offset = 0 }
+          val current = chunk
+          if (current != null) {
+            val count = output.write(current, offset, minOf(1920, current.size - offset), AudioTrack.WRITE_NON_BLOCKING)
             check(count >= 0) { "PLAYBACK_WRITE_FAILED" }
-            offset += count
+            offset += count; written += count
+            if (offset == current.size) chunk = null
           }
-          if (offset == bytes.size && output.playbackHeadPosition.toLong() >= bytes.size / 2) {
+          // Queue underrun is silence, never a completed turn. The explicit end plus
+          // the playback head proves every scheduled sample reached this audio route.
+          if (streamEnded && chunk == null && streamChunks.isEmpty() && written > 0 &&
+              output.playbackHeadPosition.toLong() >= written / 2) {
             completed = true; break
           }
           Thread.sleep(5)
@@ -153,6 +180,7 @@ class GiokonDuplexModule : Module() {
     playbackThread?.join(1000)
     check(playbackThread?.isAlive != true) { "PLAYBACK_STOP_FAILED" }
     playbackThread = null
+    streamChunks.clear(); streamEnded = true
   }
 
   private fun closeAudio() {

@@ -115,3 +115,107 @@ export async function synthesizeValidated(text: string, config: GeminiTtsConfig,
   requestSignal.throwIfAborted()
   return { text, pcm: wavToPcm24k(audioFromResponse(body)) }
 }
+
+/** Interactions TTS only: complete text is screened before requesting any audio.
+ * PCM is signed 16-bit little endian, mono, 24 kHz (Gemini streaming contract).
+ * Callback completion provides backpressure; cancellation stops waiting for it.
+ */
+export async function synthesizeValidatedStream(text: string, config: GeminiTtsConfig, signal: AbortSignal, onChunk: (pcm: Buffer) => Promise<void>, fetcher: typeof fetch = fetch): Promise<{ text: string }> {
+  if (!text.trim() || text.length > 200 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text) || !screenAiUtterance(text).allowed) throw new Error('OUTPUT_REJECTED')
+  signal.throwIfAborted()
+  const cancel = new AbortController()
+  const requestSignal = AbortSignal.any([signal, cancel.signal, AbortSignal.timeout(15000)])
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  try {
+    const request = fetcher('https://generativelanguage.googleapis.com/v1beta/interactions', {
+      method: 'POST',
+      headers: { 'x-goog-api-key': config.apiKey, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({
+        model: config.model?.trim() || DEFAULT_GEMINI_TTS_MODEL,
+        input: [{ type: 'user_input', content: [{ type: 'text', text, annotations: [{ type: 'speech_metadata', style: '따뜻하고 차분하며 또렷한 한국어 말투' }] }] }],
+        response_format: { type: 'audio', mime_type: 'audio/l16', sample_rate: 24000 },
+        generation_config: { speech_config: [{ voice: config.voice?.trim() || DEFAULT_GEMINI_TTS_VOICE, language: 'ko-KR' }] },
+        stream: true, store: false,
+      }),
+      signal: requestSignal,
+    }).then(response => {
+      if (requestSignal.aborted) {
+        void response.body?.cancel().catch(() => {})
+        requestSignal.throwIfAborted()
+      }
+      return response
+    })
+    const response = await untilAborted(request, requestSignal)
+    if (!response.ok || !response.body || !/^text\/event-stream(?:;|$)/i.test(response.headers.get('content-type') ?? '')) {
+      void response.body?.cancel().catch(() => {})
+      throw new Error(response.status === 429 ? 'GEMINI_TTS_RATE_LIMIT' : response.status >= 500 ? 'GEMINI_TTS_UNAVAILABLE' : 'GEMINI_TTS_FAILED')
+    }
+    reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8', { fatal: true })
+    let pending = '', wireBytes = 0, pcmBytes = 0, finished = false
+    let remainder: Buffer = Buffer.alloc(0)
+    const consume = async (frame: string) => {
+      const data = frame.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).replace(/^ /, '')).join('\n')
+      if (!data) return // SSE comments/keepalives have no data.
+      if (data === '[DONE]' && finished) return // Transport sentinel cannot replace confirmed completion.
+      if (finished) throw new Error('GEMINI_TTS_FAILED')
+      let parsed: unknown
+      try { parsed = JSON.parse(data) } catch { throw new Error('GEMINI_TTS_FAILED') }
+      if (!parsed || typeof parsed !== 'object') throw new Error('GEMINI_TTS_FAILED')
+      const event = parsed as { event_type?: unknown; delta?: { type?: unknown; data?: unknown; mime_type?: unknown; sample_rate?: unknown; channels?: unknown }; interaction?: { status?: unknown }; status?: unknown }
+      if (event.event_type === 'interaction.completed') {
+        if (event.interaction?.status !== 'completed' || !pcmBytes || remainder.length) throw new Error('GEMINI_TTS_FAILED')
+        finished = true
+      } else if (event.event_type === 'step.delta') {
+        const delta = event.delta
+        if (!delta || delta.type !== 'audio' || (delta.mime_type !== undefined && delta.mime_type !== 'audio/l16') || (delta.sample_rate !== undefined && delta.sample_rate !== 24000) || (delta.channels !== undefined && delta.channels !== 1)) throw new Error('GEMINI_TTS_FAILED')
+        // Metadata-only audio deltas are allowed; URI audio is never fetched.
+        if (delta.data === undefined) return
+        if (typeof delta.data !== 'string' || !delta.data.length || delta.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(delta.data)) throw new Error('GEMINI_TTS_FAILED')
+        const pcm = Buffer.from(delta.data, 'base64')
+        if (pcm.toString('base64') !== delta.data) throw new Error('GEMINI_TTS_FAILED')
+        pcmBytes += pcm.length
+        if (pcmBytes > 2 * 1024 * 1024) throw new Error('AUDIO_TOO_LARGE')
+        const aligned = Buffer.concat([remainder, pcm])
+        const end = aligned.length - aligned.length % 2
+        remainder = Buffer.from(aligned.subarray(end))
+        // Bound each consumer write to 100 ms, regardless of provider event size.
+        for (let offset = 0; offset < end; offset += 4800) {
+          requestSignal.throwIfAborted()
+          await untilAborted(onChunk(aligned.subarray(offset, Math.min(end, offset + 4800))), requestSignal)
+          requestSignal.throwIfAborted()
+        }
+      } else if (event.event_type === 'interaction.status_update') {
+        if (event.status !== 'in_progress') throw new Error('GEMINI_TTS_FAILED')
+      } else if (!['interaction.created', 'step.start', 'step.stop'].includes(String(event.event_type))) {
+        throw new Error('GEMINI_TTS_FAILED')
+      }
+    }
+    while (true) {
+      const { done, value } = await untilAborted(reader.read(), requestSignal)
+      requestSignal.throwIfAborted()
+      if (done) break
+      wireBytes += value.byteLength
+      if (wireBytes > 4 * 1024 * 1024) throw new Error('AUDIO_TOO_LARGE')
+      // Slice large transport reads before decoding so many small events do not
+      // accidentally count as one oversized event or build an unbounded string.
+      for (let offset = 0; offset < value.length; offset += 8192) {
+        pending += decoder.decode(value.subarray(offset, offset + 8192), { stream: true })
+        let boundary: RegExpExecArray | null
+        while ((boundary = /\r?\n\r?\n/.exec(pending))) {
+          if (boundary.index > 256 * 1024) throw new Error('AUDIO_TOO_LARGE')
+          const frame = pending.slice(0, boundary.index)
+          pending = pending.slice(boundary.index + boundary[0].length)
+          await consume(frame)
+        }
+        if (pending.length > 256 * 1024) throw new Error('AUDIO_TOO_LARGE')
+      }
+    }
+    pending += decoder.decode()
+    if (!finished || pending.trim()) throw new Error('GEMINI_TTS_FAILED')
+    return { text }
+  } finally {
+    cancel.abort()
+    void reader?.cancel().catch(() => {})
+  }
+}

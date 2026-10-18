@@ -30,6 +30,63 @@ describe('중계 WebSocket 프로토콜 및 턴 격리', () => {
     return { client, socket, onError };
   }
 
+  async function streaming() {
+    const onError=vi.fn();
+    const client=new GeminiLiveClient({onError},{...RELAY,bargeIn:true,streamingAudio:true});
+    const ready=client.connect(), socket=Socket.all[0]; socket.onopen!();
+    await socket.receive({setupComplete:{relayProtocolVersion:5}}); await ready;
+    const pending=client.sendUserTurn('첫 질문');
+    await socket.receive({relayStream:{turnId:1,text:'검증한 응답'}});
+    await socket.receive({relayAudio:{turnId:1,index:0,data:'AQACAA=='}});
+    const result=await pending;
+    if(result==='timeout') throw new Error('unexpected timeout');
+    return {client,socket,onError,result};
+  }
+  it('v5 resolves at the first chunk, before audio end, and releases receipt only after end', async()=>{
+    const f=await streaming();
+    expect(f.result.text).toBe('검증한 응답');
+    expect(await f.result.audioStream!.next()).toEqual({done:false,value:'AQACAA=='});
+    expect(f.client.playbackTurnId).toBe(1);
+    await f.socket.receive({relayAudio:{turnId:1,index:1,data:'AwAEAA=='}});
+    await f.socket.receive({relayAudioEnd:{turnId:1}});
+    expect(await f.result.audioStream!.next()).toEqual({done:false,value:'AwAEAA=='});
+    expect((await f.result.audioStream!.next()).done).toBe(true);
+    f.client.reportPlayback(1,'completed');
+    expect(f.socket.sent.at(-1)).toEqual({relayPlayback:{turnId:1,result:'completed'}});
+    expect(f.client.isConnected).toBe(true); f.client.close();
+  });
+  it('v5 rejects premature completed receipts',async()=>{
+    const f=await streaming(); f.client.reportPlayback(1,'completed');
+    expect(f.client.isConnected).toBe(false);
+    expect(f.socket.sent.some(value => 'relayPlayback' in (value as object))).toBe(false);
+  });
+  it('v5 ignores only known cancelled stream frames while accepting a new turn',async()=>{
+    const f=await streaming(); f.client.reportPlayback(1,'interrupted');
+    const next=f.client.sendUserTurn('다음');
+    await f.socket.receive({relayAudio:{turnId:1,index:1,data:'AwAEAA=='}});
+    await f.socket.receive({relayAudioEnd:{turnId:1}});
+    await f.socket.receive({relayStream:{turnId:2,text:'새 응답'}});
+    await f.socket.receive({relayAudio:{turnId:2,index:0,data:'AwAEAA=='}});
+    const result=await next; expect(result).not.toBe('timeout');
+    expect(f.onError).not.toHaveBeenCalled(); f.client.close();
+  });
+  it.each([
+    {relayAudio:{turnId:1,index:2,data:'AQACAA=='}},
+    {relayAudio:{turnId:2,index:1,data:'AQACAA=='}},
+    {relayAudio:{turnId:1,index:1,data:'AQ=='}},
+    {relayStream:{turnId:2,text:'overlapping'}},
+  ])('v5 fails closed on invalid stream order or PCM: %j',async(frame)=>{
+    const f=await streaming(); await f.socket.receive(frame);
+    expect(f.client.isConnected).toBe(false); expect(f.onError).toHaveBeenCalledOnce();
+    await expect(f.result.audioStream!.next()).rejects.toThrow();
+  });
+  it('v5 terminates stalled synthesis and releases the playback consumer',async()=>{
+    const f=await streaming(); await f.result.audioStream!.next();
+    const waiting=expect(f.result.audioStream!.next()).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(15001); await waiting;
+    expect(f.client.isConnected).toBe(false);
+  });
+
   it('ends captured audio without sending an empty text frame or starting another activity', async () => {
     const {client, socket} = await connected();
     client.streamAudioChunk('AQACAA==');

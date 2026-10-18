@@ -1,4 +1,5 @@
 import { ELDER_CLOSING_FAREWELL, SESSION_MAX_MINUTES, safeVoiceFailureMessage } from '@giokon/core';
+import type { PcmAudioStream } from './pcm-stream';
 import type { RelayEndReason } from './client';
 /** 감독 화면의 원격 제어(파일럿 M5) — 중계 알림(`relayControl`)과 서버 판정(`session_tick`) 공통 값. */
 export type RemoteControlState = 'running' | 'paused' | 'ended' | 'denied';
@@ -19,10 +20,10 @@ export function relayEndMessage(reason?: RelayEndReason): string {
 }
 export type AutomaticPhase = 'idle' | 'starting' | 'processing' | 'speaking' | 'listening' | 'pausing' | 'paused' | 'stopped';
 export interface AutomaticEngine {
-  requestContinuation?(): Promise<{ text: string; audioChunksB64: string[] } | null>;
-  requestOpener(): Promise<{ text: string; audioChunksB64: string[] } | null>;
-  submitUserTurn(text: string): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null>;
-  playTurn(chunks: string[], continueListening?: boolean): Promise<'completed' | 'interrupted' | 'empty' | 'barge_in'>;
+  requestContinuation?(): Promise<{ text: string; audioChunksB64: string[]; audioStream?: PcmAudioStream } | null>;
+  requestOpener(): Promise<{ text: string; audioChunksB64: string[]; audioStream?: PcmAudioStream } | null>;
+  submitUserTurn(text: string): Promise<{ status: 'ok'; text: string; chunksB64: string[]; audioStream?: PcmAudioStream } | { status: 'timeout' } | null>;
+  playTurn(chunks: string[], continueListening?: boolean, audioStream?: PcmAudioStream): Promise<'completed' | 'interrupted' | 'empty' | 'barge_in'>;
   startListening(): Promise<void>;
   readonly isListening: boolean;
   close(): Promise<void>;
@@ -30,7 +31,7 @@ export interface AutomaticEngine {
 export interface AutomaticPorts {
   current(): boolean;
   ready(resuming: boolean): Promise<boolean>;
-  resume?(engine: AutomaticEngine): Promise<'listen' | {text: string; audioChunksB64: string[]} | null>;
+  resume?(engine: AutomaticEngine): Promise<'listen' | {text: string; audioChunksB64: string[]; audioStream?: PcmAudioStream} | null>;
   connect(onInput: (text: string) => void, onFailure: (message?: string) => void, resuming: boolean,
     onRemote?: (state: 'paused' | 'ended', reason?: RelayEndReason) => void): Promise<AutomaticEngine | null>;
   /** 멈춘 동안 서버의 원격 제어 상태를 읽는다(`session_tick`). 없으면 원격 재개·종료를 감지하지 않는다. */
@@ -131,13 +132,13 @@ export class AutomaticConversation {
         if (!this.alive(generation)) return;
         if (!restored) throw new Error('restoration');
         if (restored === 'listen') await this.listen(generation);
-        else await this.deliver(restored.text, restored.audioChunksB64, false, generation);
+        else await this.deliver(restored.text, restored.audioChunksB64, false, generation, restored.audioStream);
         return;
       }
       const opener = await engine.requestOpener();
       if (!this.alive(generation)) return;
       if (!opener) throw new Error('opener');
-      await this.deliver(opener.text, opener.audioChunksB64, true, generation);
+      await this.deliver(opener.text, opener.audioChunksB64, true, generation, opener.audioStream);
     } catch { if (this.alive(generation)) await this.stop('대화를 시작하지 못했어요. 연결을 확인하고 기록을 저장해 주세요.'); }
   }
   private async receive(text: string, generation: number): Promise<void> {
@@ -154,16 +155,20 @@ export class AutomaticConversation {
       if (!this.alive(generation)) return;
       if (!response || response.status !== 'ok') throw new Error('response');
       if (this.closingForElder && response.text !== ELDER_CLOSING_FAREWELL) throw new Error('closing response');
-      await this.deliver(response.text, response.chunksB64, false, generation);
+      await this.deliver(response.text, response.chunksB64, false, generation, response.audioStream);
     } catch { if (this.alive(generation)) await this.stop('응답이나 기록 저장을 완료하지 못했어요. 기록을 확인하고 저장해 주세요.'); }
   }
-  private async deliver(text: string, chunks: string[], opener: boolean, generation: number): Promise<void> {
+  private async deliver(text: string, chunks: string[], opener: boolean, generation: number, audioStream?: PcmAudioStream): Promise<void> {
     if (!this.alive(generation)) return;
-    if (!text.trim() || !chunks.length || !this.ports.output(text, opener)) throw new Error('output');
+    if (audioStream) {
+      if (!text.trim() || !this.ports.output(text, opener)) throw new Error('output');
+    } else {
+      if (!text.trim() || !chunks.length || !this.ports.output(text, opener)) throw new Error('output');
+    }
     if (!await this.ports.save()) throw new Error('save');
     if (!this.alive(generation)) return;
     this.status('speaking');
-    const result = await this.engine!.playTurn(chunks, !this.closingForElder);
+    const result = await this.engine!.playTurn(chunks, !this.closingForElder, audioStream);
     if (generation === this.generation && this.ports.current()) this.ports.playback(result === 'barge_in' ? 'interrupted' : result);
     if (!this.alive(generation)) return;
     if (result === 'barge_in') {

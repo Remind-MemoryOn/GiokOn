@@ -474,7 +474,7 @@ describe('relay engine session binding', () => {
     const api = engineApi()
     await api.exports.acquireLiveEngine('key', {}, 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
     expect(api.connections).toHaveBeenCalledExactlyOnceWith({ url: RELAY, sessionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-      accessToken: 'synthetic-jwt', playbackReceipts: true, bargeIn: true })
+      accessToken: 'synthetic-jwt', playbackReceipts: true, bargeIn: true, streamingAudio: true })
     expect(api.connect).toHaveBeenCalledOnce()
   })
 })

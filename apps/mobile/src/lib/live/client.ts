@@ -10,6 +10,7 @@
 //   - 출력은 중계가 검증·Gemini TTS 합성한 것만 온다. v2 는 재생 영수증, v3 는 복구 맥락.
 
 import { voiceFailureMessage, parseRelaySafetySummary, parseVoiceResumeContext, type RelaySafetySummary, type VoiceResumeContext } from '@giokon/core';
+import { PcmAudioStream } from './pcm-stream';
 import { parseVoiceRelayUrl } from './relay-config';
 
 export type LiveTurnResult = {
@@ -17,6 +18,7 @@ export type LiveTurnResult = {
   text: string;
   /** 응답 오디오 청크(base64 PCM 24k mono L16) — 순서대로 재생해야 한다. */
   audioChunksB64: string[];
+  audioStream?: PcmAudioStream;
 };
 
 export interface VoiceRelayConnection {
@@ -25,6 +27,7 @@ export interface VoiceRelayConnection {
   accessToken: string;
   playbackReceipts?: boolean;
   bargeIn?: boolean;
+  streamingAudio?: boolean;
   resumeContext?: VoiceResumeContext;
 }
 
@@ -102,6 +105,10 @@ export class GeminiLiveClient {
   private cancelConnect: (() => void) | null = null;
   private awaitingPlayback: number | null = null;
   private lastOutputTurn = 0;
+  private stream: {id: number; text: string; index: number; audio: PcmAudioStream; ended: boolean} | null = null;
+  private cancelledStreams = new Set<number>();
+  private streamIdle: ReturnType<typeof setTimeout> | null = null;
+  private streamDeadline: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly handlers: Handlers,
@@ -115,7 +122,7 @@ export class GeminiLiveClient {
     let resumeContext: VoiceResumeContext | undefined;
     try { if (this.relay.resumeContext) resumeContext = parseVoiceResumeContext(this.relay.resumeContext); }
     catch { return Promise.reject(new Error('대화 복구 이력을 확인하지 못했어요.')); }
-    const protocolVersion = this.relay.bargeIn ? 4 : resumeContext ? 3 : this.relay.playbackReceipts ? 2 : 1;
+    const protocolVersion = this.relay.streamingAudio ? 5 : this.relay.bargeIn ? 4 : resumeContext ? 3 : this.relay.playbackReceipts ? 2 : 1;
     const ws = new WebSocket(this.relay.url);
     this.ws = ws;
 
@@ -172,7 +179,13 @@ export class GeminiLiveClient {
             else this.close();
             return;
           }
+          if ('relayStream' in msg || 'relayAudio' in msg || 'relayAudioEnd' in msg) {
+            if (protocolVersion !== 5 || !this.opened) throw new Error('INVALID_AUDIO_STREAM');
+            this.handleStreamFrame(msg);
+            return;
+          }
           if ('serverContent' in msg) {
+            if (protocolVersion === 5 && ((msg.serverContent as {modelTurn?: unknown; outputTranscription?: unknown; turnComplete?: boolean}).modelTurn || (msg.serverContent as {outputTranscription?: unknown}).outputTranscription || (msg.serverContent as {turnComplete?: boolean}).turnComplete)) throw new Error('INVALID_AUDIO_STREAM');
             if (protocolVersion >= 2 && (msg.serverContent as { turnComplete?: boolean })?.turnComplete) {
               const id = (msg as { relayOutput?: { turnId?: number } }).relayOutput?.turnId;
               if (!Number.isSafeInteger(id) || id! <= this.lastOutputTurn || !this.pendingTurn || this.awaitingPlayback !== null) throw new Error('음성 재생 순서를 확인하지 못했어요.');
@@ -218,6 +231,45 @@ export class GeminiLiveClient {
     });
   }
 
+  private clearStreamTimers(): void {
+    if (this.streamIdle) clearTimeout(this.streamIdle);
+    if (this.streamDeadline) clearTimeout(this.streamDeadline);
+    this.streamIdle = this.streamDeadline = null;
+  }
+  private streamTimeout = (): void => {
+    const error = new Error('AUDIO_STREAM_TIMEOUT');
+    this.stream?.audio.fail(error);
+    this.handlers.onError?.(error); this.close();
+  };
+  private handleStreamFrame(message: Record<string, unknown>): void {
+    if ('relayStream' in message) {
+      const value = message.relayStream as {turnId?: number; text?: string} | null;
+      if (!value || !Number.isSafeInteger(value.turnId) || value.turnId! <= this.lastOutputTurn || !this.pendingTurn || this.stream || this.awaitingPlayback !== null || typeof value.text !== 'string' || !value.text.trim()) throw new Error('INVALID_AUDIO_STREAM');
+      this.stream = {id:value.turnId!, text:value.text.trim(), index:0, audio:new PcmAudioStream(), ended:false};
+      this.lastOutputTurn = value.turnId!;
+      this.streamDeadline = setTimeout(this.streamTimeout, 120000);
+    } else {
+      const value = (message.relayAudio ?? message.relayAudioEnd) as {turnId?: number; index?: number; data?: string} | null;
+      if (!value || !Number.isSafeInteger(value.turnId)) throw new Error('INVALID_AUDIO_STREAM');
+      if (this.cancelledStreams.has(value.turnId!)) return;
+      const stream = this.stream;
+      if (!stream || stream.id !== value.turnId || stream.ended) throw new Error('INVALID_AUDIO_STREAM');
+      if ('relayAudio' in message) {
+        if (value.index !== stream.index || typeof value.data !== 'string') throw new Error('INVALID_AUDIO_STREAM');
+        stream.audio.push(value.data); stream.index++;
+        if (this.pendingTurn) {
+          this.awaitingPlayback = stream.id;
+          const resolve = this.pendingTurn; this.pendingTurn = null;
+          resolve({text:stream.text,audioChunksB64:[],audioStream:stream.audio});
+        }
+      } else {
+        if (!stream.index) throw new Error('INVALID_AUDIO_STREAM');
+        stream.ended = true; stream.audio.end(); this.clearStreamTimers(); return;
+      }
+    }
+    if (this.streamIdle) clearTimeout(this.streamIdle);
+    this.streamIdle = setTimeout(this.streamTimeout, 15000);
+  }
   private handleServerContent(content: {
     interrupted?: boolean;
     modelTurn?: { parts?: { inlineData?: { data?: string } }[] };
@@ -265,6 +317,14 @@ export class GeminiLiveClient {
   reportPlayback(turnId: number, result: 'completed' | 'interrupted' | 'empty'): void {
     if (!this.ws || !this.opened || this.awaitingPlayback !== turnId) return;
     if (result !== 'completed' && !(this.relay.bargeIn && result === 'interrupted')) { this.close(); return; }
+    if (this.stream && result === 'completed' && !this.stream.ended) { this.close(); return; }
+    if (this.stream && result === 'interrupted') {
+      this.cancelledStreams.add(turnId);
+      if (this.cancelledStreams.size > 64) this.cancelledStreams.delete(this.cancelledStreams.values().next().value!);
+    }
+    this.stream?.audio.cancel();
+    this.stream = null;
+    this.clearStreamTimers();
     try {
       this.ws.send(JSON.stringify({ relayPlayback: { turnId, result } }));
       this.awaitingPlayback = null;
@@ -346,6 +406,10 @@ export class GeminiLiveClient {
     } catch {
       /* 이미 닫힘 무시 */
     }
+    this.stream?.audio.fail(new Error('AUDIO_STREAM_CLOSED'));
+    this.stream = null;
+    this.clearStreamTimers();
+    this.cancelledStreams.clear();
     this.opened = false;
     this.awaitingPlayback = null;
     this.lastOutputTurn = 0;

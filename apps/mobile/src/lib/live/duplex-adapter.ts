@@ -1,6 +1,7 @@
 import type { DuplexModule } from '../../../modules/giokon-duplex/src/GiokonDuplexModule';
 import { base64ToBytes, bytesToBase64 } from './pcm';
 import type { MicStartOptions } from './mic-adapter';
+import type { PcmAudioStream } from './pcm-stream';
 
 /** Serialize native capture/stop commands; playback completion never blocks an interrupt. */
 export function createDuplexAdapter(load: () => DuplexModule) {
@@ -72,6 +73,47 @@ export function createDuplexAdapter(load: () => DuplexModule) {
           }, size / 48 + 6000);
         })]);
         return generation === playbackGeneration ? result : 'interrupted';
+      } finally {
+        if (timer !== undefined) clearTimeout(timer);
+        if (cancelPlayback === cancel) cancelPlayback = undefined;
+      }
+    },
+    async playStream(stream: PcmAudioStream): Promise<'completed' | 'interrupted'> {
+      const generation = ++playbackGeneration;
+      cancelPlayback?.();
+      await command(() => get().stopPlayback());
+      if (generation !== playbackGeneration) { stream.cancel(); return 'interrupted'; }
+      if (failed) throw new Error('AUDIO_CLEANUP_FAILED');
+      let cancel!: () => void;
+      const cancelled = new Promise<'interrupted'>(resolve => { cancel = () => { stream.cancel(); resolve('interrupted'); }; });
+      cancelPlayback = cancel;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let ended = false;
+      const native = get();
+      const rendering = native.startStream().then(result => {
+        if (result === 'completed' && !ended) throw new Error('AUDIO_STREAM_EARLY_COMPLETION');
+        return result;
+      });
+      const feeding = (async () => {
+        for await (const data of stream) {
+          if (generation !== playbackGeneration) return;
+          await command(async () => { if (generation === playbackGeneration) await native.appendStream(data); });
+        }
+        if (generation !== playbackGeneration) return;
+        ended = true;
+        await command(() => native.finishStream());
+      })();
+      try {
+        const result = await Promise.race([
+          Promise.all([rendering, feeding]).then(([result]) => result), cancelled,
+          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('AUDIO_PLAYBACK_TIMEOUT')), 216000); }),
+        ]);
+        return generation === playbackGeneration ? result : 'interrupted';
+      } catch (error) {
+        if (generation === playbackGeneration) playbackGeneration++;
+        stream.cancel();
+        await command(() => native.stopPlayback());
+        throw error;
       } finally {
         if (timer !== undefined) clearTimeout(timer);
         if (cancelPlayback === cancel) cancelPlayback = undefined;

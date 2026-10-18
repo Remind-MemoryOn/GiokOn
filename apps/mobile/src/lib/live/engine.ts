@@ -15,6 +15,7 @@ import { parseVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getSession, canProcessSession } from '@giokon/data';
 import { GeminiLiveClient, type LiveTurnResult, type RelayControlState, type RelayEndReason, type RelayReviewDetail, type VoiceRelayConnection } from './client';
 import { hasMicPermission, micStreamingSupported, startMicStream, closeMicAudio } from './mic';
+import type { PcmAudioStream } from './pcm-stream';
 import { playPcmTurn, stopPlayback, type PlaybackResult } from './player';
 import { InputEndpoint, pcmLevel } from './endpoint';
 import { BargeInBuffer } from './barge-in';
@@ -113,7 +114,7 @@ export class LiveConversationEngine {
       const session = await getSession();
       if (!session?.access_token) throw new Error('AUTH_REQUIRED');
       const relay: VoiceRelayConnection = { url: relayUrl, sessionId: this.sessionId, accessToken: session.access_token,
-        playbackReceipts: true, bargeIn: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
+        playbackReceipts: true, bargeIn: true, streamingAudio: true, ...(this.resumeContext ? {resumeContext:this.resumeContext} : {}) };
       if (!await this.verifyProcessing()) return false;
       this.client = this.makeClient(relay);
       await this.client.connect();
@@ -345,7 +346,7 @@ export class LiveConversationEngine {
    */
   async submitUserTurn(
     finalText: string,
-  ): Promise<{ status: 'ok'; text: string; chunksB64: string[] } | { status: 'timeout' } | null> {
+  ): Promise<{ status: 'ok'; text: string; chunksB64: string[]; audioStream?: PcmAudioStream } | { status: 'timeout' } | null> {
     if (!await this.verifyProcessing() || !this.available) return null;
     const prepared = this.preparedTurn;
     this.preparedTurn = null;
@@ -355,11 +356,11 @@ export class LiveConversationEngine {
     }
     const turn = prepared ?? await this.client!.sendUserTurn(finalText, RELAY_TURN_TIMEOUT_MS);
     if (turn === 'timeout') return { status: 'timeout' };
-    return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64 };
+    return { status: 'ok', text: turn.text, chunksB64: turn.audioChunksB64, ...(turn.audioStream ? {audioStream:turn.audioStream} : {}) };
   }
 
   /** 턴 음성(base64 PCM 청크)을 재생하고 완료를 기다린다. */
-  async playTurn(chunksB64: string[], continueListening = true): Promise<PlaybackResult | 'barge_in'> {
+  async playTurn(chunksB64: string[], continueListening = true, audioStream?: PcmAudioStream): Promise<PlaybackResult | 'barge_in'> {
     if (!await this.verifyProcessing()) return 'interrupted';
     const client = this.client;
     const receipt = client?.playbackTurnId;
@@ -372,7 +373,7 @@ export class LiveConversationEngine {
       this.openCapture(++this.listeningGeneration);
       await this.micStop?.ready;
       if (this.closing) return 'interrupted';
-      const result = this.bargeRequested ? 'interrupted' : await playPcmTurn(chunksB64);
+      const result = this.bargeRequested ? 'interrupted' : await playPcmTurn(chunksB64, audioStream);
       await this.bargeStop;
       if (this.closing || this.client !== client) return 'interrupted';
       if (this.bargeRequested && result !== 'empty') {

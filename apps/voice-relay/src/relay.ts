@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { WebSocket, type RawData } from 'ws'
 import type { GeminiTtsConfig } from './output'
-import { synthesizeValidated } from './output'
+import { synthesizeValidated, synthesizeValidatedStream } from './output'
 import { recordWithRetry, SAFETY_RETRY, type SafetyRetryPolicy } from './safety-record'
 import { assessUtterance, buildPhaseDirective, ELDER_CLOSING_FAREWELL, parseVoiceResumeContext, relaySafetySummary, safetyEventDraftFor, SESSION_MAX_MINUTES, shouldAdvancePhase, type ElderClosingSituation, type RelaySafetySummary, type SafetyEventDraft, type SessionPhase, type VoiceFailureCode } from '@giokon/core'
 
@@ -74,6 +74,7 @@ export interface RelayDependencies {
   authorize(sessionId: string, accessToken: string): Promise<RelaySession>
   connectProvider(url: string): WebSocket
   synthesize?: typeof synthesizeValidated
+  synthesizeStream?: typeof synthesizeValidatedStream
   geminiTts: GeminiTtsConfig
   /** 위험 발화 기록 재시도 정책(테스트용 주입 — 기본 5회 · 2·4·8·16초). */
   safetyRetry?: SafetyRetryPolicy
@@ -118,6 +119,9 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   let output = '', turns = 0, queuedBytes = 0, receivedBytes = 0
   let outputQueued = 0
   let inputEndedAt = 0
+  let providerDone: Promise<void> = Promise.resolve(), releaseProvider: (() => void) | undefined
+  let generationSealed = false, expectedProviderInterrupt = false
+  let stream: { id: number; abort: AbortController; ended: boolean } | undefined
   type SynthesisOutcome = { value: Awaited<ReturnType<typeof synthesizeValidated>> } | { error: unknown }
   let prepared: { text: string; startedAt: number; endedAt: number; work: Promise<SynthesisOutcome> } | undefined
   let protocolVersion = 1, awaitingPlayback: number | null = null
@@ -154,6 +158,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   function close(reason?: unknown) {
     if (abort.signal.aborted) return
     abort.abort()
+    releaseProvider?.(); releaseProvider = undefined
     // 단계: 인증 전 → 모델 준비 전 → 대화 중. 이유가 없는 종료는 정상 종료·검사 실패(로그 없음 경로)다.
     log('closed', {
       stage: !authenticated ? 'auth' : !ready ? 'setup' : 'conversation',
@@ -186,6 +191,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     if (abort.signal.aborted || controlled) return
     if (tick.endRequested || tick.paused) {
       controlled = true
+      stream?.abort.abort()
       directive = null
       clearTimeout(responseTimer); clearTimeout(playbackTimer)
       send({ relayControl: { state: tick.endRequested ? 'ended' : 'paused' } })
@@ -231,6 +237,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     if (reviewing || abort.signal.aborted) return
     reviewing = true
     controlled = true
+    stream?.abort.abort()
     directive = null
     clearTimeout(responseTimer); clearTimeout(playbackTimer)
     // 사건 id 는 감지 때 만든다. 3초 안에 기록이 확정되면 safetyEventId(앱은 다시 기록하지 않는다),
@@ -280,6 +287,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     void session?.recordElderClosing?.(situation).catch(() => {})
     void session?.advancePhase?.('closing').catch(() => false)  // 단계 기록만(지시는 넣지 않는다 — 고정 인사로 끝낸다)
     closingTimer = setTimeout(() => finishWith('elder_closing'), deps.elderClosingGraceMs ?? ELDER_CLOSING_GRACE_MS)
+    if (protocolVersion >= 5 && generationSealed && pending && stream?.id === turns) {
+      stream.abort.abort()
+      streamOutput(ELDER_CLOSING_FAREWELL, true)
+    }
     if (!pending && !activity) farewellSent = true  // 답할 차례가 없다 — 지금 재생 중인 답(있으면)이 마지막이다
     maybeFinish()
   }
@@ -292,6 +303,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   function finishWith(reason: RelayEndReason) {
     if (controlled || abort.signal.aborted) return
     controlled = true
+    stream?.abort.abort()
     clearTimeout(timeUpTimer); clearTimeout(closingTimer); clearTimeout(responseTimer); clearTimeout(playbackTimer)
     // 앱은 원격 종료와 같은 경로(멈추고 요양보호사가 저장)로 처리한다. reason 은 구버전 앱이 무시하는 추가 칸이다.
     send({ relayControl: { state: 'ended', reason } })
@@ -299,7 +311,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   }
   /** 단계 지시는 **턴 사이**에만 넣는다 — 모델 생성·재생 대기·어르신 발화 중이면 다음 기회로 미룬다. */
   function flushDirective() {
-    if (!directive || controlled || !ready || pending || activity || awaitingPlayback !== null) return
+    if (!directive || controlled || !ready || pending || activity || awaitingPlayback !== null || releaseProvider) return
     const text = directive
     directive = null
     forward({ clientContent: { turns: [{ role: 'user', parts: [{ text }] }], turnComplete: false } })
@@ -316,13 +328,47 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     upstream.send(JSON.stringify(value))
   }
 
+  /** v5 output generation is complete; the provider's simulated playback is not a delivery gate. */
+  function streamOutput(text: string, farewell: boolean) {
+    const current = {id: turns, abort: new AbortController(), ended: false}
+    stream = current
+    const signal = AbortSignal.any([abort.signal, current.abort.signal])
+    const began = inputEndedAt
+    let index = 0
+    void (async () => {
+      await (deps.synthesizeStream ?? synthesizeValidatedStream)(text, deps.geminiTts, signal, async pcm => {
+        signal.throwIfAborted()
+        if (!await allowed() || controlled || stream !== current) throw new Error('STREAM_REVOKED')
+        signal.throwIfAborted()
+        if (index === 0) {
+          awaitingPlayback = current.id; pending = false
+          playbackTimer = setTimeout(close, 95000)
+          if (farewell) farewellSent = true
+          send({relayStream:{turnId:current.id,text}})
+          log('first_audio_ready', {turnId:current.id,totalMs:Date.now()-began})
+        }
+        send({relayAudio:{turnId:current.id,index:index++,data:pcm.toString('base64')}})
+      })
+      if (signal.aborted || controlled || stream !== current) return
+      if (!index) throw new Error('EMPTY_STREAM')
+      current.ended = true
+      send({relayAudioEnd:{turnId:current.id}})
+      log('stream_synthesis_complete', {turnId:current.id,totalMs:Date.now()-began,chunks:index})
+    })().catch(error => {
+      if (signal.aborted || controlled || stream !== current) return
+      send({relayError:{code:error instanceof Error && error.message==='OUTPUT_REJECTED' ? 'OUTPUT_REJECTED' : 'SYNTHESIS_FAILED'}})
+      log('synthesis_failed', {cause:relayErrorCode(error)})
+      close('SYNTHESIS_FAILED')
+    })
+  }
+
   app.on('close', () => close('APP_CLOSED')); app.on('error', () => close('APP_ERROR'))
   app.on('message', (data, binary) => {
     const raw = buffer(data)
     queuedBytes += raw.length
     receivedBytes += raw.length
     // Admission and total-rate ceilings include frames queued during authentication.
-    if (binary || raw.length > 65536 || queuedBytes > 128 * 1024 || receivedBytes > 256 * 1024 + (Date.now() - openedAt) * 64) return close()
+    if (binary || raw.length > 65536 || queuedBytes > (protocolVersion >= 5 ? 2 * 1024 * 1024 : 128 * 1024) || receivedBytes > 256 * 1024 + (Date.now() - openedAt) * 64) return close()
     inputChain = inputChain.then(async () => {
       queuedBytes -= raw.length
       if (abort.signal.aborted) return
@@ -331,7 +377,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       if (!authenticated) {
         const a = msg.relayAuth
         if (!a || typeof a.sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(a.sessionId) || typeof a.accessToken !== 'string' || a.accessToken.length > 8192) throw new Error('AUTH_REQUIRED')
-        if (a.protocolVersion !== undefined && ![2, 3, 4].includes(a.protocolVersion)) throw new Error('UNSUPPORTED_PROTOCOL')
+        if (a.protocolVersion !== undefined && ![2, 3, 4, 5].includes(a.protocolVersion)) throw new Error('UNSUPPORTED_PROTOCOL')
         protocolVersion = a.protocolVersion ?? 1
         if (a.resumeContext !== undefined && protocolVersion < 3) throw new Error('UNSUPPORTED_RESTORATION')
         const resumeContext = a.resumeContext === undefined ? undefined : parseVoiceResumeContext(a.resumeContext)
@@ -350,7 +396,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         upstream.on('open', () => log('provider_open'))
         upstream.on('open', () => forward({ setup: {
           model: session!.model.startsWith('models/') ? session!.model : `models/${session!.model}`,
-          systemInstruction: { parts: [{ text: session!.systemInstruction + '\n각 응답은 180자 이내의 짧은 질문 하나로 말합니다.' }] },
+          systemInstruction: { parts: [{ text: session!.systemInstruction + '\n각 응답은 기본 80자 이내, 1~2개의 짧은 문장으로 말합니다. 필요할 때만 짧게 공감하고 질문은 하나만 합니다. 어르신의 말을 길게 반복하거나 요약하지 말고, 입력 길이에 맞춰 답변을 늘리지 않습니다. 안전 지시와 마무리 규칙은 이 길이 지시보다 우선합니다.' }] },
           generationConfig: { responseModalities: ['AUDIO'] }, inputAudioTranscription: {}, outputAudioTranscription: {},
           realtimeInputConfig: { automaticActivityDetection: { disabled: true }, activityHandling: 'NO_INTERRUPTION' }, sessionResumption: {},
         } }))
@@ -409,12 +455,30 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
             }
             const content = p.serverContent
             if (!content) return
-            if (content.interrupted) return close()
+            if (content.interrupted && !(protocolVersion >= 5 && generationSealed && expectedProviderInterrupt)) return close()
             // Never forward Gemini inlineData or its original audio.
             if (typeof content.inputTranscription?.text === 'string') {
               const text = content.inputTranscription.text
               if (text.length > 4000) return close()
               send({ serverContent: { inputTranscription: { text } } })
+            }
+            if (protocolVersion >= 5) {
+              if (content.turnComplete) { releaseProvider?.(); releaseProvider = undefined; expectedProviderInterrupt = false }
+              if (generationSealed) {
+                if (content.outputTranscription?.text) return close('OUTPUT_AFTER_GENERATION_COMPLETE')
+                return
+              }
+              if (!pending) return
+              if (typeof content.outputTranscription?.text === 'string') output += content.outputTranscription.text
+              if (output.length > 200 && !(closingBy && !farewellSent)) return close()
+              if (!content.generationComplete && !content.turnComplete) return
+              generationSealed = true
+              clearTimeout(responseTimer); responseTimer = undefined
+              if (!await allowed() || controlled) return close()
+              log('generation_ready', {turnId:turns,generationMs:Date.now()-inputEndedAt})
+              const farewell = closingBy !== null && !farewellSent
+              streamOutput(farewell ? ELDER_CLOSING_FAREWELL : output.trim(), farewell)
+              return
             }
             if (!pending) return
             if (typeof content.outputTranscription?.text === 'string') {
@@ -488,10 +552,13 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         if (protocolVersion < 2 || !ready || pending || awaitingPlayback === null ||
             Object.keys(receipt).length !== 2 || receipt.turnId !== awaitingPlayback || (receipt.result !== 'completed' && !interrupted)) return close()
         if (!await allowed()) return close()
+        if (protocolVersion >= 5 && (!stream || stream.id !== receipt.turnId || (!interrupted && !stream.ended))) return close('EARLY_STREAM_RECEIPT')
+        if (protocolVersion >= 5) stream?.abort.abort()
         clearTimeout(playbackTimer); awaitingPlayback = null
         log('playback_receipt', {turnId: receipt.turnId, result: receipt.result})
         maybeFinish()
         if (interrupted && !controlled && !timeUp && !closingBy) {
+          expectedProviderInterrupt = protocolVersion >= 5 && !!releaseProvider
           forward({clientContent:{turns:[{role:'user',parts:[{text:'(내부 지시) 직전 AI 음성의 재생이 중단되었습니다. 어르신이 끝까지 들었다고 가정하지 마세요. 이어지는 어르신 말씀부터 듣고 답하세요.'}]}],turnComplete:false}})
         }
         flushDirective()
@@ -505,6 +572,12 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       const r = msg.realtimeInput
       if (Object.keys(r).length !== 1) throw new Error('INVALID_INPUT')
       if (r.activityStart && !activity) {
+        if (protocolVersion >= 5 && releaseProvider) {
+          let barrierTimer: ReturnType<typeof setTimeout> | undefined
+          try { await Promise.race([providerDone,new Promise<never>((_,reject)=>{barrierTimer=setTimeout(()=>reject(new Error('PROVIDER_DRAIN_TIMEOUT')),30000)})]) }
+          finally { clearTimeout(barrierTimer) }
+          if (!await allowed() || controlled || timeUp || abort.signal.aborted) return
+        }
         flushDirective()
         // 텍스트만 있는 첫 인사·이어가기에는 Gemini의 오디오 activity를 열지 않는다.
         // 음성 없는 activityEnd는 실제 Live API에서 1007로 종료된다.
@@ -547,6 +620,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
         // 어르신 대답만 센다 — 첫 인사·이어가기 요청(텍스트만)은 단계 전환 근거가 아니다.
         if (activityAudio) phaseTurns++
         pending = true; activity = false; output = ''; prepared = undefined
+        if (protocolVersion >= 5) {
+          generationSealed = false; expectedProviderInterrupt = false
+          providerDone = new Promise(resolve => {releaseProvider = resolve})
+        }
         inputEndedAt = Date.now()
         // Leave the remaining 15 seconds of the app's 60-second wait for synthesis.
         // Partial output never extends this deadline.

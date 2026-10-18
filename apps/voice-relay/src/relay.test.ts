@@ -60,6 +60,82 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('v5 replaces not-yet-audible synthesis with farewell on a late rest request', async () => {
+    let signal!: AbortSignal;
+    const synthesizeStream = vi.fn(async (text:string,_config:unknown,abort:AbortSignal,chunk:(pcm:Buffer)=>Promise<void>)=>{
+      if(text!==ELDER_CLOSING_FAREWELL) {
+        signal=abort;
+        await new Promise<void>(resolve=>abort.addEventListener('abort',()=>resolve(),{once:true}));
+      } else await chunk(Buffer.from([1,0]));
+      return {text};
+    });
+    const f=await fixture(false,{}, {synthesizeStream}); await f.start(5); f.turn();
+    await vi.waitFor(()=>expect(f.inputs.some(x=>x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 기분은 어떠세요?'},generationComplete:true}}));
+    await vi.waitFor(()=>expect(synthesizeStream).toHaveBeenCalledTimes(1));
+    f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'이제 그만 쉬고 싶어요'}}}));
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayAudioEnd)).toBe(true));
+    expect(signal.aborted).toBe(true);
+    expect(f.frames.find(x=>x.relayStream).relayStream.text).toBe(ELDER_CLOSING_FAREWELL);
+    f.send({relayPlayback:{turnId:1,result:'completed'}});
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayControl?.reason==='elder_closing')).toBe(true));
+  });
+  it('v5 cancels unfinished synthesis on interruption and accepts the expected old provider interruption', async () => {
+    let signal!: AbortSignal;
+    const synthesizeStream = vi.fn(async (text: string, _config: unknown, abort: AbortSignal, chunk: (pcm:Buffer)=>Promise<void>) => {
+      signal=abort; await chunk(Buffer.from([1,0]));
+      await new Promise<void>((resolve)=>abort.addEventListener('abort',()=>resolve(),{once:true}));
+      return {text};
+    });
+    const f=await fixture(false,{}, {synthesizeStream}); await f.start(5); f.turn();
+    await vi.waitFor(()=>expect(f.inputs.some(x=>x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 기분은 어떠세요?'},generationComplete:true}}));
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayAudio)).toBe(true));
+    f.send({relayPlayback:{turnId:1,result:'interrupted'}});
+    await vi.waitFor(()=>expect(signal.aborted).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{interrupted:true}}));
+    f.peer()!.send(JSON.stringify({serverContent:{turnComplete:true}}));
+    f.turn();
+    await vi.waitFor(()=>expect(f.inputs.filter(x=>x.realtimeInput?.activityEnd)).toHaveLength(2));
+    expect(f.app.readyState).toBe(WebSocket.OPEN);
+    expect(f.frames.some(x=>x.relayAudioEnd)).toBe(false);
+  });
+  it.each(['completed','crisis','paused'] as const)('v5 cannot continue unfinished audio after %s', async reason => {
+    let signal!: AbortSignal;
+    const synthesizeStream = vi.fn(async (text:string,_config:unknown,abort:AbortSignal,chunk:(pcm:Buffer)=>Promise<void>)=>{
+      signal=abort; await chunk(Buffer.from([1,0]));
+      await new Promise<void>(resolve=>abort.addEventListener('abort',()=>resolve(),{once:true}));
+      return {text};
+    });
+    const f=await fixture(false,{}, {synthesizeStream}); await f.start(5); f.turn();
+    await vi.waitFor(()=>expect(f.inputs.some(x=>x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 기분은 어떠세요?'},generationComplete:true}}));
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayAudio)).toBe(true));
+    if(reason==='completed') f.send({relayPlayback:{turnId:1,result:'completed'}});
+    else if(reason==='crisis') f.peer()!.send(JSON.stringify({serverContent:{inputTranscription:{text:'죽고 싶어요'}}}));
+    else { f.server.paused=true; }
+    await vi.waitFor(()=>expect(signal.aborted).toBe(true),{timeout:3000});
+    expect(f.frames.some(x=>x.relayAudioEnd)).toBe(false);
+  });
+  it('v5 delivers validated chunks before provider turnComplete and waits for its barrier before the next input', async () => {
+    const synthesizeStream = vi.fn(async (text: string, _config: unknown, _signal: AbortSignal, chunk: (pcm: Buffer)=>Promise<void>) => {
+      await chunk(Buffer.from([1,0,2,0])); return {text};
+    });
+    const f = await fixture(false, {}, {synthesizeStream}); await f.start(5); f.turn();
+    await vi.waitFor(()=>expect(f.inputs.some(x=>x.realtimeInput?.activityEnd)).toBe(true));
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'오늘 기분은 어떠세요?'},generationComplete:true}}));
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayAudioEnd?.turnId===1)).toBe(true));
+    expect(f.frames.find(x=>x.relayStream)?.relayStream).toEqual({turnId:1,text:'오늘 기분은 어떠세요?'});
+    expect(f.frames.find(x=>x.relayAudio)?.relayAudio).toEqual({turnId:1,index:0,data:'AQACAA=='});
+    f.send({relayPlayback:{turnId:1,result:'completed'}}); f.turn();
+    await new Promise(resolve=>setTimeout(resolve,30));
+    expect(f.inputs.filter(x=>x.realtimeInput?.activityEnd)).toHaveLength(1);
+    f.peer()!.send(JSON.stringify({serverContent:{turnComplete:true}}));
+    await vi.waitFor(()=>expect(f.inputs.filter(x=>x.realtimeInput?.activityEnd)).toHaveLength(2));
+    expect(synthesizeStream).toHaveBeenCalledTimes(1);
+    f.peer()!.send(JSON.stringify({serverContent:{outputTranscription:{text:'다른 이야기도 들려주세요.'},turnComplete:true}}));
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayAudioEnd?.turnId===2)).toBe(true));
+  });
   it('cancels prepared synthesis on late crisis without waiting for turn completion', async () => {
     let signal: AbortSignal | undefined;
     const synthesize = vi.fn((_text: string, _config: unknown, abort: AbortSignal) => {

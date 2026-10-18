@@ -7,6 +7,9 @@ public class GiokonDuplexModule: Module {
   private var tapped = false
   private var playback: Promise?
   private var playbackGeneration = 0
+  private var streamEnded = false
+  private var streamBytes = 0
+  private var scheduledBuffers = 0
   private var timeout: DispatchWorkItem?
   private var interruption: NSObjectProtocol?
 
@@ -16,6 +19,12 @@ public class GiokonDuplexModule: Module {
     AsyncFunction("startCapture") { (id: Int) in try self.startCapture(id) }.runOnQueue(.main)
     AsyncFunction("stopCapture") { self.stopCapture() }.runOnQueue(.main)
     AsyncFunction("play") { (encoded: String, promise: Promise) in try self.play(encoded, promise) }.runOnQueue(.main)
+    AsyncFunction("startStream") { (promise: Promise) in try self.startStream(promise) }.runOnQueue(.main)
+    AsyncFunction("appendStream") { (encoded: String) in try self.appendStream(encoded) }.runOnQueue(.main)
+    AsyncFunction("finishStream") { () in
+      guard self.playback != nil, !self.streamEnded, self.streamBytes > 0 else { throw self.failure("PLAYBACK_STREAM_CLOSED") }
+      self.streamEnded = true; self.completeStreamIfPlayed()
+    }.runOnQueue(.main)
     AsyncFunction("stopPlayback") { self.stopPlayback() }.runOnQueue(.main)
     AsyncFunction("close") { self.closeAudio() }.runOnQueue(.main)
     OnCreate {
@@ -93,9 +102,37 @@ public class GiokonDuplexModule: Module {
   }
 
   private func play(_ encoded: String, _ promise: Promise) throws {
+    try startStream(promise)
+    do { try appendStream(encoded); streamEnded = true; completeStreamIfPlayed() }
+    catch { stopPlayback(); throw error }
+  }
+
+  private func startStream(_ promise: Promise) throws {
     stopPlayback()
     try prepare()
-    guard let data = Data(base64Encoded: encoded), !data.isEmpty, data.count % 2 == 0, data.count <= 4320000 else { throw failure("INVALID_PLAYBACK_PCM") }
+    playback = promise; streamEnded = false; streamBytes = 0; scheduledBuffers = 0
+    let generation = playbackGeneration
+    let timer = DispatchWorkItem { [weak self] in
+      guard let self = self, generation == self.playbackGeneration, let pending = self.playback else { return }
+      self.playback = nil; self.stopPlayback()
+      pending.reject(self.failure("PLAYBACK_TIMEOUT"))
+    }
+    timeout = timer
+    DispatchQueue.main.asyncAfter(deadline: .now() + 216, execute: timer)
+    player!.play()
+  }
+
+  private func completeStreamIfPlayed() {
+    guard streamEnded, scheduledBuffers == 0, let done = playback else { return }
+    timeout?.cancel(); timeout = nil; playback = nil
+    done.resolve("completed")
+  }
+
+  private func appendStream(_ encoded: String) throws {
+    guard playback != nil, !streamEnded else { throw failure("PLAYBACK_STREAM_CLOSED") }
+    guard let data = Data(base64Encoded: encoded), !data.isEmpty, data.count % 2 == 0,
+      streamBytes + data.count <= 4320000 else { throw failure("INVALID_PLAYBACK_PCM") }
+    streamBytes += data.count
     let frames = data.count / 2
     let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)!
     guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)),
@@ -107,29 +144,19 @@ public class GiokonDuplexModule: Module {
         samples[i] = Float(Int16(bitPattern: raw)) / 32768
       }
     }
-    playback = promise
+    scheduledBuffers += 1
     let generation = playbackGeneration
     player!.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
       DispatchQueue.main.async {
         guard let self = self, generation == self.playbackGeneration else { return }
-        self.timeout?.cancel(); self.timeout = nil
-        let done = self.playback; self.playback = nil
-        done?.resolve("completed")
+        self.scheduledBuffers -= 1
+        self.completeStreamIfPlayed()
       }
     }
-    let timer = DispatchWorkItem { [weak self] in
-      guard let self = self, generation == self.playbackGeneration, let pending = self.playback else { return }
-      self.playback = nil
-      self.stopPlayback()
-      pending.reject(self.failure("PLAYBACK_TIMEOUT"))
-    }
-    timeout = timer
-    DispatchQueue.main.asyncAfter(deadline: .now() + Double(frames) / 24000 + 5, execute: timer)
-    player!.play()
   }
-
   private func stopPlayback() {
     playbackGeneration += 1
+    streamEnded = true; scheduledBuffers = 0
     timeout?.cancel(); timeout = nil
     player?.stop()
     let pending = playback; playback = nil

@@ -1,12 +1,15 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createDuplexAdapter } from './duplex-adapter';
 import type { DuplexModule } from '../../../modules/giokon-duplex/src/GiokonDuplexModule';
+import { PcmAudioStream } from './pcm-stream';
 
 function fixture() {
   const listeners: Record<string, ((value: never) => void)[]> = {};
   const native = {
     startCapture: vi.fn(async (_id: number) => {}), stopCapture: vi.fn(async () => {}),
     play: vi.fn(async (_data: string): Promise<'completed' | 'interrupted'> => 'completed'),
+    startStream: vi.fn((): Promise<'completed' | 'interrupted'> => new Promise(() => {})),
+    appendStream: vi.fn(async (_data: string) => {}), finishStream: vi.fn(async () => {}),
     stopPlayback: vi.fn(async () => {}), close: vi.fn(async () => {}),
     addListener: vi.fn((name: string, callback: (value: never) => void) => {
       (listeners[name] ??= []).push(callback); return {remove: vi.fn()};
@@ -15,6 +18,37 @@ function fixture() {
   return { native, adapter: createDuplexAdapter(() => native as DuplexModule), emit: (name: string, value: unknown) => listeners[name]?.forEach(cb => cb(value as never)) };
 }
 afterEach(() => vi.useRealTimers());
+it('feeds chunks while native playback is pending and waits for real completion after end', async () => {
+  const f=fixture(), stream=new PcmAudioStream();
+  let finish!: (result:'completed') => void;
+  f.native.startStream.mockImplementation(() => new Promise(resolve => {finish=resolve;}));
+  stream.push('AQACAA==');
+  let settled=false;
+  const pending=f.adapter.playStream(stream).then(result => {settled=true; return result;});
+  await vi.waitFor(() => expect(f.native.appendStream).toHaveBeenCalledOnce());
+  expect(f.native.finishStream).not.toHaveBeenCalled(); expect(settled).toBe(false);
+  stream.push('AwAEAA==');
+  await vi.waitFor(() => expect(f.native.appendStream).toHaveBeenCalledTimes(2));
+  stream.end(); await vi.waitFor(() => expect(f.native.finishStream).toHaveBeenCalledOnce());
+  expect(settled).toBe(false); finish('completed'); expect(await pending).toBe('completed');
+  await f.adapter.close();
+});
+it('interrupts a stream during a network underrun without waiting for the next chunk', async () => {
+  const f=fixture(), stream=new PcmAudioStream(); stream.push('AQACAA==');
+  const pending=f.adapter.playStream(stream);
+  await vi.waitFor(() => expect(f.native.appendStream).toHaveBeenCalledOnce());
+  await f.adapter.stopPlayback(); expect(await pending).toBe('interrupted');
+  expect(f.native.finishStream).not.toHaveBeenCalled();
+  await f.adapter.close();
+});
+it('stops native output when the upstream stream fails midway', async () => {
+  const f=fixture(), stream=new PcmAudioStream(); stream.push('AQACAA==');
+  const pending=f.adapter.playStream(stream); const rejected=expect(pending).rejects.toThrow('lost');
+  await vi.waitFor(() => expect(f.native.appendStream).toHaveBeenCalledOnce());
+  stream.fail(new Error('lost')); await rejected;
+  expect(f.native.stopPlayback).toHaveBeenCalledTimes(2);
+  await f.adapter.close();
+});
 it('keeps capture and playback simultaneous and stops playback without closing capture', async () => {
   const f = fixture(), data = vi.fn();
   const microphone = f.adapter.start({onData:data}); await microphone.ready;
