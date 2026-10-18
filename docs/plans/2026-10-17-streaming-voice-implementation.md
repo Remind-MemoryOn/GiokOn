@@ -37,3 +37,6 @@
 
 - ✅ 후속 `ae936e7` 중계 배포: `voice-relay-00012-b9q` 트래픽 100%·`/readyz` HTTP 200 ready 확인. digest `sha256:fd9fbcc91bbf0cfd5b8276dd650205d7366cb0e107f8d567eda8ec5dbd2babaa`.
 - ✅ iOS simulator `87cabe00-0c00-4384-8a42-969ecdf986a2` FINISHED. Android는 Gradle 빌드 진행.
+
+- ✅ Android preview `41fc7719-cf30-4ed9-9998-2abd49a20810` FINISHED, Lenovo `192.168.45.43:42951` 기존 앱 위에 설치 Success. APK SHA256 `7620B350113BE213E6493CF444246D143A38CA2F7F7346FDA7ACD2B5697CA65A`.
+- ⏳ 사용자 실제 짧은/긴 답변·끼어들기·첫 음성 지연 확인. 합성 첫 청크 1.18초는 전체 대화 3초 달성 근거가 아니다.
