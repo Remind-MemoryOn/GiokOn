@@ -338,7 +338,10 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
     void (async () => {
       await (deps.synthesizeStream ?? synthesizeValidatedStream)(text, deps.geminiTts, signal, async pcm => {
         signal.throwIfAborted()
-        if (!await allowed() || controlled || stream !== current) throw new Error('STREAM_REVOKED')
+        // Keep the existing two-second control poll; do not serialize a DB round trip
+        // for every 100ms PCM chunk. First audio and stale admission still revalidate.
+        if ((index === 0 || Date.now() - lastAllowed >= 2000) && !await allowed()) throw new Error('STREAM_REVOKED')
+        if (controlled || stream !== current) throw new Error('STREAM_REVOKED')
         signal.throwIfAborted()
         if (index === 0) {
           awaitingPlayback = current.id; pending = false

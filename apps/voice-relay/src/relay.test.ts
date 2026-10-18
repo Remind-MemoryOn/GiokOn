@@ -60,6 +60,20 @@ async function fixture(respond = true, extra: Partial<RelaySession> = {}, depsEx
 }
 
 describe('real local WebSocket relay', () => {
+  it('v5 uses fresh server admission rather than serial database calls for every PCM chunk', async () => {
+    let calls = 0;
+    const synthesizeStream = vi.fn(async (text:string,_config:unknown,_signal:AbortSignal,chunk:(pcm:Buffer)=>Promise<void>)=>{
+      await chunk(Buffer.from([1,0]));
+      const before = f.tick.mock.calls.length;
+      for(let i=0;i<30;i++) await chunk(Buffer.from([1,0]));
+      calls = f.tick.mock.calls.length - before;
+      return {text};
+    });
+    const f=await fixture(true,{}, {synthesizeStream}); await f.start(5); f.turn();
+    await vi.waitFor(()=>expect(f.frames.some(x=>x.relayAudioEnd)).toBe(true));
+    expect(calls).toBe(0);
+    expect(f.frames.filter(x=>x.relayAudio)).toHaveLength(31);
+  });
   it('v5 replaces not-yet-audible synthesis with farewell on a late rest request', async () => {
     let signal!: AbortSignal;
     const synthesizeStream = vi.fn(async (text:string,_config:unknown,abort:AbortSignal,chunk:(pcm:Buffer)=>Promise<void>)=>{
