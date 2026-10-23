@@ -1,0 +1,5 @@
+Scope: 6 of 7 workspace projects
+apps/mobile lint$ eslint .
+apps/web lint$ eslint .
+apps/web lint: Done
+apps/mobile lint: Done

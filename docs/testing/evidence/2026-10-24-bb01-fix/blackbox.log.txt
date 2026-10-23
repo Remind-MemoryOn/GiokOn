@@ -1,0 +1,36 @@
+PASS DT-SIGN-000 가입 E/L/M=000
+PASS DT-SIGN-001 가입 E/L/M=001
+PASS DT-SIGN-010 가입 E/L/M=010
+PASS DT-SIGN-011 가입 E/L/M=011
+PASS DT-SIGN-100 가입 E/L/M=100
+PASS DT-SIGN-101 가입 E/L/M=101
+PASS DT-SIGN-110 가입 E/L/M=110
+PASS DT-SIGN-111 가입 E/L/M=111
+PASS EP-EMPTY-SIGN /signup 필수 입력 없음
+PASS EP-EMPTY-LOGIN /login 필수 입력 없음
+PASS EP-EMPTY-FORGOT /forgot-password 필수 입력 없음
+PASS EP-EMPTY-FIND /find-id 필수 입력 없음
+PASS EP-EMPTY-RESET /reset-password 필수 입력 없음
+PASS ST-SIGN-RETRY 가입 대기 중 중복 차단 → 실패 → 재시도
+PASS EP-INQUIRY-100 문의 input 최대 100자
+PASS EP-INQUIRY-5000 문의 textarea 최대 5000자
+PASS EG-INQUIRY-ANON 미인증 문의 등록 차단
+PASS ST-LOGIN-RETURN 감독 링크 → 로그인 성공 → 원래 감독 화면
+PASS DT-FINAL-caregiver 확정 권한: caregiver
+PASS DT-FINAL-social_worker 확정 권한: social_worker
+PASS DT-FINAL-center_director 확정 권한: center_director
+PASS DT-FINAL-org_admin 확정 권한: org_admin
+PASS ST-JOURNAL-generating 일지 generating 표시·재시도
+PASS ST-JOURNAL-pending_review 일지 pending_review 표시·재시도
+PASS ST-JOURNAL-final 일지 final 표시·재시도
+PASS ST-JOURNAL-failed 일지 failed 표시·재시도
+PASS EP-TIME-0 목표 시간 입력군 0분
+PASS EP-TIME-5 목표 시간 입력군 5분
+PASS EP-TIME-10 목표 시간 입력군 10분
+PASS EP-TIME-11 목표 시간 입력군 11분
+PASS EP-TIME-30 목표 시간 입력군 30분
+PASS CMP-DATE-Asia-Seoul Asia/Seoul 기기의 한국 새벽 날짜
+PASS CMP-DATE-UTC UTC 기기의 한국 새벽 날짜
+PASS CMP-DATE-America-Los_Angeles America/Los_Angeles 기기의 한국 새벽 날짜
+PASS EG-XSS-JOURNAL 일지 문자열의 HTML 실행 방지
+{"total":35,"pass":35,"fail":0,"evidence":"C:\\Users\\user\\Documents\\GitHub\\MemoryOn\\.tmp\\blackbox-2026-10-24"}

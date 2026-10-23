@@ -1,0 +1,27 @@
+
+> @giokon/web@0.0.0 test:login-return C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/login-return-smoke.mjs
+
+PASS guard-caregiver
+PASS guard-guardian
+PASS direct-target
+PASS no-target
+PASS guardian-home
+PASS guardian-deny-care
+PASS care-deny-guardian
+PASS pending-org
+PASS needs-onboarding
+PASS external-url
+PASS protocol-relative
+PASS backslash-host
+PASS javascript-url
+PASS login-loop
+PASS normalized-loop
+PASS prefix-confusion
+PASS inquiry-target
+PASS legacy-inquiry-state
+PASS google-return
+PASS kakao-return
+PASS naver-return
+PASS naver-callback-return
+{"total":22,"pass":22,"fail":0}

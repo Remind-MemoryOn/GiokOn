@@ -1,0 +1,919 @@
+b1d3fe4a6aa4eb4488b3a80a08ae1f17a1bc99bf64f11cd2e4d0b9d000e110e8
+psql:/migrations/20260624090000_supabase_auth_rls.sql:57: NOTICE:  trigger "on_auth_user_created" for relation "auth.users" does not exist, skipping
+psql:/migrations/20260718125000_realtime_publication.sql:21: WARNING:  wal_level is insufficient to publish logical changes
+HINT:  Set wal_level to "logical" before creating subscriptions.
+psql:/migrations/20260722130000_elder_code_generation_hardening.sql:17: NOTICE:  extension "pgcrypto" already exists, skipping
+psql:/migrations/20260831000000_share_view_receipt.sql:16: NOTICE:  constraint "guardian_shares_view_count_check" of relation "guardian_shares" does not exist, skipping
+psql:/migrations/20260901000000_profile_note.sql:14: NOTICE:  constraint "profiles_note_check" of relation "profiles" does not exist, skipping
+psql:/migrations/20260901010000_notifications.sql:88: NOTICE:  trigger "notify_safety_event" for relation "public.safety_events" does not exist, skipping
+psql:/migrations/20260901010000_notifications.sql:114: NOTICE:  trigger "notify_share_viewed" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260901020000_messages.sql:87: NOTICE:  trigger "notify_message" for relation "public.messages" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:52: NOTICE:  trigger "users_protect_site_admin" for relation "public.users" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:107: NOTICE:  policy "inquiries_read" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:111: NOTICE:  policy "inquiries_insert" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:113: NOTICE:  policy "inquiries_update" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:115: NOTICE:  policy "inquiries_delete" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:118: NOTICE:  policy "inquiry_replies_read" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:122: NOTICE:  policy "inquiry_replies_admin_insert" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:124: NOTICE:  policy "inquiry_replies_admin_update" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:126: NOTICE:  policy "inquiry_replies_admin_delete" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:146: NOTICE:  trigger "inquiries_protect_admin_fields" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:158: NOTICE:  trigger "inquiry_reply_status" for relation "public.inquiry_replies" does not exist, skipping
+ ?column?
+----------
+        1
+(1 row)
+
+psql:/migrations/20260906000000_guardian_shared_session_read.sql:53: NOTICE:  policy "sessions_select_shared_guardian" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260906000000_guardian_shared_session_read.sql:60: NOTICE:  policy "session_logs_select_shared_guardian" for relation "public.session_logs" does not exist, skipping
+psql:/migrations/20260906010000_guardian_share_item_owner.sql:54: NOTICE:  trigger "check_guardian_share_item_owner" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260908000000_users_privilege_hardening.sql:84: NOTICE:  trigger "users_protect_privileges" for relation "public.users" does not exist, skipping
+ ?column?
+----------
+        1
+(1 row)
+
+psql:/migrations/20260924010000_org_settings_capabilities.sql:120: NOTICE:  trigger "org_settings_stamp" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:123: NOTICE:  trigger "org_capabilities_stamp" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:164: NOTICE:  policy "org_settings_select_team" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:167: NOTICE:  policy "org_settings_insert_manager" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:170: NOTICE:  policy "org_settings_update_manager" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:175: NOTICE:  policy "org_capabilities_select_team" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:178: NOTICE:  policy "org_capabilities_insert_manager" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:181: NOTICE:  policy "org_capabilities_update_manager" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:205: NOTICE:  trigger "audit_org_settings" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:208: NOTICE:  trigger "audit_org_capabilities" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:230: NOTICE:  trigger "organizations_seed_config" for relation "public.organizations" does not exist, skipping
+psql:/migrations/20260924020000_org_join.sql:78: NOTICE:  policy "org_invites_select_manager" for relation "public.org_invites" does not exist, skipping
+psql:/migrations/20260924020000_org_join.sql:82: NOTICE:  policy "org_join_requests_select_scope" for relation "public.org_join_requests" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_control_request_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_pause_pair_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_pause_reason_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_prompt_version_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_phase_pair_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:70: NOTICE:  policy "session_interventions_select_team" for relation "public.session_interventions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:102: NOTICE:  trigger "sessions_protect_supervision" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:130: NOTICE:  trigger "sessions_supervisor_active_limit" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260924070000_program_journals.sql:379: NOTICE:  trigger "sessions_enqueue_program_journal" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260925000000_journal_draft_worker.sql:45: NOTICE:  trigger "guard_org_ai_switch" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260925100000_org_invite_only.sql:19: NOTICE:  constraint "org_invites_creator_check" of relation "org_invites" does not exist, skipping
+psql:/migrations/20260928020000_safety_evidence_guard.sql:41: NOTICE:  trigger "guard_safety_event_evidence" for relation "public.safety_events" does not exist, skipping
+psql:/migrations/20260929010000_session_start_integrity.sql:71: NOTICE:  trigger "sessions_start_integrity" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260929010000_session_start_integrity.sql:94: NOTICE:  trigger "sessions_one_active_per_elder" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260930015000_journal_guard_privilege_split.sql:136: NOTICE:  trigger "z_guard_program_journal_rules" for relation "public.program_journals" does not exist, skipping
+psql:/migrations/20260930020000_capability_enforcement.sql:41: NOTICE:  trigger "guard_share_revoke" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260930020000_capability_enforcement.sql:60: NOTICE:  trigger "guard_guardian_link_approve" for relation "public.profile_guardians" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:22: NOTICE:  constraint "guardian_shares_revoke_reason_check" of relation "guardian_shares" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:44: NOTICE:  trigger "guard_share_revoke_reason" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:87: NOTICE:  trigger "revoke_shares_on_analysis_change" for relation "public.session_analyses" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:115: NOTICE:  trigger "revoke_shares_on_log_change" for relation "public.session_logs" does not exist, skipping
+psql:/migrations/20261006010000_product_events.sql:74: NOTICE:  trigger "record_program_journal_draft_edit" for relation "public.program_journals" does not exist, skipping
+TEST rls_regression.sql
+                                                                                                   complete_onboarding
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (11111111-1111-1111-1111-111111111111,기관A관리자,a@x.kr,"2026-10-23 18:38:51.601869+00","2026-10-23 18:38:51.604183+00",fa44d369-8ab8-4dea-a0bf-9c4e121a6cdc,org_admin,010-1111-2222,"2026-10-23 18:38:51.604183+00",f)
+(1 row)
+
+                                                                                                   complete_onboarding
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (22222222-2222-2222-2222-222222222222,기관B관리자,b@y.kr,"2026-10-23 18:38:51.601869+00","2026-10-23 18:38:51.609262+00",23891658-b263-4fce-a3d0-aa52eff8aca6,org_admin,010-2222-3333,"2026-10-23 18:38:51.609262+00",f)
+(1 row)
+
+                                                                                                    complete_onboarding
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (33333333-3333-3333-3333-333333333333,기관A요양보호사,c@x.kr,"2026-10-23 18:38:51.601869+00","2026-10-23 18:38:51.61101+00",30195762-6699-4ecd-bc36-207ef742d61f,org_admin,010-3333-4444,"2026-10-23 18:38:51.61101+00",f)
+(1 row)
+
+ set_config
+------------
+ 7YVQ4HHHB2
+(1 row)
+
+                                                                                                complete_onboarding
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (55555555-5555-5555-5555-555555555555,보호자H,h@z.kr,"2026-10-23 18:38:51.62572+00","2026-10-23 18:38:51.626194+00",fa44d369-8ab8-4dea-a0bf-9c4e121a6cdc,guardian,010-5555-6666,"2026-10-23 18:38:51.626194+00",f)
+(1 row)
+
+                                                                                                   complete_onboarding
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (66666666-6666-6666-6666-666666666666,요양보호사D,d@x.kr,"2026-10-23 18:38:51.633737+00","2026-10-23 18:38:51.633994+00",37502300-7c95-42a5-ab0c-693cc1b5c239,org_admin,010-6666-7777,"2026-10-23 18:38:51.633994+00",f)
+(1 row)
+
+                         result
+---------------------------------------------------------
+ ✅ RLS·RBAC·테넌트 격리·동의·감사 회귀 테스트 전부 통과
+(1 row)
+
+TEST transcript_provenance.sql
+                                                                                                          complete_onboarding
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (91919191-9191-4191-8191-919191919191,Test,provenance@example.invalid,"2026-10-23 18:38:52.061068+00","2026-10-23 18:38:52.061068+00",a25f7050-ed2b-42b7-8870-6578d25c875e,org_admin,010-1234-5678,"2026-10-23 18:38:52.061068+00",f)
+(1 row)
+
+transcript provenance assertions passed
+TEST pilot_access.sql
+                                                                                                     complete_onboarding
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000001,PA관리자,pa-admin@x.kr,"2026-10-23 18:38:52.316718+00","2026-10-23 18:38:52.318482+00",bd10c9a5-2869-4b1d-b897-85ba1ef8857c,org_admin,010-0000-0001,"2026-10-23 18:38:52.318482+00",f)
+(1 row)
+
+                                                                                                    complete_onboarding
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000005,PB관리자,pb-admin@y.kr,"2026-10-23 18:38:52.316718+00","2026-10-23 18:38:52.32373+00",64bb74be-f0b2-4ffc-87f4-feed2c240dd4,org_admin,010-0000-0005,"2026-10-23 18:38:52.32373+00",f)
+(1 row)
+
+                                                                                                       complete_onboarding
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000002,PA요양보호사,pa-care@x.kr,"2026-10-23 18:38:52.316718+00","2026-10-23 18:38:52.325597+00",9cff06fa-6f5b-4309-92fe-d73d76b1faef,org_admin,010-0000-0002,"2026-10-23 18:38:52.325597+00",f)
+(1 row)
+
+                                                                                                    complete_onboarding
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000003,PA직원,pa-staff@x.kr,"2026-10-23 18:38:52.316718+00","2026-10-23 18:38:52.327354+00",fdfc308d-b4f5-4b1c-928e-494ae3962c06,org_admin,010-0000-0003,"2026-10-23 18:38:52.327354+00",f)
+(1 row)
+
+                                                                                                   complete_onboarding
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000004,PA보호자,pa-guard@x.kr,"2026-10-23 18:38:52.316718+00","2026-10-23 18:38:52.3289+00",5082abef-80cd-41cd-9fc1-538b5567555a,org_admin,010-0000-0004,"2026-10-23 18:38:52.3289+00",f)
+(1 row)
+
+                                                                                                      complete_onboarding
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000006,PA관리자2,pa-admin2@x.kr,"2026-10-23 18:38:52.316718+00","2026-10-23 18:38:52.330447+00",c6df30ee-7a4e-45ec-8a97-ff383c3b0bd5,org_admin,010-0000-0006,"2026-10-23 18:38:52.330447+00",f)
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ set_member_role
+-----------------
+
+(1 row)
+
+ set_member_role
+-----------------
+
+(1 row)
+
+ set_member_role
+-----------------
+
+(1 row)
+
+ set_member_role
+-----------------
+
+(1 row)
+
+ expect_error
+--------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ revoke_org_invite
+-------------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+                                                                                complete_onboarding
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000011,합류1,join1@x.kr,"2026-10-23 18:38:52.343423+00","2026-10-23 18:38:52.351157+00",,caregiver,010-0000-0011,"2026-10-23 18:38:52.351157+00",f)
+(1 row)
+
+                                                                                complete_onboarding
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000012,합류2,join2@x.kr,"2026-10-23 18:38:52.343423+00","2026-10-23 18:38:52.352308+00",,caregiver,010-0000-0012,"2026-10-23 18:38:52.352308+00",f)
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ approve_org_join
+------------------
+
+(1 row)
+
+ reject_org_join
+-----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+                                                                                                  request_org_join
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (6de09d8f-4061-44bc-a2f5-f668772db237,bd10c9a5-2869-4b1d-b897-85ba1ef8857c,a0000000-0000-0000-0000-000000000012,9ef66fc4-15c8-4bf8-a319-869d90f13d7c,social_worker,합류2,pending,"2026-10-23 18:38:52.357383+00",,)
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ cancel_org_join
+-----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ set_config
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+ expect_sql
+------------
+
+(1 row)
+
+                                                                                                        complete_onboarding
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (a0000000-0000-0000-0000-000000000021,운영등록관리자,op-admin@z.kr,"2026-10-23 18:38:52.443032+00","2026-10-23 18:38:52.443733+00",d0922ea0-92d5-4c5a-8e32-a96945d24dfa,org_admin,010-0000-0021,"2026-10-23 18:38:52.443733+00",f)
+(1 row)
+
+ expect_sqlerrm
+----------------
+
+(1 row)
+
+             result
+--------------------------------
+ pilot access assertions passed
+(1 row)
+
+TEST legal_consents.sql
+             result
+---------------------------------
+ legal consent assertions passed
+(1 row)
+
+TEST journal_worker.sql
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ retry_journal_generation
+--------------------------
+
+(1 row)
+
+              result
+----------------------------------
+ journal worker assertions passed
+(1 row)
+
+TEST safety_push.sql
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+            result
+-------------------------------
+ safety push assertions passed
+(1 row)
+
+TEST safety_evidence.sql
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000003
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000001
+(1 row)
+
+ set_config
+------------
+
+(1 row)
+
+              result
+-----------------------------------
+ safety evidence assertions passed
+(1 row)
+
+TEST session_start.sql
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000001
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000001
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000003
+(1 row)
+
+ request_session_control
+-------------------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000001
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000003
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000001
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000003
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+             result
+---------------------------------
+ session start assertions passed
+(1 row)
+
+TEST voice_lease.sql
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+voice_lease: OK
+TEST elder_closing.sql
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+ expect_err
+------------
+
+(1 row)
+
+elder_closing: OK
+TEST audit_retention.sql
+             ?column?
+-----------------------------------
+ audit retention assertions passed
+(1 row)
+
+TEST storage_policies.sql
+TEST share_auto_revoke.sql
+                share                 |                share
+--------------------------------------+--------------------------------------
+ d4d45efa-59b6-4608-a92a-a0f96468332e | bdd07014-7ab3-4c43-8e26-733513cf9101
+(1 row)
+
+                share
+--------------------------------------
+ bd355c44-46c5-4b25-9c97-a0f7960da219
+(1 row)
+
+                share                 |                share
+--------------------------------------+--------------------------------------
+ 44995bea-bcd7-48af-9005-039a44ba5444 | dd23da1d-c630-4bc4-b1af-ea16897eb1a3
+(1 row)
+
+                share
+--------------------------------------
+ e3b23699-2529-4174-9ae5-69813018f4fe
+(1 row)
+
+                share
+--------------------------------------
+ cb38b485-31f2-44ca-ba14-80d02dfe1d61
+(1 row)
+
+                share
+--------------------------------------
+ a69912a9-74e8-443f-a12d-8951a9ecf4df
+(1 row)
+
+                share
+--------------------------------------
+ 28d3454f-1664-4667-877d-ab515886da72
+(1 row)
+
+              ?column?
+-------------------------------------
+ share auto revoke assertions passed
+(1 row)
+
+TEST product_events.sql
+            ?column?
+---------------------------------
+ product event assertions passed
+(1 row)
+
+TEST finalized_journal_integrity.sql
+TEST journal_worker_consent.sql
+                     ?column?
+--------------------------------------------------
+ journal worker consent recheck assertions passed
+(1 row)
+
+TEST prod_privileges.sql
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000002
+(1 row)
+
+              set_config
+--------------------------------------
+ a0000000-0000-0000-0000-000000000001
+(1 row)
+
+               ?column?
+---------------------------------------
+ prod privilege path assertions passed
+(1 row)
+
+TEST blackbox_decision_table.sql
+      id      | finalized | approved | publish_authorized | expected | actual |                                 error
+--------------+-----------+----------+--------------------+----------+--------+------------------------------------------------------------------------
+ DT-SHARE-000 | f         | f        | f                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-001 | f         | f        | t                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-010 | f         | t        | f                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-011 | f         | t        | t                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-100 | t         | f        | f                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-101 | t         | f        | t                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-110 | t         | t        | f                  | f        | f      | new row violates row-level security policy for table "guardian_shares"
+ DT-SHARE-111 | t         | t        | t                  | t        | t      |
+(8 rows)
+
+ all_eight_passed
+------------------
+ t
+(1 row)
+
+PASS: 17 existing database suites and 8 black-box share combinations.

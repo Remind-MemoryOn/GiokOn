@@ -1,0 +1,55 @@
+
+> @giokon/web@0.0.0 test:journal C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/journal-flow-smoke.mjs
+
+PASS: 초안 생성 버튼 없음 · 다시 생성은 실패 일지만 · 바꾼 칸만 저장 · 확정 권한 잠금 · 확정 후 수정 사유 · 사진 부분 실패(첫 사진 보존·일지 1건) · 버전 충돌 시 저장·승인 거절 → 최신 불러오기(내 칸 유지). 합성 API 만 사용.
+
+> @giokon/web@0.0.0 test:plan C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/session-plan-flow-smoke.mjs
+
+PASS: 한국 날짜 기본값(UTC 기기·한국 오전) · 목표 시간 5~10분 · 새 세션 기본값=기관 설정 · 피할 주제 미리 채움 · 단계 미리보기 · 10분 초과 설계는 10분으로. 합성 API 만 사용.
+
+> @giokon/web@0.0.0 test:share C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/share-flow-smoke.mjs
+
+PASS: 첨부 대기/실패 시 묶음 철회 차단 · 일지+사진 전체 철회 · 공개 설정의 늦은 첨부 초기값 보존. 합성 API만 사용.
+
+> @giokon/web@0.0.0 test:chronicle C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/chronicle-flow-smoke.mjs
+
+PASS: 서울/UTC에서 연대기 2회 저장·재열기 날짜 보존 · 서울 새벽 기본 날짜 · 빈 기록일 차단. 합성 API만 사용.
+
+> @giokon/web@0.0.0 test:org C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/org-admin-flow-smoke.mjs
+
+PASS: 비관리 역할 읽기 전용 · 본인 역할 변경 없음 · 역할 변경 확인 후 RPC · 권한표 바뀐 권한만 한 번 저장 · 기관 설정 저장(AI 스위치 제외). 합성 API 만 사용.
+
+> @giokon/web@0.0.0 test:grade C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/elder-grade-flow-smoke.mjs
+
+PASS: 주간보호 등급 필수(상세 안내 · 수정 저장 막음 · 등록 다음 막음) · 고르면 care_grade 저장 · 요양원은 선택. 합성 API 만 사용.
+
+> @giokon/web@0.0.0 test:elder-delete C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/elder-delete-flow-smoke.mjs
+
+PASS: 어르신 삭제 — 취소 시 무동작 · 확정 일지/조회 실패 시 파일 보존 · 확인 → 파일 → 행 순서 파기 · 목록 복귀. 합성 API 만 사용.
+
+> @giokon/web@0.0.0 test:viewport C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/viewport-mode-smoke.mjs
+
+PASS: PC 좁은 창 1440 캔버스 유지(줄바꿈 없음) · 휴대폰 1440 축소(가로 스크롤 없음) · 감독 화면만 반응형(첫 진입·앱 안 이동).
+
+> @giokon/web@0.0.0 test:analysis-period C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/analysis-period-flow-smoke.mjs
+
+PASS: 전체·개인·보호자 분석 3→6개월 선택 시 횟수·응답률·주제·키워드·요약의 기간 일치. 합성 캐시만 사용.
+
+> @giokon/web@0.0.0 test:design-feedback C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/design-feedback-smoke.mjs
+
+PASS: 가입 링크 · 보호자 날짜/어르신 필터 · 4화면 공통 드롭다운 키보드 · 모달 Escape · 긴 정보/알림 말줄임 · 읽은 알림 숨김
+
+> @giokon/web@0.0.0 test:supervision C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/supervision-flow-smoke.mjs
+
+PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인 · 빈 발췌는 저장 중/저장 실패로 표시 · 어르신 요청 마무리는 카드 상태·이유·어르신 기록으로(제어 버튼 숨김·위기 표시 없음). 합성 API 만 사용.

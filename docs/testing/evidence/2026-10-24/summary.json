@@ -1,0 +1,133 @@
+{
+  "subjectCommit": "ee1d3de6dfc3c457e71f48b69fc62285f719ced1",
+  "date": "2026-10-24",
+  "timezone": "Asia/Seoul",
+  "node": "v24.16.0",
+  "pnpm": "10.33.0",
+  "webFlowSuites": [
+    {
+      "suite": "journal",
+      "exit": 0
+    },
+    {
+      "suite": "plan",
+      "exit": 0
+    },
+    {
+      "suite": "share",
+      "exit": 0
+    },
+    {
+      "suite": "chronicle",
+      "exit": 0
+    },
+    {
+      "suite": "org",
+      "exit": 0
+    },
+    {
+      "suite": "grade",
+      "exit": 0
+    },
+    {
+      "suite": "elder-delete",
+      "exit": 0
+    },
+    {
+      "suite": "viewport",
+      "exit": 0
+    },
+    {
+      "suite": "analysis-period",
+      "exit": 0
+    },
+    {
+      "suite": "design-feedback",
+      "exit": 0
+    },
+    {
+      "suite": "supervision",
+      "exit": 0
+    }
+  ],
+  "databaseSuites": [
+    {
+      "suite": "rls_regression",
+      "exit": 0
+    },
+    {
+      "suite": "transcript_provenance",
+      "exit": 0
+    },
+    {
+      "suite": "pilot_access",
+      "exit": 0
+    },
+    {
+      "suite": "legal_consents",
+      "exit": 0
+    },
+    {
+      "suite": "journal_worker",
+      "exit": 0
+    },
+    {
+      "suite": "safety_push",
+      "exit": 0
+    },
+    {
+      "suite": "safety_evidence",
+      "exit": 0
+    },
+    {
+      "suite": "session_start",
+      "exit": 0
+    },
+    {
+      "suite": "voice_lease",
+      "exit": 0
+    },
+    {
+      "suite": "elder_closing",
+      "exit": 0
+    },
+    {
+      "suite": "audit_retention",
+      "exit": 0
+    },
+    {
+      "suite": "storage_policies",
+      "exit": 0
+    },
+    {
+      "suite": "share_auto_revoke",
+      "exit": 0
+    },
+    {
+      "suite": "product_events",
+      "exit": 0
+    },
+    {
+      "suite": "finalized_journal_integrity",
+      "exit": 0
+    },
+    {
+      "suite": "journal_worker_consent",
+      "exit": 0
+    },
+    {
+      "suite": "prod_privileges",
+      "exit": 0
+    }
+  ],
+  "productionWrites": false,
+  "dotenvRead": false,
+  "mobileDevices": 0,
+  "routeCases": 67,
+  "routePassed": 67,
+  "uiCases": 35,
+  "uiPassed": 34,
+  "uiFailed": 1,
+  "shareCombinations": 8,
+  "sharePassed": 8
+}

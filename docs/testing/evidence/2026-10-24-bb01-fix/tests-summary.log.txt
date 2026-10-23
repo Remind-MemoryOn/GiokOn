@@ -1,0 +1,12 @@
+packages/core test:  Test Files  15 passed (15)
+packages/core test:       Tests  254 passed (254)
+packages/core test: Done
+packages/data test:  Test Files  28 passed (28)
+packages/data test:       Tests  233 passed (233)
+packages/data test: Done
+apps/mobile test:  Test Files  36 passed (36)
+apps/mobile test:       Tests  436 passed (436)
+apps/mobile test: Done
+apps/voice-relay test:  Test Files  7 passed (7)
+apps/voice-relay test:       Tests  131 passed (131)
+apps/voice-relay test: Done

@@ -1,0 +1,5 @@
+
+> giokon@0.0.0 check:copy C:\Users\user\Documents\GitHub\MemoryOn
+> node scripts/check-nonmedical-copy.mjs
+
+✓ 비의료 포지셔닝 카피 린트 통과 (사용자 노출 카피에 의료 표현 없음)

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { CaregiverLayout, GuardianLayout } from './components/Layout';
 import { ToastShelf } from './components/ui/Toast';
 import { LandingPage } from './pages/public/LandingPage';
@@ -53,6 +53,7 @@ import { isAwaitingOrgJoin } from '@giokon/data';
 import { JoinPendingPage } from './pages/public/JoinPendingPage';
 import { SupervisionPage } from './pages/caregiver/SupervisionPage';
 import { useViewportMode } from './lib/viewportMode';
+import { loginPath } from './auth/routes';
 
 // 신규 Figma 디자인(4iU6Zw4MhLAMZWlnPFgsCI) 기준 정보구조.
 // 화면↔노드 맵: docs/runbooks/figma-web-extraction.md
@@ -62,8 +63,9 @@ import { useViewportMode } from './lib/viewportMode';
 
 function CaregiverGuard({ children }: { children: React.ReactNode }) {
   const { session, userRow, loading } = useAuth();
+  const location = useLocation();
   if (loading) return null; // 세션·역할 판별 중 — 깜빡임 방지
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Navigate to={loginPath(location.pathname + location.search + location.hash)} replace />;
   if (!userRow || !userRow.onboarded_at) return <Navigate to="/onboarding" replace />;
   if (userRow.role === 'guardian') return <Navigate to="/guardian" replace />;
   // 초대 코드로 가입해 승인을 기다리는(기관 없는) 계정 — 기관 데이터가 0건이라 빈 화면이 "기록 없음"으로 보인다.
@@ -73,8 +75,9 @@ function CaregiverGuard({ children }: { children: React.ReactNode }) {
 
 function GuardianGuard({ children }: { children: React.ReactNode }) {
   const { session, userRow, loading } = useAuth();
+  const location = useLocation();
   if (loading) return null;
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Navigate to={loginPath(location.pathname + location.search + location.hash)} replace />;
   if (!userRow || !userRow.onboarded_at) return <Navigate to="/onboarding" replace />;
   if (userRow.role !== 'guardian') return <Navigate to="/caregiver" replace />;
   return <>{children}</>;

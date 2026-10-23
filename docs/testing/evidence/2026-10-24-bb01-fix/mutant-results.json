@@ -1,0 +1,23 @@
+[
+  {
+    "id": "external-url",
+    "status": "FAIL",
+    "error": "page.waitForURL: Timeout 7000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
+    "url": "http://127.0.0.1:4899/login?returnTo=https%3A%2F%2Fexample.invalid%2Fsteal",
+    "text": ""
+  },
+  {
+    "id": "javascript-url",
+    "status": "FAIL",
+    "error": "page.waitForURL: Timeout 7000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================",
+    "url": "http://127.0.0.1:4899/login?returnTo=javascript%3Aalert(1)",
+    "text": ""
+  },
+  {
+    "id": "prefix-confusion",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/caregiverevil/supervision'\n- '/caregiver'\n             ^\n",
+    "url": "http://127.0.0.1:4899/caregiverevil/supervision",
+    "text": "서비스 소개\n이용안내\n문의\n로그인/회원가입\nAI 회상 대화와\n프로그램 일지를 더 쉽게 관리하는,\n\nAI 회상 대화 기록을 더 편리하게\n관리하고 싶으신가요?\n\n프로그램 일지까지 한곳에서\n관리하고 싶으신가요?\n\n보호자와 소중한 기록을 함께\n나누고 싶으신가요?\n\n을 이용해보세요!\n\nAI 회상 대화부터 프로그램 일지,\n보호자 공유까지, 하나의 인지 활동 관리\n웹 서비스,\n\n어르신 관리\n\n어르신 정보와 연대기를\n등록하고 관리\n\nAI 회상 기록\n\n회상 대화와 세션 기록을\n확인하고 관리\n\nAI 분석\n\n대화 내용을 분석하여\n인지 활동을 확인\n\n보호자 공유\n\n공개된 기록을 보호자와\n안전하게 공유\n\nAI 기반 인지 활동 관리에 필요한 모든 기능을 하나의 웹에서 제공합니다.\n\nAI 회상 대화와 돌봄 기록을 관리하는 인지활동 보조 서비스\n\n개인정보 처리방침\n이용약관"
+  }
+]

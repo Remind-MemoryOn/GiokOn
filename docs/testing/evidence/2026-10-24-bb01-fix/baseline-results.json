@@ -1,0 +1,169 @@
+[
+  {
+    "id": "guard-caregiver",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ null\n- '/caregiver/supervision?source=push#event-1'\n",
+    "url": "http://127.0.0.1:10467/login",
+    "text": "서비스 소개\n이용안내\n문의\n로그인/회원가입\n계정으로 로그인해 주세요.\n아이디\n비밀번호\n아이디 저장\n아이디/비밀번호 찾기\n로그인\n\n계정이 없으신가요?\n\n회원가입\n또는\n네이버\n카카오톡\n구글\n개인정보처리방침\n이용약관"
+  },
+  {
+    "id": "guard-guardian",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ null\n- '/guardian/feed?tab=journal#today'\n",
+    "url": "http://127.0.0.1:10467/login",
+    "text": "서비스 소개\n이용안내\n문의\n로그인/회원가입\n계정으로 로그인해 주세요.\n아이디\n비밀번호\n아이디 저장\n아이디/비밀번호 찾기\n로그인\n\n계정이 없으신가요?\n\n회원가입\n또는\n네이버\n카카오톡\n구글\n개인정보처리방침\n이용약관"
+  },
+  {
+    "id": "direct-target",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/caregiver'\n- '/caregiver/supervision'\n             ^\n",
+    "url": "http://127.0.0.1:10467/caregiver",
+    "text": ""
+  },
+  {
+    "id": "no-target",
+    "status": "PASS",
+    "observed": {
+      "target": null,
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "guardian-home",
+    "status": "PASS",
+    "observed": {
+      "target": null,
+      "expected": "/guardian"
+    }
+  },
+  {
+    "id": "guardian-deny-care",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/guardian"
+    }
+  },
+  {
+    "id": "care-deny-guardian",
+    "status": "PASS",
+    "observed": {
+      "target": "/guardian/feed",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "pending-org",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/join-pending"
+    }
+  },
+  {
+    "id": "needs-onboarding",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/onboarding"
+    }
+  },
+  {
+    "id": "external-url",
+    "status": "PASS",
+    "observed": {
+      "target": "https://example.invalid/steal",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "protocol-relative",
+    "status": "PASS",
+    "observed": {
+      "target": "//example.invalid/steal",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "backslash-host",
+    "status": "PASS",
+    "observed": {
+      "target": "/\\example.invalid/steal",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "javascript-url",
+    "status": "PASS",
+    "observed": {
+      "target": "javascript:alert(1)",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "login-loop",
+    "status": "PASS",
+    "observed": {
+      "target": "/login?returnTo=/caregiver",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "normalized-loop",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/../login",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "prefix-confusion",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiverevil/supervision",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "inquiry-target",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/caregiver'\n- '/inquiries/new'\n",
+    "url": "http://127.0.0.1:10467/caregiver",
+    "text": "본문으로 바로가기\n합성복귀시험 요양보호사님\n대시보드\n어르신 관리\n세션 기록\n분석\n프로그램 일지\n공개 관리\n기관 관리\n설정\n감독\n로그아웃\n대시보드\n기억온은 요양보호사가 설계한 세션을 AI가 어르신과 대화로 진행하고,\n그 대화에서 새로운 연대기를 스스로 모아갑니다.\n등록된 어르신\n0\n준비된 세션\n0\n연대기 항목\n0\nAI 자동 축적\n0\n담당 어르신\n\n탭하여 세션을 시작하거나 연대기를 확인하세요.\n\n전체 보기\n아직 등록된 어르신이 없습니다.\n최근 대화\n\nAI가 진행한 회상 세션\n\n아직 진행한 세션이 없습니다."
+  },
+  {
+    "id": "legacy-inquiry-state",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/caregiver'\n- '/inquiries/new'\n",
+    "url": "http://127.0.0.1:10467/caregiver",
+    "text": "본문으로 바로가기\n합성복귀시험 요양보호사님\n대시보드\n어르신 관리\n세션 기록\n분석\n프로그램 일지\n공개 관리\n기관 관리\n설정\n감독\n로그아웃\n대시보드\n기억온은 요양보호사가 설계한 세션을 AI가 어르신과 대화로 진행하고,\n그 대화에서 새로운 연대기를 스스로 모아갑니다.\n등록된 어르신\n0\n준비된 세션\n0\n연대기 항목\n0\nAI 자동 축적\n0\n담당 어르신\n\n탭하여 세션을 시작하거나 연대기를 확인하세요.\n\n전체 보기\n아직 등록된 어르신이 없습니다.\n최근 대화\n\nAI가 진행한 회상 세션\n\n아직 진행한 세션이 없습니다."
+  },
+  {
+    "id": "google-return",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ null\n- '/caregiver/supervision?source=push#event-1'\n",
+    "url": "https://synthetic.supabase.co/auth/v1/authorize?provider=google&redirect_to=http%3A%2F%2F127.0.0.1%3A10467%2Flogin&code_challenge=iPVJW40O4Lz9VgBcFprtJqMIG8kqUpZiU36z77-HlKQ&code_challenge_method=s256",
+    "text": "Synthetic provider"
+  },
+  {
+    "id": "kakao-return",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ null\n- '/caregiver/supervision?source=push#event-1'\n",
+    "url": "https://synthetic.supabase.co/auth/v1/authorize?provider=kakao&redirect_to=http%3A%2F%2F127.0.0.1%3A10467%2Flogin&code_challenge=zcDJ3OxteT-LUWMZ8WZ8ZICBP0aGwkY-qYKSlNvEQhI&code_challenge_method=s256",
+    "text": "Synthetic provider"
+  },
+  {
+    "id": "naver-return",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ null\n- '/caregiver/supervision?source=push#event-1'\n",
+    "url": "https://synthetic.supabase.co/functions/v1/naver-auth/authorize?redirect_to=http%3A%2F%2F127.0.0.1%3A10467%2Flogin",
+    "text": "Synthetic provider"
+  },
+  {
+    "id": "naver-callback-return",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'http://127.0.0.1:10467/caregiver'\n- 'http://127.0.0.1:10467/caregiver/supervision?source=push#event-1'\n",
+    "url": "http://127.0.0.1:10467/caregiver",
+    "text": "본문으로 바로가기\n합성복귀시험 요양보호사님\n대시보드\n어르신 관리\n세션 기록\n분석\n프로그램 일지\n공개 관리\n기관 관리\n설정\n감독\n로그아웃\n대시보드\n기억온은 요양보호사가 설계한 세션을 AI가 어르신과 대화로 진행하고,\n그 대화에서 새로운 연대기를 스스로 모아갑니다.\n등록된 어르신\n0\n준비된 세션\n0\n연대기 항목\n0\nAI 자동 축적\n0\n담당 어르신\n\n탭하여 세션을 시작하거나 연대기를 확인하세요.\n\n전체 보기\n아직 등록된 어르신이 없습니다.\n최근 대화\n\nAI가 진행한 회상 세션\n\n아직 진행한 세션이 없습니다."
+  }
+]

@@ -1,0 +1,503 @@
+[
+  {
+    "id": "DT-SIGN-000",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=000",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 262
+  },
+  {
+    "id": "DT-SIGN-001",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=001",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 223
+  },
+  {
+    "id": "DT-SIGN-010",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=010",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 240
+  },
+  {
+    "id": "DT-SIGN-011",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=011",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 276
+  },
+  {
+    "id": "DT-SIGN-100",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=100",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 282
+  },
+  {
+    "id": "DT-SIGN-101",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=101",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 354
+  },
+  {
+    "id": "DT-SIGN-110",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=110",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 0,
+      "actualRequests": 0
+    },
+    "elapsedMs": 282
+  },
+  {
+    "id": "DT-SIGN-111",
+    "technique": [
+      "동등 분할",
+      "원인-결과 그래프",
+      "결정 테이블"
+    ],
+    "title": "가입 E/L/M=111",
+    "status": "PASS",
+    "observed": {
+      "expectedRequests": 1,
+      "actualRequests": 1
+    },
+    "elapsedMs": 304
+  },
+  {
+    "id": "EP-EMPTY-SIGN",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "/signup 필수 입력 없음",
+    "status": "PASS",
+    "observed": {
+      "feedback": "가입할 이메일(아이디)을 입력해 주세요.",
+      "requests": 0
+    },
+    "elapsedMs": 223
+  },
+  {
+    "id": "EP-EMPTY-LOGIN",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "/login 필수 입력 없음",
+    "status": "PASS",
+    "observed": {
+      "feedback": "이메일을 입력해 주세요.",
+      "requests": 0
+    },
+    "elapsedMs": 255
+  },
+  {
+    "id": "EP-EMPTY-FORGOT",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "/forgot-password 필수 입력 없음",
+    "status": "PASS",
+    "observed": {
+      "feedback": "가입한 이메일을 입력해 주세요.",
+      "requests": 0
+    },
+    "elapsedMs": 277
+  },
+  {
+    "id": "EP-EMPTY-FIND",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "/find-id 필수 입력 없음",
+    "status": "PASS",
+    "observed": {
+      "feedback": "이름과 전화번호를 입력해 주세요.",
+      "requests": 0
+    },
+    "elapsedMs": 239
+  },
+  {
+    "id": "EP-EMPTY-RESET",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "/reset-password 필수 입력 없음",
+    "status": "PASS",
+    "observed": {
+      "feedback": "비밀번호는 8자 이상이어야 해요.",
+      "requests": 0
+    },
+    "elapsedMs": 220
+  },
+  {
+    "id": "ST-SIGN-RETRY",
+    "technique": [
+      "상태 전이",
+      "오류 예측"
+    ],
+    "title": "가입 대기 중 중복 차단 → 실패 → 재시도",
+    "status": "PASS",
+    "observed": {
+      "attempts": 2,
+      "duplicateWhilePending": 0
+    },
+    "elapsedMs": 362
+  },
+  {
+    "id": "EP-INQUIRY-100",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "문의 input 최대 100자",
+    "status": "PASS",
+    "observed": {
+      "submittedLength": 101,
+      "retainedLength": 100
+    },
+    "elapsedMs": 253
+  },
+  {
+    "id": "EP-INQUIRY-5000",
+    "technique": [
+      "동등 분할",
+      "오류 예측"
+    ],
+    "title": "문의 textarea 최대 5000자",
+    "status": "PASS",
+    "observed": {
+      "submittedLength": 5001,
+      "retainedLength": 5000
+    },
+    "elapsedMs": 222
+  },
+  {
+    "id": "EG-INQUIRY-ANON",
+    "technique": [
+      "오류 예측"
+    ],
+    "title": "미인증 문의 등록 차단",
+    "status": "PASS",
+    "observed": {
+      "inquiryWrites": 0
+    },
+    "elapsedMs": 295
+  },
+  {
+    "id": "ST-LOGIN-RETURN",
+    "technique": [
+      "상태 전이",
+      "오류 예측"
+    ],
+    "title": "감독 링크 → 로그인 성공 → 원래 감독 화면",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ '/caregiver'\n- '/caregiver/supervision'\n             ^\n",
+    "url": "http://127.0.0.1:4462/caregiver",
+    "visibleText": "본문으로 바로가기\n합성직원 요양보호사님\n대시보드\n어르신 관리\n세션 기록\n분석\n프로그램 일지\n공개 관리\n기관 관리\n설정\n감독\n로그아웃\n대시보드\n기억온은 요양보호사가 설계한 세션을 AI가 어르신과 대화로 진행하고,\n그 대화에서 새로운 연대기를 스스로 모아갑니다.\n등록된 어르신\n0\n준비된 세션\n0\n연대기 항목\n0\nAI 자동 축적\n0\n담당 어르신\n\n탭하여 세션을 시작하거나 연대기를 확인하세요.\n\n전체 보기\n아직 등록된 어르신이 없습니다.\n최근 대화\n\nAI가 진행한 회상 세션\n\n아직 진행한 세션이 없습니다.",
+    "writes": [],
+    "screenshot": "ST-LOGIN-RETURN.png",
+    "elapsedMs": 409
+  },
+  {
+    "id": "DT-FINAL-caregiver",
+    "technique": [
+      "결정 테이블",
+      "원인-결과 그래프"
+    ],
+    "title": "확정 권한: caregiver",
+    "status": "PASS",
+    "observed": {
+      "role": "caregiver",
+      "finalizationEnabled": false
+    },
+    "elapsedMs": 231
+  },
+  {
+    "id": "DT-FINAL-social_worker",
+    "technique": [
+      "결정 테이블",
+      "원인-결과 그래프"
+    ],
+    "title": "확정 권한: social_worker",
+    "status": "PASS",
+    "observed": {
+      "role": "social_worker",
+      "finalizationEnabled": true
+    },
+    "elapsedMs": 251
+  },
+  {
+    "id": "DT-FINAL-center_director",
+    "technique": [
+      "결정 테이블",
+      "원인-결과 그래프"
+    ],
+    "title": "확정 권한: center_director",
+    "status": "PASS",
+    "observed": {
+      "role": "center_director",
+      "finalizationEnabled": true
+    },
+    "elapsedMs": 239
+  },
+  {
+    "id": "DT-FINAL-org_admin",
+    "technique": [
+      "결정 테이블",
+      "원인-결과 그래프"
+    ],
+    "title": "확정 권한: org_admin",
+    "status": "PASS",
+    "observed": {
+      "role": "org_admin",
+      "finalizationEnabled": true
+    },
+    "elapsedMs": 232
+  },
+  {
+    "id": "ST-JOURNAL-generating",
+    "technique": [
+      "동등 분할",
+      "상태 전이"
+    ],
+    "title": "일지 generating 표시·재시도",
+    "status": "PASS",
+    "observed": {
+      "status": "generating",
+      "displayed": "생성 중",
+      "retry": false,
+      "automaticWrites": 0
+    },
+    "elapsedMs": 230
+  },
+  {
+    "id": "ST-JOURNAL-pending_review",
+    "technique": [
+      "동등 분할",
+      "상태 전이"
+    ],
+    "title": "일지 pending_review 표시·재시도",
+    "status": "PASS",
+    "observed": {
+      "status": "pending_review",
+      "displayed": "확인 대기",
+      "retry": false,
+      "automaticWrites": 0
+    },
+    "elapsedMs": 241
+  },
+  {
+    "id": "ST-JOURNAL-final",
+    "technique": [
+      "동등 분할",
+      "상태 전이"
+    ],
+    "title": "일지 final 표시·재시도",
+    "status": "PASS",
+    "observed": {
+      "status": "final",
+      "displayed": "확정",
+      "retry": false,
+      "automaticWrites": 0
+    },
+    "elapsedMs": 261
+  },
+  {
+    "id": "ST-JOURNAL-failed",
+    "technique": [
+      "동등 분할",
+      "상태 전이"
+    ],
+    "title": "일지 failed 표시·재시도",
+    "status": "PASS",
+    "observed": {
+      "status": "failed",
+      "displayed": "생성 실패",
+      "retry": true,
+      "automaticWrites": 0
+    },
+    "elapsedMs": 247
+  },
+  {
+    "id": "EP-TIME-0",
+    "technique": [
+      "동등 분할",
+      "비교"
+    ],
+    "title": "목표 시간 입력군 0분",
+    "status": "PASS",
+    "observed": {
+      "input": "0",
+      "offered": false
+    },
+    "elapsedMs": 297
+  },
+  {
+    "id": "EP-TIME-5",
+    "technique": [
+      "동등 분할",
+      "비교"
+    ],
+    "title": "목표 시간 입력군 5분",
+    "status": "PASS",
+    "observed": {
+      "input": "5",
+      "offered": true
+    },
+    "elapsedMs": 299
+  },
+  {
+    "id": "EP-TIME-10",
+    "technique": [
+      "동등 분할",
+      "비교"
+    ],
+    "title": "목표 시간 입력군 10분",
+    "status": "PASS",
+    "observed": {
+      "input": "10",
+      "offered": true
+    },
+    "elapsedMs": 364
+  },
+  {
+    "id": "EP-TIME-11",
+    "technique": [
+      "동등 분할",
+      "비교"
+    ],
+    "title": "목표 시간 입력군 11분",
+    "status": "PASS",
+    "observed": {
+      "input": "11",
+      "offered": false
+    },
+    "elapsedMs": 266
+  },
+  {
+    "id": "EP-TIME-30",
+    "technique": [
+      "동등 분할",
+      "비교"
+    ],
+    "title": "목표 시간 입력군 30분",
+    "status": "PASS",
+    "observed": {
+      "input": "30",
+      "offered": false
+    },
+    "elapsedMs": 260
+  },
+  {
+    "id": "CMP-DATE-Asia-Seoul",
+    "technique": [
+      "비교"
+    ],
+    "title": "Asia/Seoul 기기의 한국 새벽 날짜",
+    "status": "PASS",
+    "observed": {
+      "timezone": "Asia/Seoul",
+      "displayedDate": "2026-10-24"
+    },
+    "elapsedMs": 429
+  },
+  {
+    "id": "CMP-DATE-UTC",
+    "technique": [
+      "비교"
+    ],
+    "title": "UTC 기기의 한국 새벽 날짜",
+    "status": "PASS",
+    "observed": {
+      "timezone": "UTC",
+      "displayedDate": "2026-10-24"
+    },
+    "elapsedMs": 437
+  },
+  {
+    "id": "CMP-DATE-America-Los_Angeles",
+    "technique": [
+      "비교"
+    ],
+    "title": "America/Los_Angeles 기기의 한국 새벽 날짜",
+    "status": "PASS",
+    "observed": {
+      "timezone": "America/Los_Angeles",
+      "displayedDate": "2026-10-24"
+    },
+    "elapsedMs": 410
+  },
+  {
+    "id": "EG-XSS-JOURNAL",
+    "technique": [
+      "오류 예측"
+    ],
+    "title": "일지 문자열의 HTML 실행 방지",
+    "status": "PASS",
+    "observed": {
+      "displayedAsText": true,
+      "scriptExecuted": false
+    },
+    "elapsedMs": 248
+  }
+]

@@ -1,0 +1,5 @@
+
+> giokon@0.0.0 check:design C:\Users\user\Documents\GitHub\MemoryOn
+> node scripts/check-web-design.mjs
+
+✓ 웹 디자인 대조 통과 (213개 항목 · 이관 파일 78개)

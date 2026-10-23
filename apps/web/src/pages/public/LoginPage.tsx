@@ -3,7 +3,7 @@
 //   아이디 254 · 비밀번호 389 · 아이디 저장 537 · 로그인 600(568×71) · 또는 706 · 소셜 758
 // ⚠️ 라인박스는 Figma auto(≈1.2) — 토큰 기본값(28/30)을 쓰면 잉크가 2~3px 내려간다.
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   signInWithEmail,
   signInWithProvider,
@@ -15,7 +15,7 @@ import {
 import { PublicHeader } from '../../components/shell/PublicHeader';
 import { asset } from '../../assets/ui';
 import { useAuth } from '../../auth/AuthProvider';
-import { routeForUser } from '../../auth/routes';
+import { loginPath, routeAfterLogin } from '../../auth/routes';
 import { useStore } from '../../store/store';
 import { isSupabaseConfigured, supabaseUrl } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
@@ -58,6 +58,9 @@ export function LoginPage() {
   const { session, userRow, loading } = useAuth();
   const toast = useStore((s) => s.toast);
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo: unknown = new URLSearchParams(location.search).get('returnTo')
+    ?? (location.state as { from?: unknown } | null)?.from;
 
   const [remembered] = useState(readRememberedEmail);
   const [email, setEmail] = useState(remembered);
@@ -86,7 +89,7 @@ export function LoginPage() {
       try {
         await setSessionFromTokens(callback.access, callback.refresh);
         const row = await getCurrentUserRow();
-        if (alive) navigate(routeForUser(row), { replace: true });
+        if (alive) navigate(routeAfterLogin(row, returnTo), { replace: true });
       } catch (err) {
         if (!alive) return;
         toast('error', err instanceof Error ? err.message : '네이버 로그인에 실패했어요.');
@@ -96,10 +99,10 @@ export function LoginPage() {
     return () => {
       alive = false;
     };
-  }, [callback, navigate, toast]);
+  }, [callback, navigate, toast, returnTo]);
 
   if (loading || naverReturning) return null; // 세션 판별 중 — 깜빡임 방지
-  if (session) return <Navigate to={routeForUser(userRow)} replace />;
+  if (session) return <Navigate to={routeAfterLogin(userRow, returnTo)} replace />;
 
   async function submit() {
     if (!isSupabaseConfigured) {
@@ -120,7 +123,7 @@ export function LoginPage() {
       }
       // 소셜 로그인은 이미 역할로 분기하는데 이메일 로그인만 온보딩으로 직행했다.
       const row = await getCurrentUserRow();
-      navigate(routeForUser(row), { replace: true });
+      navigate(routeAfterLogin(row, returnTo), { replace: true });
     } catch (err) {
       toast('error', err instanceof Error ? err.message : '로그인에 실패했어요.');
     } finally {
@@ -137,11 +140,11 @@ export function LoginPage() {
     try {
       if (key === 'naver') {
         if (!supabaseUrl) throw new Error('서버 주소가 설정되지 않았어요.');
-        window.location.assign(buildNaverAuthUrl(supabaseUrl, `${window.location.origin}/login`));
+        window.location.assign(buildNaverAuthUrl(supabaseUrl, `${window.location.origin}${loginPath(returnTo)}`));
         return;
       }
       await signInWithProvider(key as NativeSocialProvider, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}${loginPath(returnTo)}`,
       });
     } catch (err) {
       toast('error', err instanceof Error ? err.message : '로그인을 시작하지 못했어요.');

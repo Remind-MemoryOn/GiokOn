@@ -1,0 +1,7 @@
+FAIL external-url
+FAIL javascript-url
+FAIL prefix-confusion
+{"total":3,"pass":0,"fail":3}
+undefined
+C:\Users\user\Documents\GitHub\MemoryOn\apps\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: node scripts/login-return-smoke.mjs --unguarded-return

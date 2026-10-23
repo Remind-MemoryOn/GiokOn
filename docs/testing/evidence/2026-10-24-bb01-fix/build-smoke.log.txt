@@ -1,0 +1,109 @@
+vite v8.1.0 building client environment for production...
+[2K
+transforming...✓ 366 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                          0.63 kB │ gzip:   0.45 kB
+dist/assets/avatar-default-_jBjO7J8.png                  4.51 kB
+dist/assets/mark-google-BOrY5Q10.png                     4.51 kB
+dist/assets/landing-feat-elders-accent-BRBeeH0p.png      4.82 kB
+dist/assets/mark-kakao-D20g5zkw.png                      4.90 kB
+dist/assets/an-badge-minutes-CpgELm2t.png                5.16 kB
+dist/assets/an-badge-sessions-Bj7LvfbV.png               5.22 kB
+dist/assets/an-badge-rate-DKUGP727.png                   5.26 kB
+dist/assets/stat-chronicles-Jxw9lGmi.png                 5.39 kB
+dist/assets/stat-elders-Bzg6f_24.png                     5.43 kB
+dist/assets/avatar-ai-Ca_rrZc2.png                       5.77 kB
+dist/assets/wordmark-n8bHuhOq.png                        6.17 kB
+dist/assets/stat-ai-BVAW6Tfs.png                         6.25 kB
+dist/assets/landing-feat-share-C3wAiM3e.png              7.34 kB
+dist/assets/an-verdict-good-BtGRF2FI.png                 8.73 kB
+dist/assets/icon-camera-rpoYRsU1.png                     9.25 kB
+dist/assets/landing-spot-1-N_x7SX98.png                  9.65 kB
+dist/assets/landing-wordmark-cta-xpzgF8Gp.png           10.83 kB
+dist/assets/landing-spot-2-BGYx9VZN.png                 11.39 kB
+dist/assets/landing-wordmark-sub-CEzGdcZS.png           13.56 kB
+dist/assets/landing-spot-3-CWzJx4Bu.png                 14.98 kB
+dist/assets/landing-notch-vYmwsbs2.png                  16.98 kB
+dist/assets/landing-illust-share-MYrivmi5.png           20.72 kB
+dist/assets/landing-wordmark-hero-CAw6qmGA.png          37.85 kB
+dist/assets/landing-hero-Dj6YFu5E.png                   76.03 kB
+dist/assets/landing-bars-DyN_w1ef.png                  299.73 kB
+dist/assets/PretendardVariable-CJuje-Rk.woff2        2,057.68 kB
+dist/assets/index-DrGjgx32.css                          42.93 kB │ gzip:   9.50 kB
+dist/assets/index-2zuXW2KN.js                          975.78 kB │ gzip: 342.17 kB
+
+✓ built in 1.22s
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✅ 랜딩 (/)
+✅ 로그인 (/login)
+✅ 소셜 · 네이버 (/login)
+✅ 소셜 · 카카오 (/login)
+✅ 소셜 · 구글 (/login)
+✅ 아이디 저장 (/login)
+✅ 찾기 링크 (/login)
+✅ 이용안내 · 웹 사용 흐름 (/guide)
+✅ 이용안내 · 앱 사용 흐름 (/guide)
+✅ 이용안내 · 확인 사항 (/guide)
+✅ 이용안내 · 비의료 고지 (/guide)
+✅ 이용안내 · 처리방침 링크(단독 페이지로) (/guide)
+✅ 이용안내 · 약관 링크(단독 페이지로) (/guide)
+✅ 개인정보 처리방침(단독) (/privacy)
+✅ 처리방침 · 미확정 정보 비생성 (/privacy)
+✅ 이용약관(단독) (/terms)
+✅ 약관 · 비공개 문의 규약 (/terms)
+✅ 문의사항 목록 (/inquiries)
+✅ 문의사항 · 빈 상태(미설정) (/inquiries)
+✅ 문의 등록 폼 (/inquiries/new)
+✅ 문의 등록 · 민감정보 안내 (/inquiries/new)
+✅ 문의 상세(미설정→열람 불가) (/inquiries/demo)
+✅ 회원가입(이메일) (/signup)
+✅ 아이디 찾기 (/find-id)
+✅ 비밀번호 찾기 (/forgot-password)
+✅ 비밀번호 재설정 (/reset-password)
+✅ 요양보호사 영역 가드 (/caregiver)
+✅ 어르신 관리 가드 (/caregiver/elders)
+✅ 어르신 등록 모달 가드 (/caregiver/elders/new)
+✅ 어르신 상세 가드 (/caregiver/elders/demo)
+✅ 어르신 기본 정보 수정 가드 (/caregiver/elders/demo/edit)
+✅ 연대기 목록 가드 (/caregiver/elders/demo/chronicles)
+✅ 연대기 추가 모달 가드 (/caregiver/elders/demo/chronicles/new)
+✅ 연대기 상세 모달 가드 (/caregiver/elders/demo/chronicles/c1)
+✅ 세션 기록 가드 (/caregiver/sessions)
+✅ 세션 목록 가드 (/caregiver/sessions/demo)
+✅ 회상 세션 설계 모달 가드 (/caregiver/sessions/demo/new)
+✅ 대화 기록 가드 (/caregiver/sessions/demo/s1)
+✅ 분석 가드 (/caregiver/analysis)
+✅ 개인별 분석 가드 (/caregiver/analysis/elders)
+✅ 개인별 종합 분석 가드 (/caregiver/analysis/demo)
+✅ 구 /overall 경로 리다이렉트 (/caregiver/analysis/demo/overall)
+✅ 대화 분석 목록 가드 (/caregiver/analysis/demo/sessions)
+✅ 대화 분석 상세 가드 (/caregiver/analysis/demo/sessions/s1)
+✅ 프로그램 일지 가드 (/caregiver/journal)
+✅ 프로그램 일지 목록 가드 (/caregiver/journal/demo)
+✅ 프로그램 일지 수기 작성 가드 (/caregiver/journal/demo/new)
+✅ 프로그램 일지 상세 가드 (/caregiver/journal/demo/j1)
+✅ 공개 관리 가드 (/caregiver/shares)
+✅ 공개 항목 목록 가드 (/caregiver/shares/demo)
+✅ 공개 이력 가드 (/caregiver/shares/demo/history)
+✅ 기관 관리 가드 (/caregiver/org)
+✅ 설정 가드 (/caregiver/settings)
+✅ 보호자 영역 가드 (/guardian)
+✅ 공개된 소식 가드 (/guardian/feed)
+✅ 보호자 분석 가드 (/guardian/analysis)
+✅ 보호자 요양일지 상세 가드 (/guardian/feed/journal/x)
+✅ 보호자 대화 요약 상세 가드 (/guardian/feed/summary/x)
+✅ 보호자 설정 가드 (/guardian/settings)
+✅ 보호자 대화 분석 목록 가드 (/guardian/analysis/sessions)
+✅ 보호자 대화 분석 상세 가드 (/guardian/analysis/sessions/x)
+✅ 공개 기록 설정 가드 (/caregiver/shares/x?settings=y)
+✅ 공개 이력 상세 가드 (/caregiver/shares/x/history?receipt=y)
+✅ 온보딩(미인증→로그인) (/onboarding)
+✅ 합류 승인 대기(미인증→로그인) (/join-pending)
+✅ 감독 화면 가드 (/caregiver/supervision)
+✅ 404 → 랜딩 (/no-such-route)
+결과: 67/67 통과, 콘솔 오류 0건

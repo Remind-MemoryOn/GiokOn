@@ -1,0 +1,114 @@
+2f4e8c9a52bd8e46584dfbca35764106a5a88eaf9fcb4b758a55ea4ed83e480c
+psql:/migrations/20260624090000_supabase_auth_rls.sql:57: NOTICE:  trigger "on_auth_user_created" for relation "auth.users" does not exist, skipping
+psql:/migrations/20260718125000_realtime_publication.sql:21: WARNING:  wal_level is insufficient to publish logical changes
+HINT:  Set wal_level to "logical" before creating subscriptions.
+psql:/migrations/20260722130000_elder_code_generation_hardening.sql:17: NOTICE:  extension "pgcrypto" already exists, skipping
+psql:/migrations/20260831000000_share_view_receipt.sql:16: NOTICE:  constraint "guardian_shares_view_count_check" of relation "guardian_shares" does not exist, skipping
+psql:/migrations/20260901000000_profile_note.sql:14: NOTICE:  constraint "profiles_note_check" of relation "profiles" does not exist, skipping
+psql:/migrations/20260901010000_notifications.sql:88: NOTICE:  trigger "notify_safety_event" for relation "public.safety_events" does not exist, skipping
+psql:/migrations/20260901010000_notifications.sql:114: NOTICE:  trigger "notify_share_viewed" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260901020000_messages.sql:87: NOTICE:  trigger "notify_message" for relation "public.messages" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:52: NOTICE:  trigger "users_protect_site_admin" for relation "public.users" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:107: NOTICE:  policy "inquiries_read" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:111: NOTICE:  policy "inquiries_insert" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:113: NOTICE:  policy "inquiries_update" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:115: NOTICE:  policy "inquiries_delete" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:118: NOTICE:  policy "inquiry_replies_read" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:122: NOTICE:  policy "inquiry_replies_admin_insert" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:124: NOTICE:  policy "inquiry_replies_admin_update" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:126: NOTICE:  policy "inquiry_replies_admin_delete" for relation "public.inquiry_replies" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:146: NOTICE:  trigger "inquiries_protect_admin_fields" for relation "public.inquiries" does not exist, skipping
+psql:/migrations/20260902000000_inquiries.sql:158: NOTICE:  trigger "inquiry_reply_status" for relation "public.inquiry_replies" does not exist, skipping
+ ?column?
+----------
+        1
+(1 row)
+
+psql:/migrations/20260906000000_guardian_shared_session_read.sql:53: NOTICE:  policy "sessions_select_shared_guardian" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260906000000_guardian_shared_session_read.sql:60: NOTICE:  policy "session_logs_select_shared_guardian" for relation "public.session_logs" does not exist, skipping
+psql:/migrations/20260906010000_guardian_share_item_owner.sql:54: NOTICE:  trigger "check_guardian_share_item_owner" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260908000000_users_privilege_hardening.sql:84: NOTICE:  trigger "users_protect_privileges" for relation "public.users" does not exist, skipping
+ ?column?
+----------
+        1
+(1 row)
+
+psql:/migrations/20260924010000_org_settings_capabilities.sql:120: NOTICE:  trigger "org_settings_stamp" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:123: NOTICE:  trigger "org_capabilities_stamp" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:164: NOTICE:  policy "org_settings_select_team" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:167: NOTICE:  policy "org_settings_insert_manager" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:170: NOTICE:  policy "org_settings_update_manager" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:175: NOTICE:  policy "org_capabilities_select_team" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:178: NOTICE:  policy "org_capabilities_insert_manager" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:181: NOTICE:  policy "org_capabilities_update_manager" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:205: NOTICE:  trigger "audit_org_settings" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:208: NOTICE:  trigger "audit_org_capabilities" for relation "public.org_capabilities" does not exist, skipping
+psql:/migrations/20260924010000_org_settings_capabilities.sql:230: NOTICE:  trigger "organizations_seed_config" for relation "public.organizations" does not exist, skipping
+psql:/migrations/20260924020000_org_join.sql:78: NOTICE:  policy "org_invites_select_manager" for relation "public.org_invites" does not exist, skipping
+psql:/migrations/20260924020000_org_join.sql:82: NOTICE:  policy "org_join_requests_select_scope" for relation "public.org_join_requests" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_control_request_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_pause_pair_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_pause_reason_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_prompt_version_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:46: NOTICE:  constraint "sessions_phase_pair_check" of relation "sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:70: NOTICE:  policy "session_interventions_select_team" for relation "public.session_interventions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:102: NOTICE:  trigger "sessions_protect_supervision" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260924040000_session_phase_supervision.sql:130: NOTICE:  trigger "sessions_supervisor_active_limit" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260924070000_program_journals.sql:379: NOTICE:  trigger "sessions_enqueue_program_journal" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260925000000_journal_draft_worker.sql:45: NOTICE:  trigger "guard_org_ai_switch" for relation "public.org_settings" does not exist, skipping
+psql:/migrations/20260925100000_org_invite_only.sql:19: NOTICE:  constraint "org_invites_creator_check" of relation "org_invites" does not exist, skipping
+psql:/migrations/20260928020000_safety_evidence_guard.sql:41: NOTICE:  trigger "guard_safety_event_evidence" for relation "public.safety_events" does not exist, skipping
+psql:/migrations/20260929010000_session_start_integrity.sql:71: NOTICE:  trigger "sessions_start_integrity" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260929010000_session_start_integrity.sql:94: NOTICE:  trigger "sessions_one_active_per_elder" for relation "public.sessions" does not exist, skipping
+psql:/migrations/20260930015000_journal_guard_privilege_split.sql:136: NOTICE:  trigger "z_guard_program_journal_rules" for relation "public.program_journals" does not exist, skipping
+psql:/migrations/20260930020000_capability_enforcement.sql:41: NOTICE:  trigger "guard_share_revoke" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260930020000_capability_enforcement.sql:60: NOTICE:  trigger "guard_guardian_link_approve" for relation "public.profile_guardians" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:22: NOTICE:  constraint "guardian_shares_revoke_reason_check" of relation "guardian_shares" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:44: NOTICE:  trigger "guard_share_revoke_reason" for relation "public.guardian_shares" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:87: NOTICE:  trigger "revoke_shares_on_analysis_change" for relation "public.session_analyses" does not exist, skipping
+psql:/migrations/20260930030000_share_auto_revoke_on_change.sql:115: NOTICE:  trigger "revoke_shares_on_log_change" for relation "public.session_logs" does not exist, skipping
+psql:/migrations/20261006010000_product_events.sql:74: NOTICE:  trigger "record_program_journal_draft_edit" for relation "public.program_journals" does not exist, skipping
+BEGIN
+SET
+CREATE TABLE
+CREATE TABLE
+GRANT
+INSERT 0 6
+SET
+SET
+                                                                                                            complete_onboarding
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (30000000-0000-4000-8000-000000000001,"UC admin",usecase1@example.invalid,"2026-10-23 19:29:37.182254+00","2026-10-23 19:29:37.182254+00",f4e456a5-ef47-4527-8a82-68e324655ca5,org_admin,010-0000-0001,"2026-10-23 19:29:37.182254+00",f)
+(1 row)
+
+SET
+                                                                                                               complete_onboarding
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (30000000-0000-4000-8000-000000000005,"UC other admin",usecase5@example.invalid,"2026-10-23 19:29:37.182254+00","2026-10-23 19:29:37.182254+00",eb8020a3-0ddc-4ef7-a474-7bc4a257c732,org_admin,010-0000-0005,"2026-10-23 19:29:37.182254+00",f)
+(1 row)
+
+RESET
+UPDATE 3
+SET
+SET
+INSERT 0 1
+RESET
+REVOKE
+DO
+DO
+DO
+DO
+   id   | steps | result
+--------+-------+--------
+ UC-D01 |     6 | PASS
+ UC-D02 |    16 | PASS
+ UC-D03 |     4 | PASS
+ UC-D04 |     4 | PASS
+(4 rows)
+
+ all_usecases_passed
+---------------------
+ t
+(1 row)
+
+ROLLBACK

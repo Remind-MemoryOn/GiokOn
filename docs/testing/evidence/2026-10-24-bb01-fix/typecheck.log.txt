@@ -1,0 +1,13 @@
+Scope: 6 of 7 workspace projects
+packages/theme typecheck$ tsc --noEmit
+packages/core typecheck$ tsc --noEmit
+packages/theme typecheck: Done
+packages/core typecheck: Done
+packages/data typecheck$ tsc --noEmit
+packages/data typecheck: Done
+apps/mobile typecheck$ tsc --noEmit
+apps/voice-relay typecheck$ tsc --noEmit
+apps/web typecheck$ tsc -b --noEmit
+apps/voice-relay typecheck: Done
+apps/web typecheck: Done
+apps/mobile typecheck: Done

@@ -1,0 +1,8 @@
+
+> @giokon/web@0.0.0 test:auth C:\Users\user\Documents\GitHub\MemoryOn\apps\web
+> node scripts/auth-isolation.mjs
+
+오전 4:46:54 [vite] (client) Re-optimizing dependencies because lockfile has changed
+오전 4:46:56 [vite] (client) [optimizer] scanning dependencies...
+오전 4:46:57 [vite] (client) [optimizer] bundling dependencies...
+PASS: real React account/cache/form isolation, delayed old writes, offline logout, initial-session race

@@ -1,0 +1,35 @@
+{
+  "subjectCommit": "ee1d3de6dfc3c457e71f48b69fc62285f719ced1",
+  "date": "2026-10-24",
+  "timezone": "Asia/Seoul",
+  "web": {
+    "httpBackend": "synthetic stateful fixture",
+    "productionBuild": true,
+    "failed": 1,
+    "exit": 1,
+    "passed": 5,
+    "usecases": 6,
+    "authAlias": false,
+    "queryCacheInjection": false
+  },
+  "database": {
+    "engine": "PostgreSQL 16",
+    "migrations": 84,
+    "failed": 0,
+    "auth": "test shim",
+    "passed": 4,
+    "usecases": 4,
+    "exit": 0,
+    "network": "none"
+  },
+  "pending": [
+    "UC-P01 mobile voice full journey",
+    "UC-P02 safety stop and push delivery",
+    "UC-P03 elder mode PIN and interruptions",
+    "UC-P04 real OAuth and email recovery"
+  ],
+  "productionWrites": false,
+  "deployment": false,
+  "dotenvRead": false,
+  "whiteboxCoverage": false
+}

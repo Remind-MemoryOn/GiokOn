@@ -1,5 +1,7 @@
 # @giokon/web — 요양보호사 웹 · 보호자 웹
 
+✅ 2026-10-24 로그인 후 보호 화면 복귀(BB-01) 코드·로컬 검증 완료. `pnpm -F @giokon/web test:login-return` 22개 회귀가 CI에 연결됐다. ⏳ 운영 배포·실계정 소셜/푸시 링크 확인. [변경·검증](../../docs/testing/2026-10-24-bb01-fix.md).
+
 > 📌 **2026-09-23 기획 변경 반영.** "무엇을 만들지"의 SoT =
 > [`docs/plans/pilot-development-plan.md`](../../docs/plans/pilot-development-plan.md) §7(웹 파트 W1~W9).
 > 이 앱에서 작업할 때의 규칙(Figma 단독 디자인 기준·카피 규약·상태 규칙)은 [`AGENTS.md`](./AGENTS.md) 에 있다.

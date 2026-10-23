@@ -52,6 +52,8 @@ jobs:
         run: pnpm -F @giokon/web exec playwright install chromium
       - name: Account transition isolation (React and Query)
         run: pnpm -F @giokon/web test:auth
+      - name: Return to protected page after login (BB-01)
+        run: pnpm -F @giokon/web test:login-return
 
   rls-regression:
     runs-on: ubuntu-latest

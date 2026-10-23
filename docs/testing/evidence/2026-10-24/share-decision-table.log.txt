@@ -1,0 +1,25 @@
+BEGIN
+SET
+SET
+SELECT 1
+GRANT
+CREATE TABLE
+DO
+      id      | finalized | approved | publish_authorized | expected | actual |                                 error
+--------------+-----------+----------+--------------------+----------+--------+------------------------------------------------------------------------
+ DT-SHARE-000 | f         | f        | f                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-001 | f         | f        | t                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-010 | f         | t        | f                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-011 | f         | t        | t                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-100 | t         | f        | f                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-101 | t         | f        | t                  | f        | f      | SHARE_JOURNAL_NOT_READY
+ DT-SHARE-110 | t         | t        | f                  | f        | f      | new row violates row-level security policy for table "guardian_shares"
+ DT-SHARE-111 | t         | t        | t                  | t        | t      |
+(8 rows)
+
+ all_eight_passed
+------------------
+ t
+(1 row)
+
+ROLLBACK

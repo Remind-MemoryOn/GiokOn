@@ -1,0 +1,165 @@
+[
+  {
+    "id": "guard-caregiver",
+    "status": "PASS",
+    "observed": {
+      "path": "/caregiver/supervision?source=push#event-1"
+    }
+  },
+  {
+    "id": "guard-guardian",
+    "status": "PASS",
+    "observed": {
+      "path": "/guardian/feed?tab=journal#today"
+    }
+  },
+  {
+    "id": "direct-target",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/caregiver/supervision"
+    }
+  },
+  {
+    "id": "no-target",
+    "status": "PASS",
+    "observed": {
+      "target": null,
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "guardian-home",
+    "status": "PASS",
+    "observed": {
+      "target": null,
+      "expected": "/guardian"
+    }
+  },
+  {
+    "id": "guardian-deny-care",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/guardian"
+    }
+  },
+  {
+    "id": "care-deny-guardian",
+    "status": "PASS",
+    "observed": {
+      "target": "/guardian/feed",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "pending-org",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/join-pending"
+    }
+  },
+  {
+    "id": "needs-onboarding",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/supervision",
+      "expected": "/onboarding"
+    }
+  },
+  {
+    "id": "external-url",
+    "status": "PASS",
+    "observed": {
+      "target": "https://example.invalid/steal",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "protocol-relative",
+    "status": "PASS",
+    "observed": {
+      "target": "//example.invalid/steal",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "backslash-host",
+    "status": "PASS",
+    "observed": {
+      "target": "/\\example.invalid/steal",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "javascript-url",
+    "status": "PASS",
+    "observed": {
+      "target": "javascript:alert(1)",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "login-loop",
+    "status": "PASS",
+    "observed": {
+      "target": "/login?returnTo=/caregiver",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "normalized-loop",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiver/../login",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "prefix-confusion",
+    "status": "PASS",
+    "observed": {
+      "target": "/caregiverevil/supervision",
+      "expected": "/caregiver"
+    }
+  },
+  {
+    "id": "inquiry-target",
+    "status": "PASS",
+    "observed": {
+      "target": "/inquiries/new",
+      "expected": "/inquiries/new"
+    }
+  },
+  {
+    "id": "legacy-inquiry-state",
+    "status": "PASS"
+  },
+  {
+    "id": "google-return",
+    "status": "PASS",
+    "observed": {
+      "callback": "/login?returnTo=%2Fcaregiver%2Fsupervision%3Fsource%3Dpush%23event-1"
+    }
+  },
+  {
+    "id": "kakao-return",
+    "status": "PASS",
+    "observed": {
+      "callback": "/login?returnTo=%2Fcaregiver%2Fsupervision%3Fsource%3Dpush%23event-1"
+    }
+  },
+  {
+    "id": "naver-return",
+    "status": "PASS",
+    "observed": {
+      "callback": "/login?returnTo=%2Fcaregiver%2Fsupervision%3Fsource%3Dpush%23event-1"
+    }
+  },
+  {
+    "id": "naver-callback-return",
+    "status": "PASS"
+  }
+]

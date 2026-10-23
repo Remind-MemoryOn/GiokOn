@@ -1,0 +1,26 @@
+FAIL guard-caregiver
+FAIL guard-guardian
+FAIL direct-target
+PASS no-target
+PASS guardian-home
+PASS guardian-deny-care
+PASS care-deny-guardian
+PASS pending-org
+PASS needs-onboarding
+PASS external-url
+PASS protocol-relative
+PASS backslash-host
+PASS javascript-url
+PASS login-loop
+PASS normalized-loop
+PASS prefix-confusion
+FAIL inquiry-target
+FAIL legacy-inquiry-state
+FAIL google-return
+FAIL kakao-return
+FAIL naver-return
+FAIL naver-callback-return
+{"total":22,"pass":13,"fail":9}
+undefined
+C:\Users\user\Documents\GitHub\MemoryOn\apps\web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: node scripts/login-return-smoke.mjs --baseline
