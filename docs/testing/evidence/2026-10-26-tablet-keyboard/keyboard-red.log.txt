@@ -1,0 +1,188 @@
+
+ RUN  v3.2.6 C:/Users/user/Documents/GitHub/MemoryOn
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts (10 tests | 10 failed) 9ms
+   × keyboard viewport geometry > measured overlap 0 5ms
+     → expected undefined to be +0 // Object.is equality
+   × keyboard viewport geometry > measured overlap 1 1ms
+     → expected undefined to be 60 // Object.is equality
+   × keyboard viewport geometry > measured overlap 2 0ms
+     → expected undefined to be 44 // Object.is equality
+   × keyboard viewport geometry > measured overlap 3 0ms
+     → expected undefined to be +0 // Object.is equality
+   × keyboard viewport geometry > measured overlap 4 0ms
+     → expected undefined to be +0 // Object.is equality
+   × keyboard viewport geometry > measured overlap 5 0ms
+     → expected undefined to be 30 // Object.is equality
+   × keyboard viewport geometry > measured overlap 6 0ms
+     → expected undefined to be 20 // Object.is equality
+   × keyboard viewport geometry > does not subtract the keyboard a second time from an already resized Android viewport 0ms
+     → expected undefined to be +0 // Object.is equality
+   × keyboard viewport geometry > allows space below a region field while capping it to the usable viewport 0ms
+     → expected undefined to be 50 // Object.is equality
+   × keyboard viewport geometry > keeps fixed-height login fields apart in short or keyboard-resized windows 0ms
+     → expected undefined to be 600 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 0
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 3
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 4
+AssertionError: expected undefined to be +0 // Object.is equality
+
+- Expected:
+0
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:25:72
+     23|     [0, 100, 90, 120, 160, 20], // tall multiline input: reveal its to…
+     24|   ])('measured overlap %#', (offset, y, height, inputY, inputH, expect…
+     25|     expect(api.inputScrollOffset?.(offset, y, height, inputY, inputH))…
+       |                                                                        ^
+     26|   });
+     27|   it('does not subtract the keyboard a second time from an already res…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 1
+AssertionError: expected undefined to be 60 // Object.is equality
+
+- Expected:
+60
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:25:72
+     23|     [0, 100, 90, 120, 160, 20], // tall multiline input: reveal its to…
+     24|   ])('measured overlap %#', (offset, y, height, inputY, inputH, expect…
+     25|     expect(api.inputScrollOffset?.(offset, y, height, inputY, inputH))…
+       |                                                                        ^
+     26|   });
+     27|   it('does not subtract the keyboard a second time from an already res…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 2
+AssertionError: expected undefined to be 44 // Object.is equality
+
+- Expected:
+44
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:25:72
+     23|     [0, 100, 90, 120, 160, 20], // tall multiline input: reveal its to…
+     24|   ])('measured overlap %#', (offset, y, height, inputY, inputH, expect…
+     25|     expect(api.inputScrollOffset?.(offset, y, height, inputY, inputH))…
+       |                                                                        ^
+     26|   });
+     27|   it('does not subtract the keyboard a second time from an already res…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 5
+AssertionError: expected undefined to be 30 // Object.is equality
+
+- Expected:
+30
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:25:72
+     23|     [0, 100, 90, 120, 160, 20], // tall multiline input: reveal its to…
+     24|   ])('measured overlap %#', (offset, y, height, inputY, inputH, expect…
+     25|     expect(api.inputScrollOffset?.(offset, y, height, inputY, inputH))…
+       |                                                                        ^
+     26|   });
+     27|   it('does not subtract the keyboard a second time from an already res…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > measured overlap 6
+AssertionError: expected undefined to be 20 // Object.is equality
+
+- Expected:
+20
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:25:72
+     23|     [0, 100, 90, 120, 160, 20], // tall multiline input: reveal its to…
+     24|   ])('measured overlap %#', (offset, y, height, inputY, inputH, expect…
+     25|     expect(api.inputScrollOffset?.(offset, y, height, inputY, inputH))…
+       |                                                                        ^
+     26|   });
+     27|   it('does not subtract the keyboard a second time from an already res…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > does not subtract the keyboard a second time from an already resized Android viewport
+AssertionError: expected undefined to be +0 // Object.is equality
+
+- Expected:
+0
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:28:58
+     26|   });
+     27|   it('does not subtract the keyboard a second time from an already res…
+     28|     expect(api.inputScrollOffset?.(0, 90, 220, 200, 44)).toBe(0);
+       |                                                          ^
+     29|   });
+     30|   it('allows space below a region field while capping it to the usable…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > allows space below a region field while capping it to the usable viewport
+AssertionError: expected undefined to be 50 // Object.is equality
+
+- Expected:
+50
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:31:64
+     29|   });
+     30|   it('allows space below a region field while capping it to the usable…
+     31|     expect(api.inputScrollOffset?.(0, 100, 400, 420, 30, 126)).toBe(50…
+       |                                                                ^
+     32|     expect(api.inputScrollOffset?.(0, 100, 200, 240, 30, 126)).toBe(20…
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+ FAIL  apps/mobile/src/lib/keyboard-layout.test.ts > keyboard viewport geometry > keeps fixed-height login fields apart in short or keyboard-resized windows
+AssertionError: expected undefined to be 600 // Object.is equality
+
+- Expected:
+600
+
++ Received:
+undefined
+
+ ❯ apps/mobile/src/lib/keyboard-layout.test.ts:37:22
+     35|     for (const height of [260, 393, 528, 600, 800, 852]) {
+     36|       const canvas = api.loginCanvasHeight?.(height);
+     37|       expect(canvas).toBe(Math.max(600, height));
+       |                      ^
+     38|       expect((355 - 284) / 852 * (canvas ?? 0)).toBeGreaterThanOrEqual…
+     39|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  10 failed (10)
+   Start at  07:19:09
+   Duration  1.01s (transform 47ms, setup 0ms, collect 310ms, tests 9ms, environment 0ms, prepare 453ms)
+
+JSON report written to C:/Users/user/Documents/GitHub/MemoryOn/.tmp/whitebox/mobile/tests.json

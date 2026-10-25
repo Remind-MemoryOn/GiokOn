@@ -1,0 +1,13 @@
+
+ RUN  v3.2.6 C:/Users/user/Documents/GitHub/MemoryOn
+
+ ✓ apps/mobile/src/components/root-keyboard.test.ts (1 test) 63ms
+ ✓ apps/mobile/src/components/KeyboardForm.test.ts (6 tests) 135ms
+ ✓ apps/mobile/src/components/keyboard-surfaces.test.ts (11 tests) 252ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  07:34:29
+   Duration  932ms (transform 203ms, setup 0ms, collect 1.03s, tests 449ms, environment 0ms, prepare 253ms)
+
+JSON report written to C:/Users/user/Documents/GitHub/MemoryOn/.tmp/whitebox/mobile/tests.json

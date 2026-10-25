@@ -1,0 +1,2158 @@
+[
+  {
+    "file": "apps/mobile/app.config.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "빌드용 Firebase 파일 설정 Android EAS 빌드에서 파일 변수가 빠지면 불완전한 푸시 앱을 만들지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "빌드용 Firebase 파일 설정 파일 경로를 연결하면서 패키지와 EAS 프로젝트 설정을 유지한다",
+        "status": "passed"
+      },
+      {
+        "name": "빌드용 Firebase 파일 설정 Firebase 파일이 없는 ios 개발 환경은 유지한다",
+        "status": "passed"
+      },
+      {
+        "name": "빌드용 Firebase 파일 설정 Firebase 파일이 없는  개발 환경은 유지한다",
+        "status": "passed"
+      },
+      {
+        "name": "기기별 화면 방향과 키보드 설정 휴대폰 세로 방향과 iPad 양쪽 가로 방향을 네이티브 설정에 전달한다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/plugins/withTabletOrientation.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "태블릿 방향 네이티브 생성 kt에서 태블릿만 센서 가로 방향으로 시작하고 휴대폰은 세로 방향으로 시작한다",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 java에서 태블릿만 센서 가로 방향으로 시작하고 휴대폰은 세로 방향으로 시작한다",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 알 수 없는 언어나 onCreate 구조는 설정을 조용히 생략하지 않는다: 'swift'",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 알 수 없는 언어나 onCreate 구조는 설정을 조용히 생략하지 않는다: 'kt'",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 알 수 없는 언어나 onCreate 구조는 설정을 조용히 생략하지 않는다: 'java'",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 알 수 없는 언어나 onCreate 구조는 설정을 조용히 생략하지 않는다: 'kt'",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 MainActivity의 전역 세로 잠금을 없애고 Android 16 예외를 중복 없이 적용한다",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 MainActivity가 없으면 다른 Activity 방향을 변경하지 않고 생성에 실패한다",
+        "status": "passed"
+      },
+      {
+        "name": "태블릿 방향 네이티브 생성 등록한 Expo mod가 MainActivity와 manifest에 실제 변경을 전달한다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/auth/accessMonitor.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "mobile permission revalidation unchanged permissions preserve a conversation",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation a social_worker care-team member keeps an active conversation",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation a center_director care-team member keeps an active conversation",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation a org_admin care-team member keeps an active conversation",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation discards resources before publishing revoked access {\"row\":{\"id\":\"a\",\"role\":\"guardian\",\"org_id\":\"org\",\"onboarded_at\":\"date\"},\"activeProfileDenied\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation discards resources before publishing revoked access {\"row\":{\"id\":\"a\",\"role\":\"caregiver\",\"org_id\":\"other\",\"onboarded_at\":\"date\"},\"activeProfileDenied\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation discards resources before publishing revoked access {\"row\":{\"id\":\"a\",\"role\":\"caregiver\",\"org_id\":\"org\",\"onboarded_at\":null},\"activeProfileDenied\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation discards resources before publishing revoked access {\"row\":null,\"activeProfileDenied\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation discards resources before publishing revoked access {\"row\":{\"id\":\"a\",\"role\":\"caregiver\",\"org_id\":\"org\",\"onboarded_at\":\"date\"},\"activeProfileDenied\":true}",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation failed and timed-out checks remove the previously accepted row",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation a delayed previous-account response cannot republish or clear the new account",
+        "status": "passed"
+      },
+      {
+        "name": "mobile permission revalidation a delayed success cannot override a newer revocation",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/auth/accessResources.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "access checks and resource disposal denies a visible elder whose processing consent/session has been withdrawn",
+        "status": "passed"
+      },
+      {
+        "name": "access checks and resource disposal checks the current profile under RLS without consulting assignments (pilot D4: assignment is not access)",
+        "status": "passed"
+      },
+      {
+        "name": "access checks and resource disposal checks a social_worker like any care-team member",
+        "status": "passed"
+      },
+      {
+        "name": "access checks and resource disposal checks a center_director like any care-team member",
+        "status": "passed"
+      },
+      {
+        "name": "access checks and resource disposal a now-invisible active profile is denied",
+        "status": "passed"
+      },
+      {
+        "name": "access checks and resource disposal a failed profile query is not treated as permission",
+        "status": "passed"
+      },
+      {
+        "name": "access checks and resource disposal disposes the voice connection, session state and query state",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/auth/appAccess.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 조회 중이면 판정을 미룬다",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 미로그인은 로그인으로",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 온보딩 마친 요양보호사는 통과",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 기관 관리자도 통과한다",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 보호자 계정은 막는다 — 이 앱은 요양보호사용이다",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 기관 없는 계정은 막는다 — org_id not-null 위반을 화면에서 미리 잡는다",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 온보딩 미완료 계정은 막는다",
+        "status": "passed"
+      },
+      {
+        "name": "evaluateAppAccess — 앱 진입 자격 로그인됐는데 계정 행을 못 읽으면 통과시키지 않는다(빈 화면 오해 방지)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/auth/login-routing.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "login follows committed access state enters main when a later valid refresh supersedes the login refresh",
+        "status": "passed"
+      },
+      {
+        "name": "login follows committed access state does not bypass pending or denied access: {\"authed\":false,\"loading\":false,\"userRow\":null}",
+        "status": "passed"
+      },
+      {
+        "name": "login follows committed access state does not bypass pending or denied access: {\"authed\":true,\"loading\":true,\"userRow\":{\"id\":\"test-user\",\"role\":\"caregiver\",\"org_id\":\"org\",\"onboarded_at\":\"date\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "login follows committed access state does not bypass pending or denied access: {\"authed\":true,\"loading\":false,\"userRow\":null}",
+        "status": "passed"
+      },
+      {
+        "name": "login follows committed access state does not bypass pending or denied access: {\"authed\":true,\"loading\":false,\"userRow\":{\"id\":\"test-user\",\"role\":\"guardian\",\"org_id\":\"org\",\"onboarded_at\":\"date\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "login follows committed access state does not bypass pending or denied access: {\"authed\":true,\"loading\":false,\"userRow\":{\"id\":\"test-user\",\"role\":\"caregiver\",\"org_id\":null,\"onboarded_at\":\"date\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "login follows committed access state does not bypass pending or denied access: {\"authed\":true,\"loading\":false,\"userRow\":{\"id\":\"test-user\",\"role\":\"caregiver\",\"org_id\":\"org\",\"onboarded_at\":null}}",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/auth/protectedRoutes.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "root route boundary classifies every real screen except login/splash as protected",
+        "status": "passed"
+      },
+      {
+        "name": "root route boundary actual navigator guards all private routes for {\"authed\":false,\"loading\":false,\"userRow\":null,\"allowed\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "root route boundary actual navigator guards all private routes for {\"authed\":true,\"loading\":true,\"userRow\":null,\"allowed\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "root route boundary actual navigator guards all private routes for {\"authed\":true,\"loading\":false,\"userRow\":null,\"allowed\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "root route boundary actual navigator guards all private routes for {\"authed\":true,\"loading\":false,\"userRow\":{\"role\":\"guardian\",\"org_id\":\"org\",\"onboarded_at\":\"date\"},\"allowed\":false}",
+        "status": "passed"
+      },
+      {
+        "name": "root route boundary actual navigator guards all private routes for {\"authed\":true,\"loading\":false,\"userRow\":{\"role\":\"caregiver\",\"org_id\":\"org\",\"onboarded_at\":\"date\"},\"allowed\":true}",
+        "status": "passed"
+      },
+      {
+        "name": "root route boundary actual navigator guards all private routes for {\"authed\":true,\"loading\":false,\"userRow\":{\"role\":\"org_admin\",\"org_id\":\"org\",\"onboarded_at\":\"date\"},\"allowed\":true}",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/auth/social.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "모바일 Supabase PKCE google의 URL에서 인가 코드만 디코딩해 교환한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE kakao의 URL에서 인가 코드만 디코딩해 교환한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE cancel 결과는 인증 코드 교환 없이 취소한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE dismiss 결과는 인증 코드 교환 없이 취소한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 오류·잘못된 콜백에서는 로그인 성공을 반환하지 않는다: giokon://auth/callback?error=access_denied&code=ignore",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 오류·잘못된 콜백에서는 로그인 성공을 반환하지 않는다: giokon://auth/callback#error_description=denied",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 오류·잘못된 콜백에서는 로그인 성공을 반환하지 않는다: https://evil.invalid/callback?code=ignore",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 오류·잘못된 콜백에서는 로그인 성공을 반환하지 않는다: giokon://auth/wrong?code=ignore",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 오류·잘못된 콜백에서는 로그인 성공을 반환하지 않는다: giokon://auth/callback",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 동일 로그인 중복 호출은 한 번만 교환하고 다른 공급자 동시 시도는 차단한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 코드 교환 실패를 전달하고 새 시도를 허용한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Supabase PKCE 기존 암시적 콜백은 두 토큰이 모두 있을 때만 세션을 설정한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 서버 authorize에 challenge만 보내고 verifier는 최종 POST로 전달한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 다른 로그인 요청의 콜백은 교환하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 취소 후 재시도하며 중복 탭은 하나의 시도만 수행한다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 만료/재사용으로 서버가 거부하면 세션을 설정하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 앱 콜백 주소가 아니면 교환하지 않는다: https://evil.invalid/callback#transaction_id=x&state=ccccccccccccccccccccccccccccccccccccccccccc",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 앱 콜백 주소가 아니면 교환하지 않는다: giokon://auth/wrong#transaction_id=x&state=ccccccccccccccccccccccccccccccccccccccccccc",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 성공 URL 이 없으면 결과 확인 실패로 끝낸다: { type: 'locked' }",
+        "status": "passed"
+      },
+      {
+        "name": "모바일 Naver 일회성 교환 성공 URL 이 없으면 결과 확인 실패로 끝낸다: { type: 'success' }",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/data/elder-photo.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "profile photo upload bytes keeps every byte with any base64 padding: TWFu",
+        "status": "passed"
+      },
+      {
+        "name": "profile photo upload bytes keeps every byte with any base64 padding: TWE=",
+        "status": "passed"
+      },
+      {
+        "name": "profile photo upload bytes keeps every byte with any base64 padding: TQ==",
+        "status": "passed"
+      },
+      {
+        "name": "profile photo upload bytes keeps every byte with any base64 padding: TWFuTQ==",
+        "status": "passed"
+      },
+      {
+        "name": "profile photo upload bytes uploads a real PNG without losing its ending bytes",
+        "status": "passed"
+      },
+      {
+        "name": "profile photo upload bytes uploads a real JPEG without losing its ending bytes",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/data/session-persistence.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "session writes across account changes reports missing remote session as unsaved for the automatic loop",
+        "status": "passed"
+      },
+      {
+        "name": "session writes across account changes reports completion only after the progress update succeeds",
+        "status": "passed"
+      },
+      {
+        "name": "session writes across account changes does not attach a planned session without a successful activation: null",
+        "status": "passed"
+      },
+      {
+        "name": "session writes across account changes does not attach a planned session without a successful activation: { message: 'PROCESSING_CONSENT_REQUIRED' }",
+        "status": "passed"
+      },
+      {
+        "name": "session writes across account changes does not attach an old delayed remote session to the new account",
+        "status": "passed"
+      },
+      {
+        "name": "session writes across account changes stale screen callbacks cannot start writes, finish or discard the new session",
+        "status": "passed"
+      },
+      {
+        "name": "writes a relay review event with no fabricated excerpt or categories",
+        "status": "passed"
+      },
+      {
+        "name": "records a relay-pending event under the relay event id only if absent, then syncs the acknowledgement (T25.17)",
+        "status": "passed"
+      },
+      {
+        "name": "fallback save without a remote session (M7) creates the session as recording (not runnable) and ends it only after turns, analysis and events are written (T25.18)",
+        "status": "passed"
+      },
+      {
+        "name": "fallback save without a remote session (M7) never marks the session ended when a later write fails, and removes the partial session",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) reports the per-supervisor limit without retrying a policy rejection",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) starts a planned session through the DB start RPC so the caller becomes the facilitator (T25.11)",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) maps SESSION_SUPERVISOR_LIMIT from the start RPC to supervisor_limit without retrying",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) maps ELDER_SESSION_ACTIVE from the start RPC to elder_busy without retrying",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) maps SESSION_ALREADY_STARTED from the start RPC to already_started without retrying",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) maps PROCESSING_CONSENT_REQUIRED from the start RPC to consent_required without retrying",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) maps SESSION_START_FORBIDDEN from the start RPC to failed without retrying",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) treats an instant start of an elder already in a conversation as elder_busy (T25.19)",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) does not send a device clock start time for an instant session (T25.18)",
+        "status": "passed"
+      },
+      {
+        "name": "start rejection reasons (pilot D6 · T21.13) keeps unknown failures generic after retrying",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery recovers the same committed row after its insert response is lost, without creating another session",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery uses the same id on every retry and recovers even when the final insert response is lost",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery keeps the same creation id when the screen retries the same local session after a failed attempt",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery keeps a different active session as elder_busy instead of adopting it",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery does not attach an incompatible recovered row: { id: 'other' }",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery does not attach an incompatible recovered row: { user_id: 'other' }",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery does not attach an incompatible recovered row: { profile_id: 'other' }",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery does not attach an incompatible recovered row: { status: 'ended', ended_at: 'server-time' }",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery does not attach an incompatible recovered row: { paused_at: 'server-time' }",
+        "status": "passed"
+      },
+      {
+        "name": "instant session creation response recovery does not recover or attach across an account change during the lookup",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/components/keyboard-surfaces.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "keyboard and landscape surfaces retains room between session illustrations, titles, and actions at 1280×600",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces retains room between session illustrations, titles, and actions at 1280×800",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces keeps the original 393×852 portrait session canvas",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces bounds long elder questions while keeping controls outside the question scroll at 1280×600",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces bounds long elder questions while keeping controls outside the question scroll at 1280×800",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces keeps main actions scrollable while the keyboard is visible and fixed otherwise",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces lets the PIN cancel and last keypad row scroll into view in landscape",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces dismisses the search keyboard before navigating from '어르신 등록'",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces dismisses the search keyboard before navigating from '전체 분석'",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces dismisses the keyboard before opening 'Calendar' and allows landscape",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard and landscape surfaces dismisses the keyboard before opening 'PeriodPill' and allows landscape",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/components/KeyboardForm.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "native keyboard surface contract avoids the keyboard on ios",
+        "status": "passed"
+      },
+      {
+        "name": "native keyboard surface contract avoids the keyboard on android",
+        "status": "passed"
+      },
+      {
+        "name": "native keyboard surface contract keeps iPad modals in landscape while preserving portrait phone modals",
+        "status": "passed"
+      },
+      {
+        "name": "native keyboard surface contract reads current keyboard state even when mounted after it opened",
+        "status": "passed"
+      },
+      {
+        "name": "native keyboard surface contract reveals only actual overlap and preserves child focus/scroll handlers and first tap actions",
+        "status": "passed"
+      },
+      {
+        "name": "native keyboard surface contract drops late measurement when focus moves or the old screen unmounts",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/components/root-keyboard.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "keeps the error banner inside the same keyboard surface as the navigator",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/format.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "clockLabel 자정·정오 경계를 12 로 표기한다",
+        "status": "passed"
+      },
+      {
+        "name": "clockLabel 분은 두 자리, 시는 앞자리 0 없이",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/keyboard-layout.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "keyboard viewport geometry measured overlap 0",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry measured overlap 1",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry measured overlap 2",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry measured overlap 3",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry measured overlap 4",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry measured overlap 5",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry measured overlap 6",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry does not subtract the keyboard a second time from an already resized Android viewport",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry allows space below a region field while capping it to the usable viewport",
+        "status": "passed"
+      },
+      {
+        "name": "keyboard viewport geometry keeps fixed-height login fields apart in short or keyboard-resized windows",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/layout.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "콘텐츠 폭(기기 폭 대응) Figma 393 폭에서는 336 이다",
+        "status": "passed"
+      },
+      {
+        "name": "콘텐츠 폭(기기 폭 대응) 좁은 휴대폰·패드에서는 좌 29 · 우 28 여백을 뺀 폭이다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/push.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "푸시 토큰 등록(M6) Expo Go(android)는 시작·등록·로그아웃 모두 알림 모듈을 실행하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) Expo Go(ios)는 시작·등록·로그아웃 모두 알림 모듈을 실행하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 권한이 있으면 채널을 만들고 EAS 프로젝트 토큰을 서버 RPC 로 등록한다 — 같은 사용자는 한 번만",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 권한을 한 번 묻고, 거부되면 토큰을 만들지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 다시 물을 수 없으면 묻지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 지원하지 않는 환경(web · projectId project)은 조용히 건너뛴다",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 지원하지 않는 환경(ios · projectId undefined)은 조용히 건너뛴다",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 시뮬레이터·서버 거부는 앱을 막지 않고 실패로만 알린다(다음에 다시 시도)",
+        "status": "passed"
+      },
+      {
+        "name": "푸시 토큰 등록(M6) 사용자가 바뀌면 다시 등록한다(기기 인계)",
+        "status": "passed"
+      },
+      {
+        "name": "로그아웃 시 회수(M6) 등록한 토큰을 회수하고, 진행 중인 등록이 끝난 뒤에 회수한다",
+        "status": "passed"
+      },
+      {
+        "name": "로그아웃 시 회수(M6) 등록한 적이 없으면 서버를 부르지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "로그아웃 시 회수(M6) 회수가 실패하거나 늦어도 로그아웃을 오래 막지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "알림 수신 역할 기관 소속 돌봄팀만 받는다",
+        "status": "passed"
+      },
+      {
+        "name": "안전 알림 탭 → 감독 화면(T21.10 후속) 앱을 쓰는 중에 안전 알림을 탭하면 한 번만 연다(같은 알림은 다시 열지 않는다)",
+        "status": "passed"
+      },
+      {
+        "name": "안전 알림 탭 → 감독 화면(T21.10 후속) 앱이 꺼져 있다가 탭으로 열리면(마지막 응답) 한 번 열고 지운다 — 다시 구독해도 다시 열지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "안전 알림 탭 → 감독 화면(T21.10 후속) 안전 알림이 아니거나, 탭이 아닌 동작(닫기 등)이면 열지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "안전 알림 탭 → 감독 화면(T21.10 후속) 구독을 끝내면(로그아웃·역할 변경) 탭해도 열지 않는다 — 모듈을 불러오기 전에 끝내도 마찬가지",
+        "status": "passed"
+      },
+      {
+        "name": "안전 알림 탭 → 감독 화면(T21.10 후속) Expo Go 에서는 알림 모듈을 불러오지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "안전 알림 탭 → 감독 화면(T21.10 후속) 안전 알림 판정은 서버 push-dispatch 의 data 모양만 인정한다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/queryFailure.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "active query failure notice does not call an empty or still-loading record set a failure",
+        "status": "passed"
+      },
+      {
+        "name": "active query failure notice shows a failure only while an errored query is observed by a screen",
+        "status": "passed"
+      },
+      {
+        "name": "active query failure notice never shows the caregiver banner on the talk screen that hosts the elder display mode",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/webUrl.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "WEB_ROUTES privacy(/privacy) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES terms(/terms) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES memberPrivacyConsent(/consents/member-privacy) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES elderPrivacyConsent(/consents/elder-privacy) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES elderSensitiveConsent(/consents/elder-sensitive) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES elderCrossBorderConsent(/consents/elder-cross-border) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES elderAiConsent(/consents/elder-ai) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES resetPassword(/reset-password) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES signup(/signup) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      },
+      {
+        "name": "WEB_ROUTES supervision(/caregiver/supervision) 는 웹에 같은 경로가 있다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/store/appStore.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "starts with no AI turn and no topic until the relay greeting is accepted — nothing is fabricated",
+        "status": "passed"
+      },
+      {
+        "name": "accepts the opener once, only when it passes the output guard",
+        "status": "passed"
+      },
+      {
+        "name": "automatically adopts input without inventing an AI response or human confirmation",
+        "status": "passed"
+      },
+      {
+        "name": "records a crisis but requires help without adding a made-up delivered response",
+        "status": "passed"
+      },
+      {
+        "name": "keeps a partial input out of the record until explicit recovery confirmation",
+        "status": "passed"
+      },
+      {
+        "name": "rejects empty recovery confirmation without losing the pending input",
+        "status": "passed"
+      },
+      {
+        "name": "records delivery only for the matching AI turn without implying a person heard it",
+        "status": "passed"
+      },
+      {
+        "name": "appends a resumed response without rewriting an unplayed AI turn and rejects stale adoption",
+        "status": "passed"
+      },
+      {
+        "name": "retains playback observations in the finished bundle without sharing mutable entries",
+        "status": "passed"
+      },
+      {
+        "name": "retains a relay review request without inventing a transcript or crisis category",
+        "status": "passed"
+      },
+      {
+        "name": "links a relay-recorded safety event instead of recording it again (T21.4)",
+        "status": "passed"
+      },
+      {
+        "name": "keeps the relay crisis level, categories and specific guidance when recorded by the relay (T25.14)",
+        "status": "passed"
+      },
+      {
+        "name": "keeps the relay crisis level, categories and specific guidance when not recorded (failure or timeout) — the app records it on save (T25.14)",
+        "status": "passed"
+      },
+      {
+        "name": "keeps the relay event id to record under when the relay has not confirmed it yet (T25.17)",
+        "status": "passed"
+      },
+      {
+        "name": "shows the distress note at watch level for a relay distress summary (T25.14)",
+        "status": "passed"
+      },
+      {
+        "name": "never replaces an existing crisis with a generic relay review",
+        "status": "passed"
+      },
+      {
+        "name": "preserves an acknowledgement made while an older progress write is pending",
+        "status": "passed"
+      },
+      {
+        "name": "keeps new safety events when an earlier event snapshot finishes syncing",
+        "status": "passed"
+      },
+      {
+        "name": "retains the turn cap even when every answer has a nonurgent comfort recommendation",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/analysis/topicStats.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "topicStats is empty without data",
+        "status": "passed"
+      },
+      {
+        "name": "topicStats sums the focus topic mentions across analyses only",
+        "status": "passed"
+      },
+      {
+        "name": "topicStats rates engaged elder utterances only, rounded",
+        "status": "passed"
+      },
+      {
+        "name": "topicStats rates the saved analysis metrics when list logs contain no transcripts, weighted by elder turns",
+        "status": "passed"
+      },
+      {
+        "name": "topicStats keeps no observed speech distinct from an observed zero engagement rate",
+        "status": "passed"
+      },
+      {
+        "name": "topicStats averages session minutes (rounded) and dedupes keywords up to 8",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/analysis/traits.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "durationLabel formats minutes and seconds, clamps negatives, and is empty without an end",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds focus 0.5 → 높음",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds focus 0.49 → 보통",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds focus 0.25 → 보통",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds focus 0.24 → 낮음",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds expression 30 → 높음",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds expression 29 → 보통",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds expression 15 → 보통",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds expression 14 → 낮음",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds length 15 → 긺",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds length 14 → 보통",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds length 8 → 보통",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds length 7 → 짧음",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds length 1 → 짧음",
+        "status": "passed"
+      },
+      {
+        "name": "trait thresholds length 0 → —",
+        "status": "passed"
+      },
+      {
+        "name": "summaryBullets splits on sentence ends and drops blanks",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/consent/subject.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "subjectSelection cannot proceed before choosing",
+        "status": "passed"
+      },
+      {
+        "name": "subjectSelection self consent needs no proxy details and passes none on",
+        "status": "passed"
+      },
+      {
+        "name": "subjectSelection guardian requires a trimmed name and a relation",
+        "status": "passed"
+      },
+      {
+        "name": "subjectSelection legal_representative requires a trimmed name and a relation",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/observations/summary.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "orderAxes returns all five axes in display order, filling missing ones with nulls",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations without any measurement shows the empty sentence and no grade",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations with values but no previous period names the subject",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations averages measured deltas (rounded) and signs the sentence",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations grade for average 10 is 매우 긍정적",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations grade for average 9 is 긍정적",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations grade for average 1 is 긍정적",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations grade for average 0 is 변화 없음",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations grade for average -1 is 주의 관찰",
+        "status": "passed"
+      },
+      {
+        "name": "summarizeObservations writes negative averages without a plus sign",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/profile/profileSubmit.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "elderFieldsFromForm trims text, derives birth year, and empties blank optional fields",
+        "status": "passed"
+      },
+      {
+        "name": "planChronicleSync deletes removed entries first, then follows the list order",
+        "status": "passed"
+      },
+      {
+        "name": "planChronicleSync with no existing entries only creates non-empty memories (registration)",
+        "status": "passed"
+      },
+      {
+        "name": "applyChronicleSync writes each op in order with the same payloads as before",
+        "status": "passed"
+      },
+      {
+        "name": "applyChronicleSync stops at the first failure",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/session/caregiverPin.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "caregiver PIN storage stores a 4-digit PIN per caregiver and verifies only that caregiver’s PIN",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage rejects malformed PIN \"123\"",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage rejects malformed PIN \"12345\"",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage rejects malformed PIN \"abcd\"",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage rejects malformed PIN \"12 4\"",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage rejects malformed PIN \"\"",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage fails closed when the secure store cannot be read",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver PIN storage refuses keys built from unexpected user ids",
+        "status": "passed"
+      },
+      {
+        "name": "PIN attempt lockout locks after the maximum consecutive failures and resets on success",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/session/caregiverStatus.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "caregiver status copy has copy for every automatic phase",
+        "status": "passed"
+      },
+      {
+        "name": "caregiver status copy is in conversation for every phase except idle and stopped",
+        "status": "passed"
+      },
+      {
+        "name": "pause button pauses while running",
+        "status": "passed"
+      },
+      {
+        "name": "pause button is disabled while pausing",
+        "status": "passed"
+      },
+      {
+        "name": "pause button resumes a local pause only when no recovered input is pending",
+        "status": "passed"
+      },
+      {
+        "name": "pause button never resumes a supervisor (remote) pause on site",
+        "status": "passed"
+      },
+      {
+        "name": "pause button pending input alone does not disable a running conversation",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/session/elderStatus.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "elder display copy has fixed, elder-facing copy for every automatic phase",
+        "status": "passed"
+      },
+      {
+        "name": "elder display copy never shows caregiver instructions, phone numbers or failure internals to the elder",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/features/session/plannedStart.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "resolveStartPlan adopts the plan returned by the fresh query",
+        "status": "passed"
+      },
+      {
+        "name": "resolveStartPlan starts an instant session only when the fresh query succeeds with no plan",
+        "status": "passed"
+      },
+      {
+        "name": "resolveStartPlan never falls back to an instant session when the query fails",
+        "status": "passed"
+      },
+      {
+        "name": "resolveStartPlan uses the answer that arrives after waiting, not an earlier empty render value",
+        "status": "passed"
+      },
+      {
+        "name": "START_FAILURE_ALERT has guidance for every start rejection the DB can give",
+        "status": "passed"
+      },
+      {
+        "name": "START_FAILURE_ALERT sends a busy elder to the supervision screen instead of taking the other session over (T25.19)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/automatic.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "automatically saves, plays and listens across two utterances without confirmation",
+        "status": "passed"
+      },
+      {
+        "name": "stop before start is a no-op so a later start still runs",
+        "status": "passed"
+      },
+      {
+        "name": "does not connect without permission and the storage contract",
+        "status": "passed"
+      },
+      {
+        "name": "saves a help-requesting input but never requests the next model response",
+        "status": "passed"
+      },
+      {
+        "name": "stops after saving fails and retains the already adopted input",
+        "status": "passed"
+      },
+      {
+        "name": "does not open the microphone after interrupted playback",
+        "status": "passed"
+      },
+      {
+        "name": "does not open the microphone after empty playback",
+        "status": "passed"
+      },
+      {
+        "name": "saves interrupted playback before continuing to the buffered elder input",
+        "status": "passed"
+      },
+      {
+        "name": "does not continue after interruption evidence fails to save",
+        "status": "passed"
+      },
+      {
+        "name": "records completed playback before opening the next input",
+        "status": "passed"
+      },
+      {
+        "name": "discards a late response after retrieval and ignores duplicate input callbacks",
+        "status": "passed"
+      },
+      {
+        "name": "does not start after retrieval during preflight",
+        "status": "passed"
+      },
+      {
+        "name": "waits for pause cleanup then reconnects without a new opener",
+        "status": "passed"
+      },
+      {
+        "name": "ignores previous connection input, failure and late output after resume",
+        "status": "passed"
+      },
+      {
+        "name": "cannot resume after terminal retrieval or unsupported restoration",
+        "status": "passed"
+      },
+      {
+        "name": "a failed old preflight cannot stop a resumed connection",
+        "status": "passed"
+      },
+      {
+        "name": "saves and finishes restored output playback before listening",
+        "status": "passed"
+      },
+      {
+        "name": "keeps only approved failure copy: 음성 합성 요청이 많아 대화를 멈췄어요. 기록을 저장하고 잠시 후 다시 시작해 주세요.",
+        "status": "passed"
+      },
+      {
+        "name": "keeps only approved failure copy: private provider detail",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 원격 일시정지는 마이크·연결을 즉시 닫고 \"잠시 쉬어요\" 상태로 멈추며 현장 재개를 막는다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 서버가 재개를 알리면 2초 폴 안에 저장된 흐름으로 이어간다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 원격 종료는 이유와 함께 멈추고 폴을 멈춘다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 중계가 스스로 끝내면(time_limit) 감독 화면 종료가 아니라 그 이유로 멈춘다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 중계가 스스로 끝내면(elder_closing) 감독 화면 종료가 아니라 그 이유로 멈춘다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 중계가 스스로 끝내면(other) 감독 화면 종료가 아니라 그 이유로 멈춘다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 종료 이유 문구는 서로 다르고 10분 상한을 숫자로 알린다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 원격 정지 중 서버가 종료를 알리면 멈춘다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 현장에서 멈춘 사이 감독 화면도 멈추면 현장 재개를 막고, 서버 재개 뒤에 이어간다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 현장 일시정지는 서버가 계속 진행 중이어도 저절로 재개하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 상태 확인 실패는 추측하지 않고 다음 폴에 다시 본다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 이전 연결의 원격 알림은 무시한다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어(파일럿 M5) 회수(stop) 뒤에는 폴 타이머가 남지 않는다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/barge-in.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "detects quiet post-AEC speech and retains a soft opening before detection",
+        "status": "passed"
+      },
+      {
+        "name": "keeps pre-roll, requires sustained post-AEC speech, and triggers only once",
+        "status": "passed"
+      },
+      {
+        "name": "does not accumulate isolated spikes and refuses to truncate an interrupted answer",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/client.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 resolves at the first chunk, before audio end, and releases receipt only after end",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 rejects premature completed receipts",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 ignores only known cancelled stream frames while accepting a new turn",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 fails closed on invalid stream order or PCM: {\"relayAudio\":{\"turnId\":1,\"index\":2,\"data\":\"AQACAA==\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 fails closed on invalid stream order or PCM: {\"relayAudio\":{\"turnId\":2,\"index\":1,\"data\":\"AQACAA==\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 fails closed on invalid stream order or PCM: {\"relayAudio\":{\"turnId\":1,\"index\":1,\"data\":\"AQ==\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 fails closed on invalid stream order or PCM: {\"relayStream\":{\"turnId\":2,\"text\":\"overlapping\"}}",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v5 terminates stalled synthesis and releases the playback consumer",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 ends captured audio without sending an empty text frame or starting another activity",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 rejects an empty turn when no audio activity exists",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 maps relay failure SYNTHESIS_LIMIT to local copy and settles the pending turn",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 maps relay failure unexpected private detail to local copy and settles the pending turn",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 hands the relay-recorded safety event id and verdict over before reporting the review stop (T21.4 · T25.14)",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 passes the verdict even when the relay could not record the event (T25.14)",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 ignores no id and no verdict but still reports the stop",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 ignores malformed id but still reports the stop",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 ignores numeric id but still reports the stop",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 ignores unknown verdict but still reports the stop",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 ignores verdict carrying raw text but still reports the stop",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 passes a pending relay event id so the app records under the same id (T25.17)",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 prefers a confirmed id over a pending one",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 does not treat other relay errors as a review stop",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 relay mode sends Supabase auth in the first frame, never the URL or a Gemini token",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 refuses insecure relay URLs",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 requires v3 when sending a restoration context and refuses a v2 acknowledgement",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v3 keeps the playback gate after successful restoration negotiation",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 negotiates playback receipts and blocks a new turn until completion",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 v4 reports interruption honestly and unlocks the next captured turn",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 refuses an old relay when playback receipts were requested",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 closes interrupted playback without sending a completion receipt or more input",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 setupComplete 전에는 입력하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 오디오→확인 텍스트→activityEnd 순서 후 응답을 조립한다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 동시 요청을 거부하고 타임아웃된 소켓의 늦은 응답을 새 턴에 넣지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 setup 무응답은 연결 timeout으로 종료한다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 Blob/ArrayBuffer 응답도 순서를 지켜 처리한다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 close 실패가 대기 중인 턴을 끝낸다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 error 실패가 대기 중인 턴을 끝낸다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 invalid 실패가 대기 중인 턴을 끝낸다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) paused 알림을 원격 제어로 넘기고 대기 중인 턴을 끝낸 뒤 입력을 막는다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) ended 알림을 원격 제어로 넘기고 대기 중인 턴을 끝낸 뒤 입력을 막는다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 준비 전(인증 시점에 이미 정지)에 온 알림도 원격 제어로 알리고 연결을 거부한다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) { state: 'ended', reason: 'time_limit' }",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) { state: 'ended', reason: 'elder_closing' }",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) { state: 'ended', reason: 'future_reason' }",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) { state: 'ended', reason: 7 }",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) { state: 'ended' }",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 중계가 끝낸 이유를 함께 넘긴다(T21.11·T21.12) { state: 'paused', reason: 'time_limit' }",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 모르는 제어 신호 { state: 'resume' } 는 오류로 닫는다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 모르는 제어 신호 {} 는 오류로 닫는다",
+        "status": "passed"
+      },
+      {
+        "name": "중계 WebSocket 프로토콜 및 턴 격리 감독 화면 원격 제어(파일럿 M5) 모르는 제어 신호 null 는 오류로 닫는다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/endpoint.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "ends a quiet answer at one second rather than waiting for the empty-input timeout",
+        "status": "passed"
+      },
+      {
+        "name": "ends voiced capture after a conservative pause even when transcription waits for activityEnd",
+        "status": "passed"
+      },
+      {
+        "name": "waits through thinking time then stops an empty capture",
+        "status": "passed"
+      },
+      {
+        "name": "does not mistake a transcription delay for silence while PCM is active",
+        "status": "passed"
+      },
+      {
+        "name": "accepts even a one-syllable acknowledgement after one second",
+        "status": "passed"
+      },
+      {
+        "name": "continues when speech resumes during a thinking pause",
+        "status": "passed"
+      },
+      {
+        "name": "bounds continuous noise and never labels a forced cutoff complete",
+        "status": "passed"
+      },
+      {
+        "name": "does not treat low-level noise as speech",
+        "status": "passed"
+      },
+      {
+        "name": "decodes signed little endian PCM and rejects malformed audio",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/engine-token.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "post-AEC capture during TTS stops TTS once, reports interruption, and forwards the buffered beginning only after the receipt",
+        "status": "passed"
+      },
+      {
+        "name": "post-AEC capture during TTS keeps capture across a naturally completed playback and ignores late PCM after retrieval",
+        "status": "passed"
+      },
+      {
+        "name": "post-AEC capture during TTS never sends a receipt when native playback stop fails",
+        "status": "passed"
+      },
+      {
+        "name": "post-AEC capture during TTS streams during a slow observation save, but queues the completed input until its controller is ready",
+        "status": "passed"
+      },
+      {
+        "name": "post-AEC capture during TTS keeps the input cycle alive if saving finishes while the relay response is still pending",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration ends PCM before awaiting its delayed transcript and reuses the checked response after input adoption",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration does not adopt delayed transcription or a completed response after retrieval",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration closes without adopting an input when the finished audio has no transcript",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration does not reuse a prepared response for different adopted input",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration accepts a one-syllable reply once after the extra pause",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration ends no-input capture without manufacturing an utterance",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration keeps listening while PCM continues after the last transcript",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration closes at the cap without submitting a forced partial utterance",
+        "status": "passed"
+      },
+      {
+        "name": "automatic input endpoint integration cancels the input deadline on retrieval and ignores subsequent drafts",
+        "status": "passed"
+      },
+      {
+        "name": "microphone permission at each capture closes without a new capture when permission is denied",
+        "status": "passed"
+      },
+      {
+        "name": "microphone permission at each capture closes without a new capture when permission is failed",
+        "status": "passed"
+      },
+      {
+        "name": "microphone permission at each capture ignores permission granted after retrieval",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations recovers a partial and closes instead of finalizing when normal microphone stop fails",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations shares cleanup between callers and survives recovery and playback errors",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations closes the socket and recovers input even when native microphone cleanup throws",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations returns an interrupted draft once as partial, never as a completed input",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations retains every transcription segment, whitespace and intentional repetition",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations rejects oversized transcripts instead of silently truncating or submitting them",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations does not open the microphone after stop during the permission check",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations drops audio from an earlier listening generation after restart",
+        "status": "passed"
+      },
+      {
+        "name": "listening cancellation generations emits the final transcript at most once for one capture",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding reports only completed Gemini TTS playback and closes on completed",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding reports only completed Gemini TTS playback and closes on interrupted",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding reports only completed Gemini TTS playback and closes on empty",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding never requests a Gemini token or builds a local prompt — the relay owns both",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding refuses to connect without a valid relay URL (null) and reports why instead of falling back",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding refuses to connect without a valid relay URL () and reports why instead of falling back",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding refuses to connect without a valid relay URL (ws://voice.example.test/voice) and reports why instead of falling back",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding refuses to connect without a valid relay URL (wss://voice.example.test/other) and reports why instead of falling back",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding refuses to connect without a valid relay URL (wss://voice.example.test/voice?token=x) and reports why instead of falling back",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding rechecks permission before opening the relay connection",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding periodically stops an idle connection when verification fails: false",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding periodically stops an idle connection when verification fails: Error: offline",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding refuses token issuance and connection without current server permission",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding stops requestOpener when consent is revoked mid-session",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding stops submitUserTurn when consent is revoked mid-session",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding stops startListening when consent is revoked mid-session",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding stops playTurn when consent is revoked mid-session",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding revocation closes a connecting socket before audio cleanup completes",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding 서버 세션이 없으면 토큰이나 WebSocket을 요청하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "relay engine session binding 서버 세션 ID와 사용자 JWT 로 중계에 연결한다(토큰은 URL 이 아니라 첫 프레임)",
+        "status": "passed"
+      },
+      {
+        "name": "restored engine acquisition opens a fresh relay with a snapshot even for the same session key",
+        "status": "passed"
+      },
+      {
+        "name": "restored engine acquisition rejects invalid context before closing an existing connection",
+        "status": "passed"
+      },
+      {
+        "name": "requests a continuation only on a restored relay and rechecks current processing permission",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어 수신(파일럿 M5) paused 를 오류가 아닌 원격 제어로 넘기고, 뒤따르는 끊김을 오류로 알리지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어 수신(파일럿 M5) ended 를 오류가 아닌 원격 제어로 넘기고, 뒤따르는 끊김을 오류로 알리지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어 수신(파일럿 M5) 처리기가 없으면 조용히 멈추지 않고 오류로 알린 뒤 닫는다",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 제어 수신(파일럿 M5) 접속 시점에 이미 정지된 세션은 연결 오류 안내 없이 원격 제어만 알린다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/mic-adapter.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "실제 설치 마이크 라이브러리 계약 default export 정규화=true, PCM 수신 및 정리",
+        "status": "passed"
+      },
+      {
+        "name": "실제 설치 마이크 라이브러리 계약 default export 정규화=false, PCM 수신 및 정리",
+        "status": "passed"
+      },
+      {
+        "name": "실제 설치 마이크 라이브러리 계약 부분 API/모듈 로드 실패를 지원한다고 표시하지 않는다",
+        "status": "passed"
+      },
+      {
+        "name": "실제 설치 마이크 라이브러리 계약 시작 실패 후 리스너를 제거하고 재시도할 수 있다",
+        "status": "passed"
+      },
+      {
+        "name": "실제 설치 마이크 라이브러리 계약 중지 실패도 알리고 리스너는 정리한다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/mic-permission.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "only reads existing permission and never prompts during a turn",
+        "status": "passed"
+      },
+      {
+        "name": "denies a stuck permission query and consumes its late rejection",
+        "status": "passed"
+      },
+      {
+        "name": "denies native query errors and clears its deadline",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/pcm-stream.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "waits through underrun and only ends after the explicit end",
+        "status": "passed"
+      },
+      {
+        "name": "cancellation releases the consumer and drops queued audio",
+        "status": "passed"
+      },
+      {
+        "name": "errors release a waiting consumer and reject later reads",
+        "status": "passed"
+      },
+      {
+        "name": "rejects invalid PCM and caps cumulative audio even after consumption",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/pcm-stream.whitebox.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "rejects concurrent consumer reads without replacing the first pending reader",
+        "status": "passed"
+      },
+      {
+        "name": "fails a buffered stream without allowing the buffered audio to escape",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/pcm.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "base64 ↔ bytes 왕복 변환이 손실 없이 일치한다",
+        "status": "passed"
+      },
+      {
+        "name": "base64 ↔ bytes 빈 입력도 안전하다",
+        "status": "passed"
+      },
+      {
+        "name": "wrapWav — RIFF/WAVE 헤더 44바이트 헤더 + PCM 길이의 WAV를 만든다",
+        "status": "passed"
+      },
+      {
+        "name": "wrapWav — RIFF/WAVE 헤더 헤더 필드가 24kHz mono 16bit 규격과 일치한다",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/player.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "feeds chunks while native playback is pending and waits for real completion after end",
+        "status": "passed"
+      },
+      {
+        "name": "interrupts a stream during a network underrun without waiting for the next chunk",
+        "status": "passed"
+      },
+      {
+        "name": "stops native output when the upstream stream fails midway",
+        "status": "passed"
+      },
+      {
+        "name": "keeps capture and playback simultaneous and stops playback without closing capture",
+        "status": "passed"
+      },
+      {
+        "name": "does not start late capture after stop, and ignores queued events from the old capture",
+        "status": "passed"
+      },
+      {
+        "name": "does not start a new recorder before the previous native stop has finished",
+        "status": "passed"
+      },
+      {
+        "name": "rejects AEC initialization failure instead of falling back to untreated input",
+        "status": "passed"
+      },
+      {
+        "name": "records completion only after native completion, with concatenated PCM",
+        "status": "passed"
+      },
+      {
+        "name": "bounds native playback that never completes and prevents reuse after failed cleanup",
+        "status": "passed"
+      },
+      {
+        "name": "does not start playback when interrupted during preparation",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/relay-config.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "voice relay URL (the only voice path) accepts a secure relay endpoint wss://voice.example.test/voice",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) accepts a secure relay endpoint wss://voice.example.test:8443/voice",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) accepts a secure relay endpoint wss://relay-1.giokon.kr/voice",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects undefined so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"   \" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"not a url\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"ws://voice.example.test/voice\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"https://voice.example.test/voice\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://voice.example.test/\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://voice.example.test/voice/\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://voice.example.test/voice/extra\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://user:pw@voice.example.test/voice\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://voice.example.test/voice?access_token=x\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://voice.example.test/voice#frag\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss:///voice\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) rejects \"wss://-bad.example/voice\" so the session cannot start on an unverified path",
+        "status": "passed"
+      },
+      {
+        "name": "voice relay URL (the only voice path) does not depend on the runtime URL class (React Native parses pathname only for http/https)",
+        "status": "passed"
+      }
+    ]
+  },
+  {
+    "file": "apps/mobile/src/lib/live/useAutomaticConversation.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "binds the screen hook to automatic source adoption and the next microphone cycle",
+        "status": "passed"
+      },
+      {
+        "name": "records interrupted playback even when retrieval precedes the native result",
+        "status": "passed"
+      },
+      {
+        "name": "stops the running loop on background transition",
+        "status": "passed"
+      },
+      {
+        "name": "a background transition before start (permission dialog, screen off) does not block the later start",
+        "status": "passed"
+      },
+      {
+        "name": "waits for the app to return to active right after the permission dialog instead of stopping",
+        "status": "passed"
+      },
+      {
+        "name": "does not install automatic controls before the server session exists",
+        "status": "passed"
+      },
+      {
+        "name": "preserves an interrupted input for review without adopting or saving it",
+        "status": "passed"
+      },
+      {
+        "name": "starts from an empty record and adopts the relay greeting as the first AI turn",
+        "status": "passed"
+      },
+      {
+        "name": "resumes a pause taken before the greeting by requesting the opener again, discarding the late one",
+        "status": "passed"
+      },
+      {
+        "name": "pauses and restores the completed question without repeating it",
+        "status": "passed"
+      },
+      {
+        "name": "requires partial input review, then resumes from the confirmed final text",
+        "status": "passed"
+      },
+      {
+        "name": "preserves the interrupted AI record and excludes it from restored model history",
+        "status": "passed"
+      },
+      {
+        "name": "refuses resumption of a confirmed help request",
+        "status": "passed"
+      },
+      {
+        "name": "retains the approved synthesis failure through the screen controller",
+        "status": "passed"
+      },
+      {
+        "name": "records relay review only for the current connection and keeps it for final save",
+        "status": "passed"
+      },
+      {
+        "name": "감독 화면 원격 일시정지를 받아 멈추고, 서버(session_tick) 재개 뒤 같은 세션으로 이어간다(파일럿 M5)",
+        "status": "passed"
+      },
+      {
+        "name": "finishes 오늘은 그만하고 싶어 through the relay farewell and never opens another capture",
+        "status": "passed"
+      },
+      {
+        "name": "finishes 듣기 싫어요 through the relay farewell and never opens another capture",
+        "status": "passed"
+      },
+      {
+        "name": "rejects an ordinary model response when only the fixed farewell is allowed",
+        "status": "passed"
+      },
+      {
+        "name": "still stops immediately without asking for a farewell for 죽고 싶어요",
+        "status": "passed"
+      },
+      {
+        "name": "still stops immediately without asking for a farewell for 너무 힘들어서 못 견디겠어 그만할래",
+        "status": "passed"
+      },
+      {
+        "name": "allows ordinary grief to receive a response while preserving the comfort recommendation across pause and resume",
+        "status": "passed"
+      },
+      {
+        "name": "keeps a completed farewell receipt when the relay ends before playback resolves",
+        "status": "passed"
+      },
+      {
+        "name": "never resumes or adopts a late farewell after a pause while closing",
+        "status": "passed"
+      }
+    ]
+  }
+]

@@ -9,7 +9,7 @@
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 // AI 이용 고지는 원본에 없지만 법·정책상 필수 → 배경/아이콘 없는 작은 회색 한 줄로 유지.
 import { useRef, useState } from 'react';
-import { Alert, View, Text, Pressable, useWindowDimensions } from 'react-native';
+import { Alert, ScrollView, View, Text, Pressable, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { recommendNextTopics } from '@giokon/core';
@@ -34,7 +34,9 @@ export default function SessionStart() {
   const fetchDuePlanned = useDuePlannedFetcher(id);
   const begin = useApp((s) => s.beginSession);
   const { openRemoteSession, adoptPlannedSession } = useSessionPersistence();
-  const { height } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
+  const landscape = width > windowHeight;
+  const height = landscape ? Math.max(FRAME_H, windowHeight) : windowHeight;
   // 버튼 폭 = 콘텐츠 폭(393 폭에서 Figma 336 — 기기 폭 대응).
   const { contentW } = useContentWidth();
   const lease = queryScope.capture();
@@ -117,8 +119,8 @@ export default function SessionStart() {
     router.replace('/session/talk');
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+  const content = (
+    <>
       {/* 로봇 마스코트 — Figma (98, 185) 195×124. 가로 가운데(393 폭에서 1px 차) — 왼쪽 좌표로 두면 기기 폭에 따라 쏠린다. */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (185 / FRAME_H) * height }}>
         <RobotMascot size={195} />
@@ -199,6 +201,16 @@ export default function SessionStart() {
           </Text>
         </Pressable>
       </View>
+    </>
+  );
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      {landscape ? (
+        <ScrollView className="flex-1" contentContainerStyle={{ height }}>
+          {content}
+        </ScrollView>
+      ) : content}
     </SafeAreaView>
   );
 }

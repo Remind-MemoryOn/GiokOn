@@ -15,7 +15,7 @@
 // 기능: signIn(이메일+비밀번호) · 비밀번호 찾기(재설정 메일) · 소셜 3종 실연동
 // (구글·카카오=Supabase PKCE OAuth, 네이버=naver-auth 함수 — src/auth/social.ts).
 import { useState } from 'react';
-import { View, Text, Pressable, TextInput, Image, Alert, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, TextInput, Image, Alert, Keyboard, useWindowDimensions } from 'react-native';
 import { Redirect } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -23,6 +23,8 @@ import { webUrl, WEB_ROUTES } from '../src/lib/webUrl';
 import { useEnforceAppAccess } from '../src/auth/useEnforceAppAccess';
 import { signInWithSupabaseProvider, signInWithNaver } from '../src/auth/social';
 import { C } from '../src/theme';
+import { KeyboardScrollView } from '../src/components/KeyboardForm';
+import { loginCanvasHeight } from '../src/lib/keyboard-layout';
 import wordmark from '../assets/brand/wordmark.png';
 import socialNaver from '../assets/brand/social-naver.png';
 import socialKakao from '../assets/brand/social-kakao.png';
@@ -40,13 +42,15 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const { signIn, refreshUserRow } = useAuth();
   const { ready, target } = useEnforceAppAccess(false);
-  const { width, height } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
+  const height = loginCanvasHeight(windowHeight);
 
   // 가로는 Figma 좌표를 화면 폭 비율로 환산(393 기준 디자인 → 좁은 기기에서도 비율 유지).
   const x = (v: number) => (v / FRAME_W) * width;
 
   const onLogin = async () => {
     if (busy) return;
+    Keyboard.dismiss();
     setBusy(true);
     try {
       await signIn(id, pw);
@@ -103,7 +107,8 @@ export default function Login() {
   if (ready && target === '/main') return <Redirect href="/main" />;
 
   return (
-    <View className="flex-1 bg-white">
+    <KeyboardScrollView style={{ backgroundColor: '#ffffff' }} contentContainerStyle={{ flexGrow: 1 }}>
+    <View className="bg-white" style={{ height }}>
       {/* 워드마크 — Figma 145×22.2 · y 204. 가로는 화면 가운데(Figma x 120 은 393 폭에서 가운데보다 4 왼쪽 —
           비율 좌표로 두면 패드에서 더 쏠려 보여 스플래시와 같이 가운데로 맞춘다, 2026-10-15). */}
       <View className="absolute left-0 right-0 items-center" style={{ top: top(204, height) }}>
@@ -115,6 +120,7 @@ export default function Login() {
         value={id}
         onChangeText={setId}
         placeholder="아이디"
+        accessibilityLabel="아이디"
         placeholderTextColor="#7b7c7c"
         autoCapitalize="none"
         keyboardType="email-address"
@@ -135,6 +141,7 @@ export default function Login() {
         value={pw}
         onChangeText={setPw}
         placeholder="비밀번호"
+        accessibilityLabel="비밀번호"
         placeholderTextColor="#7b7c7c"
         secureTextEntry
         className="absolute text-[13px] text-ink font-normal"
@@ -230,5 +237,6 @@ export default function Login() {
         ))}
       </View>
     </View>
+    </KeyboardScrollView>
   );
 }

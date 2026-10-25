@@ -17,7 +17,7 @@
 // ⚠️ 보호자도 성함·관계를 함께 받는다 — DB 제약 `consents_guardian_check` 가
 //   본인이 아닌 동의에 대해 `guardian_name` 을 요구하므로, 없으면 저장이 실패한다.
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Keyboard, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -27,6 +27,7 @@ import {
   type ConsentSubjectType,
 } from '@giokon/core';
 import { ScreenHeader } from '../../../src/components/ScreenHeader';
+import { KeyboardScrollView, MODAL_ORIENTATIONS } from '../../../src/components/KeyboardForm';
 import {
   CheckBox,
   CONSENT_UI,
@@ -71,6 +72,7 @@ export default function ConsentSubject() {
 
   const goNext = () => {
     if (!canProceed || subject === null) return;
+    Keyboard.dismiss();
     router.push({
       pathname: '/consent/[id]/terms',
       params: { id, subject, guardianName, guardianRelation },
@@ -81,7 +83,7 @@ export default function ConsentSubject() {
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title="동의 확인" />
 
-      <ScrollView
+      <KeyboardScrollView
         className="flex-1"
         contentContainerStyle={{
           flexGrow: 1,
@@ -169,7 +171,7 @@ export default function ConsentSubject() {
 
             <View style={{ flex: CONSENT_UI.relationW, marginLeft: CONSENT_UI.fieldGap }}>
               <FieldLabel label="어르신과의 관계" required />
-              <FieldBox onPress={() => setRelationOpen(true)}>
+              <FieldBox onPress={() => { Keyboard.dismiss(); setRelationOpen(true); }}>
                 {relation.length === 0 ? (
                   <FieldPlaceholder text="선택해주세요" />
                 ) : (
@@ -215,10 +217,11 @@ export default function ConsentSubject() {
             다음
           </Text>
         </Pressable>
-      </ScrollView>
+      </KeyboardScrollView>
 
       {/* 관계 선택 목록(Figma `Frame 14`) — 162 wide · 5행 × 37 */}
       <Modal
+        supportedOrientations={MODAL_ORIENTATIONS}
         visible={relationOpen}
         transparent
         animationType="fade"

@@ -9,13 +9,13 @@ import { Text, View } from 'react-native';
 import { RobotInline } from '../../components/brand';
 import { useContentWidth } from '../../lib/layout';
 
-export function QuestionCard({ question, placeholder }: { question: string; placeholder: string }) {
+export function QuestionCard({ question, placeholder, compact = false }: { question: string; placeholder: string; compact?: boolean }) {
   // 카드 폭 = 콘텐츠 폭(393 폭에서 Figma 336). 질문 칸은 남은 폭을 채우고 오른쪽 여백 10.75(= 336 − 74.25 − 251).
   const { contentW } = useContentWidth();
   return (
     <View
       className="flex-row"
-      style={{
+      style={[{
         width: contentW,
         minHeight: 258,
         borderRadius: 10,
@@ -24,7 +24,7 @@ export function QuestionCard({ question, placeholder }: { question: string; plac
         borderColor: '#e9822b',
         paddingTop: 26,
         paddingBottom: 26,
-      }}
+      }, compact ? { minHeight: 0 } : undefined]}
     >
       <View style={{ marginLeft: 17, marginTop: 11 }}>
         <RobotInline size={46.5} />

@@ -5,8 +5,9 @@
 // 보조 텍스트 #7b7c7c · 경고 text-danger · Pretendard 굵기 클래스.
 // 숫자 버튼은 고령자 UI 기준(큰 터치 영역)과 요양보호사가 한 손으로 누르기 쉬운 크기로 둔다.
 import { useRef, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MODAL_ORIENTATIONS } from '../../components/KeyboardForm';
 import {
   PinAttempts,
   PIN_LENGTH,
@@ -120,8 +121,13 @@ export function CaregiverPinModal({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" onRequestClose={cancel} supportedOrientations={['portrait']}>
-      <SafeAreaView className="flex-1 bg-white items-center justify-center" edges={['top', 'bottom']}>
+    <Modal visible={visible} animationType="fade" onRequestClose={cancel} supportedOrientations={MODAL_ORIENTATIONS}>
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 16 }}
+          keyboardShouldPersistTaps="handled"
+        >
         <Text className="text-[26px] font-semibold text-black text-center" style={{ lineHeight: 40 }}>
           {title}
         </Text>
@@ -168,6 +174,7 @@ export function CaregiverPinModal({
             <PinKey label="지우기" small onPress={() => setDigits((d) => d.slice(0, -1))} />
           </View>
         </View>
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );

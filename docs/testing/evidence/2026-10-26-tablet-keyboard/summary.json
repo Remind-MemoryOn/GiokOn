@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-26",
+  "productBase": "46dfe0b",
+  "tests": {
+    "files": 42,
+    "passed": 476,
+    "failed": 0
+  },
+  "gates": {
+    "typecheck": true,
+    "mobileLint": true,
+    "figma": 174,
+    "font": true,
+    "bom": true,
+    "copy": true
+  },
+  "bundles": {
+    "android": true,
+    "ios": true,
+    "dotenv": false,
+    "publicConfiguration": "synthetic"
+  },
+  "native": {
+    "androidPrebuild": true,
+    "kotlinTabletBoundary": true,
+    "phone": true,
+    "tablet": true,
+    "manifestOrientationRemoved": true,
+    "resize": true,
+    "api36Optout": true,
+    "iosPhone": [
+      "UIInterfaceOrientationPortrait"
+    ],
+    "iosTablet": [
+      "UIInterfaceOrientationLandscapeLeft",
+      "UIInterfaceOrientationLandscapeRight"
+    ],
+    "iosFullScreen": true,
+    "iosNativeBuild": false,
+    "androidWholeApkBuild": false,
+    "kotlinGeneratedMethodFixtureCompiledAndExecuted": true
+  },
+  "devicesConnected": 0,
+  "realDeviceStatus": "NOT_RUN",
+  "review": "Error-banner origin finding fixed with one root KeyboardSurface; no further concrete findings",
+  "mutants": [
+    {
+      "id": "no-focus-reveal",
+      "exit": 1,
+      "killed": true,
+      "failed": [
+        "keyboard viewport geometry measured overlap 1",
+        "keyboard viewport geometry measured overlap 2",
+        "keyboard viewport geometry measured overlap 5",
+        "keyboard viewport geometry measured overlap 6",
+        "keyboard viewport geometry allows space below a region field while capping it to the usable viewport"
+      ]
+    },
+    {
+      "id": "stale-focus-guard",
+      "exit": 1,
+      "killed": true,
+      "failed": [
+        "native keyboard surface contract drops late measurement when focus moves or the old screen unmounts"
+      ]
+    }
+  ]
+}

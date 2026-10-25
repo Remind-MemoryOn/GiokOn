@@ -44,6 +44,7 @@ import { QuestionCard } from '../../src/features/session/QuestionCard';
 import { CAREGIVER_STATUS, isInConversation, pauseButtonState } from '../../src/features/session/caregiverStatus';
 import iconClose from '../../assets/brand/icon-close.png';
 import { useContentWidth } from '../../src/lib/layout';
+import { KeyboardScrollView } from '../../src/components/KeyboardForm';
 
 const FRAME_H = 852;
 /** Interrupted relay inputs retain the full storage allowance. */
@@ -124,7 +125,9 @@ export default function Talk() {
   const acknowledge = useApp((s) => s.acknowledgeSafety);
   const { finishAndPersist, retrySave, discardUnsaved, syncProgress } = useSessionPersistence();
   const automatic = useAutomaticConversation(active, syncProgress);
-  const { height } = useWindowDimensions();
+  const { width, height: screenHeight } = useWindowDimensions();
+  const landscape = width > screenHeight;
+  const height = landscape ? Math.max(FRAME_H, screenHeight) : screenHeight;
   // 카드·버튼 폭 = 콘텐츠 폭(393 폭에서 Figma 336 — 기기 폭 대응).
   const { contentW } = useContentWidth();
   const finishing = useRef(false);
@@ -221,10 +224,7 @@ export default function Talk() {
   const inConversation = isInConversation(automatic.phase);
   const pauseButton = pauseButtonState(automatic.phase, automatic.remote, pending !== null);
 
-  return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <Stack.Screen options={{ gestureEnabled: true }} />
-      {pinGate}
+  const controls = (<>
       {/* 진행 중이면 다시 어르신 화면으로 넘길 수 있다(X 반대편, 같은 높이). */}
       {inConversation ? (
         <View className="absolute left-[20px]" style={{ top: (64 / FRAME_H) * height, zIndex: 10 }}>
@@ -305,6 +305,17 @@ export default function Talk() {
 
       <View className="absolute left-0 right-0 items-center" style={{ top: (743 / FRAME_H) * height }}><AiDisclosureBanner /></View>
 
+  </>);
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <Stack.Screen options={{ gestureEnabled: true }} />
+      {pinGate}
+      {landscape ? (
+        <KeyboardScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <View style={{ height }}>{controls}</View>
+        </KeyboardScrollView>
+      ) : controls}
       {/* 중단된 청취의 부분 전사 — 담당자가 확인·수정하거나 제외한다(자동 채택 금지) */}
       {pending !== null ? (
         <RecoveredInputPanel
@@ -344,8 +355,10 @@ function RecoveredInputPanel({
   return (
     <View
       className="absolute left-0 right-0 bottom-0 bg-white"
-      style={{ paddingHorizontal: 28.5, paddingTop: 16, paddingBottom: 24, boxShadow: '0px -2px 12px rgba(0,0,0,0.12)' }}
+      style={{ maxHeight: '100%', boxShadow: '0px -2px 12px rgba(0,0,0,0.12)' }}
     >
+      <KeyboardScrollView style={{ flex: undefined, flexShrink: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 28.5, paddingTop: 16, paddingBottom: 24 }}>
       <Text className="text-[18px] font-semibold text-ink" style={{ lineHeight: 30 }}>
         중단 전 인식된 말씀을 확인해 주세요.
       </Text>
@@ -404,6 +417,7 @@ function RecoveredInputPanel({
           </Text>
         </Pressable>
       </View>
+      </KeyboardScrollView>
     </View>
   );
 }

@@ -1,5 +1,7 @@
 # @giokon/mobile — 세션 진행 앱 (요양보호사 모드 + 어르신 표시 모드)
 
+> ✅ 2026-10-26 태블릿 가로/휴대폰 세로 방향 분리·키보드 가림 수정 코드 및 로컬 검증. 모바일476개·Figma174개·타입/린트·Android/iOS 번들, 임시 Android prebuild·iPad 최종 plist 확인. ⏳ 새 APK/IPA 빌드·설치·실기기 회전/키보드 확인(연결0대). [구현·검증·제약](../../docs/plans/2026-10-26-tablet-keyboard-implementation.md). 배포·운영 DB 변경 없음.
+
 > ✅ 2026-10-25 전체 범위 화이트박스 실행·계측: 1,171개 + 도구 4개, 웹 16스위트·DB 17스위트 통과, 가드 변형 16개 검출. ⏳ 미도달 분기·네이티브/SQL 수치 계측·실기기 종단. 실행서 85사례·72화면 CSV는 사용자 Downloads에만 저장(모두 미실행). [범위·커버리지·증거](../../docs/testing/2026-10-25-whitebox-report.md). 운영 배포는 수행하지 않음.
 
 > ✅ 2026-10-18 A+B+C 코드 검증: 전체 문장 안전 검사 후 TTS 스트리밍(v5), 공급자 턴 종료와 앱 출력 분리, 짧은 답변 지시. 앱 436개·중계 131개 회귀, 타입·앱 린트·수동 앱 게이트·Android/iOS 번들·Android 음성 모듈 컴파일 통과. 실제 TTS 합성 점검 첫 청크 1.18초(전체 대화 지연 아님). ✅ 중계 `voice-relay-00012-b9q` 배포·iOS 시뮬레이터 네이티브 빌드. ✅ Android APK 빌드·Lenovo 태블릿 설치. ⏳ 실제 짧은/긴 발화 지연 및 끼어들기 사용자 검증. 무음 경계 1초 포함. 상세: `docs/plans/2026-10-17-streaming-voice-implementation.md`.
@@ -81,7 +83,15 @@ pnpm -F @giokon/mobile test
 파일럿에서 필수) · `EXPO_PUBLIC_WEB_URL`(선택 — 개인정보처리방침·약관을 여는 웹 주소) · `EXPO_PUBLIC_NAVER_CLIENT_ID`.
 ✅ `.env.example` 에 `EXPO_PUBLIC_VOICE_RELAY_URL`(필수 3/3) 추가됨(2026-09-24) — 없거나 형식이 틀리면 시작 화면에서 막힌다.
 
-`ios.supportsTablet: true`(2026-09-24 — 기관에서 태블릿을 쓴다) · `orientation: portrait`(세로 고정). 태블릿 화면은 파일럿 전 실기기로 확인한다.
+`ios.supportsTablet: true`(기관 태블릿 지원). 2026-10-26부터 **태블릿은 양쪽 가로·휴대폰은 세로**다. 최상위 `orientation: portrait`는 휴대폰 기본값이며 iPad plist와 Android `withTabletOrientation`이 기기별로 덮어쓴다. Android는 회전/키보드에 흔들리지 않는 sw600dp 기준이고, iPad는 full screen을 요구한다. target API37로 올릴 때 Android16용 호환 opt-out을 재검토한다.
+
+새 설정은 **새 APK/IPA**에 반영해야 한다. 기존 설치 앱/네이티브 폴더에는 자동 적용되지 않는다. 로컬 Android는 저장소 루트에서 다음 Windows cmd 명령으로 prebuild 뒤 빌드한다(기존 JDK17/SDK 준비 절차 동일). iOS 빌드는 macOS 또는 EAS가 필요하다. 태블릿 방향·키보드·하단 버튼·PIN/달력은 실제 기기로 확인한다.
+
+```cmd
+cd apps\mobile
+pnpm exec expo prebuild --platform android --no-install
+pnpm android
+```
 
 
 ## 개발 빌드·푸시 준비 (T27.1 · 2026-10-11)

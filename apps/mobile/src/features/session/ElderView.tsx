@@ -9,7 +9,7 @@
 //
 // 시안이 없는 화면이다(계획 §7 결정): 레이아웃·치수·색은 Figma 대화 화면(`17:108`)을 그대로 쓰고
 // 마이크는 누를 수 없는 상태 표시로 바꿨다. 고령자 기준: 큰 글씨(질문 28·상태 23), 조작 없음.
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AutomaticPhase } from '../../lib/live/automatic';
 import { MicIndicator, Waveform } from '../../components/brand';
@@ -30,22 +30,52 @@ export function ElderView({
   /** '선생님' 버튼 — 호출부가 PIN 확인을 연다. */
   onCaregiver: () => void;
 }) {
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { contentW } = useContentWidth();
+  const caregiverButton = (
+    <Pressable
+      onPress={onCaregiver}
+      accessibilityRole="button"
+      accessibilityLabel="선생님 화면으로(PIN 필요)"
+      hitSlop={12}
+      className="items-center justify-center active:opacity-60"
+      style={{ minWidth: 64, height: 36, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
+    >
+      <Text className="text-[14px] font-semibold" style={{ color: '#7b7c7c', lineHeight: 20 }}>선생님</Text>
+    </Pressable>
+  );
+
+  if (width > height) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+        <View className="flex-1 items-center" style={{ paddingTop: 16, paddingBottom: 16 }}>
+          <View style={{ alignSelf: 'stretch', alignItems: 'flex-end', paddingRight: 20, paddingBottom: 12 }}>
+            {caregiverButton}
+          </View>
+          <ScrollView style={{ flex: 1, minHeight: 0, alignSelf: 'stretch' }} contentContainerStyle={{ alignItems: 'center' }}>
+            <QuestionCard question={question} placeholder="곧 이야기를 시작해요." compact />
+          </ScrollView>
+          <View style={{ marginTop: 12 }}>
+            <Waveform active={phase === 'listening' || phase === 'speaking'} width={226} />
+          </View>
+          <View className="items-center" style={{ marginTop: 12 }}>
+            <MicIndicator yourTurn={phase === 'listening'} size={123} />
+            <Text className="text-[23px] font-medium text-black text-center" accessibilityLiveRegion="polite"
+              style={{ lineHeight: 42, marginTop: 3, width: contentW }}>
+              {ELDER_STATUS[phase]}
+            </Text>
+          </View>
+          <View style={{ marginTop: 12 }}><AiDisclosureBanner /></View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {/* 선생님(요양보호사) 복귀 — 요양보호사 화면의 X 자리. 작고 흐리게, 누르면 PIN 확인. */}
       <View className="absolute right-[20px]" style={{ top: (64 / FRAME_H) * height, zIndex: 10 }}>
-        <Pressable
-          onPress={onCaregiver}
-          accessibilityRole="button"
-          accessibilityLabel="선생님 화면으로(PIN 필요)"
-          hitSlop={12}
-          className="items-center justify-center active:opacity-60"
-          style={{ minWidth: 64, height: 36, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: '#cccdce' }}
-        >
-          <Text className="text-[14px] font-semibold" style={{ color: '#7b7c7c', lineHeight: 20 }}>선생님</Text>
-        </Pressable>
+        {caregiverButton}
       </View>
 
       <View className="absolute left-0 right-0 items-center" style={{ top: (121 / FRAME_H) * height }}>

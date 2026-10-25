@@ -24,9 +24,10 @@
 //   받을 수 없어 react-native-svg 로 같은 치수로 그린다(글리프 크기·색은 실측값).
 //   폰트는 프로젝트 전역 Pretendard 를 쓴다(디자인 파일의 Inter/Geist 대신 — 앱 타이포 일관성).
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, Text, View } from 'react-native';
+import { FlatList, Keyboard, Modal, Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { daysInMonth, isBirthDate } from '@giokon/core';
+import { MODAL_ORIENTATIONS } from './KeyboardForm';
 
 /** Figma 실측 상수 — scripts/check-figma-spec.mjs 가 검사한다. */
 const CAL = {
@@ -128,7 +129,10 @@ function SelectField({
   return (
     <View style={{ flex: 1 }}>
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`${label} 선택: ${text}`}
         className="flex-row items-center active:opacity-70"
@@ -151,10 +155,10 @@ function SelectField({
         <ChevronDown />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)} supportedOrientations={MODAL_ORIENTATIONS}>
         <Pressable
           className="flex-1 items-center justify-center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+          style={{ backgroundColor: 'rgba(0,0,0,0.35)', paddingVertical: 16 }}
           onPress={() => setOpen(false)}
         >
           <Pressable
@@ -162,6 +166,7 @@ function SelectField({
             style={{
               width: 200,
               maxHeight: 320,
+              flexShrink: 1,
               backgroundColor: CAL.bg,
               borderRadius: CAL.fieldR,
               borderWidth: 1,
@@ -170,6 +175,7 @@ function SelectField({
             }}
           >
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={options}
               keyExtractor={(n) => `${label}-${n}`}
               initialNumToRender={24}

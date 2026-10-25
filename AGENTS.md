@@ -99,7 +99,7 @@
 - **안전 알림**: 중계가 위험 발화를 감지하면 즉시 `safety_events` 기록 → 알림 수신자 = 담당 배정자 ∪ 세션 진행자 → 워커 `push-dispatch` 가 Expo Push
   (**잠금화면 고정 문구 + 알림 id 만** — 성함·발화·위기 종류 금지).
 - **파일럿 운영 규칙(2026-09-24·28 사용자 확정)**: 세션 1회 최대 **10분**(일시정지 포함) · 요양보호사 1명당 동시 **4대** ·
-  어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`, 세로 고정).
+  어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`). **태블릿 가로·휴대폰 세로**(2026-10-26 사용자 요청, Android sw600dp 기준·iPad 전용 방향; 새 네이티브 빌드 필요).
 - 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app`(공개 — 시크릿 창 확인) · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
 - **Gemini 키는 하나를 두 곳에 같은 값으로(2026-10-04 사용자 결정 — 10-01 의 키 분리를 바꿈)**: Supabase Edge 시크릿(`live-token`·`session-report`·`program-journal-draft` — **지우지 않는다**) + Cloud Run Secret Manager(중계 TTS). 교체는 두 곳 동시 — 절차는 `docs/runbooks/voice-relay-operations.md` "Gemini 키 교체". TTS 는 중계가 부른다(Edge 로 옮기지 않음).
 
@@ -165,6 +165,8 @@
 - "현재 화면에서 호출하지 않는다" ≠ "서버가 허용해도 된다" — 권한 있는 사용자의 직접 API 요청으로 가능한 경로는 서버 계약 결함으로 다룬다.
 
 ## 현재 위치 (2026-10-15)
+
+**태블릿·키보드 현재 위치(2026-10-26)**: 기기별 방향과 입력/모달의 키보드 회피·짧은 가로 화면 처리를 수정했다. 상태·검증·새 빌드/실기기 선행 조건은 `docs/plans/2026-10-26-tablet-keyboard-implementation.md`·`docs/tasks.md`를 따른다. API37 상향 시 Android 방향 제한 정책을 재검토한다.
 
 **검증 현재 위치(2026-10-25)**: 전체 범위 화이트박스 실행·계측과 실기기 실행서 작성 상태는 `docs/testing/2026-10-25-whitebox-report.md`·`docs/tasks.md`를 따른다. 미도달 분기와 실기기 종단은 남아 있으며 100% 커버리지·출시 합격으로 해석하지 않는다. 사용자 실행서는 요청대로 로컬 Downloads에만 두고 저장소에 넣지 않는다.
 

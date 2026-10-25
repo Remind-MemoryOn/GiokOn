@@ -7,7 +7,7 @@
 //   대화 기록 보기 336×57 r10 #e9822b @ top 644 · 라벨 SemiBold 18/30 흰색
 //   목록으로       336×57 r10 흰색+border #cccdce @ top 721 · 라벨 SemiBold 18/30 #7b7c7c
 // 상태바는 실기기 상태바 사용.
-import { View, Text, Pressable, Image, useWindowDimensions } from 'react-native';
+import { ScrollView, View, Text, Pressable, Image, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import savedIllustration from '../../assets/brand/saved-illustration.png';
@@ -17,12 +17,14 @@ const FRAME_H = 852;
 
 export default function SessionSaved() {
   const { logId } = useLocalSearchParams<{ logId?: string }>();
-  const { height } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
+  const landscape = width > windowHeight;
+  const height = landscape ? Math.max(FRAME_H, windowHeight) : windowHeight;
   // 버튼 폭 = 콘텐츠 폭(393 폭에서 Figma 336 — 기기 폭 대응).
   const { contentW } = useContentWidth();
 
-  return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+  const content = (
+    <>
       {/* 일러스트 */}
       <Image
         source={savedIllustration}
@@ -79,6 +81,16 @@ export default function SessionSaved() {
           </Text>
         </Pressable>
       </View>
+    </>
+  );
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      {landscape ? (
+        <ScrollView className="flex-1" contentContainerStyle={{ height }}>
+          {content}
+        </ScrollView>
+      ) : content}
     </SafeAreaView>
   );
 }

@@ -11,12 +11,13 @@
 // ⚠️ 값은 전부 실데이터 바인딩이다. 디자인의 "이순자 / 1945 / 전라북도 전주시" 등은
 // 자리표시자이므로 코드에 넣지 않는다(실서비스 원칙).
 import { useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, Keyboard, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { isBirthDate, type ElderGender } from '@giokon/core';
 import type { PickedPhoto } from '../data/elder-photo';
 import { ScreenHeader } from './ScreenHeader';
+import { KeyboardScrollView } from './KeyboardForm';
 import {
   DateField,
   MemoryList,
@@ -136,6 +137,7 @@ export function ProfileForm({
       Alert.alert('입력 확인', '이름과 생년월일을 입력해 주세요.');
       return;
     }
+    Keyboard.dismiss();
     onSubmit({ ...values, memories, pickedPhoto: picked });
   };
 
@@ -143,7 +145,8 @@ export function ProfileForm({
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title={title} />
 
-      <ScrollView
+      <KeyboardScrollView
+        extraBottom={126}
         className="flex-1"
         // 오른쪽 여백 28 — 입력(들여쓰기 1 포함 x29)·저장 버튼이 393 폭에서 336, 기기 폭을 따라 늘어난다.
         contentContainerStyle={{ paddingLeft: 28, paddingTop: 36, paddingRight: 28, paddingBottom: SAVE_TO_BOTTOM }}
@@ -230,7 +233,7 @@ export function ProfileForm({
             <SaveButton label="저장하기" onPress={submit} disabled={saving} />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </SafeAreaView>
   );
 }

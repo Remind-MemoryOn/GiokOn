@@ -1,0 +1,56 @@
+
+ RUN  v3.2.6 C:/Users/user/Documents/GitHub/MemoryOn
+
+ ✓ apps/mobile/plugins/withTabletOrientation.test.ts (9 tests) 12ms
+ ✓ apps/mobile/src/lib/keyboard-layout.test.ts (10 tests) 3ms
+stdout | apps/mobile/src/lib/push.test.ts > 푸시 토큰 등록(M6) > 시뮬레이터·서버 거부는 앱을 막지 않고 실패로만 알린다(다음에 다시 시도)
+[giokon] 푸시 등록 생략 PUSH_TOKEN_ROLE
+
+ ✓ apps/mobile/src/lib/push.test.ts (19 tests) 503ms
+ ✓ apps/mobile/src/lib/live/useAutomaticConversation.test.ts (24 tests) 955ms
+ ✓ apps/mobile/src/auth/login-routing.test.ts (7 tests) 411ms
+ ✓ apps/mobile/src/data/session-persistence.test.ts (30 tests) 1748ms
+ ✓ apps/mobile/src/lib/live/player.test.ts (10 tests) 562ms
+ ✓ apps/mobile/src/auth/accessResources.test.ts (7 tests) 226ms
+ ✓ apps/mobile/src/lib/live/automatic.test.ts (32 tests) 480ms
+ ✓ apps/mobile/src/auth/protectedRoutes.test.ts (7 tests) 206ms
+ ✓ apps/mobile/src/lib/live/mic-adapter.test.ts (5 tests) 71ms
+ ✓ apps/mobile/src/components/keyboard-surfaces.test.ts (11 tests) 271ms
+ ✓ apps/mobile/src/components/KeyboardForm.test.ts (6 tests) 134ms
+ ✓ apps/mobile/src/data/elder-photo.test.ts (6 tests) 41ms
+ ✓ apps/mobile/src/lib/live/client.test.ts (50 tests) 31ms
+ ✓ apps/mobile/src/auth/social.test.ts (20 tests) 15ms
+ ✓ apps/mobile/src/components/root-keyboard.test.ts (1 test) 58ms
+ ✓ apps/mobile/src/store/appStore.test.ts (19 tests) 13ms
+ ✓ apps/mobile/src/auth/accessMonitor.test.ts (12 tests) 12ms
+ ✓ apps/mobile/src/features/session/caregiverPin.test.ts (9 tests) 5ms
+ ✓ apps/mobile/app.config.test.ts (5 tests) 5ms
+ ✓ apps/mobile/src/lib/live/mic-permission.test.ts (3 tests) 5ms
+ ✓ apps/mobile/src/lib/live/barge-in.test.ts (3 tests) 6ms
+ ✓ apps/mobile/src/lib/format.test.ts (2 tests) 3ms
+ ✓ apps/mobile/src/lib/queryFailure.test.ts (3 tests) 5ms
+ ✓ apps/mobile/src/lib/live/pcm-stream.test.ts (4 tests) 4ms
+ ✓ apps/mobile/src/features/session/plannedStart.test.ts (6 tests) 5ms
+ ✓ apps/mobile/src/features/analysis/topicStats.test.ts (6 tests) 3ms
+ ✓ apps/mobile/src/features/analysis/traits.test.ts (16 tests) 3ms
+ ✓ apps/mobile/src/features/profile/profileSubmit.test.ts (5 tests) 4ms
+ ✓ apps/mobile/src/lib/live/pcm-stream.whitebox.test.ts (2 tests) 3ms
+ ✓ apps/mobile/src/lib/live/endpoint.test.ts (9 tests) 3ms
+ ✓ apps/mobile/src/lib/live/pcm.test.ts (4 tests) 3ms
+ ✓ apps/mobile/src/lib/live/relay-config.test.ts (18 tests) 4ms
+ ✓ apps/mobile/src/features/observations/summary.test.ts (10 tests) 3ms
+ ✓ apps/mobile/src/features/session/elderStatus.test.ts (2 tests) 3ms
+ ✓ apps/mobile/src/features/session/caregiverStatus.test.ts (7 tests) 4ms
+ ✓ apps/mobile/src/lib/webUrl.test.ts (10 tests) 3ms
+ ✓ apps/mobile/src/auth/appAccess.test.ts (8 tests) 3ms
+ ✓ apps/mobile/src/features/consent/subject.test.ts (4 tests) 3ms
+ ✓ apps/mobile/src/lib/layout.test.ts (2 tests) 2ms
+ ✓ apps/mobile/src/lib/live/engine-token.test.ts (53 tests) 6010ms
+   ✓ post-AEC capture during TTS > stops TTS once, reports interruption, and forwards the buffered beginning only after the receipt  409ms
+
+ Test Files  42 passed (42)
+      Tests  476 passed (476)
+   Start at  07:35:42
+   Duration  6.90s (transform 812ms, setup 0ms, collect 4.94s, tests 11.84s, environment 6ms, prepare 3.28s)
+
+JSON report written to C:/Users/user/Documents/GitHub/MemoryOn/.tmp/whitebox/mobile/tests.json

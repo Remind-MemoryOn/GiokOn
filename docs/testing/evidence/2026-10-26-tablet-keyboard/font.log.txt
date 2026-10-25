@@ -1,0 +1,5 @@
+
+> giokon@0.0.0 check:font C:\Users\user\Documents\GitHub\MemoryOn
+> node scripts/check-font-class.mjs
+
+✓ 폰트 클래스 검사 통과 (40개 파일의 Text/TextInput 모두 Pretendard 지정)

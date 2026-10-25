@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { UserRow } from '@giokon/data';
 import { AccessMonitor, type AccessSnapshot } from './accessMonitor';
 import { evaluateAppAccess } from './appAccess';
+import { loginCanvasHeight } from '../lib/keyboard-layout';
 
 type AuthState = { authed: boolean; loading: boolean; userRow: UserRow | null };
 type Element = { type: unknown; props: Record<string, unknown> };
@@ -29,6 +30,7 @@ function renderLogin(state: AuthState): Element {
       return { ready: access.status !== 'loading', target: access.status === 'ok' ? '/main' : '/login' };
     } };
     if (name.endsWith('/theme')) return { C: {} };
+    if (name.endsWith('/keyboard-layout')) return { loginCanvasHeight };
     return {};
   } });
   return exports.default!();

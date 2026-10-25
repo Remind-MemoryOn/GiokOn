@@ -1,0 +1,35 @@
+
+ RUN  v3.2.6 C:/Users/user/Documents/GitHub/MemoryOn
+
+ ❯ apps/mobile/src/components/root-keyboard.test.ts (1 test | 1 failed) 56ms
+   × keeps the error banner inside the same keyboard surface as the navigator 55ms
+     → one global surface must include the banner offset, rather than each route assuming y=0: expected [] to have a length of 1 but got +0
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/mobile/src/components/root-keyboard.test.ts > keeps the error banner inside the same keyboard surface as the navigator
+AssertionError: one global surface must include the banner offset, rather than each route assuming y=0: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/mobile/src/components/root-keyboard.test.ts:32:109
+     30|   const nodes = flatten(exports.default!());
+     31|   const surface = nodes.filter(node => node.type === 'KeyboardSurface'…
+     32|   expect(surface, 'one global surface must include the banner offset, …
+       |                                                                                                             ^
+     33|   expect(flatten(surface[0]).map(node => node.type)).toEqual(['Keyboar…
+     34| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  07:34:04
+   Duration  542ms (transform 30ms, setup 0ms, collect 264ms, tests 56ms, environment 0ms, prepare 85ms)
+
+JSON report written to C:/Users/user/Documents/GitHub/MemoryOn/.tmp/whitebox/mobile/tests.json

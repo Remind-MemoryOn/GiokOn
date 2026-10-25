@@ -21,8 +21,10 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   FlatList,
   Image,
+  Keyboard,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -31,6 +33,7 @@ import {
 import Svg, { Line, Rect } from 'react-native-svg';
 import { birthSlashLabel } from '@giokon/core';
 import { Calendar } from './Calendar';
+import { MODAL_ORIENTATIONS } from './KeyboardForm';
 import iconRequired from '../../assets/brand/icon-required.png';
 import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 import iconFieldSearch from '../../assets/brand/icon-field-search.png';
@@ -212,7 +215,7 @@ export function SelectField({
     <View style={{ marginBottom: gap }}>
       <FieldLabel label={label} required={required} />
       <View style={boxWrapStyle}>
-        <FieldBox onPress={() => setOpen(true)}>
+        <FieldBox onPress={() => { Keyboard.dismiss(); setOpen(true); }}>
           {value.length === 0 ? (
             <Placeholder text={placeholder} />
           ) : (
@@ -228,7 +231,7 @@ export function SelectField({
         </FieldBox>
       </View>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} supportedOrientations={MODAL_ORIENTATIONS} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable
           className="flex-1 justify-end"
           style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
@@ -245,6 +248,7 @@ export function SelectField({
               {label}
             </Text>
             <FlatList
+              keyboardShouldPersistTaps="handled"
               data={options}
               keyExtractor={(o) => o}
               initialNumToRender={20}
@@ -312,7 +316,7 @@ export function DateField({
     <View style={{ marginBottom: gap }}>
       <FieldLabel label={label} required={required} />
       <View style={boxWrapStyle}>
-        <FieldBox onPress={() => setOpen(true)}>
+        <FieldBox onPress={() => { Keyboard.dismiss(); setOpen(true); }}>
           {shown.length > 0 ? (
             <Text
               className={`absolute ${valueClass}`}
@@ -333,12 +337,14 @@ export function DateField({
         </FieldBox>
       </View>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} supportedOrientations={MODAL_ORIENTATIONS} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable
           className="flex-1 items-center justify-center"
           style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
           onPress={() => setOpen(false)}
         >
+          <ScrollView style={{ flex: 1, width: '100%' }} keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 16 }}>
           {/* 카드 내부 탭이 배경 닫힘으로 전파되지 않게 감싼다 */}
           <Pressable onPress={() => {}}>
             <Calendar
@@ -351,6 +357,7 @@ export function DateField({
               }}
             />
           </Pressable>
+          </ScrollView>
         </Pressable>
       </Modal>
     </View>

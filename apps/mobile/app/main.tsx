@@ -14,11 +14,12 @@
 // 기능: 설정(톱니바퀴 → 설정 화면. 예전에는 곧바로 로그아웃이었다)·검색·등록·전체분석 이동.
 // "최근 대화"는 실제 세션에서 파생.
 import { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, Image, Keyboard } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HEADER_H, HEADER_SHADOW } from '../src/components/ScreenHeader';
 import { PatientCard } from '../src/components/PatientCard';
+import { KeyboardScrollView, useKeyboardVisible } from '../src/components/KeyboardForm';
 import { useElders, useLastTalkByElder } from '../src/data/reads';
 import { useAuth } from '../src/auth/AuthProvider';
 import wordmark from '../assets/brand/wordmark.png';
@@ -33,13 +34,14 @@ export default function Main() {
   const lastTalk = useLastTalkByElder();
   const insets = useSafeAreaInsets();
   const [q, setQ] = useState('');
+  const keyboardVisible = useKeyboardVisible();
 
   const filtered = useMemo(() => elders.filter((e) => e.name.includes(q.trim())), [elders, q]);
   // 실기기 상태바를 쓰므로 Figma y 좌표에서 안전영역 인셋을 뺀다(ScreenHeader 와 동일 규칙).
   const shift = Math.min(insets.top, 60);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {/* 헤더 — Figma 0..114, 워드마크 90×13.7 @ (30,78), 설정 18×19 @ (344,75) */}
       <View
         className="bg-white"
@@ -52,7 +54,10 @@ export default function Main() {
           accessibilityLabel="기억온"
         />
         <Pressable
-          onPress={() => router.push('/settings')}
+          onPress={() => {
+            Keyboard.dismiss();
+            router.push('/settings');
+          }}
           accessibilityRole="button"
           accessibilityLabel="설정"
           hitSlop={16}
@@ -64,7 +69,7 @@ export default function Main() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <KeyboardScrollView
         className="flex-1"
         contentContainerStyle={{ paddingLeft: 29, paddingRight: 28, paddingTop: 30, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
@@ -144,13 +149,28 @@ export default function Main() {
               key={e.id}
               elder={e}
               lastTalkAt={lastTalk[e.id]}
-              onPress={() => router.push(`/elder/${e.id}`)}
+              onPress={() => {
+                Keyboard.dismiss();
+                router.push(`/elder/${e.id}`);
+              }}
             />
           ))
         )}
-      </ScrollView>
+        {keyboardVisible ? (
+          <View style={{ marginLeft: -29, marginRight: -28, marginBottom: -24 }}>
+            <MainActions />
+          </View>
+        ) : null}
+      </KeyboardScrollView>
 
-      {/* 하단 액션 바 */}
+      {!keyboardVisible ? <MainActions /> : null}
+      </SafeAreaView>
+  );
+}
+
+/** 키보드를 열면 검색 결과와 함께 스크롤해 짧은 화면의 입력 공간을 확보한다. */
+function MainActions() {
+  return (
       <View
         className="flex-row items-end justify-center bg-white"
         style={{
@@ -161,7 +181,10 @@ export default function Main() {
         }}
       >
         <Pressable
-          onPress={() => router.push('/register')}
+          onPress={() => {
+            Keyboard.dismiss();
+            router.push('/register');
+          }}
           accessibilityRole="button"
           className="flex-row items-center justify-center active:opacity-90"
           style={{ width: 158, height: 57, borderRadius: 10, backgroundColor: '#e9822b', marginRight: 20 }}
@@ -173,7 +196,10 @@ export default function Main() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.push('/analytics')}
+          onPress={() => {
+            Keyboard.dismiss();
+            router.push('/analytics');
+          }}
           accessibilityRole="button"
           className="flex-row items-center justify-center active:opacity-90"
           style={{
@@ -191,6 +217,5 @@ export default function Main() {
           </Text>
         </Pressable>
       </View>
-    </SafeAreaView>
   );
 }

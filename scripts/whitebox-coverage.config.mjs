@@ -11,7 +11,7 @@ const scopes = {
   core: { tests: ['packages/core/src/**/*.test.ts'], source: ['packages/core/src/**/*.ts'] },
   data: { tests: ['packages/data/src/**/*.test.ts'], source: ['packages/data/src/**/*.ts', 'supabase/functions/**/*.ts'] },
   mobile: {
-    tests: ['apps/mobile/src/**/*.test.ts', 'apps/mobile/app.config.test.ts'],
+    tests: ['apps/mobile/src/**/*.test.ts', 'apps/mobile/plugins/**/*.test.ts', 'apps/mobile/app.config.test.ts'],
     source: ['apps/mobile/src/**/*.{ts,tsx}', 'apps/mobile/app/**/*.{ts,tsx}', 'apps/mobile/modules/**/*.{ts,tsx}', 'apps/mobile/plugins/**/*.js', 'apps/mobile/app.config.ts'],
   },
   relay: { tests: ['apps/voice-relay/src/**/*.test.ts'], source: ['apps/voice-relay/src/**/*.ts'] },

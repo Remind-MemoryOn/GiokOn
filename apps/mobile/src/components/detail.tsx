@@ -22,11 +22,12 @@
 //
 // ⚠️ 수치·문장은 전부 실데이터 바인딩이다(디자인의 82%·10분·92%·AI 문장은 자리표시자).
 import { useState } from 'react';
-import { Image, Modal, Pressable, Text, View } from 'react-native';
+import { Image, Keyboard, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import iconClock from '../../assets/brand/icon-clock.png';
 import chevronGray from '../../assets/brand/btn-chevron-gray.png';
 import avatarAi from '../../assets/brand/avatar-ai.png';
 import { useContentWidth } from '../lib/layout';
+import { MODAL_ORIENTATIONS } from './KeyboardForm';
 import iconChevronDown from '../../assets/brand/icon-chevron-down.png';
 
 /**
@@ -248,7 +249,10 @@ export function PeriodPill<T>({
   return (
     <>
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`${title}: ${label}`}
         // 25px 높이는 손가락에 작아서 위아래로 터치 여유를 준다(레이아웃 영향 없음).
@@ -259,7 +263,7 @@ export function PeriodPill<T>({
         {face}
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)} supportedOrientations={MODAL_ORIENTATIONS}>
         <Pressable
           className="flex-1 justify-end"
           style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
@@ -267,7 +271,7 @@ export function PeriodPill<T>({
         >
           <View
             className="bg-white"
-            style={{ borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12 }}
+            style={{ borderTopLeftRadius: 14, borderTopRightRadius: 14, paddingVertical: 12, maxHeight: '80%' }}
           >
             <Text
               className="text-[18px] font-semibold text-black text-center"
@@ -275,6 +279,7 @@ export function PeriodPill<T>({
             >
               {title}
             </Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
             {options.map((o) => (
               <Pressable
                 key={o.label}
@@ -294,6 +299,7 @@ export function PeriodPill<T>({
                 </Text>
               </Pressable>
             ))}
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
