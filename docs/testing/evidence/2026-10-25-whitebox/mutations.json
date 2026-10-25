@@ -1,0 +1,143 @@
+{
+  "expectedVariants": 16,
+  "coreData": [
+    {
+      "name": "voice-own-property",
+      "exit": 1,
+      "failed": 4,
+      "total": 24,
+      "killed": true
+    },
+    {
+      "name": "voice-text-whitelist",
+      "exit": 1,
+      "failed": 7,
+      "total": 24,
+      "killed": true
+    },
+    {
+      "name": "generation-source-grounding",
+      "exit": 1,
+      "failed": 1,
+      "total": 12,
+      "killed": true
+    },
+    {
+      "name": "generation-section-limit",
+      "exit": 1,
+      "failed": 7,
+      "total": 12,
+      "killed": true
+    },
+    {
+      "name": "auth-pending-logout",
+      "exit": 1,
+      "failed": 1,
+      "total": 9,
+      "killed": true
+    },
+    {
+      "name": "auth-signout-barrier",
+      "exit": 1,
+      "failed": 1,
+      "total": 9,
+      "killed": true
+    },
+    {
+      "name": "worker-strict-consent",
+      "exit": 1,
+      "failed": 1,
+      "total": 21,
+      "killed": true
+    },
+    {
+      "name": "worker-load-error",
+      "exit": 1,
+      "failed": 1,
+      "total": 21,
+      "killed": true
+    }
+  ],
+  "web": [
+    {
+      "id": "auth-return-allowlist",
+      "exit": 1,
+      "killed": true,
+      "failures": [
+        "auth control-flow and normalized return allowlist reject invalid path 4",
+        "auth control-flow and normalized return allowlist reject invalid path 5",
+        "auth control-flow and normalized return allowlist reject invalid path 6",
+        "auth control-flow and normalized return allowlist reject invalid path 7",
+        "auth control-flow and normalized return allowlist reject invalid path 8",
+        "auth control-flow and normalized return allowlist reject invalid path 9",
+        "auth control-flow and normalized return allowlist reject invalid path 10",
+        "auth control-flow and normalized return allowlist reject invalid path 11",
+        "auth control-flow and normalized return allowlist normalized return /caregiver/../login",
+        "auth control-flow and normalized return allowlist normalized return /caregiver/../guardian",
+        "auth control-flow and normalized return allowlist normalized return /caregiverevil/secret",
+        "auth control-flow and normalized return allowlist normalized return /inquiriesevil",
+        "auth control-flow and normalized return allowlist normalized return /guardian/feed",
+        "auth control-flow and normalized return allowlist normalized return /login?returnTo=/caregiver",
+        "auth control-flow and normalized return allowlist normalized return /caregiver/./supervision",
+        "auth control-flow and normalized return allowlist onboarding and org approval take precedence over a valid target"
+      ]
+    },
+    {
+      "id": "toast-generation",
+      "exit": 1,
+      "killed": true,
+      "failures": [
+        "auth generation and delayed toast data-flow old-generation callback cannot repopulate a new account UI"
+      ]
+    },
+    {
+      "id": "consent-kind-filter",
+      "exit": 1,
+      "killed": true,
+      "failures": [
+        "consent filtering loop and evidence boundary empty, stale, wrong-kind and revoked rows never substitute current consent"
+      ]
+    }
+  ],
+  "relay": [
+    {
+      "name": "buffered-output-guard",
+      "killed": true,
+      "proof": "output.whitebox.test.ts normal assertion passes; same assertion rejects one-guard in-memory variant"
+    },
+    {
+      "name": "streaming-output-guard",
+      "killed": true,
+      "proof": "output.whitebox.test.ts normal assertion passes; same assertion rejects distinct one-guard in-memory variant"
+    },
+    {
+      "name": "first-chunk-permission",
+      "killed": true,
+      "expectedFailedAssertion": "real local WebSocket relay v5 rechecks withdrawn permission before releasing the first synthesized audio chunk"
+    }
+  ],
+  "database": [
+    {
+      "name": "human-only",
+      "exitCode": 1,
+      "targetCount": 2,
+      "expectedSuite": "pilot_access.sql",
+      "expectedAssertion": "서비스 계정(auth.uid 없음)은 일지를 확정할 수 없어야 함",
+      "expectedAssertionObserved": true,
+      "productFileUnchanged": true,
+      "killed": true,
+      "log": "C:\\Users\\user\\Documents\\GitHub\\MemoryOn\\.tmp\\whitebox-2026-10-25\\db-mutants\\human-only.log"
+    },
+    {
+      "name": "final-delete",
+      "exitCode": 1,
+      "targetCount": 1,
+      "expectedSuite": "finalized_journal_integrity.sql",
+      "expectedAssertion": "세션 삭제의 FK cascade 가 확정 일지를 지워서는 안 됨",
+      "expectedAssertionObserved": true,
+      "productFileUnchanged": true,
+      "killed": true,
+      "log": "C:\\Users\\user\\Documents\\GitHub\\MemoryOn\\.tmp\\whitebox-2026-10-25\\db-mutants\\final-delete.log"
+    }
+  ]
+}

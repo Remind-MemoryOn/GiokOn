@@ -1,0 +1,12 @@
+✔ runs the package manager and accepts a valid empty audit (147.5599ms)
+✔ blocks a web high advisory even when audit exits nonzero (128.0363ms)
+✔ reports development advisories without weakening the web gate (124.4146ms)
+✔ fails closed on an empty or invalid audit response (383.4977ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 858.733

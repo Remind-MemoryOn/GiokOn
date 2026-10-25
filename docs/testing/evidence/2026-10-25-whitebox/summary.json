@@ -1,0 +1,665 @@
+{
+  "date": "2026-10-25",
+  "tests": {
+    "core": {
+      "total": 290,
+      "passed": 290,
+      "failed": 0,
+      "files": 17,
+      "success": true
+    },
+    "data": {
+      "total": 245,
+      "passed": 245,
+      "failed": 0,
+      "files": 29,
+      "success": true
+    },
+    "mobile": {
+      "total": 438,
+      "passed": 438,
+      "failed": 0,
+      "files": 37,
+      "success": true
+    },
+    "relay": {
+      "total": 138,
+      "passed": 138,
+      "failed": 0,
+      "files": 8,
+      "success": true
+    },
+    "web": {
+      "total": 60,
+      "passed": 60,
+      "failed": 0,
+      "files": 1,
+      "success": true
+    }
+  },
+  "coverage": {
+    "core": {
+      "lines": {
+        "total": 647,
+        "covered": 620,
+        "skipped": 0,
+        "pct": 95.82
+      },
+      "statements": {
+        "total": 824,
+        "covered": 780,
+        "skipped": 0,
+        "pct": 94.66
+      },
+      "functions": {
+        "total": 178,
+        "covered": 170,
+        "skipped": 0,
+        "pct": 95.5
+      },
+      "branches": {
+        "total": 632,
+        "covered": 547,
+        "skipped": 0,
+        "pct": 86.55
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 15,
+      "zeroStatementFiles": []
+    },
+    "data": {
+      "lines": {
+        "total": 1521,
+        "covered": 791,
+        "skipped": 0,
+        "pct": 52
+      },
+      "statements": {
+        "total": 1914,
+        "covered": 952,
+        "skipped": 0,
+        "pct": 49.73
+      },
+      "functions": {
+        "total": 504,
+        "covered": 172,
+        "skipped": 0,
+        "pct": 34.12
+      },
+      "branches": {
+        "total": 1382,
+        "covered": 720,
+        "skipped": 0,
+        "pct": 52.09
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 45,
+      "zeroStatementFiles": [
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/session-report.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/assignments.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/chronicles.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/consents.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/guardians.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/inquiries.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/messages.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/notifications.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/orgJoin.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/organizations.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/programJournalPhotos.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/safety.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/sessions.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/shares.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/hooks/supervision.ts"
+      ]
+    },
+    "dataOnly": {
+      "lines": {
+        "total": 1050,
+        "covered": 338,
+        "skipped": 0,
+        "pct": 32.19
+      },
+      "statements": {
+        "total": 1310,
+        "covered": 406,
+        "skipped": 0,
+        "pct": 30.99
+      },
+      "functions": {
+        "total": 423,
+        "covered": 96,
+        "skipped": 0,
+        "pct": 22.69
+      },
+      "branches": {
+        "total": 916,
+        "covered": 364,
+        "skipped": 0,
+        "pct": 39.73
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 35
+    },
+    "edge": {
+      "lines": {
+        "total": 471,
+        "covered": 453,
+        "skipped": 0,
+        "pct": 96.17
+      },
+      "statements": {
+        "total": 604,
+        "covered": 546,
+        "skipped": 0,
+        "pct": 90.39
+      },
+      "functions": {
+        "total": 81,
+        "covered": 76,
+        "skipped": 0,
+        "pct": 93.82
+      },
+      "branches": {
+        "total": 466,
+        "covered": 356,
+        "skipped": 0,
+        "pct": 76.39
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 10
+    },
+    "mobile": {
+      "lines": {
+        "total": 2883,
+        "covered": 1502,
+        "skipped": 0,
+        "pct": 52.09
+      },
+      "statements": {
+        "total": 3555,
+        "covered": 1827,
+        "skipped": 0,
+        "pct": 51.39
+      },
+      "functions": {
+        "total": 876,
+        "covered": 319,
+        "skipped": 0,
+        "pct": 36.41
+      },
+      "branches": {
+        "total": 2520,
+        "covered": 1255,
+        "skipped": 0,
+        "pct": 49.8
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 91,
+      "zeroStatementFiles": [
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/_layout.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/analytics.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/index.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/main.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/observations.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/register.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/analysis/[logId].tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/chronicle/[id].tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/consent/[id]/index.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/consent/[id]/terms.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/elder/[id].tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/log/[id].tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/session/saved.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/session/start.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/session/talk.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/settings/elders.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/settings/index.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/app/topics/[id].tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/modules/giokon-duplex/src/GiokonDuplexModule.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/plugins/withWindowsCmake.js",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/theme.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/auth/AuthProvider.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/auth/useEnforceAppAccess.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/auth/useProcessingGuard.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/Calendar.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/ConfigError.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/ErrorBoundary.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/PatientCard.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/ProfileForm.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/QueryFailureBanner.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/ScreenHeader.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/SessionReportPanel.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/banners.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/brand.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/charts.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/consent.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/detail.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/form.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/components/settings.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/data/observations.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/data/reads.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/data/writes.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/features/session/CaregiverPinModal.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/features/session/ElderView.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/features/session/QuestionCard.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/features/settings/useManagedElders.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/fetchGuard.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/fonts.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/period.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/queryFocus.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/regions.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/supabase.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/live/duplex.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/mobile/src/lib/live/player.ts"
+      ]
+    },
+    "relay": {
+      "lines": {
+        "total": 641,
+        "covered": 579,
+        "skipped": 0,
+        "pct": 90.32
+      },
+      "statements": {
+        "total": 902,
+        "covered": 752,
+        "skipped": 0,
+        "pct": 83.37
+      },
+      "functions": {
+        "total": 121,
+        "covered": 88,
+        "skipped": 0,
+        "pct": 72.72
+      },
+      "branches": {
+        "total": 798,
+        "covered": 632,
+        "skipped": 0,
+        "pct": 79.19
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 7,
+      "zeroStatementFiles": [
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/voice-relay/src/main.ts"
+      ]
+    },
+    "web": {
+      "lines": {
+        "total": 3011,
+        "covered": 110,
+        "skipped": 0,
+        "pct": 3.65
+      },
+      "statements": {
+        "total": 3568,
+        "covered": 145,
+        "skipped": 0,
+        "pct": 4.06
+      },
+      "functions": {
+        "total": 1153,
+        "covered": 41,
+        "skipped": 0,
+        "pct": 3.55
+      },
+      "branches": {
+        "total": 3788,
+        "covered": 125,
+        "skipped": 0,
+        "pct": 3.29
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 109,
+      "zeroStatementFiles": [
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/public/viewport-mode.js",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/App.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/main.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/assets/ui/index.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/auth/AuthProvider.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/CareGradeSelect.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/JournalStatusChip.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/Layout.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/QueryErrorBanner.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/analysis-comprehensive.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/analysis-session.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/charts.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/elder-picker.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/guardian-detail.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/guardian-header.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/guardian-message.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/guardian-report-notice.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/org-admin.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/session-row.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/share-receipt.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/share-settings.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/shell/AuthFormScreen.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/shell/PublicFooter.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/shell/PublicHeader.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/shell/Sidebar.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/shell/TopBar.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/shell/nav.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Avatar.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Badge.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Button.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Card.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/ConfirmDialog.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/DateFilter.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Dialog.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Input.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/PeriodSelect.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Select.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/TimeField.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/Toast.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/ui/dropdownStyles.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/content/legalDocuments.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/analysis.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/consentDocuments.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/elderProfile.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/guardianElder.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/modalA11y.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/myName.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/shareViewed.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/supabase.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/version.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/AnalysisElderPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/AnalysisEldersPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/AnalysisPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ChronicleDialog.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ConversationAnalysisListPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ConversationAnalysisPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ConversationLogPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/DashboardPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ElderChroniclesPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ElderConsentsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ElderDetailPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ElderEditPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ElderRegisterDialog.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/EldersPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/JournalPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/OrgPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ProgramJournalDetailPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ProgramJournalListPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/SessionListPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/SessionPlanDialog.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/SessionsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/SettingsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ShareHistoryPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ShareItemsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/SharesPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/SupervisionPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/AnalysisPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/AnalysisSessionPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/AnalysisSessionsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/ConnectPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/FeedPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/JournalDetailPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/SettingsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/SummaryDetailPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/FindIdPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/ForgotPasswordPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/GuidePage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/InquiryPages.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/JoinPendingPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/LandingPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/LegalPages.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/LoginPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/OnboardingPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/ResetPasswordPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/public/SignUpPage.tsx"
+      ]
+    },
+    "webBrowser": {
+      "lines": {
+        "total": 3011,
+        "covered": 2088,
+        "skipped": 0,
+        "pct": 69.34
+      },
+      "statements": {
+        "total": 3568,
+        "covered": 2373,
+        "skipped": 0,
+        "pct": 66.5
+      },
+      "functions": {
+        "total": 1153,
+        "covered": 696,
+        "skipped": 0,
+        "pct": 60.36
+      },
+      "branches": {
+        "total": 3788,
+        "covered": 2227,
+        "skipped": 0,
+        "pct": 58.79
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 111,
+      "zeroStatementFiles": [
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/components/share-receipt.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/lib/myName.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ConversationAnalysisPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/caregiver/ElderConsentsPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/src/pages/guardian/AnalysisSessionPage.tsx",
+        "C:/Users/user/Documents/GitHub/MemoryOn/apps/web/public/viewport-mode.js"
+      ]
+    },
+    "dataBrowser": {
+      "lines": {
+        "total": 1050,
+        "covered": 576,
+        "skipped": 0,
+        "pct": 54.85
+      },
+      "statements": {
+        "total": 1310,
+        "covered": 617,
+        "skipped": 0,
+        "pct": 47.09
+      },
+      "functions": {
+        "total": 423,
+        "covered": 246,
+        "skipped": 0,
+        "pct": 58.15
+      },
+      "branches": {
+        "total": 916,
+        "covered": 305,
+        "skipped": 0,
+        "pct": 33.29
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": "Unknown"
+      },
+      "files": 37,
+      "zeroStatementFiles": [
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/playback-storage.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/processing.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/pushTokens.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/session-report.ts",
+        "C:/Users/user/Documents/GitHub/MemoryOn/packages/data/src/transcript-storage.ts"
+      ]
+    }
+  },
+  "browserRuns": [
+    {
+      "suite": "auth-isolation.mjs",
+      "exit": 0,
+      "counterSnapshots": 1,
+      "executedStatements": 115,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "login-return-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 22,
+      "executedStatements": 1022,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "journal-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 5,
+      "executedStatements": 965,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "share-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 2,
+      "executedStatements": 819,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "chronicle-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 2,
+      "executedStatements": 700,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "charts-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 0,
+      "executedStatements": 23,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "analysis-period-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 3,
+      "executedStatements": 844,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "org-admin-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 2,
+      "executedStatements": 877,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "session-plan-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 3,
+      "executedStatements": 742,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "elder-grade-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 7,
+      "executedStatements": 879,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "elder-delete-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 3,
+      "executedStatements": 738,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "viewport-mode-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 6,
+      "executedStatements": 636,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "supervision-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 6,
+      "executedStatements": 600,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "design-feedback-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 8,
+      "executedStatements": 1235,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "blackbox-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 35,
+      "executedStatements": 1165,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    },
+    {
+      "suite": "usecase-flow-smoke.mjs",
+      "exit": 0,
+      "counterSnapshots": 25,
+      "executedStatements": 1857,
+      "captureWarnings": [],
+      "limitation": "App-initiated document navigation can discard counters before a snapshot. Browser metrics are a conservative lower bound."
+    }
+  ],
+  "limitations": [
+    "No claim of 100% branch/path/MC-DC coverage, formal verification, or real-device execution.",
+    "Native Kotlin/Swift and SQL are validated separately, outside JS coverage percentages.",
+    "Browser original-TS counters and Vitest-transformed counters are reported separately.",
+    "Browser document-navigation snapshots can be lost: counters are conservative lower bounds."
+  ],
+  "totalUnitTests": 1171
+}

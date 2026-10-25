@@ -1,0 +1,5 @@
+
+> giokon@0.0.0 check:bom C:\Users\user\Documents\GitHub\MemoryOn
+> node scripts/check-bom.mjs
+
+BOM·인코딩 검사 통과 (799개 텍스트/설정 파일)

@@ -1,0 +1,149 @@
+
+[auth-isolation.mjs]
+오후 10:01:56 [vite] (client) Re-optimizing dependencies because vite config has changed
+오후 10:01:58 [vite] (client) [optimizer] scanning dependencies...
+오후 10:02:00 [vite] (client) [optimizer] bundling dependencies...
+PASS: real React account/cache/form isolation, delayed old writes, offline logout, initial-session race
+WHITEBOX auth-isolation.mjs: 41 modules, capture errors 0
+
+[login-return-smoke.mjs]
+PASS guard-caregiver
+PASS guard-guardian
+PASS direct-target
+PASS no-target
+PASS guardian-home
+PASS guardian-deny-care
+PASS care-deny-guardian
+PASS pending-org
+PASS needs-onboarding
+PASS external-url
+PASS protocol-relative
+PASS backslash-host
+PASS javascript-url
+PASS login-loop
+PASS normalized-loop
+PASS prefix-confusion
+PASS inquiry-target
+PASS legacy-inquiry-state
+PASS google-return
+PASS kakao-return
+PASS naver-return
+PASS naver-callback-return
+{"total":22,"pass":22,"fail":0}
+WHITEBOX login-return-smoke.mjs: 146 modules, capture errors 0
+
+[journal-flow-smoke.mjs]
+PASS: 초안 생성 버튼 없음 · 다시 생성은 실패 일지만 · 바꾼 칸만 저장 · 확정 권한 잠금 · 확정 후 수정 사유 · 사진 부분 실패(첫 사진 보존·일지 1건) · 버전 충돌 시 저장·승인 거절 → 최신 불러오기(내 칸 유지). 합성 API 만 사용.
+WHITEBOX journal-flow-smoke.mjs: 146 modules, capture errors 0
+
+[share-flow-smoke.mjs]
+PASS: 첨부 대기/실패 시 묶음 철회 차단 · 일지+사진 전체 철회 · 공개 설정의 늦은 첨부 초기값 보존. 합성 API만 사용.
+WHITEBOX share-flow-smoke.mjs: 146 modules, capture errors 0
+
+[chronicle-flow-smoke.mjs]
+PASS: 서울/UTC에서 연대기 2회 저장·재열기 날짜 보존 · 서울 새벽 기본 날짜 · 빈 기록일 차단. 합성 API만 사용.
+WHITEBOX chronicle-flow-smoke.mjs: 146 modules, capture errors 0
+
+[charts-smoke.mjs]
+PASS: 미측정 월에서 추이 선 분리 · 고립된 관찰점 보존 · 실제 0값 연속 · 모두 미측정이면 빈 SVG.
+WHITEBOX charts-smoke.mjs: 1 modules, capture errors 0
+
+[analysis-period-flow-smoke.mjs]
+PASS: 전체·개인·보호자 분석 3→6개월 선택 시 횟수·응답률·주제·키워드·요약의 기간 일치. 합성 캐시만 사용.
+WHITEBOX analysis-period-flow-smoke.mjs: 146 modules, capture errors 0
+
+[org-admin-flow-smoke.mjs]
+PASS: 비관리 역할 읽기 전용 · 본인 역할 변경 없음 · 역할 변경 확인 후 RPC · 권한표 바뀐 권한만 한 번 저장 · 기관 설정 저장(AI 스위치 제외). 합성 API 만 사용.
+WHITEBOX org-admin-flow-smoke.mjs: 146 modules, capture errors 0
+
+[session-plan-flow-smoke.mjs]
+PASS: 한국 날짜 기본값(UTC 기기·한국 오전) · 목표 시간 5~10분 · 새 세션 기본값=기관 설정 · 피할 주제 미리 채움 · 단계 미리보기 · 10분 초과 설계는 10분으로. 합성 API 만 사용.
+WHITEBOX session-plan-flow-smoke.mjs: 146 modules, capture errors 0
+
+[elder-grade-flow-smoke.mjs]
+PASS: 주간보호 등급 필수(상세 안내 · 수정 저장 막음 · 등록 다음 막음) · 고르면 care_grade 저장 · 요양원은 선택. 합성 API 만 사용.
+WHITEBOX elder-grade-flow-smoke.mjs: 146 modules, capture errors 0
+
+[elder-delete-flow-smoke.mjs]
+PASS: 어르신 삭제 — 취소 시 무동작 · 확정 일지/조회 실패 시 파일 보존 · 확인 → 파일 → 행 순서 파기 · 목록 복귀. 합성 API 만 사용.
+WHITEBOX elder-delete-flow-smoke.mjs: 146 modules, capture errors 0
+
+[viewport-mode-smoke.mjs]
+PASS: PC 좁은 창 1440 캔버스 유지(줄바꿈 없음) · 휴대폰 1440 축소(가로 스크롤 없음) · 감독 화면만 반응형(첫 진입·앱 안 이동).
+WHITEBOX viewport-mode-smoke.mjs: 146 modules, capture errors 0
+
+[supervision-flow-smoke.mjs]
+PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인 · 빈 발췌는 저장 중/저장 실패로 표시 · 어르신 요청 마무리는 카드 상태·이유·어르신 기록으로(제어 버튼 숨김·위기 표시 없음). 합성 API 만 사용.
+WHITEBOX supervision-flow-smoke.mjs: 146 modules, capture errors 0
+
+[design-feedback-smoke.mjs]
+PASS: 가입 링크 · 보호자 날짜/어르신 필터 · 4화면 공통 드롭다운 키보드 · 모달 Escape · 긴 정보/알림 말줄임 · 읽은 알림 숨김
+WHITEBOX design-feedback-smoke.mjs: 146 modules, capture errors 0
+
+[blackbox-flow-smoke.mjs]
+PASS DT-SIGN-000 가입 E/L/M=000
+PASS DT-SIGN-001 가입 E/L/M=001
+PASS DT-SIGN-010 가입 E/L/M=010
+PASS DT-SIGN-011 가입 E/L/M=011
+PASS DT-SIGN-100 가입 E/L/M=100
+PASS DT-SIGN-101 가입 E/L/M=101
+PASS DT-SIGN-110 가입 E/L/M=110
+PASS DT-SIGN-111 가입 E/L/M=111
+PASS EP-EMPTY-SIGN /signup 필수 입력 없음
+PASS EP-EMPTY-LOGIN /login 필수 입력 없음
+PASS EP-EMPTY-FORGOT /forgot-password 필수 입력 없음
+PASS EP-EMPTY-FIND /find-id 필수 입력 없음
+PASS EP-EMPTY-RESET /reset-password 필수 입력 없음
+PASS ST-SIGN-RETRY 가입 대기 중 중복 차단 → 실패 → 재시도
+PASS EP-INQUIRY-100 문의 input 최대 100자
+PASS EP-INQUIRY-5000 문의 textarea 최대 5000자
+PASS EG-INQUIRY-ANON 미인증 문의 등록 차단
+PASS ST-LOGIN-RETURN 감독 링크 → 로그인 성공 → 원래 감독 화면
+PASS DT-FINAL-caregiver 확정 권한: caregiver
+PASS DT-FINAL-social_worker 확정 권한: social_worker
+PASS DT-FINAL-center_director 확정 권한: center_director
+PASS DT-FINAL-org_admin 확정 권한: org_admin
+PASS ST-JOURNAL-generating 일지 generating 표시·재시도
+PASS ST-JOURNAL-pending_review 일지 pending_review 표시·재시도
+PASS ST-JOURNAL-final 일지 final 표시·재시도
+PASS ST-JOURNAL-failed 일지 failed 표시·재시도
+PASS EP-TIME-0 목표 시간 입력군 0분
+PASS EP-TIME-5 목표 시간 입력군 5분
+PASS EP-TIME-10 목표 시간 입력군 10분
+PASS EP-TIME-11 목표 시간 입력군 11분
+PASS EP-TIME-30 목표 시간 입력군 30분
+PASS CMP-DATE-Asia-Seoul Asia/Seoul 기기의 한국 새벽 날짜
+PASS CMP-DATE-UTC UTC 기기의 한국 새벽 날짜
+PASS CMP-DATE-America-Los_Angeles America/Los_Angeles 기기의 한국 새벽 날짜
+PASS EG-XSS-JOURNAL 일지 문자열의 HTML 실행 방지
+{"total":35,"pass":35,"fail":0,"evidence":"C:\\Users\\user\\Documents\\GitHub\\MemoryOn\\.tmp\\blackbox-2026-10-24"}
+WHITEBOX blackbox-flow-smoke.mjs: 146 modules, capture errors 0
+
+[usecase-flow-smoke.mjs]
+  OK UC-W01: 요양보호사가 일지 작성·보호자 문장 승인 후 임시 저장
+  OK UC-W01: 사회복지사가 저장된 내용 확인 후 확정
+  OK UC-W01: 복지사가 보호자 연결 대상으로 공개
+  OK UC-W01: 보호자가 승인 문장만 열람하고 열람 요청이 기록됨
+  OK UC-W01: 복지사가 공개 철회 후 보호자 재조회에서 문장이 사라짐
+PASS UC-W01: 요양보호사 작성 → 복지사 확정 → 보호자 열람 → 철회
+  OK UC-W02: 관리자가 직원 초대 코드 발급
+  OK UC-W02: 미합류 직원의 기록 접근 차단과 잘못된 코드 안내
+  OK UC-W02: 유효 코드로 요청하고 승인 전까지 대기
+  OK UC-W02: 관리자 승인 후 신입이 기관 기록 화면에 진입
+PASS UC-W02: 초대 발급 → 잘못된 코드 복구 → 직원 요청 → 관리자 승인
+  OK UC-W03: 진행 중 세션을 일시정지 후 재개
+  OK UC-W03: 종료 확인에서 취소하면 종료 RPC 없음
+  OK UC-W03: 종료를 확인하면 올바른 세션으로 종료 RPC 전송
+PASS UC-W03: 감독자가 일시정지·재개·종료 취소·종료 요청
+  OK UC-W04: 로그아웃 상태에서 감독 링크 열고 로그인
+  OK UC-W04: 원래 감독 화면으로 복귀
+PASS UC-W04: 안전 알림 링크에서 로그인 후 감독 화면 복귀
+  OK UC-W05: 실행 중 세션이 없어도 미확인 알림이 보임
+  OK UC-W05: 요양보호사가 확인하고 재조회해도 미확인 목록에 없음
+PASS UC-W05: 종료된 대화의 안전 알림 확인 → 재조회에서 처리 유지
+  OK UC-W06: 수정 사유 없이는 저장 요청을 보내지 않음
+  OK UC-W06: 사유를 적고 저장한 변경을 다시 열면 유지됨
+  OK UC-W06: 수정 이력에서 정정 사유를 확인
+PASS UC-W06: 확정 일지 정정: 사유 없음 거절 → 사유 입력 → 이력 확인
+{"total":6,"pass":6,"fail":0}
+WHITEBOX usecase-flow-smoke.mjs: 146 modules, capture errors 0

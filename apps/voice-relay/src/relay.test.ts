@@ -74,6 +74,18 @@ describe('real local WebSocket relay', () => {
     expect(calls).toBe(0);
     expect(f.frames.filter(x=>x.relayAudio)).toHaveLength(31);
   });
+  it('v5 rechecks withdrawn permission before releasing the first synthesized audio chunk', async () => {
+    const synthesizeStream = vi.fn(async (text: string, _config: unknown, _signal: AbortSignal, chunk: (pcm: Buffer) => Promise<void>) => {
+      f.allowed.mockResolvedValue(false)
+      await chunk(Buffer.from([1, 0, 2, 0]))
+      return { text }
+    })
+    const f = await fixture(true, {}, { synthesizeStream }); await f.start(5); f.turn()
+    await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED))
+    expect(synthesizeStream).toHaveBeenCalledOnce()
+    expect(f.frames.some(x => x.relayAudio)).toBe(false)
+    expect(f.release).toHaveBeenCalledOnce()
+  })
   it('v5 replaces not-yet-audible synthesis with farewell on a late rest request', async () => {
     let signal!: AbortSignal;
     const synthesizeStream = vi.fn(async (text:string,_config:unknown,abort:AbortSignal,chunk:(pcm:Buffer)=>Promise<void>)=>{
@@ -386,6 +398,31 @@ describe('real local WebSocket relay', () => {
     f.send({ relayPlayback: { turnId, result: 'completed' } })
     f.turn()
     await vi.waitFor(() => expect(f.synthesize).toHaveBeenCalledTimes(2))
+  })
+  it.each([2, 4])('v%s rejects a duplicate completed receipt before accepting another elder input', async protocolVersion => {
+    const f = await fixture(); await f.start(protocolVersion); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayOutput?.turnId === 1)).toBe(true))
+    f.send({ relayPlayback: { turnId: 1, result: 'completed' } })
+    f.send({ relayPlayback: { turnId: 1, result: 'completed' } })
+    await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED))
+    expect(f.synthesize).toHaveBeenCalledOnce()
+    expect(f.release).toHaveBeenCalledOnce()
+  })
+  it.each([
+    { turnId: 2, result: 'completed' },
+    { turnId: 1, result: 'completed', extra: true },
+    { turnId: 1, result: 'empty' },
+  ])('v5 rejects a receipt outside the expected output contract: %j', async receipt => {
+    const synthesizeStream = vi.fn(async (_text: string, _config: unknown, _signal: AbortSignal, chunk: (pcm: Buffer) => Promise<void>) => {
+      await chunk(Buffer.from([1, 0, 2, 0]))
+      return { text: '오늘 어떤 이야기를 나눌까요?' }
+    })
+    const f = await fixture(true, {}, { synthesizeStream }); await f.start(5); f.turn()
+    await vi.waitFor(() => expect(f.frames.some(x => x.relayAudioEnd?.turnId === 1)).toBe(true))
+    f.send({ relayPlayback: receipt })
+    await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED))
+    expect(f.release).toHaveBeenCalledOnce()
+    expect(synthesizeStream).toHaveBeenCalledOnce()
   })
   it('v2 rejects input before playback acknowledgement', async () => {
     const f = await fixture(); await f.start(2); f.turn()

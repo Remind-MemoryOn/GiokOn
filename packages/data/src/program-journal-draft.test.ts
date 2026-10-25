@@ -171,16 +171,22 @@ describe('program-journal-draft deployed entrypoint', () => {
   function load(rpcError: { message: string } | null = null) {
     let captured!: WorkerDeps
     const rpc = vi.fn(async () => ({ data: [job], error: rpcError }))
-    const createClient = vi.fn((..._args: unknown[]) => ({ rpc, from: () => ({}) }))
+    const limit = vi.fn(async (_limit: number) => ({ data: turns, error: null as { message: string } | null }))
+    const order = vi.fn(() => ({ limit }))
+    const eq = vi.fn(() => ({ order }))
+    const select = vi.fn(() => ({ eq }))
+    const from = vi.fn(() => ({ select }))
+    const generateReport = vi.fn()
+    const createClient = vi.fn((..._args: unknown[]) => ({ rpc, from }))
     const source = readFileSync(new URL('../../../supabase/functions/program-journal-draft/index.ts', import.meta.url), 'utf8')
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
       exports: {}, fetch: vi.fn(), AbortSignal, globalThis: {},
       Deno: { serve: vi.fn(), env: { get: (name: string) => ({ SUPABASE_URL: 'https://synthetic.invalid', SUPABASE_SERVICE_ROLE_KEY: 'service', GEMINI_REPORT_MODEL: 'gemini-test', GEMINI_API_KEY: 'k' })[name] } },
       require: (name: string) => name.includes('supabase-js') ? { createClient } : name.includes('worker')
         ? { WorkerAuthError, createWorkerHandler: (d: WorkerDeps) => { captured = d; return () => {} } }
-        : { generateReport: vi.fn(), toSourceTurns: (r: unknown[]) => r, GENERATION_TURN_LIMIT },
+        : { generateReport, toSourceTurns: (r: unknown[]) => r, GENERATION_TURN_LIMIT },
     })
-    return { deps: captured, rpc, createClient }
+    return { deps: captured, rpc, createClient, from, select, eq, order, limit, generateReport }
   }
 
   it('uses the service role key from the runtime and passes the secret to the claim RPC', async () => {
@@ -193,5 +199,45 @@ describe('program-journal-draft deployed entrypoint', () => {
   it('maps the DB secret rejection to WorkerAuthError', async () => {
     const { deps: d } = load({ message: 'WORKER_UNAUTHORIZED' })
     await expect(d.claim('bad', 3)).rejects.toBeInstanceOf(WorkerAuthError)
+  })
+
+  it('rechecks the specific claimed job and accepts only a literal positive consent decision', async () => {
+    const f = load()
+    for (const data of [null, false, 'true', 1, [], [true]]) {
+      f.rpc.mockResolvedValue({ data, error: null } as never)
+      expect(await f.deps.stillAllowed('worker-secret', 'claimed-job')).toBe(false)
+    }
+    f.rpc.mockResolvedValue({ data: true, error: null } as never)
+    expect(await f.deps.stillAllowed('worker-secret', 'claimed-job')).toBe(true)
+    expect(f.rpc).toHaveBeenLastCalledWith('check_journal_generation', { p_secret: 'worker-secret', p_job_id: 'claimed-job' })
+    await expect(load({ message: 'database detail' }).deps.stillAllowed('s', 'job')).rejects.toThrow('CHECK_FAILED')
+  })
+
+  it('loads ordered session-scoped evidence with a bounded overflow sentinel and rejects load errors', async () => {
+    const f = load()
+    expect(await f.deps.loadTurns('selected-session')).toEqual(turns)
+    expect(f.from).toHaveBeenCalledWith('session_logs')
+    expect(f.select).toHaveBeenCalledWith('id, role, content, turn_index')
+    expect(f.eq).toHaveBeenCalledWith('session_id', 'selected-session')
+    expect(f.order).toHaveBeenCalledWith('turn_index')
+    expect(f.limit).toHaveBeenCalledWith(GENERATION_TURN_LIMIT + 1)
+    f.limit.mockResolvedValue({ data: turns, error: { message: 'database detail' } })
+    await expect(f.deps.loadTurns('selected-session')).rejects.toThrow('LOAD_FAILED')
+  })
+
+  it('forwards the abort signal into generation and keeps finish and failure RPCs distinct', async () => {
+    const f = load(); const signal = new AbortController().signal
+    f.generateReport.mockResolvedValue(generated)
+    expect(await f.deps.generate(turns, signal)).toBe(generated)
+    expect(f.generateReport).toHaveBeenCalledWith(turns, { apiKey: 'k', model: 'gemini-test' }, signal)
+    const fields = { activity_content: 'draft', participant_response: 'draft', opinion_collected: null, overall_evaluation: null, next_plan: null, guardian_text: null }
+    await f.deps.finish('s', 'job', fields)
+    expect(f.rpc).toHaveBeenLastCalledWith('finish_journal_generation', { p_secret: 's', p_job_id: 'job', p_fields: fields })
+    await f.deps.fail('s', 'job', 'public-error', false)
+    expect(f.rpc).toHaveBeenLastCalledWith('fail_journal_generation', { p_secret: 's', p_job_id: 'job', p_error: 'public-error', p_retryable: false })
+    const broken = load({ message: 'database detail' }).deps
+    await expect(broken.finish('s', 'job', fields)).rejects.toThrow('FINISH_FAILED')
+    await expect(broken.fail('s', 'job', 'public-error', true)).rejects.toThrow('FAIL_FAILED')
+    await expect(broken.claim('s', 1)).rejects.toThrow('CLAIM_FAILED')
   })
 })
