@@ -71,7 +71,8 @@ const server = await createServer({
 let browser;
 try {
   await server.listen();
-  browser = await chromium.launch({ headless: true });
+  // 다른 브라우저 스위트와 같이 설치된 브라우저 경로(CHROMIUM_PATH)를 따른다 — 없으면 Playwright 기본값(CI).
+  browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) });
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));

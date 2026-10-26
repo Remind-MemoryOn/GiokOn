@@ -21,9 +21,10 @@
 //
 // ── 키워드 방식의 한계와 보완 ────────────────────────────────────────────
 // 결정론 레이어는 구(phrase) 단위 사전으로 오탐을 억제하되(단일 글자 금지 —
-// '죽 한 그릇' ≠ '죽고 싶다'), 반어·완곡 표현은 놓칠 수 있다. 실 LLM 레이어가
-// 의미 기반 감지를 보완하고(prompt.ts의 safety 출력), 둘 중 하나라도 위기로
-// 판단하면 에스컬레이션한다(OR 결합). 부정 문맥("죽고 싶다는 생각은 안 해요")도
+// '죽 한 그릇' ≠ '죽고 싶다'), 반어·완곡 표현은 놓칠 수 있다. 텍스트 응답 경로는
+// 실 LLM 레이어가 의미 기반 감지를 보완하고(prompt.ts의 safety 출력), 둘 중 하나라도
+// 위기로 판단하면 에스컬레이션한다(OR 결합). **음성 중계 경로에는 모델 안전 판정이
+// 없다** — 입력 전사 감지는 이 사전뿐이므로 미탐 표현은 여기에 더한다. 부정 문맥("죽고 싶다는 생각은 안 해요")도
 // 위기로 취급한다 — 자살 언급 자체가 확인 대상이며, 판단은 사람이 한다.
 
 // ─────────────────────────────────────────────────────────────
@@ -81,6 +82,16 @@ const SELF_HARM: readonly string[] = [
   '사라지고싶', '없어지고싶', '세상뜨고싶', '하늘나라가고싶',
   '그만살고싶', '살기싫', '살고싶지않', '살고싶지가않',
   '내가없어야', '내가없는게낫', '내가죽어야',
+  // 완곡·방언(실기기 실행서 SAFE-09 대리 검증 2026-10-26 미탐). 회상 속 '내가 없어지니까(숨바꼭질)'와
+  // 겹치지 않게 '낫다·편하다·싶다'까지 붙인 구로 둔다.
+  '없어지는게낫', '사라지는게낫', '없어지는편이낫', '내가없는편이낫',
+  '내가없으면편하', '내가없으면다들편하', '내가없어지면편하', '없어지면다들편하',
+  '없어져버리고싶', '사라져버리고싶',
+  '죽고잡', '죽고파', '죽어삐고싶', '죽어뿌고싶', '죽어불고싶',
+  '살아서뭐하나', '살아뭐하나', '살아서뭐하겠', '살아뭐하겠', '더살아서뭐', '오래살아서뭐', '이렇게살아뭐', '이렇게살아서뭐',
+  // '아기가 안 깨어났으면(재우던 기억)'·'자다가 안 깨고 푹 잤어'와 겹치지 않게 자다가·영영·다시를 붙인다.
+  '눈을안떴으면', '자다가안깨어났으면', '영영안깨어났으면', '다시안깨어났으면', '다시는안깨어났으면',
+  '자는듯이가고싶', '자다가가고싶',
 ]
 
 // 응급. 정서 관용구('가슴이 아파요' 등)와 겹치지 않게 신체 위급 구만.
@@ -350,6 +361,23 @@ const MEDICAL_CLAIM: readonly string[] = [
   '수술받으세요', '수술하세요', '치료하세요', '치료받으세요', '치료가필요',
 ]
 
+// 복용 지시 — '약을 하루 두 알 드세요'처럼 사이에 말이 끼면 위 구가 맞지 않는다(실기기 실행서 SAFE-10 대리 검증 2026-10-26).
+// '약'이 든 음식·일상 낱말을 먼저 지운 뒤 약 + 먹는 말, 또는 알·정 단위 + 먹으라는 말을 찾는다.
+const NON_MEDICINE_YAK: readonly string[] = [
+  '약과', '약밥', '약식', '약수', '약주', '약속', '약간', '예약', '절약', '계약', '요약', '약혼', '농약', '약해', '약하',
+]
+const INTAKE: readonly string[] = ['드세요', '드시', '드셔', '복용', '먹으', '먹어', '먹고', '챙겨드']
+const DOSE_INSTRUCTION = /(한|두|세|네|반|\d)(알|정|캡슐|포)(씩|만|정도)?(드세요|드시면|드셔도|드셔야|먹으면|먹어도|복용)/
+
+function medicationInstruction(norm: string): string | undefined {
+  const dose = norm.match(DOSE_INSTRUCTION)?.[0]
+  if (dose) return dose
+  const stripped = NON_MEDICINE_YAK.reduce((text, word) => text.split(word).join(''), norm)
+  if (!stripped.includes('약')) return undefined
+  const intake = INTAKE.find((t) => stripped.includes(t))
+  return intake ? `약…${intake}` : undefined
+}
+
 // 교정·직면·기억 시험 — 치매 돌봄 금기(어르신의 현실 존중, validation).
 const CONFRONTATION: readonly string[] = [
   '아까말씀하셨', '아까도말씀', '아까얘기했', '또그이야기', '또그얘기', '방금말씀하셨잖',
@@ -371,7 +399,7 @@ const SAFE_ALTERNATIVE =
 export function screenAiUtterance(text: string): UtteranceScreen {
   const norm = normalizeUtterance(text)
 
-  const medical = MEDICAL_CLAIM.find((t) => norm.includes(t))
+  const medical = MEDICAL_CLAIM.find((t) => norm.includes(t)) ?? medicationInstruction(norm)
   if (medical) {
     return {
       allowed: false,
