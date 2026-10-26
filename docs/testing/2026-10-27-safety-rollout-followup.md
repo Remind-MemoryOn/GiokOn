@@ -8,7 +8,7 @@
 - Docker linux/amd64 이미지 빌드·Artifact Registry 업로드 완료.
 - Cloud Run `voice-relay-00013-qft` Ready/Active, 트래픽 100%. 이미지 manifest digest `df24f000d57e2ca9d45d1aa5caccb2a28761387e674bb326936904dd8b336fa3`; index digest `b51c3aad9526249de8e4997e4182577325ec8b6600babdd28f4cf9d4ee4db475`.
 - `/readyz`는 `ready`. 공개 `/healthz`는 Google 404 응답이므로 성공으로 기록하지 않는다. 서비스 조건 ContainerHealthy=True를 확인했다. 실제 음성/푸시 종단 검증을 의미하지 않는다.
-- Android preview 빌드 `945311c0-8c1a-4236-9e59-2b8a8cb29ed1` 진행 중. 기존 태블릿 수정 APK `9c9eac7c-b48a-40f5-b3b6-79bbfd2c3e07`는 SAFE 수정 전이다.
+- Android preview 빌드 `945311c0-8c1a-4236-9e59-2b8a8cb29ed1` FINISHED. Downloads `GiokOn_SAFE_b4758ce_2026-10-27.apk` 저장(121831974 bytes), SHA256 `2ec73384a3063582073416f01251bf0fb594e16a05b9544e3df9eb3053fdb6d5`. 패키지 `kr.giokon.app`, target SDK36, apksigner 검증 성공. 기존 태블릿 수정 APK `9c9eac7c-b48a-40f5-b3b6-79bbfd2c3e07`는 SAFE 수정 전이다.
 - iOS preview는 내부 배포 서명 정보가 없어 실패. 사용자 지시로 Android 우선, iOS 보류. 과거 iOS 산출물은 시뮬레이터용으로 실기기 IPA가 아니다.
 - ADB 연결 기기 0대. 실기기 SAFE-09/10, 태블릿 회전/키보드, 푸시 수신은 미실행.
 
@@ -19,12 +19,13 @@
 - 기존 생성 검증 25개, 공급자/워커 46개 통과. 의미 정확성에 대한 실제 Gemini 재생성 성공 근거는 아직 없으며 프롬프트는 의미 보증 가드가 아니다.
 - 웹 typecheck/lint, 카피·디자인 213·BOM 통과. frozen-lockfile 설치 후 배포 웹 high/critical 0건 확인(앱/빌드 도구 8건 별도).
 - 전체 워크스페이스 typecheck, Vite 8.1.6 웹 build, `test:journal` 브라우저 회귀 통과. 초기 워커 테스트 파일명 오기로 실행 대상 0개였던 명령은 검증에서 제외하고 실제 `program-journal-draft.test.ts`로 재실행했다.
+- `test:auth` 실제 React 계정/캐시/폼 격리·이전 계정 지연 저장·오프라인 로그아웃·초기 세션 경합 회귀 통과.
 - 08:16 KST 운영 조회: final 1 / failed 7. 사용자는 6건 재생성을 알렸지만 실패 행과 작업 updated_at은 10/16~17 그대로였다. 새 요청이 반영됐다고 판정할 수 없어 웹 주소/오류 문구 확인 요청. cron은 정상 실행 중이다.
 - 어르신 발화 없는 1건은 재시도로 내용 생성 불가. 확정 일지·승인·공개를 변경하지 않았다.
 - 자동 참여자 채움·문장별 근거 표시·필드 보완 상태 분리 등은 아직 미구현이며 기존 출력 점검 문서의 후속 범위를 유지한다.
 
 ## 다음 확인
 
-Android 빌드 완료·다운로드 → 기기 연결/설치 → 실음성 SAFE-09/10 및 키보드/푸시. 일지 6건은 정상 로그인 재생성 요청 도달부터 확인 후 생성 시각·확인 대기·필드·근거를 대조한다.
+Android 빌드·다운로드는 완료. 다음은 기기 연결/설치 → 실음성 SAFE-09/10 및 키보드/푸시. 일지 6건은 정상 로그인 재생성 요청 도달부터 확인 후 생성 시각·확인 대기·필드·근거를 대조한다.
 
 사용자 Downloads 실행서 폴더에 `09_SAFE수정_재검증_2026-10-27.md` 추가. 실제 위험 행위 없이 직원 테스트 계정으로 입력 안전·출력 검열·푸시·일지 상태를 확인하는 방법과 판정 한계를 적었다.
