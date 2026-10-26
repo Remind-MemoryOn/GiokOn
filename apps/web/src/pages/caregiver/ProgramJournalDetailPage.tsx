@@ -459,9 +459,13 @@ function ProgramJournalDetailForm() {
       AI 초안
     </Badge>
   ) : null;
-  /** 워커가 채우는 칸인데 비어 있으면 — 워커가 걸러 비웠거나 근거가 없었다. 사람이 채운다. */
+  /** 빈 초안은 근거 부재일 수 있다. 관찰하지 않은 내용을 채우도록 요구하지 않는다. */
   const aiEmptyHint = (key: (typeof AI_DRAFT_FIELDS)[number]) =>
-    aiDraft && !form[key].trim() ? 'AI가 채우지 않은 칸이에요. 직접 적어 주세요.' : undefined;
+    aiDraft && !form[key].trim()
+      ? key === 'opinion_collected'
+        ? '대화에서 확인한 소감이 없어 비어 있을 수 있어요. 직접 들은 의견이 있을 때만 보완해 주세요.'
+        : 'AI 초안이 비어 있어요. 직접 확인한 내용이 있을 때만 보완해 주세요.'
+      : undefined;
 
   const title = editing ? (existing ? journalTitle(existing.journal_date) : '프로그램 일지') : '새 프로그램 일지';
   const elderName = profile.data?.name;
