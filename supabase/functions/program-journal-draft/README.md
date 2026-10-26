@@ -36,6 +36,8 @@ pg_cron 30초 → app.kick_journal_worker() → (할 일이 있을 때만) pg_ne
 
 ## 검증
 
+- ✅ 2026-10-26 진단 코드 운영 배포 후 사용자 재실행 1건이 1회 시도로 저장된 것을 확인했다. 아래 초기 배포 대기는 해소됐다. 모든 일지의 복구·모든 필드의 완전성을 뜻하지 않는다. [필드·상태 점검](../../../docs/testing/2026-10-26-journal-output-review.md).
+
 - ✅ 2026-10-26 오류 진단 정보 유실 수정·로컬 회귀. ⏳ 운영 배포 승인 및 실제 생성 장애 원인 확정/복구. [조사 보고서](../../../docs/testing/2026-10-26-journal-generation-investigation.md).
 - 실패 시 Edge 로그의 `journal_generation_failure`를 확인한다. `stage`, 허용된 `code`, `httpStatus`, `jobId`, `attempt`, 문법 검증된 `model`, `apiKeyConfigured`만 기록한다. 원문·공급자 본문·키·stack은 남기지 않는다. 202 응답은 생성 성공을 뜻하지 않는다.
 
