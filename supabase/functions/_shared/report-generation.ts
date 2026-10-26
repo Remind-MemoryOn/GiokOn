@@ -6,6 +6,13 @@ import { GENERATED_SESSION_SCHEMA, SESSION_GENERATION_INSTRUCTION, validateGener
 export const GENERATION_TURN_LIMIT = 240
 export const GENERATION_JSON_LIMIT = 48000
 
+/** Only status is retained; provider bodies can contain sensitive input or credentials. */
+export class ReportProviderError extends Error {
+  constructor(readonly httpStatus: number) {
+    super(httpStatus === 429 ? 'REPORT_PROVIDER_LIMIT' : 'REPORT_PROVIDER_FAILED')
+  }
+}
+
 /** session_logs 행 → 생성 입력(어르신 = user 역할). */
 export function toSourceTurns(rows: { id: string; role: string; content: string }[]): GenerationSourceTurn[] {
   return rows.map(t => ({ id: t.id, speaker: t.role === 'user' ? 'Elderly' : 'AI', text: t.content }))
@@ -31,7 +38,10 @@ export async function generateReport(turns: GenerationSourceTurn[], config: { ap
       generationConfig: { responseMimeType: 'application/json', responseJsonSchema: GENERATED_SESSION_SCHEMA, maxOutputTokens: 8192, candidateCount: 1 },
     }),
   })
-  if (!response.ok) { await response.body?.cancel(); throw new Error(response.status === 429 ? 'REPORT_PROVIDER_LIMIT' : 'REPORT_PROVIDER_FAILED') }
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {})
+    throw new ReportProviderError(response.status)
+  }
   const reader = response.body?.getReader()
   if (!reader) throw new Error('REPORT_EMPTY')
   let bytes = 0, raw = ''; const decoder = new TextDecoder()

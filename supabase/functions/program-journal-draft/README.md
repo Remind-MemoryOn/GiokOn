@@ -36,6 +36,9 @@ pg_cron 30초 → app.kick_journal_worker() → (할 일이 있을 때만) pg_ne
 
 ## 검증
 
+- ✅ 2026-10-26 오류 진단 정보 유실 수정·로컬 회귀. ⏳ 운영 배포 승인 및 실제 생성 장애 원인 확정/복구. [조사 보고서](../../../docs/testing/2026-10-26-journal-generation-investigation.md).
+- 실패 시 Edge 로그의 `journal_generation_failure`를 확인한다. `stage`, 허용된 `code`, `httpStatus`, `jobId`, `attempt`, 문법 검증된 `model`, `apiKeyConfigured`만 기록한다. 원문·공급자 본문·키·stack은 남기지 않는다. 202 응답은 생성 성공을 뜻하지 않는다.
+
 - DB: `supabase/tests/journal_worker.sql`(스위치 잠금·꺼진 기관·권한·비밀값·백오프·failed·다시 생성·사람 칸 보존·동의 없음·회수).
 - 워커: `packages/data/src/program-journal-draft.test.ts`(매핑·재시도 구분·202 백그라운드·비밀값·진입점 배선).
 - 실제 Gemini 호출·운영 종단(세션 종료 → 초안)은 기관 스위치를 켠 뒤 확인해야 한다.

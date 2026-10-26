@@ -166,6 +166,8 @@
 
 ## 현재 위치 (2026-10-15)
 
+**일지 생성 장애 조사**: 현재 실패 분류·진단 코드 수정 및 운영 반영 대기는 `docs/testing/2026-10-26-journal-generation-investigation.md`와 `docs/tasks.md`를 따른다. 워커 HTTP 202/자동 테스트 통과를 실제 Gemini 초안 생성 성공으로 해석하지 않는다.
+
 **태블릿·키보드 현재 위치(2026-10-26)**: 기기별 방향과 입력/모달의 키보드 회피·짧은 가로 화면 처리를 수정했다. 상태·검증·새 빌드/실기기 선행 조건은 `docs/plans/2026-10-26-tablet-keyboard-implementation.md`·`docs/tasks.md`를 따른다. API37 상향 시 Android 방향 제한 정책을 재검토한다.
 
 **검증 현재 위치(2026-10-25)**: 전체 범위 화이트박스 실행·계측과 실기기 실행서 작성 상태는 `docs/testing/2026-10-25-whitebox-report.md`·`docs/tasks.md`를 따른다. 미도달 분기와 실기기 종단은 남아 있으며 100% 커버리지·출시 합격으로 해석하지 않는다. 사용자 실행서는 요청대로 로컬 Downloads에만 두고 저장소에 넣지 않는다.

@@ -343,6 +343,11 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 - 타이머·턴 캡·수명·재생 영수증 게이팅은 **손대지 않는다**
 
 **C4. Edge Functions**
+
+| 후속 | 상태 |
+|---|---|
+| 일지 실패 원인 진단 | ✅ 2026-10-26 운영 읽기 조사·진단 유실 코드 수정/회귀. ⏳ 배포 승인·실패1건 재실행·실원인 확정/복구. 운영8건 실패 상태는 유지. [근거](../testing/2026-10-26-journal-generation-investigation.md) |
+
 - `session-report/handler.ts` 의 생성 로직을 `_shared/report-generation.ts` 로 추출(양쪽 공유)
 - ✅ 2026-09-25 **`REPORT_ALLOWED_USER_IDS` 데모 허용목록 폐기 → 기관 AI 스위치**(`org_settings.ai_drafts_enabled`, 기본 꺼짐, 운영자만 켬)
 - ⚠️ **`live-token` 중계 전용화** — 중계만 가진 자격(서버 시크릿 공유 비밀 헤더 등)을 사용자 JWT 에 **더해** 요구하고,

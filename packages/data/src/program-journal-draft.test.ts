@@ -6,7 +6,7 @@ import {
   createWorkerHandler, JOBS_PER_RUN, processJob, WorkerAuthError, WORKER_MESSAGES,
   type ClaimedJob, type WorkerDeps,
 } from '../../../supabase/functions/program-journal-draft/worker'
-import { GENERATION_TURN_LIMIT } from '../../../supabase/functions/_shared/report-generation'
+import { GENERATION_TURN_LIMIT, generateReport } from '../../../supabase/functions/_shared/report-generation'
 
 const job: ClaimedJob = { job_id: 'job-1', journal_id: 'journal-1', session_id: 'session-1', attempt: 1 }
 const turns = [
@@ -31,6 +31,7 @@ function deps(over: Partial<WorkerDeps> = {}) {
     generate: vi.fn(async () => ({ result: generated })),
     finish: vi.fn(async () => {}),
     fail: vi.fn(async () => {}),
+    diagnose: vi.fn(),
     ...over,
   }
   return d as typeof d & WorkerDeps
@@ -40,6 +41,60 @@ const post = (secret?: string) => new Request('https://synthetic.invalid', {
 })
 
 describe('program-journal-draft worker — one job', () => {
+  it('keeps the provider HTTP status through the real adapter and emits only safe structured logs by default', async () => {
+    const logger = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const d = deps({ diagnose: undefined, generate: (source, signal) => generateReport(source,
+        { apiKey: 'private-api-key', model: 'gemini-test' }, signal,
+        async () => new Response('private provider body', { status: 403 })) })
+      await processJob(job, 'private-worker-secret', d)
+      expect(logger).toHaveBeenCalledExactlyOnceWith(JSON.stringify({
+        event: 'journal_generation_failure', stage: 'generate', code: 'REPORT_PROVIDER_FAILED',
+        httpStatus: 403, jobId: 'job-1', attempt: 1,
+      }))
+      expect(d.finish).not.toHaveBeenCalled()
+    } finally { logger.mockRestore() }
+  })
+  it.each([
+    ['claim', 'CLAIM_FAILED'], ['load', 'LOAD_FAILED'], ['check', 'CHECK_FAILED'],
+    ['finish', 'FINISH_FAILED'], ['fail', 'FAIL_FAILED'],
+  ])('reports the %s boundary independently', async (stage, code) => {
+    const failure = vi.fn(async () => { throw new Error(code) })
+    const over: Partial<WorkerDeps> = stage === 'claim' ? { claim: failure }
+      : stage === 'load' ? { loadTurns: failure } : stage === 'check' ? { stillAllowed: failure }
+      : stage === 'finish' ? { finish: failure } : { loadTurns: vi.fn(async () => []), fail: failure }
+    const d = deps(over)
+    await createWorkerHandler(d)(post('s'))
+    expect(d.diagnose).toHaveBeenCalledWith(expect.objectContaining({ stage, code }))
+  })
+  it.each([
+    [new DOMException('private text', 'TimeoutError'), 'REPORT_ABORTED'],
+    [new SyntaxError('private JSON source'), 'INVALID_JSON'],
+  ])('classifies runtime failures without the message', async (error, code) => {
+    const d = deps({ generate: vi.fn(async () => { throw error }) })
+    await processJob(job, 's', d)
+    expect(d.diagnose).toHaveBeenCalledWith(expect.objectContaining({ code }))
+    expect(JSON.stringify(vi.mocked(d.diagnose!).mock.calls)).not.toContain('private')
+  })
+  it.each(['REPORT_CONFIGURATION', 'INVALID_EVIDENCE', 'REPORT_INCOMPLETE'])('records a safe %s diagnosis without changing the public message', async code => {
+    const d = deps({ generate: vi.fn(async () => { throw new Error(code) }) })
+    await processJob(job, 'private-secret', d)
+    expect(d.diagnose).toHaveBeenCalledWith(expect.objectContaining({ stage: 'generate', code, attempt: 1, jobId: 'job-1' }))
+    expect(d.fail).toHaveBeenCalledWith('private-secret', 'job-1', WORKER_MESSAGES.generateFailed, true)
+  })
+  it('does not log unknown error text, stacks, secrets or source turns', async () => {
+    const d = deps({ generate: vi.fn(async () => { throw new Error('private-secret: 전주에서 자랐어요') }) })
+    await processJob(job, 'private-secret', d)
+    expect(d.diagnose).toHaveBeenCalledWith(expect.objectContaining({ code: 'UNKNOWN', stage: 'generate' }))
+    expect(JSON.stringify(vi.mocked(d.diagnose!).mock.calls)).not.toMatch(/private-secret|전주|stack/)
+  })
+  it('reports missing speech separately and does not let a broken logger break failure handling', async () => {
+    const diagnose = vi.fn(() => { throw new Error('logger unavailable') })
+    const d = deps({ loadTurns: vi.fn(async () => []), diagnose })
+    await expect(processJob(job, 's', d)).resolves.toBe('retry')
+    expect(diagnose).toHaveBeenCalledWith(expect.objectContaining({ code: 'NO_ELDER_SPEECH', stage: 'input' }))
+    expect(d.fail).toHaveBeenCalledTimes(1)
+  })
   it('maps the generated session to journal fields and stops at pending review', async () => {
     const d = deps()
     expect(await processJob(job, 's', d)).toBe('finished')
@@ -178,16 +233,26 @@ describe('program-journal-draft deployed entrypoint', () => {
     const from = vi.fn(() => ({ select }))
     const generateReport = vi.fn()
     const createClient = vi.fn((..._args: unknown[]) => ({ rpc, from }))
+    const log = vi.fn()
     const source = readFileSync(new URL('../../../supabase/functions/program-journal-draft/index.ts', import.meta.url), 'utf8')
     runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, {
-      exports: {}, fetch: vi.fn(), AbortSignal, globalThis: {},
+      exports: {}, fetch: vi.fn(), AbortSignal, globalThis: {}, console: { error: log },
       Deno: { serve: vi.fn(), env: { get: (name: string) => ({ SUPABASE_URL: 'https://synthetic.invalid', SUPABASE_SERVICE_ROLE_KEY: 'service', GEMINI_REPORT_MODEL: 'gemini-test', GEMINI_API_KEY: 'k' })[name] } },
       require: (name: string) => name.includes('supabase-js') ? { createClient } : name.includes('worker')
         ? { WorkerAuthError, createWorkerHandler: (d: WorkerDeps) => { captured = d; return () => {} } }
         : { generateReport, toSourceTurns: (r: unknown[]) => r, GENERATION_TURN_LIMIT },
     })
-    return { deps: captured, rpc, createClient, from, select, eq, order, limit, generateReport }
+    return { deps: captured, rpc, createClient, from, select, eq, order, limit, generateReport, log }
   }
+
+  it('adds model identity and key presence to sanitized diagnostics without logging credentials', () => {
+    const f = load()
+    expect(f.deps.diagnose).toBeTypeOf('function')
+    f.deps.diagnose!({ event: 'journal_generation_failure', stage: 'generate', code: 'REPORT_CONFIGURATION', httpStatus: null, jobId: 'job-1', attempt: 1 })
+    const entry = JSON.parse(f.log.mock.calls[0][0])
+    expect(entry).toMatchObject({ model: 'gemini-test', apiKeyConfigured: true, code: 'REPORT_CONFIGURATION' })
+    expect(Object.keys(entry)).not.toContain('apiKey')
+  })
 
   it('uses the service role key from the runtime and passes the secret to the claim RPC', async () => {
     const { deps: d, rpc, createClient } = load()

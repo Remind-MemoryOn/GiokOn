@@ -15,6 +15,11 @@ const model = Deno.env.get('GEMINI_REPORT_MODEL') ?? ''
 const apiKey = Deno.env.get('GEMINI_API_KEY') ?? ''
 
 const handler = createWorkerHandler({
+  diagnose: diagnostic => console.error(JSON.stringify({
+    ...diagnostic,
+    model: /^gemini-[a-z0-9.-]{1,100}$/.test(model) ? model : 'invalid_or_missing',
+    apiKeyConfigured: Boolean(apiKey),
+  })),
   claim: async (secret, limit) => {
     const { data, error } = await db.rpc('claim_journal_generation_jobs', { p_secret: secret, p_limit: limit })
     if (error) throw error.message === 'WORKER_UNAUTHORIZED' ? new WorkerAuthError() : new Error('CLAIM_FAILED')

@@ -23,6 +23,15 @@ describe('Gemini report REST adapter', () => {
   it('does not expose provider error bodies', async () => {
     await expect(generateReport(turns, config, new AbortController().signal, async () => new Response('secret details', { status: 429 }))).rejects.toThrow('REPORT_PROVIDER_LIMIT')
   })
+  it.each([400, 401, 403, 404, 429, 500, 503])('retains HTTP %s for operator diagnosis without retaining the response body', async status => {
+    const response = new Response('private transcript and API key', { status })
+    const read = vi.spyOn(response, 'text')
+    const error = await generateReport(turns, config, new AbortController().signal, async () => response).catch(e => e)
+    expect(error.httpStatus).toBe(status)
+    expect(error.message).toBe(status === 429 ? 'REPORT_PROVIDER_LIMIT' : 'REPORT_PROVIDER_FAILED')
+    expect(JSON.stringify(error)).not.toContain('private')
+    expect(read).not.toHaveBeenCalled()
+  })
   it('rejects invented evidence returned by the real-response parser', async () => {
     const bad = { ...result, journal: [{ ...claim, evidence: [{ turnId: 'other', quote: '고향' }] }] }
     await expect(generateReport(turns, config, new AbortController().signal, async () => reply('STOP', bad))).rejects.toThrow('INVALID_EVIDENCE')

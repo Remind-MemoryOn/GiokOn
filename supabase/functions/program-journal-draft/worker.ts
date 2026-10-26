@@ -7,11 +7,44 @@
 // 원칙: 확정하지 않는다(DB 가드가 서비스 계정 확정을 막는다) · 오류 문구는 요양보호사가 읽는다(원문·내부 코드 노출 금지).
 import type { GeneratedSession, GenerationSourceTurn } from '../../../packages/core/src/generated-session.ts'
 import { mapAnalysisToJournalFields, screenJournalDraft, type JournalDraftFields } from '../../../packages/core/src/program-journal.ts'
-import { exceedsGenerationLimit, hasElderSpeech } from '../_shared/report-generation.ts'
+import { exceedsGenerationLimit, hasElderSpeech, ReportProviderError } from '../_shared/report-generation.ts'
 
 export interface ClaimedJob { job_id: string; journal_id: string; session_id: string; attempt: number }
 
 export class WorkerAuthError extends Error {}
+
+export interface WorkerDiagnostic {
+  event: 'journal_generation_failure'
+  stage: 'claim' | 'load' | 'input' | 'check' | 'generate' | 'finish' | 'fail'
+  code: string
+  httpStatus: number | null
+  jobId: string | null
+  attempt: number | null
+}
+
+// Exact allowlist: never forward arbitrary exception messages, stacks, source turns or secrets.
+const SAFE_CODES = new Set([
+  'REPORT_CONFIGURATION', 'REPORT_PROVIDER_LIMIT', 'REPORT_PROVIDER_FAILED', 'REPORT_EMPTY',
+  'REPORT_TOO_LARGE', 'REPORT_INCOMPLETE', 'INVALID_GENERATION', 'INVALID_GENERATION_FIELDS',
+  'INVALID_GENERATION_TEXT', 'INVALID_GENERATION_SECTIONS', 'UNSUPPORTED_CONCLUSION',
+  'MISSING_EVIDENCE', 'INVALID_EVIDENCE', 'NO_ELDER_SPEECH', 'INPUT_TOO_LARGE',
+  'CLAIM_FAILED', 'LOAD_FAILED', 'CHECK_FAILED', 'FINISH_FAILED', 'FAIL_FAILED',
+])
+
+function diagnose(deps: WorkerDeps, stage: WorkerDiagnostic['stage'], error: unknown, job?: ClaimedJob) {
+  try {
+    const code = error instanceof Error && SAFE_CODES.has(error.message) ? error.message
+      : error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError') ? 'REPORT_ABORTED'
+      : error instanceof SyntaxError ? 'INVALID_JSON' : 'UNKNOWN'
+    const diagnostic: WorkerDiagnostic = {
+      event: 'journal_generation_failure', stage, code,
+      httpStatus: error instanceof ReportProviderError ? error.httpStatus : null,
+      jobId: job?.job_id ?? null, attempt: job?.attempt ?? null,
+    }
+    if (deps.diagnose) deps.diagnose(diagnostic)
+    else console.error(JSON.stringify(diagnostic))
+  } catch { /* Observability must not interrupt DB failure reporting. */ }
+}
 
 export interface WorkerDeps {
   /** 비밀값이 틀리면 WorkerAuthError. */
@@ -26,6 +59,8 @@ export interface WorkerDeps {
   waitUntil?(promise: Promise<unknown>): void
   /** 한 작업의 생성 대기 상한(ms). */
   generationTimeoutMs?: number
+  /** Receives sanitized metadata only. Defaults to structured Edge logs. */
+  diagnose?(diagnostic: WorkerDiagnostic): void
 }
 
 /** 한 번 호출에 잡는 작업 수 — 동시에 처리한다(각 45초 상한 → Edge 실행 시간 안). */
@@ -46,23 +81,33 @@ type Outcome = 'finished' | 'retry' | 'failed' | 'stopped'
 /** 작업 하나 — 어떤 경우에도 finish 나 fail 중 하나로 끝낸다(던지지 않는다). */
 export async function processJob(job: ClaimedJob, secret: string, deps: WorkerDeps): Promise<Outcome> {
   const fail = async (message: string, retryable: boolean): Promise<Outcome> => {
-    try { await deps.fail(secret, job.job_id, message, retryable) } catch { /* 멈춘 작업은 DB 가 5분 뒤 회수한다 */ }
+    try { await deps.fail(secret, job.job_id, message, retryable) } catch (error) {
+      diagnose(deps, 'fail', error, job) // 멈춘 작업은 DB 가 5분 뒤 회수한다.
+    }
     return retryable ? 'retry' : 'failed'
   }
   let turns: GenerationSourceTurn[]
   try {
     turns = await deps.loadTurns(job.session_id)
-  } catch {
+  } catch (error) {
+    diagnose(deps, 'load', error, job)
     return fail(WORKER_MESSAGES.loadFailed, true)
   }
   // 앱이 기록을 다 올리기 전에 세션이 끝났을 수 있다 → 재시도.
-  if (!hasElderSpeech(turns)) return fail(WORKER_MESSAGES.noSpeech, true)
-  if (exceedsGenerationLimit(turns)) return fail(WORKER_MESSAGES.tooLong, false)
+  if (!hasElderSpeech(turns)) {
+    diagnose(deps, 'input', new Error('NO_ELDER_SPEECH'), job)
+    return fail(WORKER_MESSAGES.noSpeech, true)
+  }
+  if (exceedsGenerationLimit(turns)) {
+    diagnose(deps, 'input', new Error('INPUT_TOO_LARGE'), job)
+    return fail(WORKER_MESSAGES.tooLong, false)
+  }
 
   // 잡은 뒤 동의 철회·AI 끔 → 원문을 외부로 보내지 않는다. 확인을 못 하면 보내지 않고 다시 시도한다.
   try {
     if (!(await deps.stillAllowed(secret, job.job_id))) return 'stopped'
-  } catch {
+  } catch (error) {
+    diagnose(deps, 'check', error, job)
     return fail(WORKER_MESSAGES.checkFailed, true)
   }
 
@@ -70,14 +115,16 @@ export async function processJob(job: ClaimedJob, secret: string, deps: WorkerDe
   try {
     const { result } = await deps.generate(turns, AbortSignal.timeout(deps.generationTimeoutMs ?? 45000))
     fields = screenJournalDraft(mapAnalysisToJournalFields(result)).fields
-  } catch {
+  } catch (error) {
+    diagnose(deps, 'generate', error, job)
     // 공급자 오류·한도·불완전 출력·근거 없는 인용·판정 표현 — 다음 시도는 통과할 수 있다.
     return fail(WORKER_MESSAGES.generateFailed, true)
   }
   try {
     await deps.finish(secret, job.job_id, fields)
     return 'finished'
-  } catch {
+  } catch (error) {
+    diagnose(deps, 'finish', error, job)
     return fail(WORKER_MESSAGES.saveFailed, true)
   }
 }
@@ -95,6 +142,7 @@ export function createWorkerHandler(deps: WorkerDeps) {
       jobs = await deps.claim(secret, JOBS_PER_RUN)
     } catch (error) {
       if (error instanceof WorkerAuthError) return json({ error: 'unauthorized' }, 401)
+      diagnose(deps, 'claim', error)
       return json({ error: 'claim failed' }, 503)
     }
     const work = Promise.allSettled(jobs.map(job => processJob(job, secret, deps)))
