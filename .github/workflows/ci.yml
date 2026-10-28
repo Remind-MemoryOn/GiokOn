@@ -136,6 +136,8 @@ jobs:
         run: |
           docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/journal_worker_consent.sql
           docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/prod_privileges.sql
+      - name: 감독 화면 종료 처리·늦은 기기 쓰기 방어 회귀
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/supervised_session_finish.sql
 
   security-audit:
     runs-on: ubuntu-latest

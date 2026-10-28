@@ -69,6 +69,15 @@ select pg_temp.sf_error('a0000000-0000-0000-0000-000000000002',
   'insert into public.session_analyses(session_id,profile_id,org_id,user_id,analysis,version) select sid,pid,org_id,''a0000000-0000-0000-0000-000000000002'',''{}'',''test'' from sf', 'SESSION_SUPERVISED_FINISHED');
 select pg_temp.sf_error('a0000000-0000-0000-0000-000000000002',
   'update public.session_logs set content = ''late overwrite'' where session_id = (select sid from sf)', 'SESSION_SUPERVISED_FINISHED');
+-- 2026-10-28 장애 회귀: 감독 종료되지 않은 세션의 일반 UPDATE 는 막지 않는다
+-- (트리거가 sessions 행에서 없는 session_id 칸을 읽어 모든 UPDATE·대화 시작이 실패했다).
+select pg_temp.sf_error('a0000000-0000-0000-0000-000000000002',
+  format('update public.sessions set updated_at = now() where id = %L', (select planned_sid from sf)), null);
+select pg_temp.sf_error('a0000000-0000-0000-0000-000000000002',
+  format('insert into public.session_logs(session_id,profile_id,org_id,user_id,turn_index,role,content) select planned_sid,pid,org_id,''a0000000-0000-0000-0000-000000000002'',1,''user'',''정상'' from sf'), null);
+-- 로그인 사용자가 없는 서버 경로(운영자 SQL·워커·FK set null 연쇄)는 감독 종료 세션도 막지 않는다.
+select pg_temp.sf_error('',
+  format('update public.sessions set updated_at = now() where id = %L', (select sid from sf)), null);
 -- Ordinary deletion still works for retention/erasure flows (this is not a final journal).
 delete from public.session_logs where session_id = (select sid from sf);
 do $$ begin
