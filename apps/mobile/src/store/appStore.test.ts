@@ -168,10 +168,22 @@ it('keeps new safety events when an earlier event snapshot finishes syncing', ()
   expect(useApp.getState().active!.events[1]).toBe(latest);
 });
 
-it('retains the turn cap even when every answer has a nonurgent comfort recommendation', () => {
-  for (let turn = 1; turn <= 10; turn++) {
-    expect(useApp.getState().adoptAutomaticInput('고향이 그리워요.')).toBe(turn === 10 ? 'help' : 'continue');
+it('continues beyond ten comfort turns', () => {
+  for (let turn = 1; turn <= 12; turn++) {
+    expect(useApp.getState().adoptAutomaticInput('고향이 그리워요.')).toBe('continue');
     expect(useApp.getState().active!.safety.recommendation).toBe('comfort');
-    if (turn < 10) expect(useApp.getState().acceptAutomaticResponse('고향에서 무엇을 하셨어요?')).toBe(true);
+    expect(useApp.getState().acceptAutomaticResponse('고향에서 무엇을 하셨어요?')).toBe(true);
   }
+});
+
+it('keeps safety intervention after more than ten ordinary turns', () => {
+  for (let turn = 0; turn < 12; turn++) {
+    expect(useApp.getState().adoptAutomaticInput('밭에서 감자를 캤어요.')).toBe('continue');
+    expect(useApp.getState().acceptAutomaticResponse('어떤 감자를 캐셨어요?')).toBe(true);
+  }
+  const lastId = useApp.getState().active!.turns.at(-1)!.id;
+  expect(useApp.getState().acceptResumedResponse('이야기를 이어가 볼까요?', lastId)).toBe(true);
+  expect(useApp.getState().adoptAutomaticInput('죽고 싶어요')).toBe('help');
+  expect(useApp.getState().active!.safety.recommendation).toBe('end_session');
+  expect(useApp.getState().acceptResumedResponse('계속할까요?', useApp.getState().active!.turns.at(-1)!.id)).toBe(false);
 });

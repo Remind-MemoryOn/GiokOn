@@ -619,7 +619,8 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       }
       if (r.activityEnd) {
         if (!activityAudio && !activityText) throw new Error('EMPTY_ACTIVITY')
-        if (++turns > 60 || !await allowed()) return close()
+        turns++
+        if (!await allowed()) return close()
         // 어르신 대답만 센다 — 첫 인사·이어가기 요청(텍스트만)은 단계 전환 근거가 아니다.
         if (activityAudio) phaseTurns++
         pending = true; activity = false; output = ''; prepared = undefined

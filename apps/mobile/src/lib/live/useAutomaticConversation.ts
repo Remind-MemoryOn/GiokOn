@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { SESSION_TURN_LIMIT, VOICE_FAILURE_MESSAGES, screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
+import { VOICE_FAILURE_MESSAGES, screenAiUtterance, selectVoiceResumeContext, type VoiceResumeContext } from '@giokon/core';
 import { getSessionControl, getTranscriptStorageVersion } from '@giokon/data';
 import { queryScope } from '../supabase';
 import { useApp, type ActiveSession } from '../../store/appStore';
@@ -40,8 +40,7 @@ export function useAutomaticConversation(session: ActiveSession | null, save: ()
     const resumable = () => {
       const active=useApp.getState().active;
       return !disposed && lease.current() && AppState.currentState === 'active' && active?.session.id === id && active.pendingStt === null &&
-        !active.safety.caregiverAlert && ['continue', 'comfort'].includes(active.safety.recommendation) &&
-        active.turns.filter(turn => turn.speaker === 'Elderly').length < SESSION_TURN_LIMIT ? active : null;
+        !active.safety.caregiverAlert && ['continue', 'comfort'].includes(active.safety.recommendation) ? active : null;
     };
     const flow = new AutomaticConversation({
       current: () => !disposed && lease.current() && useApp.getState().active?.session.id === id,

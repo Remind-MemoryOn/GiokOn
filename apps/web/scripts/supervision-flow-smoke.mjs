@@ -54,6 +54,8 @@ try {
     interventions: [],
   };
   const acks = [];
+  const finishes = [];
+  let finishFails = false;
   await page.route('https://**/*', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
@@ -69,6 +71,12 @@ try {
       const ev = state.events.find((e) => e.id === id);
       Object.assign(ev, req.postDataJSON());
       return json(ev);
+    }
+    if (url.pathname.endsWith('/rest/v1/rpc/finish_supervised_session')) {
+      finishes.push(req.postDataJSON());
+      if (finishFails) return json({message:'SESSION_CONTROL_NOT_FOUND'}, 403);
+      state.sessions = state.sessions.filter(s => s.id !== req.postDataJSON().p_session_id);
+      return json(null);
     }
     if (url.pathname.endsWith('/rest/v1/session_interventions')) return json(state.interventions);
     return route.abort();
@@ -140,6 +148,24 @@ try {
   await page.reload();
   await closing.getByRole('status').filter({ hasText: '어르신 요청으로 대화를 마쳤어요.' }).waitFor(SLOW);
   assert.match(await log.innerText(), / · 어르신 · 요청으로 마무리/);
+
+  // App unavailable: explicit server finish remains usable after closing/end request.
+  await closing.getByRole('button', {name:'지금 종료 처리', exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'취소',exact:true}).click();
+  assert.equal(finishes.length,0);
+  finishFails=true;
+  await closing.getByRole('button', {name:'지금 종료 처리', exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'지금 종료 처리',exact:true}).click();
+  await page.getByText('이 세션을 찾을 수 없어요.',{exact:false}).waitFor();
+  assert.equal(await closing.count(),1,'failed finish must not hide the active session');
+  finishFails=false;
+  state.sessions[0].control_request='end'; state.interventions=[];
+  await page.reload();
+  await closing.getByText('종료 요청됨',{exact:true}).waitFor(SLOW);
+  await closing.getByRole('button', {name:'지금 종료 처리',exact:true}).click();
+  await page.getByRole('dialog').getByRole('button',{name:'지금 종료 처리',exact:true}).click();
+  await page.getByText('지금 진행 중인 대화가 없어요.').waitFor(SLOW);
+  assert.deepEqual(finishes,[{p_session_id:'s-close'},{p_session_id:'s-close'}]);
 
   console.log('PASS: 진행 중 위기는 카드·끝난 대화 위기는 별도 목록 · 대화 저장 뒤에도 미확인 위기·확인 버튼 유지 · 안전 조회 실패 표시와 재확인 · 빈 발췌는 저장 중/저장 실패로 표시 · 어르신 요청 마무리는 카드 상태·이유·어르신 기록으로(제어 버튼 숨김·위기 표시 없음). 합성 API 만 사용.');
 } finally {

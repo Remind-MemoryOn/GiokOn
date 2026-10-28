@@ -4,7 +4,6 @@ import {
   evaluateUserTurn,
   historyBeforeUtterance,
   resolveSessionRecommendation,
-  SESSION_TURN_LIMIT,
 } from './conversation'
 import { assessUtterance } from './safety'
 import type { ConversationTurn } from './types'
@@ -121,13 +120,13 @@ describe('resolveSessionRecommendation — 자동 종료 정책', () => {
     expect(resolveSessionRecommendation('suggest_break', 99)).toBe('suggest_break')
   })
 
-  it('안전 권고가 없으면 설계 세션 길이 도달 시 종료를 권고한다', () => {
-    expect(resolveSessionRecommendation('continue', SESSION_TURN_LIMIT)).toBe('end_session')
-    expect(resolveSessionRecommendation('continue', SESSION_TURN_LIMIT + 3)).toBe('end_session')
+  it('안전 권고가 없으면 10회·60회를 넘어도 계속 진행한다', () => {
+    expect(resolveSessionRecommendation('continue', 11)).toBe('continue')
+    expect(resolveSessionRecommendation('continue', 61)).toBe('continue')
   })
 
   it('안전 권고가 없고 세션 길이 미달이면 계속 진행', () => {
     expect(resolveSessionRecommendation('continue', 0)).toBe('continue')
-    expect(resolveSessionRecommendation('continue', SESSION_TURN_LIMIT - 1)).toBe('continue')
+    expect(resolveSessionRecommendation('continue', 9)).toBe('continue')
   })
 })

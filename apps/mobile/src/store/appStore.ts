@@ -13,7 +13,6 @@ import {
   detectTurnTopic,
   evaluateUserTurn,
   resolveSessionRecommendation,
-  SESSION_TURN_LIMIT,
   screenAiUtterance,
   snapshotVoicePlayback,
   VOICE_FAILURE_MESSAGES,
@@ -217,7 +216,7 @@ function evaluateElderTurn(a: ActiveSession, turns: ConversationTurn[], text: st
   const events: SessionSafetyEvent[] = evaluated.event
     ? [...a.events, { ...evaluated.event, acknowledgedAt: null, remoteId: null, ackSynced: false }] : a.events;
   return { safety, events, closing, help: Boolean(evaluated.caregiverAlert) || evaluated.escalate ||
-    evaluated.assessment.hasDistressSignal || !['continue', 'comfort'].includes(recommendation) || elderTurns >= SESSION_TURN_LIMIT };
+    evaluated.assessment.hasDistressSignal || !['continue', 'comfort'].includes(recommendation) };
 }
 
 export const useApp = create<AppState>((set, get) => ({
@@ -294,7 +293,6 @@ export const useApp = create<AppState>((set, get) => ({
     const a = get().active;
     if (!a || a.pendingStt !== null || a.turns.at(-1)?.id !== previousTurnId ||
         a.safety.caregiverAlert || !['continue', 'comfort'].includes(a.safety.recommendation) ||
-        a.turns.filter(turn => turn.speaker === 'Elderly').length >= SESSION_TURN_LIMIT ||
         !text.trim() || !screenAiUtterance(text).allowed) return false;
     const topic = detectTurnTopic(text) ?? a.currentTopic;
     set({ active: { ...a, turns: [...a.turns, makeTurn('AI', text, topic)], currentQuestion: text,

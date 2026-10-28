@@ -860,3 +860,17 @@ describe('원인 확인 로그 — 어느 단계에서 왜 끝났는지(내용 �
     expect(log).toHaveBeenCalledWith('synthesis_failed', { code: 'SYNTHESIS_FAILED', cause: 'GEMINI_TTS_FAILED_400' })
   })
 })
+
+it('continues after sixty generated turns and still enforces withdrawn permission', async () => {
+  const f = await fixture(); await f.start();
+  for (let turn = 1; turn <= 61; turn++) {
+    f.turn();
+    await vi.waitFor(() => expect(f.frames.filter(x => x.serverContent?.turnComplete)).toHaveLength(turn), { interval: 5 });
+  }
+  expect(f.app.readyState).toBe(WebSocket.OPEN);
+  expect(f.synthesize).toHaveBeenCalledTimes(61);
+  f.allowed.mockResolvedValue(false);
+  f.turn();
+  await vi.waitFor(() => expect(f.app.readyState).toBe(WebSocket.CLOSED));
+  expect(f.synthesize).toHaveBeenCalledTimes(61);
+});

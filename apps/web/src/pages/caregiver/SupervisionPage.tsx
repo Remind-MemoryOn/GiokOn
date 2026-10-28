@@ -6,7 +6,7 @@
 // 색·글꼴로 끊긴 흐름을 잇는 최소 구현만 한다(시안이 오면 교체).
 //
 // ⚠️ 원격 제어는 RPC(request_session_control)만 — 중계가 2초마다 session_tick 으로 읽어 기기에 전한다.
-//    원격 종료는 **기기를 멈출 뿐** 저장은 요양보호사가 기기에서 한다(앱 M5 — 자동 저장하지 않는다).
+//    기존 종료 요청은 기기 저장을 기다린다. 별도 서버 종료는 앱 연결 없이 저장된 기록으로 종료한다.
 // ⚠️ 위기 카드의 안내(전화번호·비의료 고지)는 safety_events.caregiver_alert 에 서버가 저장한
 //    문구를 그대로 쓴다 — 어르신 화면에서 옮겨 온 것이다(M3). 여기서 새 문구를 만들지 않는다.
 // ⚠️ 세션에는 기기 정보가 없다 — 기기 이름을 지어내지 않고 '시작한 사람'을 보인다(읽을 수 있을 때만).
@@ -33,6 +33,7 @@ import {
   useOrgSettings,
   useProfiles,
   useRequestSessionControl,
+  useFinishSupervisedSession,
   useSessionInterventions,
   useUnacknowledgedSafetyEvents,
   SESSION_PHASE_LABEL,
@@ -167,6 +168,7 @@ function SessionCard({
   onPause,
   onResume,
   onEnd,
+  onFinish,
 }: {
   row: SessionRow;
   now: number;
@@ -183,6 +185,7 @@ function SessionCard({
   onPause: () => void;
   onResume: () => void;
   onEnd: () => void;
+  onFinish: () => void;
 }) {
   const state = supervisionState(row);
   const target = sessionTargetMinutes(row.duration_minutes, orgTargetMinutes);
@@ -300,13 +303,18 @@ function SessionCard({
         </div>
       )}
 
+      <Button size="sm" variant="danger" className="mt-3 !text-ink-900" disabled={busy} onClick={onFinish}>
+        지금 종료 처리
+      </Button>
+      <p className="mt-2 text-w-label text-ink-700">앱이 꺼졌거나 기기에서 저장할 수 없으면, 이미 저장된 기록으로 종료할 수 있어요.</p>
+
       {history.length > 0 ? (
         <ol aria-label="개입 기록" className="mt-4 space-y-1 border-t border-line pt-3 text-w-label text-ink-500">
           {history.map((h) => (
             <li key={h.id}>
               {h.action === 'elder_closing'
                 ? `${timeHM(h.created_at)} · 어르신 · ${elderClosingLabel(elderClosingOf([h])?.situation ?? null)}`
-                : `${timeHM(h.created_at)} · ${whoName(h.actor_id) ?? '직원'} · ${ACTION_LABEL[h.action] ?? h.action}`}
+                : `${timeHM(h.created_at)} · ${whoName(h.actor_id) ?? '직원'} · ${h.action === 'end' && h.detail && typeof h.detail === 'object' && !Array.isArray(h.detail) && h.detail.source === 'supervision_finalize' ? '감독 화면에서 종료' : ACTION_LABEL[h.action] ?? h.action}`}
             </li>
           ))}
         </ol>
@@ -331,6 +339,7 @@ export function SupervisionPage() {
   const rows = useMemo(() => sessions.data ?? [], [sessions.data]);
   const interventions = useSessionInterventions(rows.map((r) => r.id), { enabled: isConfigured });
   const control = useRequestSessionControl();
+  const finish = useFinishSupervisedSession();
   const ack = useAcknowledgeSafetyEvent();
 
   /** 진행 중 카드에 붙지 않는 미확인 위기 — 대화가 끝났거나(저장됨) 세션이 없는 것. 확인할 때까지 남긴다. */
@@ -344,6 +353,7 @@ export function SupervisionPage() {
 
   const [pausing, setPausing] = useState<SessionRow | null>(null);
   const [pauseReason, setPauseReason] = useState('');
+  const [finishing, setFinishing] = useState<SessionRow | null>(null);
   const [ending, setEnding] = useState<SessionRow | null>(null);
 
   const elderName = useMemo(
@@ -473,7 +483,7 @@ export function SupervisionPage() {
                 history={(interventions.data ?? []).filter((i) => i.session_id === row.id).slice(0, 3)}
                 closing={elderClosingOf((interventions.data ?? []).filter((i) => i.session_id === row.id))}
                 whoName={whoName}
-                busy={control.isPending}
+                busy={control.isPending || finish.isPending}
                 ackDisabled={ack.isPending || !me.data?.id}
                 onAcknowledge={acknowledge}
                 onPause={() => {
@@ -482,6 +492,7 @@ export function SupervisionPage() {
                 }}
                 onResume={() => send(row, 'resume')}
                 onEnd={() => setEnding(row)}
+                onFinish={() => setFinishing(row)}
               />
             ))}
           </section>
@@ -526,6 +537,21 @@ export function SupervisionPage() {
           className="mb-6 mt-2 h-[52px] w-full rounded-[10px] border border-line px-4 text-w-sub text-ink-900 focus:border-accent focus:outline-none"
         />
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(finishing)}
+        title="지금 대화를 종료 처리할까요?"
+        description="기기 연결과 관계없이 세션을 종료합니다. 이미 서버에 저장된 기록은 남지만, 기기에만 남은 미저장 내용은 복구되지 않을 수 있어요. 이 대화는 다시 이어 갈 수 없습니다."
+        confirmLabel="지금 종료 처리"
+        onClose={() => setFinishing(null)}
+        onConfirm={() => {
+          if (!finishing || finish.isPending) return;
+          finish.mutate({sessionId: finishing.id}, {
+            onSuccess: () => toast('success', '대화를 종료했어요. 저장된 기록을 확인해 주세요.'),
+            onError: e => toast('error', controlError(e)),
+          });
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(ending)}

@@ -82,6 +82,23 @@ export function useRequestSessionControl(): UseMutationResult<
   })
 }
 
+/** 기기 응답 없이 서버에 저장된 기록만으로 종료한다. */
+export function useFinishSupervisedSession(): UseMutationResult<void, Error, { sessionId: string }> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ sessionId }) => {
+      const { error } = await getGiokonClient().rpc('finish_supervised_session', { p_session_id: sessionId })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.activeOrgSessions })
+      void qc.invalidateQueries({ queryKey: ['session_interventions'] })
+      void qc.invalidateQueries({ queryKey: ['program_journals'] })
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
+    },
+  })
+}
+
 /** 기관 설정(목표 시간·기본 피할 주제 등). 행이 없으면 null — 서버 기본값(10분)으로 판단한다. */
 export function useOrgSettings(options?: { enabled?: boolean }): UseQueryResult<OrgSettingsRow | null> {
   return useQuery({

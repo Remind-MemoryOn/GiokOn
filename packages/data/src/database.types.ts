@@ -1102,6 +1102,10 @@ export type Database = {
         Args: { p_session_id: string; p_action: 'pause' | 'resume' | 'end'; p_reason?: string | null }
         Returns: undefined
       }
+      finish_supervised_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       list_inquiries: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Array<{ id: string; title: string; masked_author: string; visibility: Database['public']['Enums']['inquiry_visibility']; status: Database['public']['Enums']['inquiry_status']; created_at: string; reply_count: number; locked: boolean; total: number }>

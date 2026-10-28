@@ -334,3 +334,16 @@ it('never resumes or adopts a late farewell after a pause while closing', async 
   expect(useApp.getState().active!.turns.at(-1)?.speaker).toBe('Elderly');
   if (cleanup) cleanup();
 });
+
+it('resumes after more than ten ordinary turns without a count gate', async () => {
+  const view = useAutomaticConversation(useApp.getState().active, async () => true);
+  const cleanup = native.effects[0](); await view.start();
+  for (let turn = 0; turn < 12; turn++) {
+    native.input!('고향에서 감자를 캤어요');
+    await vi.waitFor(() => expect(native.listen).toHaveBeenCalledTimes(turn + 2));
+  }
+  await view.pause(); await view.resume();
+  expect(native.listen).toHaveBeenCalledTimes(14);
+  expect(native.status.at(-1)).toMatchObject({phase:'listening'});
+  if (cleanup) cleanup();
+});
