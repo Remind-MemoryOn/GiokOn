@@ -119,7 +119,7 @@ describe('post-AEC capture during TTS', () => {
     for(let i=0;i<150;i++) {audio(pcm); await vi.advanceTimersByTimeAsync(20);}
     expect(api.streamAudio).toHaveBeenCalledTimes(160);
     api.draft('합성 시험 답변');
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(3250);
     expect(final).not.toHaveBeenCalled();
     await api.tick(); // Simulate the still-successful periodic permission lease refresh.
     await engine.startListening();
@@ -133,7 +133,7 @@ describe('post-AEC capture during TTS', () => {
     let respond!: (value:{text:string;audioChunksB64:string[]})=>void;
     api.send.mockImplementationOnce(()=>new Promise(resolve=>{respond=resolve;}));
     api.startMic.mock.calls[0][0].onData(pcm);
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(3250);
     expect(api.micStop).toHaveBeenCalledOnce();
     await engine.startListening();
     expect(engine.isListening).toBe(true);
@@ -208,7 +208,7 @@ describe('automatic input endpoint integration', () => {
   it('accepts a one-syllable reply once after the extra pause', async () => {
     const f = await listening()
     f.api.draft('네')
-    await vi.advanceTimersByTimeAsync(999)
+    await vi.advanceTimersByTimeAsync(2999)
     expect(f.final).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(251)
     expect(f.final).toHaveBeenCalledExactlyOnceWith('네')
@@ -228,7 +228,7 @@ describe('automatic input endpoint integration', () => {
     f.api.startMic.mock.calls[0][0].onData('AAD/fwCA')
     await vi.advanceTimersByTimeAsync(750)
     expect(f.final).not.toHaveBeenCalled()
-    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(2250)
     expect(f.final).toHaveBeenCalledExactlyOnceWith('고향 이야기')
     await f.api.exports.closeLiveEngine()
   })
