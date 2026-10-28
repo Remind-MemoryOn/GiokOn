@@ -90,6 +90,16 @@ function createSaveResultPresenter(
 
   function presentResult(res: SessionSaveResult) {
     if (!lease.current()) return;
+    if (res.status === 'supervised_finished') {
+      Alert.alert('감독 화면에서 종료된 대화예요',
+        '이미 서버에 저장된 기록은 남아 있어요. 이 기기의 미저장 내용은 추가 저장할 수 없습니다. 관리 화면에서 저장된 기록을 확인해 주세요.',
+        [{text: '확인하고 나가기', onPress: () => {
+          if (!lease.current() || useApp.getState().lastFinished?.remoteId !== res.logId) return;
+          useApp.getState().clearLastFinished();
+          router.replace('/main');
+        }}], {cancelable: false});
+      return;
+    }
     if (res.status !== 'failed') {
       router.replace(`/session/saved${res.logId ? `?logId=${res.logId}` : ''}`);
       return;

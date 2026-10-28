@@ -136,6 +136,16 @@ describe('fallback save without a remote session (M7)', () => {
     expect(f.builder.insert).toHaveBeenNthCalledWith(1, expect.not.objectContaining({ ended_at: expect.anything() }));
   });
 
+  it('reports supervisor termination without retrying or discarding the local buffer', async () => {
+    const f = fixture();
+    f.state.lastFinished = {...bundle(), remoteId:'remote'};
+    f.builder.upsert.mockResolvedValue({error:{message:'SESSION_SUPERVISED_FINISHED'}} as never);
+    expect(await f.api().finishAndPersist()).toEqual({status:'supervised_finished',logId:'remote'});
+    expect(f.builder.upsert).toHaveBeenCalledTimes(1);
+    expect(f.clear).not.toHaveBeenCalled();
+    expect(f.writes).not.toContain('sessions:update:ended');
+  });
+
   it('never marks the session ended when a later write fails, and removes the partial session', async () => {
     const f = fixture();
     f.state.lastFinished = bundle();

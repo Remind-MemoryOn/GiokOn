@@ -39,6 +39,7 @@ import { useAuth } from '../auth/AuthProvider';
 export type SessionSaveResult =
   /** 저장 성공 — logId 는 DB 세션 id. */
   | { status: 'saved'; logId: string }
+  | { status: 'supervised_finished'; logId: string }
   /** 라이브 저장 실패 — 대화가 온전히 남지 않았다(재시도 가능). */
   | { status: 'failed'; logId: null; message: string };
 
@@ -80,7 +81,7 @@ async function withRetry<T>(lease: QueryLease, fn: () => Promise<T>, attempts = 
       return result;
     } catch (e) {
       lease.assertCurrent();
-      if (e instanceof PolicyRejection) throw e;
+      if (e instanceof PolicyRejection || (e instanceof Error && e.message === 'SESSION_SUPERVISED_FINISHED')) throw e;
       lastErr = e;
       if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * 2 ** i));
     }
@@ -446,6 +447,11 @@ export function useSessionPersistence(): {
       invalidateFor(bundle.elder.id, lease);
       return { status: 'saved', logId: sessionId };
     } catch (e) {
+      if (e instanceof Error && e.message === 'SESSION_SUPERVISED_FINISHED' && bundle.remoteId &&
+          lease.current() && useApp.getState().lastFinished === bundle) {
+        invalidateFor(bundle.elder.id, lease);
+        return {status: 'supervised_finished', logId: bundle.remoteId};
+      }
       console.warn('[giokon] 세션 저장 실패', e);
       return failure(e instanceof Error ? e.message : '알 수 없는 오류가 발생했어요.');
     }
