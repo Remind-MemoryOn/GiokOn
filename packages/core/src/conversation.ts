@@ -19,6 +19,7 @@ import {
   buildCaregiverAlert,
   CAREGIVER_ALERT_KINDS,
   caregiverAlertKind,
+  normalizeUtterance,
   type CaregiverAlertKind,
   type CrisisCategory,
   type Engagement,
@@ -114,6 +115,20 @@ export interface SafetyEventDraft {
 
 const EXCERPT_MAX = 120
 
+/** Keep the actual matched phrase in the bounded evidence, retaining original spelling. */
+function safetyExcerpt(text: string, terms: string[]): string {
+  const normalized = normalizeUtterance(text)
+  const hits = terms.map(term => normalized.indexOf(term)).filter(index => index >= 0)
+  if (!hits.length) return text.trim().slice(0, EXCERPT_MAX)
+  const target = Math.min(...hits)
+  let offset = 0, index = 0
+  while (index < text.length && offset < target) {
+    offset += normalizeUtterance(text[index]).length
+    index++
+  }
+  return text.slice(Math.max(0, index - 30), Math.max(0, index - 30) + EXCERPT_MAX).trim()
+}
+
 function buildSafetyEventDraft(
   assessment: UtteranceAssessment,
   utterance: string,
@@ -125,7 +140,7 @@ function buildSafetyEventDraft(
     level: assessment.risk,
     categories: assessment.crisisCategories,
     matchedTerms: assessment.matchedTerms,
-    excerpt: utterance.trim().slice(0, EXCERPT_MAX),
+    excerpt: safetyExcerpt(utterance, assessment.matchedTerms),
     caregiverAlert: alert,
   }
 }

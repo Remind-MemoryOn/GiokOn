@@ -68,8 +68,6 @@ export const TIME_LIMIT_GRACE_MS = 30_000
 export const ELDER_CLOSING_GRACE_MS = 45_000
 /** 중계가 스스로 대화를 끝낼 때 앱에 함께 보내는 이유(`relayControl.reason` — 구버전 앱은 무시한다). */
 export type RelayEndReason = 'time_limit' | 'elder_closing'
-/** 안전 이벤트 발췌 길이 — 감지 창(여러 조각)의 끝부분을 남긴다(core 초안 규칙과 같은 120자). */
-const SAFETY_EXCERPT_WINDOW = 120
 export interface RelayDependencies {
   authorize(sessionId: string, accessToken: string): Promise<RelaySession>
   connectProvider(url: string): WebSocket
@@ -236,6 +234,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
   async function stopForReview(draft: SafetyEventDraft | null, summary: RelaySafetySummary | null) {
     if (reviewing || abort.signal.aborted) return
     reviewing = true
+    log('safety_detected') // No utterance, category, identity or matched phrase in logs.
     controlled = true
     stream?.abort.abort()
     directive = null
@@ -248,6 +247,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
       const record = session.recordSafety.bind(session)
       // 연결을 닫아도 재시도는 계속된다(원문은 이 클로저 메모리에만 — 로그에 남기지 않는다).
       const recording = recordWithRetry(() => record(draft, eventId), deps.safetyRetry ?? SAFETY_RETRY).then(ok => {
+        log('safety_record_result', { outcome: ok ? 'stored' : 'failed' })
         if (!ok) console.warn('[voice-relay] safety evidence not stored after retries', { eventId, level: draft.level })
         return ok
       })
@@ -426,7 +426,7 @@ export function attachRelay(app: WebSocket, deps: RelayDependencies): () => void
               safetyInput = combinedInput.slice(-4000)
               // 위기·급성 고통(휴식 요청에 섞인 고통 신호 포함)은 지금처럼 즉시 멈춘다 — 약화하지 않는다.
               if (assessment.escalate || assessment.hasDistressSignal) {
-                void stopForReview(safetyEventDraftFor(assessment, combinedInput.slice(-SAFETY_EXCERPT_WINDOW)), relaySafetySummary(assessment))
+                void stopForReview(safetyEventDraftFor(assessment, combinedInput), relaySafetySummary(assessment))
                 return
               }
               // 휴식 요청·거부(T21.11) → 인사 한 문장 뒤 종료. 감지 창을 비워 같은 말씀이 다시 걸리지 않게 하고,

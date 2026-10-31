@@ -4,11 +4,20 @@ import {
   evaluateUserTurn,
   historyBeforeUtterance,
   resolveSessionRecommendation,
+  safetyEventDraftFor,
 } from './conversation'
 import { assessUtterance } from './safety'
 import type { ConversationTurn } from './types'
 
 let seq = 0
+describe('bounded safety evidence', () => {
+  it('retains the matched phrase inside a long utterance with original spacing', () => {
+    const text = '옛날 이야기를 했어요. '.repeat(25) + '숨을 못 쉬겠어요.' + ' 지난 이야기도 있어요.'.repeat(25)
+    const draft = safetyEventDraftFor(assessUtterance(text), text)
+    expect(draft?.excerpt).toContain('숨을 못 쉬')
+    expect(draft!.excerpt.length).toBeLessThanOrEqual(120)
+  })
+})
 const aiTurn = (topic: string): ConversationTurn => ({
   id: 't' + ++seq, speaker: 'AI', text: '...', timestamp: '', topic,
 })
