@@ -100,7 +100,7 @@
   (**잠금화면 고정 문구 + 알림 id 만** — 성함·발화·위기 종류 금지).
 - **파일럿 운영 규칙(2026-09-24·28 사용자 확정)**: 세션 1회 최대 **10분**(일시정지 포함) · 요양보호사 1명당 동시 **4대** ·
   어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`). **태블릿 가로·휴대폰 세로**(2026-10-26 사용자 요청, Android sw600dp 기준·iPad 전용 방향; 새 네이티브 빌드 필요).
-- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app`(공개 — 시크릿 창 확인) · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
+- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 **`memoryon.vercel.app`**(2026-11-04 사용자 확정 — 이전 `memory-on-psi.vercel.app`·팀 별칭은 `vercel.json` 이 공식 주소로 리다이렉트. 팀 별칭 `memory-on-paulodybi001-7834s-projects.vercel.app` 은 Vercel 배포 보호로 비로그인 사용자에게 'Vercel 로그인' 화면이 뜬다 — 사용자 안내·링크에 쓰지 말 것) · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
 - **Gemini 키는 하나를 두 곳에 같은 값으로(2026-10-04 사용자 결정 — 10-01 의 키 분리를 바꿈)**: Supabase Edge 시크릿(`live-token`·`session-report`·`program-journal-draft` — **지우지 않는다**) + Cloud Run Secret Manager(중계 TTS). 교체는 두 곳 동시 — 절차는 `docs/runbooks/voice-relay-operations.md` "Gemini 키 교체". TTS 는 중계가 부른다(Edge 로 옮기지 않음).
 
 ## Supabase 운영
@@ -169,6 +169,8 @@
 **일지 생성 장애 조사**: 진단 워커 배포·재실행 성공과 남은 출력 품질/작성 부담 과제는 `docs/testing/2026-10-26-journal-generation-investigation.md`·`docs/testing/2026-10-26-journal-output-review.md`와 `docs/tasks.md`를 따른다. 워커 HTTP 202/자동 테스트 통과를 실제 Gemini 초안 생성 성공으로 해석하지 않는다.
 
 **태블릿·키보드 현재 위치(2026-10-26)**: 기기별 방향과 입력/모달의 키보드 회피·짧은 가로 화면 처리를 수정했다. 상태·검증·새 빌드/실기기 선행 조건은 `docs/plans/2026-10-26-tablet-keyboard-implementation.md`·`docs/tasks.md`를 따른다. API37 상향 시 Android 방향 제한 정책을 재검토한다.
+
+**인증 메일 링크·오류 문구(2026-11-04)**: 가입·비밀번호 메일 링크가 'Vercel 로그인' 화면으로 가던 원인 = 사용자가 팀 별칭(배포 보호)에서 가입 → 링크가 가입한 주소(origin)로 돌아온다(PKCE 라 다른 주소로 돌리면 코드 교환이 깨진다). 운영 별칭을 공식 주소 `memoryon.vercel.app` 으로 리다이렉트한다. ⏳ 사용자 작업: Supabase Auth **Site URL = `https://memoryon.vercel.app`** · Redirect URLs 에 `https://memoryon.vercel.app/**` · 네이버 함수 비밀값 `WEB_ORIGINS` 에 같은 주소 · 메일 한도는 커스텀 SMTP. 영문 오류 원문은 `errorText` 로 한국어 안내만 보인다(웹 전체). 상태는 `docs/tasks.md` AUTH-LINK-20261104·ERR-KO-20261104.
 
 **웹 플로팅 대화창·메시지 양방향(2026-11-04)**: 보호자·요양보호사 웹 셸에 규칙 기반 대화창(모델 호출 없음)을 붙였다. 요양보호사 업무(세션 설계·공개)는 **확인 카드에서 사람이 확인할 때만** 기존 서버 경로로 실행한다. 메시지는 단방향·동결에서 **양방향**(담당 요양보호사 → 승인 연결 보호자 답장)으로 바뀌었다(마이그레이션 `20261104000000`). 요양보호사 창은 한 문장 자유 입력("OOO 어르신 세션 설계하는데, 주제는 가족으로")도 규칙으로 이해한다(core `assistant-command.ts`, LLM 보조는 나중 — 같은 결과 모양으로). 상태는 `docs/plans/2026-11-04-floating-assistant.md`.
 
