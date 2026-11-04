@@ -1,7 +1,7 @@
 // @giokon/data — 보호자 메시지(messages) TanStack Query 훅
 //
-// 보호자 → 담당 요양보호사 **단방향**(디자인 확정). 요양보호사는 읽기만 하고,
-// 수신 자체는 알림으로 간다(트리거 app.notify_message). 이용 안내 모달이
+// 보호자 → 담당 요양보호사(전원) · 담당 요양보호사 → 특정 보호자 답장(2026-11-04 양방향 —
+// 플로팅 대화창). 수신은 알림으로 간다(트리거 app.notify_message). 이용 안내 모달이
 // "내용과 전송 시간이 자동으로 저장됩니다" 라고 약속하므로 append-only 다 —
 // 수정·삭제 훅을 두지 않는다(서버에도 정책이 없다).
 
@@ -66,6 +66,40 @@ export function useSendMessage(): UseMutationResult<MessageRow, Error, SendMessa
       const { data, error } = await getGiokonClient()
         .from('messages')
         .insert({ profile_id: profileId, sender_user_id: senderUserId, body: body.trim() })
+        .select()
+        .single()
+      if (error) throw new Error(error.message)
+      return data
+    },
+    onSuccess: (row) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.messages(row.profile_id) })
+      void qc.invalidateQueries({ queryKey: queryKeys.myMessages })
+    },
+  })
+}
+
+export interface ReplyMessageInput {
+  profileId: string
+  senderUserId: string
+  /** 받는 보호자 — 그 어르신에 승인 연결된 보호자만 서버가 받는다. */
+  recipientUserId: string
+  body: string
+}
+
+/** 답장 — 그 어르신의 담당 요양보호사만 통과한다(RLS `messages_insert_caregiver_reply`). */
+export function useReplyMessage(): UseMutationResult<MessageRow, Error, ReplyMessageInput> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ profileId, senderUserId, recipientUserId, body }) => {
+      const { data, error } = await getGiokonClient()
+        .from('messages')
+        .insert({
+          profile_id: profileId,
+          sender_user_id: senderUserId,
+          sender_role: 'caregiver',
+          recipient_user_id: recipientUserId,
+          body: body.trim(),
+        })
         .select()
         .single()
       if (error) throw new Error(error.message)

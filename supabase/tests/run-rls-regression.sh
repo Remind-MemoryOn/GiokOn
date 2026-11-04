@@ -72,3 +72,4 @@ done
 # 운영 권한 그대로(app 스키마 USAGE 없음)의 사용자 경로 — 트랜잭션 안에서 회수하고 되돌린다.
 "${PSQL[@]}" -f "$HERE/prod_privileges.sql"
 "${PSQL[@]}" -f "$HERE/supervised_session_finish.sql"
+"${PSQL[@]}" -f "$HERE/messages_two_way.sql"

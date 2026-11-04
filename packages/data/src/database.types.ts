@@ -832,6 +832,9 @@ export type Database = {
           sender_user_id: string | null
           body: string
           created_at: string
+          // 20261104000000 — 양방향: guardian(→ 담당 전원) · caregiver(→ recipient_user_id 보호자 답장)
+          sender_role: 'guardian' | 'caregiver'
+          recipient_user_id: string | null
         }
         Insert: {
           id?: string
@@ -840,6 +843,8 @@ export type Database = {
           sender_user_id: string
           body: string
           created_at?: string
+          sender_role?: 'guardian' | 'caregiver'
+          recipient_user_id?: string | null
         }
         Update: never
         Relationships: []
