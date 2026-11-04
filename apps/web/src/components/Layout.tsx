@@ -14,6 +14,8 @@ import {
 import { TopBar } from './shell/TopBar';
 import { QueryErrorBanner } from './QueryErrorBanner';
 import { Sidebar } from './shell/Sidebar';
+import { CaregiverAssistant } from './assistant/CaregiverAssistant';
+import { GuardianAssistant } from './assistant/GuardianAssistant';
 import { CAREGIVER_NAV, GUARDIAN_NAV, type NavItem } from './shell/nav';
 import { useAuth } from '../auth/AuthProvider';
 import { useStore } from '../store/store';
@@ -128,6 +130,8 @@ function AppShell({ nav, variant = 'caregiver' }: { nav: NavItem[]; variant?: 'c
           <Outlet context={{ search }} />
         </main>
       </div>
+      {/* 플로팅 대화창(2026-11-04) — 보호자는 FAQ+담당 요양보호사 메시지, 요양보호사는 업무 도우미+보호자 메시지. */}
+      {variant === 'guardian' ? <GuardianAssistant /> : <CaregiverAssistant />}
     </div>
   );
 }
