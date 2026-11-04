@@ -10,6 +10,7 @@
 // ⚠️ **주요 기억**은 앱과 같은 방식으로 `chronicle_entries(topic='주요 기억')` 에 담는다.
 // ⚠️ 파일럿 W8(2026-09-27, 사용자 확정): **장기요양등급**을 사진 오른쪽 빈 자리(우열 873, 입력 아래끝 = 사진 아래끝 594)에
 //    둔다 — 시안 칸·버튼 좌표는 그대로다. 기관 시설 유형이 주간보호면 필수(별표 + 미입력 저장 막음).
+import { errorText } from '../../lib/errorText';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -198,7 +199,7 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
           toast('success', '기본 정보를 저장했어요.');
           navigate(`/caregiver/elders/${elderId}`);
         },
-        onError: (err) => toast('error', err.message),
+        onError: (err) => toast('error', errorText(err)),
       },
     );
   }
@@ -211,7 +212,7 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
       { profile_id: elderId, user_id: userId, topic: KEY_MEMORY_TOPIC, content, source: 'caregiver', keywords: [] },
       {
         onSuccess: () => setMemory(''),
-        onError: (err) => toast('error', err.message),
+        onError: (err) => toast('error', errorText(err)),
       },
     );
   }
@@ -403,7 +404,7 @@ function EditForm({ elder, photo, careGrade }: { elder: ElderProfile; photo?: st
             onClick={() =>
               deleteChronicle.mutate(
                 { id: m.id, profileId: m.profile_id },
-                { onError: (err) => toast('error', err.message) },
+                { onError: (err) => toast('error', errorText(err)) },
               )
             }
             aria-label={`${m.content} 삭제`}

@@ -9,6 +9,7 @@
 //    행 수에서 계산**한다(위/아래 여백·행 간격은 실측 그대로).
 // ⚠️ 제목(`title`)은 사람이 붙이는 값이라 AI 가 모은 항목·구 데이터에는 없다 →
 //    없으면 `content` 로 대신 보여 준다(제목을 지어내지 않는다).
+import { errorText } from '../../lib/errorText';
 import { useMemo, useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router-dom';
 import { useChronicles, useDeleteChronicle, useProfile } from '@giokon/data';
@@ -247,7 +248,7 @@ export function ElderChroniclesPage() {
             { id: deleting.id, profileId: deleting.profileId },
             {
               onSuccess: () => toast('success', '연대기를 삭제했어요.'),
-              onError: (err) => toast('error', err.message),
+              onError: (err) => toast('error', errorText(err)),
             },
           );
         }}

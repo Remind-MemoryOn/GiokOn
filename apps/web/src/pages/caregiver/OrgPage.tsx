@@ -1,3 +1,4 @@
+import { errorText } from '../../lib/errorText';
 import { Select } from '../../components/ui/Select';
 // 기관 관리 (Figma 131:959 — 1440×1238)
 //   제목 @169 · 부제 w547 @236.19
@@ -288,7 +289,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
       { id: org.data.id, name: name.trim() },
       {
         onSuccess: () => toast('success', '기관 이름을 저장했어요.'),
-        onError: (e) => toast('error', e.message),
+        onError: (e) => toast('error', errorText(e)),
       },
     );
   }

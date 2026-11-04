@@ -10,6 +10,7 @@
 //    둔다 — 모달 높이·칸·버튼 좌표는 그대로다. 기관 시설 유형이 주간보호면 필수(별표 + 미입력이면 다음 단계로 못 감).
 // ⚠️ 사진은 프로필 행을 만든 **뒤에** 올린다. Storage 정책이 경로의 profile_id 로
 //    `profiles` 를 조회하기 때문이다(행이 없으면 업로드가 거부된다).
+import { errorText } from '../../lib/errorText';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { careGradeRequired, toCareGrade, useCreateProfile, useCurrentUser, useDeleteProfile, useOrgSettings, useRecordConsent, useUpdateProfile } from '@giokon/data';
@@ -214,7 +215,7 @@ export function ElderRegisterDialog() {
           const path = await uploadElderPhoto(row.id, photo.file);
           await update.mutateAsync({ id: row.id, patch: { photo_path: path } });
         } catch (err) {
-          toast('error', `사진만 저장하지 못했어요: ${(err as Error).message}`);
+          toast('error', `사진만 저장하지 못했어요. ${errorText(err, '잠시 뒤 다시 올려 주세요.')}`);
         }
       }
       const memory = form.memory.trim();

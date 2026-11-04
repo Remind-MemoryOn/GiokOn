@@ -9,6 +9,7 @@ import {
   type ConsentSubjectType,
   type ConsentType,
 } from '@giokon/core';
+import { errorText } from './errorText';
 import type { ConsentRow } from '@giokon/data';
 
 /** 이 종류의 유효한 동의 증빙(현재 버전·미철회·부여). 없으면 undefined. */
@@ -46,5 +47,5 @@ export function elderConsentGrant(input: {
 export function consentSaveError(message: string): string {
   return message.includes('elder_privacy_required') && message.includes('consent_type')
     ? '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았어요.'
-    : message;
+    : errorText(message);
 }

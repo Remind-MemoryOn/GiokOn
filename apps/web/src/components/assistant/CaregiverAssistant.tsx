@@ -10,6 +10,7 @@
 //   `parseCaregiverCommand`(규칙 기반)가 업무·값을 뽑는다. 말하지 않은 설계 값은 모달 기본값으로 채우고 어르신·제목·목표만
 //   다시 묻는다. 확인 카드가 뜬 뒤 "10분으로 바꿔"·"목표는 …" 처럼 말하면 고친 새 카드를 다시 띄운다.
 //   공개("어제 일지 공개해 줘")·답장("김보호 보호자께 '…'라고 답장")도 항목·스레드가 하나로 정해지면 바로 확인 카드로 간다.
+import { errorText } from '../../lib/errorText';
 import { useMemo, useState } from 'react';
 import {
   applyPlanAnswer,
@@ -410,7 +411,7 @@ export function CaregiverAssistant() {
               onSuccess: () => finishCard(cardId, '세션을 설계했어요. 앱에서 진행할 수 있어요.', [
                 { label: `${elder.name} 어르신 세션 목록`, to: `/caregiver/sessions/${elder.id}` },
               ]),
-              onError: (e) => { setPendingCard(null); say(bot(`저장하지 못했어요. ${e.message}`)); },
+              onError: (e) => { setPendingCard(null); say(bot(errorText(e, '저장하지 못했어요.'))); },
             },
           );
         }}

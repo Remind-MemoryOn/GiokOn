@@ -2,6 +2,7 @@
 //   콘텐츠 열 568 @ x436 · 필드 그룹 높이 110(라벨 22 + 간격 + 입력 68)
 //   아이디 254 · 비밀번호 389 · 아이디 저장 537 · 로그인 600(568×71) · 또는 706 · 소셜 758
 // ⚠️ 라인박스는 Figma auto(≈1.2) — 토큰 기본값(28/30)을 쓰면 잉크가 2~3px 내려간다.
+import { errorText } from '../../lib/errorText';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -92,7 +93,7 @@ export function LoginPage() {
         if (alive) navigate(routeAfterLogin(row, returnTo), { replace: true });
       } catch (err) {
         if (!alive) return;
-        toast('error', err instanceof Error ? err.message : '네이버 로그인에 실패했어요.');
+        toast('error', errorText(err, '네이버 로그인에 실패했어요.'));
         setNaverReturning(false);
       }
     })();
@@ -125,7 +126,7 @@ export function LoginPage() {
       const row = await getCurrentUserRow();
       navigate(routeAfterLogin(row, returnTo), { replace: true });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '로그인에 실패했어요.');
+      toast('error', errorText(err, '로그인에 실패했어요.'));
     } finally {
       setSubmitting(false);
     }
@@ -147,7 +148,7 @@ export function LoginPage() {
         redirectTo: `${window.location.origin}${loginPath(returnTo)}`,
       });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '로그인을 시작하지 못했어요.');
+      toast('error', errorText(err, '로그인을 시작하지 못했어요.'));
       setPending(null);
     }
   }

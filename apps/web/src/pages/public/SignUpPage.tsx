@@ -2,6 +2,7 @@
 // 로그인 화면이 /signup 을 가리키고 있어 경로가 비면 이메일 가입이 아예 불가능했다.
 // 새 치수를 만들지 않고 아이디/비밀번호 찾기(111:148·111:170)의 실측 골격을
 // 입력 한 칸만 연장해서 쓴다 — AuthFormScreen 참조.
+import { errorText } from '../../lib/errorText';
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { signUpWithEmail } from '@giokon/data';
@@ -61,7 +62,7 @@ export function SignUpPage() {
       toast('success', '가입했어요. 기본 정보를 입력해 주세요.');
       navigate('/onboarding', { replace: true });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '회원가입에 실패했어요.');
+      toast('error', errorText(err, '회원가입에 실패했어요.'));
     } finally {
       setSubmitting(false);
     }

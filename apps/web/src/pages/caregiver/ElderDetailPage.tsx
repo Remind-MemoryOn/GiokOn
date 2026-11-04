@@ -11,6 +11,7 @@
 //    법률 문서 확정본(2026-09-24)으로 4종이 되어 같은 카드(높이 419.25) 안에 들어가도록 74 로 줄였다.
 //    첫 행의 좌표(시안 실측)는 그대로다.
 // ⚠️ 특이사항(profiles.note)은 없을 수 있다 → 값을 만들지 않고 `—`(Figma 도 "-").
+import { errorText } from '../../lib/errorText';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -572,7 +573,7 @@ export function ElderDetailPage() {
             { profileId: elderId },
             {
               onSuccess: () => toast('success', '어르신 코드를 교체했어요.'),
-              onError: (err) => toast('error', err.message),
+              onError: (err) => toast('error', errorText(err)),
             },
           )
         }
@@ -853,7 +854,7 @@ export function ElderDetailPage() {
               toast('success', '어르신 정보를 삭제했어요.');
               navigate('/caregiver/elders', { replace: true });
             },
-            onError: (err) => toast('error', err.message),
+            onError: (err) => toast('error', errorText(err)),
           });
         }}
         onClose={() => setConfirmingDelete(false)}
