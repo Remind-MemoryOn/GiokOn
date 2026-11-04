@@ -6,24 +6,33 @@
 //    서버가 그대로 판정한다). 일지 확정·위기 확인은 여기서 하지 않고 해당 화면으로 안내한다.
 // 공개는 항목의 **요약 줄**(일지 = 보호자 문장 · 대화 = 요약)만 켠다. 사진·AI 분석까지 고르는 세부 설정은 공개 관리 화면.
 // 비공개 전환은 공개 관리 화면과 같이 그 항목에 걸린 공개 전부(사진·AI 분석 포함)를 내린다.
+// 자유 입력(2026-11-04): "박희수 어르신 세션 설계하는데, 주제는 가족으로" 처럼 한 문장으로 말해도 core
+//   `parseCaregiverCommand`(규칙 기반)가 업무·값을 뽑는다. 말하지 않은 설계 값은 모달 기본값으로 채우고 어르신·제목·목표만
+//   다시 묻는다. 확인 카드가 뜬 뒤 "10분으로 바꿔"·"목표는 …" 처럼 말하면 고친 새 카드를 다시 띄운다.
+//   공개("어제 일지 공개해 줘")·답장("김보호 보호자께 '…'라고 답장")도 항목·스레드가 하나로 정해지면 바로 확인 카드로 간다.
 import { useMemo, useState } from 'react';
 import {
   applyPlanAnswer,
   CAREGIVER_GREETING,
   CAREGIVER_TASKS,
   dateDot,
-  detectCaregiverTask,
+  hasLabelledPlanSlots,
+  hasPlanSlots,
   isCancel,
   matchElder,
+  mergePlan,
   nextPlanStep,
+  parseCaregiverCommand,
   planPatch,
   planQuestion,
   planSummary,
   seoulDate,
   SESSION_MAX_MINUTES,
+  type CaregiverCommand,
   type CaregiverTask,
   type ElderChoice,
   type PlanDraft,
+  type ShareSlots,
 } from '@giokon/core';
 import {
   parseSessionAnalysis,
@@ -62,16 +71,25 @@ const now = () => new Date().toISOString();
 /** 대화 기록 — 확인 카드는 JSX 가 아니라 **값**으로 남기고 그릴 때 만든다(버튼 상태가 낡지 않게). */
 type LogItem =
   | ChatItem
-  | { id: string; kind: 'confirm'; at: string; spec: { type: 'design'; draft: PlanDraft } | { type: 'share'; elder: ElderChoice; item: ShareItem; shared: boolean } };
+  | { id: string; kind: 'confirm'; at: string; spec: ConfirmSpec };
+
+type ConfirmSpec =
+  | { type: 'design'; draft: PlanDraft }
+  | { type: 'share'; elder: ElderChoice; item: ShareItem; shared: boolean }
+  | { type: 'reply'; profileId: string; guardianId: string; title: string; body: string };
 
 type Flow =
   | { kind: 'idle' }
-  | { kind: 'design'; draft: PlanDraft; candidates?: ElderChoice[] }
-  | { kind: 'share'; elder?: ElderChoice; candidates?: ElderChoice[] };
+  /** quick = 자유 입력으로 시작 — 선택 항목은 모달 기본값으로 채워져 있다(어르신·제목·목표만 묻는다). */
+  | { kind: 'design'; draft: PlanDraft; candidates?: ElderChoice[]; quick?: boolean }
+  /** want = 문장에서 읽은 공개 대상(종류·날짜·공개/철회) — 항목을 불러오면 한 번 맞춰 본다. only = 칩을 좁힌 항목 id. */
+  | { kind: 'share'; elder?: ElderChoice; candidates?: ElderChoice[]; want?: ShareSlots; only?: string[] };
 
 interface ShareItem {
   type: 'journal' | 'analysis';
   id: string;
+  /** 한국 날짜(YYYY-MM-DD) — "어제 일지" 같은 말과 맞춘다. */
+  date: string;
   title: string;
   body: string;
   /** 일지는 확정 + 보호자 문장 승인이어야 공개된다(서버 게이트와 같은 조건을 미리 알린다). */
@@ -157,6 +175,10 @@ export function CaregiverAssistant() {
     for (const l of guardianLinks.data ?? []) if (l.guardian?.name) map.set(l.guardian_user_id, l.guardian.name);
     return map;
   }, [guardianLinks.data]);
+  const guardianChoices = useMemo<ElderChoice[]>(
+    () => [...guardianName].map(([id, name]) => ({ id, name })),
+    [guardianName],
+  );
   const unreadBySource = useMemo(() => {
     const map = new Map<string, string>();
     for (const n of notifications.data ?? []) {
@@ -192,8 +214,7 @@ export function CaregiverAssistant() {
   }
 
   // ── 업무 시작 ──
-  function start(task: CaregiverTask, typed?: string) {
-    if (typed) say(mine(typed));
+  function start(task: CaregiverTask) {
     if (!isConfigured) {
       say(bot('서버에 연결되지 않아 업무를 처리할 수 없어요.'));
       return;
@@ -206,17 +227,102 @@ export function CaregiverAssistant() {
       showTodo();
       return;
     }
-    // 첫 말에 어르신 이름이 들어 있으면 바로 고른다(예: "박희수 어르신 세션 설계").
-    const hits = typed ? elders.filter((e) => typed.replace(/\s/g, '').includes(e.name.replace(/\s/g, ''))) : [];
-    const elder = hits.length === 1 ? hits[0] : undefined;
     if (task === 'design') {
-      const draft: PlanDraft = elder ? { elder } : {};
-      setFlow({ kind: 'design', draft });
-      say(bot(planQuestion(nextPlanStep(draft), draft, { defaultAvoid })));
+      setFlow({ kind: 'design', draft: {} });
+      say(bot(planQuestion('elder', {}, { defaultAvoid })));
     } else {
-      setFlow({ kind: 'share', elder });
-      say(bot(elder ? `${elder.name} 어르신의 공개할 수 있는 항목을 불러올게요.` : '어느 어르신의 공개를 관리할까요? 성함을 말씀해 주세요.'));
+      setFlow({ kind: 'share' });
+      say(bot('어느 어르신의 공개를 관리할까요? 성함을 말씀해 주세요.'));
     }
+  }
+
+  // ── 자유 입력 한 문장 ──
+  const commandCtx = () => ({ elders, guardians: guardianChoices, today: seoulDate() });
+  const mergeCtx = () => ({ today: seoulDate(), orgTarget: settings.data?.target_minutes, defaultAvoid });
+
+  function runCommand(cmd: CaregiverCommand) {
+    if (!cmd.task) {
+      say(bot('제가 도와드릴 수 있는 일은 아래 네 가지예요. 골라 주세요.\n예: \'박희수 어르신 세션 설계, 주제는 가족으로\''));
+      return;
+    }
+    if (!isConfigured) {
+      say(bot('서버에 연결되지 않아 업무를 처리할 수 없어요.'));
+      return;
+    }
+    const missing = cmd.unknownElder ? [`'${cmd.unknownElder}' 어르신을 담당 어르신 목록에서 찾지 못했어요.`] : [];
+    const many = cmd.elders.length > 1 ? cmd.elders : undefined;
+    if (cmd.task === 'design') {
+      const { draft, notes } = mergePlan({}, cmd, mergeCtx(), true);
+      continueDesign({ kind: 'design', draft, quick: true, candidates: many }, [...missing, ...cmd.problems, ...notes]);
+    } else if (cmd.task === 'share') {
+      const elder = cmd.elders.length === 1 ? cmd.elders[0] : undefined;
+      const want = cmd.share.kind || cmd.share.date ? cmd.share : undefined;
+      setFlow({ kind: 'share', elder, candidates: many, want });
+      say(bot(elder
+        ? `${elder.name} 어르신의 공개할 수 있는 항목을 불러올게요.`
+        : [...missing, many ? '같은 이름이 여러 분이에요. 아래에서 골라 주세요.' : '어느 어르신의 공개를 관리할까요? 성함을 말씀해 주세요.'].join('\n')));
+    } else if (cmd.task === 'messages') {
+      replyCommand(cmd);
+    } else {
+      showTodo();
+    }
+  }
+
+  /** "김보호 보호자께 '…'라고 답장" — 스레드가 하나로 정해지면 답장 확인 카드, 본문이 없으면 그 스레드를 연다. */
+  function replyCommand(cmd: CaregiverCommand) {
+    const named = cmd.reply.guardians;
+    if (!named.length) {
+      setView('inbox');
+      return;
+    }
+    if (messages.isError) return say(bot('보호자 메시지를 불러오지 못했어요. 잠시 뒤 다시 말씀해 주세요. (없다는 뜻이 아니에요)'));
+    if (!messages.data) return say(bot('보호자 메시지를 불러오는 중이에요. 잠시 뒤 다시 말씀해 주세요.'));
+    const ids = new Set(named.map((g) => g.id));
+    const profileIds = new Set(cmd.elders.map((e) => e.id));
+    const hits = threads.filter((t) => t.guardianId && ids.has(t.guardianId) && (!profileIds.size || profileIds.has(t.profileId)));
+    if (hits.length !== 1) {
+      setView('inbox');
+      say(bot(hits.length
+        ? '그 보호자와 주고받은 대화가 여러 개예요. 메시지 목록에서 골라 주세요.'
+        : `${named.map((g) => g.name).join(', ')} 보호자와 주고받은 메시지가 없어요. 답장은 보호자가 보낸 메시지에만 할 수 있어요.`));
+      return;
+    }
+    const t = hits[0];
+    const body = cmd.reply.body?.trim();
+    if (!body) {
+      openThread(t);
+      return;
+    }
+    if (body.length > MESSAGE_MAX) return say(bot(`답장은 ${MESSAGE_MAX}자까지 보낼 수 있어요.`));
+    say(bot('아래 답장을 보낼까요? 확인을 누르면 보내요.'), {
+      id: nextId(), kind: 'confirm', at: now(),
+      spec: { type: 'reply', profileId: t.profileId, guardianId: t.guardianId as string, title: threadTitle(t), body },
+    });
+  }
+
+  function replyCard(cardId: string, spec: Extract<ConfirmSpec, { type: 'reply' }>) {
+    return (
+      <ConfirmCard
+        title="보호자에게 답장"
+        rows={[['받는 사람', spec.title], ['보낼 글', spec.body]]}
+        confirmLabel="답장 보내기"
+        pending={pendingCard === cardId}
+        done={doneCards.has(cardId)}
+        onCancel={() => finishCard(cardId, '답장을 보내지 않았어요.')}
+        onConfirm={() => {
+          const userId = me.data?.id;
+          if (!userId) return finishCard(cardId, '로그인 정보를 확인할 수 없어요.');
+          setPendingCard(cardId);
+          reply.mutate(
+            { profileId: spec.profileId, senderUserId: userId, recipientUserId: spec.guardianId, body: spec.body },
+            {
+              onSuccess: () => finishCard(cardId, '답장을 보냈어요.'),
+              onError: () => { setPendingCard(null); say(bot('답장을 보내지 못했어요. 담당 어르신의 연결된 보호자에게만 답장할 수 있어요.')); },
+            },
+          );
+        }}
+      />
+    );
   }
 
   function showTodo() {
@@ -254,15 +360,33 @@ export function CaregiverAssistant() {
       say(bot(r.reason));
       return;
     }
-    const step = nextPlanStep(r.draft);
-    setFlow({ kind: 'design', draft: r.draft });
-    if (step !== 'confirm') {
-      say(bot(planQuestion(step, r.draft, { defaultAvoid })));
+    continueDesign({ kind: 'design', draft: r.draft, quick: flow.kind === 'design' && flow.quick });
+  }
+
+  /** 설계 초안을 두고 다음 질문 또는 확인 카드를 띄운다. 앞서 띄운 카드는 닫는다(고친 값으로 새 카드). */
+  function continueDesign(next: Extract<Flow, { kind: 'design' }>, notes: string[] = []) {
+    closeOpenCard();
+    setFlow(next);
+    const step = nextPlanStep(next.draft);
+    const lead = notes.length ? `${notes.join('\n')}\n` : '';
+    if (step === 'elder' && next.candidates?.length) {
+      say(bot(`${lead}같은 이름이 여러 분이에요. 아래에서 골라 주세요.`));
       return;
     }
-    say(bot(planQuestion('confirm', r.draft, { defaultAvoid })), {
-      id: nextId(), kind: 'confirm', at: now(), spec: { type: 'design', draft: r.draft },
-    });
+    if (step !== 'confirm') {
+      say(bot(lead + planQuestion(step, next.draft, { defaultAvoid })));
+      return;
+    }
+    say(
+      bot(`${lead}${planQuestion('confirm', next.draft, { defaultAvoid })}\n바꿀 것이 있으면 '8분으로', '내일로', '목표는 …'처럼 말씀해 주세요.`),
+      { id: nextId(), kind: 'confirm', at: now(), spec: { type: 'design', draft: next.draft } },
+    );
+  }
+
+  /** 진행 중 단계에서 "목표는 …"·(확인 단계) "10분으로 바꿔" 같은 고치는 말을 합친다. */
+  function designEdit(cur: Extract<Flow, { kind: 'design' }>, cmd: CaregiverCommand) {
+    const { draft, notes } = mergePlan(cur.draft, cmd, mergeCtx(), Boolean(cur.quick));
+    continueDesign({ ...cur, draft, candidates: cmd.elders.length > 1 ? cmd.elders : undefined }, [...cmd.problems, ...notes]);
   }
 
   function designCard(cardId: string, draft: PlanDraft) {
@@ -294,6 +418,12 @@ export function CaregiverAssistant() {
     );
   }
 
+  /** 결정을 기다리던 확인 카드를 말없이 닫는다(새 카드로 바뀌거나 취소될 때). */
+  function closeOpenCard() {
+    const open = [...items].reverse().find((it) => it.kind === 'confirm' && !doneCards.has(it.id));
+    if (open && pendingCard !== open.id) setDoneCards((s) => new Set(s).add(open.id));
+  }
+
   function finishCard(cardId: string, message: string, links?: { label: string; to: string }[]) {
     setPendingCard(null);
     setDoneCards((s) => new Set(s).add(cardId));
@@ -307,12 +437,12 @@ export function CaregiverAssistant() {
     for (const s of shares.data ?? []) if (!s.revoked_at) map.set(shareKey(s.item_type, s.item_id), s);
     return map;
   }, [shares.data]);
-  const shareItems = useMemo<ShareItem[]>(() => {
+  const allShareItems = useMemo<ShareItem[]>(() => {
     const out: (ShareItem & { at: string })[] = [];
     for (const j of journals.data ?? []) {
       if (j.status !== 'final') continue;
       out.push({
-        type: 'journal', id: j.id, at: j.journal_date,
+        type: 'journal', id: j.id, at: j.journal_date, date: j.journal_date,
         title: `${dateDot(j.journal_date)} 프로그램 일지`,
         body: j.guardian_text_approved_at && j.guardian_text ? j.guardian_text : '보호자 문장이 아직 승인되지 않았어요.',
         ready: Boolean(j.guardian_text_approved_at && j.guardian_text),
@@ -322,12 +452,13 @@ export function CaregiverAssistant() {
       const a = parseSessionAnalysis(row);
       if (!a) continue;
       out.push({
-        type: 'analysis', id: row.id, at: row.created_at,
+        type: 'analysis', id: row.id, at: row.created_at, date: seoulDate(new Date(row.created_at)),
         title: `${dateDot(row.created_at)} AI 회상 대화 요약`, body: a.summary, ready: true,
       });
     }
-    return out.sort((x, y) => y.at.localeCompare(x.at)).slice(0, 8);
+    return out.sort((x, y) => y.at.localeCompare(x.at));
   }, [journals.data, analyses.data]);
+  const shareItems = useMemo(() => allShareItems.slice(0, 8), [allShareItems]);
   const shareLoaded = Boolean(shareElderId) && journals.isSuccess && analyses.isSuccess && shares.isSuccess && photos.isSuccess;
   const shareFailed = Boolean(shareElderId) && (journals.isError || analyses.isError || shares.isError || photos.isError);
 
@@ -342,12 +473,12 @@ export function CaregiverAssistant() {
     return out;
   }
 
-  function pickShareItem(item: ShareItem) {
+  function pickShareItem(item: ShareItem, typed = false) {
     const elder = flow.kind === 'share' ? flow.elder : undefined;
     if (!elder) return;
     const live = liveSharesOf(item);
     const shared = live.length > 0;
-    say(mine(item.title));
+    if (!typed) say(mine(item.title));
     if (!shared && !item.ready) {
       say(bot('확정되고 보호자 문장이 승인된 일지만 공개할 수 있어요. 일지 화면에서 보호자 문장을 승인해 주세요.', [
         { label: '일지 확인', to: `/caregiver/journal/${elder.id}/${item.id}` },
@@ -402,6 +533,34 @@ export function CaregiverAssistant() {
     );
   }
 
+  // 문장으로 고른 공개 대상("어제 일지 공개해 줘")을 항목이 불러와진 뒤 한 번 맞춰 본다.
+  // 렌더 중 상태 갱신(React 의 '이전 값에 맞춰 상태 조정' 방식) — want 를 지우므로 한 번만 돈다.
+  if (flow.kind === 'share' && flow.elder && flow.want && (shareLoaded || shareFailed)) {
+    const want = flow.want;
+    if (shareFailed) {
+      setFlow({ ...flow, want: undefined });
+    } else {
+      const base = allShareItems.filter((it) => (!want.kind || it.type === want.kind) && (!want.date || it.date === want.date));
+      const fit = want.action
+        ? base.filter((it) => (liveSharesOf(it).length > 0) === (want.action === 'revoke'))
+        : base;
+      const what = `${want.date ? `${dateDot(want.date)} ` : ''}${want.kind === 'journal' ? '일지' : want.kind === 'analysis' ? '대화 요약' : '항목'}`;
+      if (fit.length === 1) {
+        setFlow({ ...flow, want: undefined });
+        pickShareItem(fit[0], true);
+      } else if (!base.length) {
+        setFlow({ ...flow, want: undefined });
+        say(bot(`말씀하신 ${what}을(를) 찾지 못했어요. 확정된 일지와 끝난 대화만 공개할 수 있어요.`));
+      } else if (!fit.length) {
+        setFlow({ ...flow, want: undefined, only: base.map((it) => it.id) });
+        say(bot(want.action === 'publish' ? `말씀하신 ${what}은(는) 이미 공개 중이에요.` : `말씀하신 ${what}은(는) 공개 중이 아니에요.`));
+      } else {
+        setFlow({ ...flow, want: undefined, only: fit.map((it) => it.id) });
+        say(bot(`말씀하신 ${what}이(가) ${fit.length}개예요. 아래에서 골라 주세요.`));
+      }
+    }
+  }
+
   // ── 입력 ──
   function submit() {
     const value = text.trim();
@@ -419,14 +578,29 @@ export function CaregiverAssistant() {
     }
     setText('');
     if (view === 'inbox') setView('ai');
-    if (isCancel(value) && flow.kind !== 'idle') {
+    if (isCancel(value) && (flow.kind !== 'idle' || openCard)) {
+      closeOpenCard();
       say(mine(value), bot('진행하던 일을 취소했어요. 무엇을 할까요?'));
       setFlow({ kind: 'idle' });
       return;
     }
+    if (openCard && flow.kind !== 'design') {
+      say(mine(value), bot('위 카드에서 확인 또는 취소를 눌러 주세요. 그만하려면 \'취소\'라고 말씀해 주세요.'));
+      return;
+    }
     if (flow.kind === 'design') {
       say(mine(value));
-      designAnswer(flow.draft, value);
+      // 단계 질문에 답하는 중이면 꼬리표("목표는 …")가 있을 때만 고치는 말로 읽는다 — 답 속의 '10분'·'내일' 을 값으로 오해하지 않게.
+      // 확인 단계에서는 '10분으로'·'내일로' 같은 꼬리표 없는 말도 고치는 말이다.
+      const atConfirm = nextPlanStep(flow.draft) === 'confirm';
+      const cmd = parseCaregiverCommand(value, commandCtx());
+      if (atConfirm ? hasPlanSlots(cmd) || cmd.problems.length > 0 : hasLabelledPlanSlots(value)) {
+        designEdit(flow, cmd);
+      } else if (atConfirm) {
+        say(bot('바꿀 내용을 알아듣지 못했어요. \'8분으로\', \'내일로\', \'목표는 …\'처럼 말씀해 주세요. 그대로면 카드의 \'설계 저장\'을 눌러 주세요.'));
+      } else {
+        designAnswer(flow.draft, value);
+      }
       return;
     }
     if (flow.kind === 'share' && !flow.elder) {
@@ -441,12 +615,8 @@ export function CaregiverAssistant() {
       }
       return;
     }
-    const task = detectCaregiverTask(value);
-    if (task) {
-      start(task, value);
-      return;
-    }
-    say(mine(value), bot('제가 도와드릴 수 있는 일은 아래 네 가지예요. 골라 주세요.'));
+    say(mine(value));
+    runCommand(parseCaregiverCommand(value, commandCtx()));
   }
 
   // ── 칩 ──
@@ -454,8 +624,9 @@ export function CaregiverAssistant() {
     list.slice(0, 8).map((e) => ({ label: `${e.name} 어르신`, onClick: () => { say(mine(`${e.name} 어르신`)); pick(e); } }));
 
   // 확인 카드가 결정을 기다리면 칩을 숨긴다(카드 버튼으로 정한다 — 다른 일로 새지 않게).
+  // 말풍선이 뒤에 더 붙어도(카드가 맨 끝이 아니어도) 결정 전 카드가 있으면 열린 것으로 본다.
   const lastItem = items[items.length - 1];
-  const openCard = lastItem?.kind === 'confirm' && !doneCards.has(lastItem.id);
+  const openCard = items.some((it) => it.kind === 'confirm' && !doneCards.has(it.id));
 
   let chips: ChatChip[] = [];
   if (view === 'ai' && openCard) {
@@ -502,7 +673,8 @@ export function CaregiverAssistant() {
       } else if (shareFailed) {
         chips = [];
       } else if (shareLoaded) {
-        chips = shareItems.map((it) => {
+        const only = flow.only;
+        chips = (only ? allShareItems.filter((it) => only.includes(it.id)) : shareItems).map((it) => {
           const shared = liveSharesOf(it).length > 0;
           return { label: `${it.title} · ${shared ? '공개 중' : '미공개'}`, onClick: () => pickShareItem(it) };
         });
@@ -573,7 +745,11 @@ export function CaregiverAssistant() {
     it.kind === 'confirm'
       ? {
           id: it.id, kind: 'card', at: it.at,
-          content: it.spec.type === 'design' ? designCard(it.id, it.spec.draft) : shareCard(it.id, it.spec.elder, it.spec.item, it.spec.shared),
+          content: it.spec.type === 'design'
+            ? designCard(it.id, it.spec.draft)
+            : it.spec.type === 'share'
+              ? shareCard(it.id, it.spec.elder, it.spec.item, it.spec.shared)
+              : replyCard(it.id, it.spec),
         }
       : it,
   );

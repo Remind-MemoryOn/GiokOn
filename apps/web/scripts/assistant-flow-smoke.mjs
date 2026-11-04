@@ -8,6 +8,9 @@
 //      철회 권한이 없으면 카드 없이 이유 안내 · 권한이 있으면 확인 뒤 그 항목의 공개 전부(요약+AI 분석)를 내린다.
 //   ④ 확인할 일: 미확인 안전 알림·확인 대기 일지를 이름과 함께 알리고 해당 화면 링크를 준다.
 //   ⑤ 보호자 메시지: 요양보호사는 스레드를 열어 그 보호자에게 답장(sender_role caregiver · recipient) · 읽음 처리.
+//   ⑦ 자유 입력(규칙 기반): "OOO 어르신 세션 대신 설계하는데, 대화 주제는 가족으로 하자." 한 문장 → 목표만 되묻고 확인 카드.
+//      주제 = 키워드 · 제목 제안 '<주제> 이야기' · 나머지 = 모달 기본값 · "7분으로 바꿔" 로 고치면 새 카드(이전 카드는 잠김) ·
+//      "M월 D일 일지 공개해 줘" → 그 항목의 공개 카드로 바로 · "김보호 보호자님께 '…'라고 답장" → 답장 카드. 모두 확인 전 무전송.
 //   ⑥ 보호자: 자주 묻는 질문은 정해진 답(규칙 기반) + 질문별 후속 버튼(기록 → 최근 공개된 소식 · 분석 → 최근 대화 분석 · 다른 질문 보기),
 //      모르는 질문은 지어내지 않고 요양보호사 문의를 권한다,
 //      문의 화면에서 요양보호사 답장이 보이고 보낸 메시지는 받는 사람 없이(담당 전원) 간다.
@@ -156,6 +159,30 @@ try {
   await win.getByText('진행하던 일을 취소했어요.', { exact: false }).waitFor();
   assert.equal(posts.sessions.length, 1);
 
+  // ⑦ 자유 입력 — 한 문장으로 설계(사용자 예문). 목표만 되묻고, 확인 전에는 보내지 않는다.
+  await type('김복순 어르신 세션 대신 설계하는데, 대화 주제는 가족으로 하자. 병원 얘기는 피해 줘');
+  await win.getByText("제목은 '가족 이야기'(으)로 제안했어요.", { exact: false }).waitFor();
+  await win.getByText('이번 대화의 목표는 무엇인가요?', { exact: false }).last().waitFor();
+  await type('가족과의 즐거운 기억 떠올리기');
+  await win.getByRole('button', { name: '설계 저장' }).last().waitFor();
+  assert.equal(posts.sessions.length, 1, '자유 입력도 확인 전에는 세션을 만들지 않는다');
+  // 확인 단계에서 고치는 말 → 새 카드, 이전 카드는 잠긴다
+  await type('7분으로 바꿔');
+  await win.getByText('7분', { exact: true }).waitFor();
+  const saveBtns = win.getByRole('button', { name: '설계 저장' });
+  assert.equal(await saveBtns.count(), 3);
+  assert.equal(await saveBtns.nth(1).isDisabled(), true, '고치기 전 카드는 누를 수 없다');
+  assert.equal(posts.sessions.length, 1);
+  await saveBtns.last().click();
+  await win.getByText('세션을 설계했어요. 앱에서 진행할 수 있어요.', { exact: false }).last().waitFor(SLOW);
+  assert.equal(posts.sessions.length, 2);
+  assert.deepEqual(
+    { ...posts.sessions[1] },
+    { profile_id: 'e1', user_id: 'user-1', status: 'planned', title: '가족 이야기', goal: '가족과의 즐거운 기억 떠올리기',
+      duration_minutes: 7, planned_date: seoulToday, content: null, avoid_topics: '병원', keywords: ['가족'] },
+    '주제 = 키워드 · 제목 제안 · 기록일 오늘(모달 기본값) · 피해갈 내용에 더함',
+  );
+
   // ③ 공개 관리
   await chip('공개 관리').click();
   await chip('김복순 어르신').click();
@@ -188,6 +215,14 @@ try {
   await win.getByRole('button', { name: '비공개로 전환' }).click();
   await win.getByText('비공개로 전환했어요.', { exact: false }).waitFor(SLOW);
   assert.deepEqual([...posts.revokes].sort(), ['sh-an', 'sh-sum']);
+  // ⑦ 자유 입력 — 날짜로 일지를 가리키면 그 항목의 공개 카드로 바로 간다(칩을 고르지 않는다).
+  const [, okM, okD] = state.journals[0].journal_date.split('-').map(Number);
+  await type(`김복순 어르신 ${okM}월 ${okD}일 일지 공개해 줘`);
+  await win.getByRole('button', { name: '공개하기' }).last().waitFor(SLOW);
+  assert.equal(posts.shares.length, 1, '확인 전에는 공개하지 않는다');
+  await win.getByRole('button', { name: '공개하기' }).last().click();
+  await win.getByText('보호자에게 공개했어요.', { exact: false }).last().waitFor(SLOW);
+  assert.deepEqual(posts.shares.map((s) => [s.item_type, s.item_id]), [['journal', 'j-ok'], ['journal', 'j-ok']]);
 
   // ④ 확인할 일
   await chip('확인할 일').click();
@@ -217,6 +252,16 @@ try {
   await fab.click();
   await win.getByText('대화로 업무를 도와드릴게요.', { exact: false }).waitFor();
   assert.equal(await win.getByText('세션을 설계했어요.', { exact: false }).count(), 0, '닫으면 대화를 비운다');
+  // ⑦ 자유 입력 — 보호자 이름 + 따옴표 본문 → 답장 확인 카드(본문 속 '설계' 는 업무로 읽지 않는다)
+  await type("김보호 보호자님께 '다음 세션 설계는 내일 알려 드릴게요'라고 답장해 줘");
+  await win.getByRole('button', { name: '답장 보내기' }).waitFor(SLOW);
+  assert.equal(posts.messages.length, 1, '확인 전에는 답장을 보내지 않는다');
+  await win.getByRole('button', { name: '답장 보내기' }).click();
+  await win.getByText('답장을 보냈어요.', { exact: false }).waitFor(SLOW);
+  assert.deepEqual(posts.messages[1], {
+    profile_id: 'e1', sender_user_id: 'user-1', sender_role: 'caregiver', recipient_user_id: 'u-guardian',
+    body: '다음 세션 설계는 내일 알려 드릴게요',
+  });
 
   // ⑥ 보호자 화면
   state.messages = [
@@ -259,7 +304,7 @@ try {
   assert.deepEqual(posts.messages[0], { profile_id: 'e1', sender_user_id: 'guardian-1', body: '감사합니다. 다음 주도 부탁드려요.' },
     '보호자 메시지는 받는 사람·요양보호사 표시 없이 간다');
 
-  console.log('PASS: 대화창 열기·최소화·닫기 · 세션 설계는 확인 뒤 저장(모달과 같은 값)·취소는 무전송 · 공개는 승인 일지만·확인 뒤 요약 공개·비공개는 항목 공개 전부 철회 · 확인할 일 안내 · 보호자 메시지 답장(받는 사람 지정) · 보호자 FAQ·모르는 질문 안내·요양보호사 문의(답장 표시). 합성 API 만 사용.');
+  console.log('PASS: 대화창 열기·최소화·닫기 · 세션 설계는 확인 뒤 저장(모달과 같은 값)·취소는 무전송 · 공개는 승인 일지만·확인 뒤 요약 공개·비공개는 항목 공개 전부 철회 · 확인할 일 안내 · 보호자 메시지 답장(받는 사람 지정) · 보호자 FAQ·모르는 질문 안내·요양보호사 문의(답장 표시) · 자유 입력 설계(주제·제목 제안·기본값·고치기)·공개·답장(확인 전 무전송). 합성 API 만 사용.');
 } finally {
   await browser.close();
   await new Promise((resolve) => server.httpServer.close(resolve));

@@ -33,5 +33,6 @@ export * from './voice-context'
 export * from './generated-session'
 export * from './program-journal'
 export * from './assistant'
+export * from './assistant-command'
 
 export * from './voice-failure'
