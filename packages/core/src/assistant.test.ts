@@ -4,7 +4,9 @@ import {
   applyPlanAnswer,
   detectCaregiverTask,
   GUARDIAN_FAQ,
+  GUARDIAN_UNKNOWN_FOLLOW_UPS,
   isCancel,
+  latestEndedSession,
   isSkip,
   matchElder,
   nextPlanStep,
@@ -43,6 +45,22 @@ describe('보호자 FAQ', () => {
   it('모르는 질문·빈 입력은 지어내지 않고 unknown', () => {
     expect(answerGuardian('오늘 날씨 어때요').kind).toBe('unknown')
     expect(answerGuardian('   ').kind).toBe('unknown')
+  })
+  it('질문마다 이어지는 버튼 — 기록은 최근 소식, 분석은 최근 대화 분석, 모두 마지막에 다른 질문 보기', () => {
+    const by = Object.fromEntries(GUARDIAN_FAQ.map((f) => [f.id, f.followUps]))
+    expect(by.record).toContain('latest_feed')
+    expect(by.analysis).toContain('latest_analysis')
+    for (const faq of GUARDIAN_FAQ) expect(faq.followUps.at(-1), faq.id).toBe('more')
+    expect(GUARDIAN_UNKNOWN_FOLLOW_UPS).toEqual(['handoff', 'more'])
+  })
+  it('최근 대화 분석 = 끝난 대화 중 가장 늦게 끝난 것(진행 중·설계는 제외, 없으면 null)', () => {
+    const s = (id: string, status: string, ended_at: string | null, started_at: string | null = null) => ({ id, status, ended_at, started_at })
+    expect(latestEndedSession([
+      s('a', 'ended', '2026-11-01T01:00:00Z'), s('b', 'ended', '2026-11-03T01:00:00Z'),
+      s('c', 'active', null, '2026-11-04T01:00:00Z'), s('d', 'planned', null),
+    ])?.id).toBe('b')
+    expect(latestEndedSession([s('e', 'ended', null, '2026-11-02T00:00:00Z'), s('f', 'ended', '2026-11-01T00:00:00Z')])?.id).toBe('e')
+    expect(latestEndedSession([s('g', 'active', null)])).toBeNull()
   })
   it('답 문구에 판정형·의료 표현이 없다', () => {
     for (const faq of GUARDIAN_FAQ) {

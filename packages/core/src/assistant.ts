@@ -41,6 +41,20 @@ export interface AssistantLink {
   to: string
 }
 
+/**
+ * 답 뒤에 이어 보여 줄 버튼(질문마다 다르다 — 2026-11-04 사용자 요청).
+ * latest_feed = 가장 최근 공개된 소식 열기 · latest_analysis = 가장 최근 대화 분석 열기 ·
+ * handoff = 담당 요양보호사에게 문의 · more = 질문 목록으로 돌아가 다른 질문 고르기.
+ */
+export type GuardianFollowUp = 'latest_feed' | 'latest_analysis' | 'handoff' | 'more'
+
+export const GUARDIAN_FOLLOW_UP_LABEL: Record<GuardianFollowUp, string> = {
+  latest_feed: '최근 공개된 소식 보기',
+  latest_analysis: '최근 대화 분석 보기',
+  handoff: '요양보호사에게 문의하기',
+  more: '다른 질문 보기',
+}
+
 export interface GuardianFaq {
   id: string
   /** 빠른 질문 칩에 쓰는 대표 질문. */
@@ -49,6 +63,8 @@ export interface GuardianFaq {
   keywords: readonly string[]
   answer: string
   link?: AssistantLink
+  /** 답 뒤의 버튼. 'more'(다른 질문 보기)는 항상 끝에 둔다. */
+  followUps: readonly GuardianFollowUp[]
 }
 
 export const GUARDIAN_GREETING = '안녕하세요!\nGIEOK-ON AI입니다.\n요양 업무에 필요한 정보나\n기능에 대해 무엇이든\n물어보세요.'
@@ -62,6 +78,7 @@ export const GUARDIAN_FAQ: readonly GuardianFaq[] = [
       '어르신의 프로그램 일지와 대화 기록은 담당 요양보호사가 작성하고 확인해요.\n' +
       '보호자님은 요양보호사가 확인·공개한 내용을 \'공개된 소식\'에서 보실 수 있어요.',
     link: { label: '공개된 소식 보기', to: '/guardian/feed' },
+    followUps: ['latest_feed', 'more'],
   },
   {
     id: 'not_visible',
@@ -71,6 +88,7 @@ export const GUARDIAN_FAQ: readonly GuardianFaq[] = [
       '요양보호사가 확인하고 공개한 항목만 보여요. 아직 공개 전이면 목록에 나타나지 않아요.\n' +
       '어르신 연결이 승인됐는지도 \'어르신 연결\'에서 확인해 주세요.',
     link: { label: '어르신 연결 확인', to: '/guardian' },
+    followUps: ['latest_feed', 'handoff', 'more'],
   },
   {
     id: 'link',
@@ -80,6 +98,7 @@ export const GUARDIAN_FAQ: readonly GuardianFaq[] = [
       '\'어르신 연결\'에서 기관에서 받은 어르신 코드를 입력해 주세요.\n' +
       '담당 요양보호사가 승인하면 공개된 소식을 볼 수 있어요.',
     link: { label: '어르신 연결로 가기', to: '/guardian' },
+    followUps: ['more'],
   },
   {
     id: 'analysis',
@@ -88,6 +107,7 @@ export const GUARDIAN_FAQ: readonly GuardianFaq[] = [
     answer:
       '공개된 대화 기록을 정리한 요약이에요. 어르신의 상태를 판정하거나 점수를 매기지 않아요.',
     link: { label: '분석 보기', to: '/guardian/analysis' },
+    followUps: ['latest_analysis', 'more'],
   },
   {
     id: 'ai_talk',
@@ -96,12 +116,14 @@ export const GUARDIAN_FAQ: readonly GuardianFaq[] = [
     answer:
       '기억온 앱에서 AI가 어르신과 옛 추억을 나누는 대화를 진행하고, 요양보호사가 곁에서 함께 지켜봐요.\n' +
       '한 번의 대화는 최대 10분이에요.',
+    followUps: ['latest_analysis', 'more'],
   },
   {
     id: 'notice',
     question: '답장은 어떻게 알 수 있나요?',
     keywords: ['답장', '알림', '알려', '연락'],
     answer: '요양보호사가 답장하면 위쪽 종 모양 알림과 이 대화창에서 확인하실 수 있어요.',
+    followUps: ['handoff', 'more'],
   },
   {
     id: 'privacy',
@@ -109,6 +131,7 @@ export const GUARDIAN_FAQ: readonly GuardianFaq[] = [
     keywords: ['개인정보', '정보보호', '보안', '삭제', '탈퇴'],
     answer: '개인정보 처리 방법은 개인정보 처리방침에서 확인하실 수 있어요. 계정 설정은 \'설정\'에서 바꿀 수 있어요.',
     link: { label: '개인정보 처리방침', to: '/privacy' },
+    followUps: ['more'],
   },
 ]
 
@@ -119,6 +142,21 @@ export type GuardianAnswer =
   | { kind: 'faq'; faq: GuardianFaq }
   | { kind: 'handoff' }
   | { kind: 'unknown' }
+
+/** '최근 대화 분석 보기' 의 대상 — 끝난 대화 중 끝난(없으면 시작) 시각이 가장 늦은 것. 없으면 null. */
+export function latestEndedSession<T extends { status: string; ended_at: string | null; started_at: string | null }>(
+  rows: readonly T[],
+): T | null {
+  const at = (x: T) => x.ended_at ?? x.started_at ?? ''
+  let best: T | null = null
+  for (const x of rows) if (x.status === 'ended' && (!best || at(x) > at(best))) best = x
+  return best
+}
+
+/** 모르는 질문 뒤의 버튼. */
+export const GUARDIAN_UNKNOWN_FOLLOW_UPS: readonly GuardianFollowUp[] = ['handoff', 'more']
+/** '다른 질문 보기' 를 눌렀을 때 보이는 말. */
+export const GUARDIAN_MORE = '다른 궁금한 점을 골라 주세요.'
 
 export const GUARDIAN_UNKNOWN =
   '제가 답하기 어려운 질문이에요.\n담당 요양보호사에게 직접 물어보시겠어요?'

@@ -8,7 +8,8 @@
 //      철회 권한이 없으면 카드 없이 이유 안내 · 권한이 있으면 확인 뒤 그 항목의 공개 전부(요약+AI 분석)를 내린다.
 //   ④ 확인할 일: 미확인 안전 알림·확인 대기 일지를 이름과 함께 알리고 해당 화면 링크를 준다.
 //   ⑤ 보호자 메시지: 요양보호사는 스레드를 열어 그 보호자에게 답장(sender_role caregiver · recipient) · 읽음 처리.
-//   ⑥ 보호자: 자주 묻는 질문은 정해진 답(규칙 기반), 모르는 질문은 지어내지 않고 요양보호사 문의를 권한다,
+//   ⑥ 보호자: 자주 묻는 질문은 정해진 답(규칙 기반) + 질문별 후속 버튼(기록 → 최근 공개된 소식 · 분석 → 최근 대화 분석 · 다른 질문 보기),
+//      모르는 질문은 지어내지 않고 요양보호사 문의를 권한다,
 //      문의 화면에서 요양보호사 답장이 보이고 보낸 메시지는 받는 사람 없이(담당 전원) 간다.
 import { build, preview } from 'vite';
 import { chromium } from 'playwright';
@@ -230,6 +231,22 @@ try {
   await chip('기록은 어떻게 작성하나요?').click();
   await win.getByText('담당 요양보호사가 작성하고 확인해요', { exact: false }).waitFor();
   await win.getByRole('link', { name: '공개된 소식 보기' }).waitFor();
+  // 답에 따라 버튼이 바뀐다: 기록 → 최근 공개된 소식 · 다른 질문 보기(처음 질문 버튼은 사라진다)
+  await chip('최근 공개된 소식 보기').waitFor();
+  await chip('다른 질문 보기').waitFor();
+  assert.equal(await chip('소식이 보이지 않아요.').count(), 0, '답 뒤에는 그 질문의 후속 버튼만');
+  await chip('최근 공개된 소식 보기').click();
+  await win.getByText('가장 최근에 공개된 소식을 열었어요.', { exact: false }).waitFor();
+  await page.waitForURL(/\/guardian\/feed(\/(journal|summary)\/[^/?]+|\?tab=photo)/);
+  // 다른 질문 보기 → 질문 전체
+  await chip('다른 질문 보기').click();
+  await chip('개인정보는 어떻게 관리되나요?').waitFor();
+  // 분석 → 최근 대화 분석 보기 → 대화 분석 화면(어느 대화가 가장 최근인지는 core latestEndedSession 단위 테스트가 본다)
+  await chip('분석은 무엇을 보여 주나요?').click();
+  await chip('최근 대화 분석 보기').click();
+  await page.waitForURL(/\/guardian\/analysis\/sessions\/[^/?]+$/);
+  await win.getByText('가장 최근 대화의 분석을 열었어요.', { exact: false }).waitFor();
+  await chip('다른 질문 보기').waitFor();
   await type('오늘 날씨 어때요');
   await win.getByText('제가 답하기 어려운 질문이에요.', { exact: false }).waitFor();
   await chip('요양보호사에게 문의하기').click();
