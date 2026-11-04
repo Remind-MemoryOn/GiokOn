@@ -12,6 +12,7 @@
 //   - 동의 카탈로그(필수/민감/국외이전·온보딩 게이팅) (consent)
 //   - 정보주체 권리(이동권 산출물·삭제 계획) (subject-rights)
 //   - 음성 입출력 계약 SpeechProvider (speech)
+//   - 웹 플로팅 대화창 규칙 기반 도우미(보호자 FAQ·요양보호사 업무 안내) (assistant)
 //
 // Zustand UI 스토어와 데이터 레이어(TanStack Query)는 각각
 // 앱(apps/web)·@giokon/data에서 이 코어를 사용한다. DOM/RN 의존을 두지 않는다.
@@ -31,5 +32,6 @@ export * from './speech'
 export * from './voice-context'
 export * from './generated-session'
 export * from './program-journal'
+export * from './assistant'
 
 export * from './voice-failure'
