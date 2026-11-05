@@ -73,3 +73,4 @@ done
 "${PSQL[@]}" -f "$HERE/prod_privileges.sql"
 "${PSQL[@]}" -f "$HERE/supervised_session_finish.sql"
 "${PSQL[@]}" -f "$HERE/messages_two_way.sql"
+"${PSQL[@]}" -f "$HERE/remove_org_member.sql"

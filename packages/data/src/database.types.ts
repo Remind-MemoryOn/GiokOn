@@ -1025,6 +1025,8 @@ export type Database = {
         Args: { p_target: string; p_role: Database['public']['Enums']['org_role'] }
         Returns: undefined
       }
+      // 2026-11-05 — 구성원 내보내기(퇴사·이직): 관리자·센터장만 · 본인·보호자 불가 · 관리자 대상은 관리자만.
+      remove_org_member: { Args: { p_target: string }; Returns: undefined }
       create_org_invite: {
         Args: { p_role: Database['public']['Enums']['org_role']; p_valid_days?: number }
         Returns: Database['public']['Tables']['org_invites']['Row']

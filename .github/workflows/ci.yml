@@ -144,6 +144,8 @@ jobs:
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/supervised_session_finish.sql
       - name: 보호자 메시지 양방향(답장) 회귀
         run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/messages_two_way.sql
+      - name: 구성원 내보내기·이직 회귀
+        run: docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/remove_org_member.sql
 
   security-audit:
     runs-on: ubuntu-latest
