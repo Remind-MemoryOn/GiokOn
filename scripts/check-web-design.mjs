@@ -917,7 +917,8 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 이름 수정은 기관 관리자만 · 값이 없으면 만들지 않는다', [
     /const isAdmin = me\.data\?\.role === 'org_admin'/,
     /disabled=\{!isAdmin\}/, /기관 이름은 기관 관리자만 바꿀 수 있어요/,
-    /org\.data\?\.id \?\? '—'/,
+    // 기관 ID(내부 키)는 화면에 그리지 않는다 — 2026-11-05 사용자 요청(합류·접근에 쓰이지 않는 값).
+    { absent: /기관 ID:/ }, { absent: /data-fx="131:1095"/ },
   ]],
 
   // ── 설정 121:598 ─────────────────────────────────────────────────────
