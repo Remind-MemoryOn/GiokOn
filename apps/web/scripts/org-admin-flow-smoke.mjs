@@ -31,6 +31,10 @@ try {
     const req = route.request();
     const url = new URL(req.url());
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (url.pathname.endsWith('/rest/v1/rpc/remove_org_member')) {
+      calls.push({ kind: 'remove', body: req.postDataJSON() });
+      return route.fulfill({ status: 204, headers: cors });
+    }
     if (url.pathname.endsWith('/rest/v1/rpc/set_member_role')) {
       calls.push({ kind: 'role', body: req.postDataJSON() });
       return route.fulfill({ status: 204, headers: cors });
@@ -53,6 +57,7 @@ try {
   // ① 관리 역할이 아니면(요양보호사) 역할 변경 없음 · 권한표·설정 잠김 · 저장 버튼 없음
   await go('/caregiver/org');
   assert.equal(await page.getByLabel(/역할 변경$/).count(), 0);
+  assert.equal(await page.getByRole('button', { name: /기관에서 내보내기$/ }).count(), 0, '관리 역할이 아니면 내보내기 없음');
   assert.equal(await page.getByLabel('일지 확정 — 요양보호사').isDisabled(), true);
   assert.equal(await page.getByLabel('목표 시간').isDisabled(), true);
   assert.equal(await page.getByRole('button', { name: '저장', exact: true }).count(), 1); // 기관 정보 카드의 저장(잠김)뿐
@@ -64,6 +69,30 @@ try {
   await page.getByRole('dialog').getByRole('button', { name: '바꾸기' }).click();
   await page.getByText('역할을 바꿨어요.').waitFor();
   assert.deepEqual(calls.filter((c) => c.kind === 'role').map((c) => c.body), [{ p_target: 'u-kim', p_role: 'social_worker' }]);
+
+  // ②' 내보내기(퇴사·이직) — 본인 행에는 없고, 다른 구성원은 확인 후 remove_org_member. 취소하면 아무것도 보내지 않는다.
+  assert.equal(await page.getByRole('button', { name: '이지은 기관에서 내보내기' }).count(), 0, '본인은 내보낼 수 없다');
+  await page.getByRole('button', { name: '김요양 기관에서 내보내기' }).click();
+  const removeDialog = page.getByRole('dialog');
+  await removeDialog.getByText('이 기관의 어르신 기록을 볼 수 없게 되고', { exact: false }).first().waitFor();
+  await removeDialog.getByRole('button', { name: '취소' }).click();
+  assert.equal(calls.filter((c) => c.kind === 'remove').length, 0, '취소하면 보내지 않는다');
+  await page.getByRole('button', { name: '김요양 기관에서 내보내기' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '내보내기' }).click();
+  await page.getByText('김요양 님을 기관에서 내보냈어요.').waitFor();
+  assert.deepEqual(calls.filter((c) => c.kind === 'remove').map((c) => c.body), [{ p_target: 'u-kim' }]);
+
+  // ②'' 내보내진 사람의 화면 — 합류 대기에서 '이전 기관에서 나왔어요' + 새 기관 초대 코드 입력
+  {
+    const out = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+    await out.route('https://**/*', (route) => route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204, headers: cors }) : route.abort());
+    await out.goto(`http://127.0.0.1:${PORT}/join-pending?audit-join=removed`);
+    await out.getByText('이전 기관에서 나왔어요').waitFor();
+    await out.getByText('새 기관에서 받은 초대 코드로 합류를 요청해 주세요.', { exact: false }).waitFor();
+    await out.getByLabel('초대 코드').waitFor();
+    await out.close();
+  }
 
   // ③ 권한표 — 체크를 모아 저장 버튼으로 한 번(바뀐 권한만)
   const capsCard = page.locator('div', { has: page.getByRole('heading', { name: '권한 위임' }) }).last();
@@ -93,7 +122,7 @@ try {
   assert.deepEqual(st[0].body.default_avoid_topics, ['전쟁', '병원', '가족사']);
   assert.equal('ai_drafts_enabled' in st[0].body, false);
 
-  console.log('PASS: 비관리 역할 읽기 전용 · 본인 역할 변경 없음 · 역할 변경 확인 후 RPC · 권한표 바뀐 권한만 한 번 저장 · 기관 설정 저장(AI 스위치 제외). 합성 API 만 사용.');
+  console.log('PASS: 비관리 역할 읽기 전용 · 본인 역할 변경 없음 · 역할 변경 확인 후 RPC · 내보내기 확인 후 RPC(본인 없음·취소 무전송) · 내보내진 사람은 합류 대기에서 새 코드 입력 · 권한표 바뀐 권한만 한 번 저장 · 기관 설정 저장(AI 스위치 제외). 합성 API 만 사용.');
 } finally {
   await browser.close();
   await new Promise((resolve) => server.httpServer.close(resolve));

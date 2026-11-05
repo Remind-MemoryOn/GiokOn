@@ -36,6 +36,11 @@ const STATUS_TEXT = {
     title: '합류 요청을 취소했어요',
     body: '합류하려면 기관 관리자에게 받은 초대 코드로 다시 요청해 주세요.',
   },
+  // 마지막 요청이 승인됐는데 기관이 없다 = 그 기관에서 내보내졌다(remove_org_member · 2026-11-05 퇴사·이직).
+  approved: {
+    title: '이전 기관에서 나왔어요',
+    body: '이전 기관의 기록은 더 볼 수 없어요. 새 기관에서 받은 초대 코드로 합류를 요청해 주세요.',
+  },
 } as const;
 
 export function JoinPendingPage() {
@@ -94,7 +99,7 @@ export function JoinPendingPage() {
     }
   }
 
-  const text = latest && latest.status !== 'approved' ? STATUS_TEXT[latest.status] : null;
+  const text = latest ? STATUS_TEXT[latest.status] : null;
 
   return (
     <div className="min-h-screen bg-[#f8f8f8]">

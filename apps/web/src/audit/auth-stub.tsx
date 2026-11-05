@@ -658,9 +658,11 @@ function seed() {
 }
 seed();
 
-/** 승인 대기 화면(/join-pending) — 대기 중인 합류 요청 1건. 기관 이름은 요청자에게 보이지 않는다. */
+/** 승인 대기 화면(/join-pending) — 대기 중인 합류 요청 1건. 기관 이름은 요청자에게 보이지 않는다.
+ *  `?audit-join=removed` = 승인돼 합류했다가 기관에서 내보내진 계정(퇴사·이직 회귀 — 마지막 요청이 approved 인데 기관이 없다). */
 function seedJoinPending(q: typeof queryClient) {
   if (!/^\/join-pending/.test(window.location.pathname)) return;
+  const removed = new URLSearchParams(window.location.search).get('audit-join') === 'removed';
   q.setQueryData(queryKeys.myOrgJoinRequests, [
     {
       id: 'join-1',
@@ -669,9 +671,9 @@ function seedJoinPending(q: typeof queryClient) {
       invite_id: 'invite-1',
       requested_role: 'caregiver',
       requester_name: USER.name,
-      status: 'pending',
+      status: removed ? 'approved' : 'pending',
       created_at: '2026-09-25T00:00:00Z',
-      decided_at: null,
+      decided_at: removed ? '2026-09-26T00:00:00Z' : null,
       decided_by: null,
     },
   ]);
