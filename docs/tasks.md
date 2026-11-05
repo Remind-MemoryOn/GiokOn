@@ -4,9 +4,9 @@
 
 | ID | 작업 | 상태 |
 |---|---|---|
-| AUTH-LINK-20261104 | 가입·비밀번호 메일 링크가 'Vercel 로그인' 화면으로 감. 원인: 팀 별칭 `memory-on-paulodybi001-7834s-projects.vercel.app`(Vercel 배포 보호)에서 가입 → 링크 = 가입한 주소 + `/onboarding`(운영 로그 referer 로 확인). PKCE 라 링크 주소는 가입한 주소와 같아야 한다 → 운영 별칭(psi·팀 별칭)을 공식 주소 `memoryon.vercel.app` 으로 리다이렉트(`vercel.json`, 경로·쿼리 유지, 307) | **[코드 ✅ · 웹 ⏳ 배포 · ⏳ 사용자 설정]** ✅ `check:design` 규칙. ⏳ 사용자: Supabase Auth Site URL = `https://memoryon.vercel.app` · Redirect URLs `https://memoryon.vercel.app/**` · 네이버 `WEB_ORIGINS` 에 같은 주소 · 배포 후 새 가입 메일 링크 확인 |
+| AUTH-LINK-20261104 | 가입·비밀번호 메일 링크가 'Vercel 로그인' 화면으로 감. 원인: 팀 별칭 `memory-on-paulodybi001-7834s-projects.vercel.app`(Vercel 배포 보호)에서 가입 → 링크 = 가입한 주소 + `/onboarding`(운영 로그 referer 로 확인). PKCE 라 링크 주소는 가입한 주소와 같아야 한다 → 운영 별칭(psi·팀 별칭)을 공식 주소로 리다이렉트(`vercel.json`, 경로·쿼리 유지, 307). 2026-11-05 공식 주소 `memoryon.vercel.app` → **`www.memoryon.life`**(사용자 커스텀 도메인 · 이전 주소는 운영 배포에서 빠져 리다이렉트가 404 로 가던 것을 고침) | **[코드 ✅ · 웹 ⏳ 배포 · 사용자 설정 일부 ✅]** ✅ 2026-11-04 운영 307 확인(psi·팀 별칭) · `check:design` 규칙(옛 주소 금지 포함). ✅ 2026-11-05 사용자: Supabase Site URL·Redirect URLs = `www.memoryon.life` · Resend 연동(Auth 설정 재적재 로그 확인). ⏳ 네이버 `WEB_ORIGINS` 에 `https://www.memoryon.life` · 배포 후 새 가입 메일 실수신·링크 확인 |
 | ERR-KO-20261104 | 오류 문구 한국어 안내(웹 전체) — `lib/errorText`(Supabase 인증 코드 34종·DB 코드·알려진 영문 표현 → 한국어, 모르면 화면 fallback) · 화면 25곳 적용 · 토스트 안전망 · `serverErrorMessage` 표 밖 오류도 한국어 | **[코드 ✅ · 웹 ⏳ 배포]** ✅ 새 `test:errors`(가입·비밀번호 찾기 메일 한도 429 · 로그인 실패 · 네트워크 끊김 · 모르는 영문 오류 — 이전 코드에서 `email rate limit exceeded` 가 그대로 보여 실패함을 확인) · CI 단계 추가 |
-| MAIL-SMTP-20261104 | 메일 한도 `email rate limit exceeded` — 기본 메일 서버 시간당 2통(운영 로그: 매시 2통 뒤 429). 커스텀 SMTP(Resend·SES 등) 연결 후 Rate Limits 조정 | **⏳ 사용자 작업**(비밀번호가 들어가는 운영 설정) |
+| MAIL-SMTP-20261104 | 메일 한도 `email rate limit exceeded` — 기본 메일 서버 시간당 2통(운영 로그: 매시 2통 뒤 429). 커스텀 SMTP(Resend·SES 등) 연결 후 Rate Limits 조정 | **[설정 ✅ · 확인 ⏳]** ✅ 2026-11-05 사용자 Resend 연동. ⏳ 실제 가입·비밀번호 메일 발송 성공 로그·수신 확인 · Rate Limits(SMTP 연결 후 기본 시간당 30통) 필요 시 조정 |
 
 ## 웹 플로팅 대화창·메시지 양방향 (2026-11-04)
 
