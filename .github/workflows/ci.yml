@@ -56,6 +56,8 @@ jobs:
         run: pnpm -F @giokon/web test:login-return
       - name: Auth/server errors shown in Korean only
         run: pnpm -F @giokon/web test:errors
+      - name: Social login buttons recover after back navigation
+        run: pnpm -F @giokon/web test:social
 
   rls-regression:
     runs-on: ubuntu-latest

@@ -23,6 +23,7 @@
     "test:design-feedback": "node scripts/design-feedback-smoke.mjs",
     "test:assistant": "node scripts/assistant-flow-smoke.mjs",
     "test:errors": "node scripts/error-text-smoke.mjs",
+    "test:social": "node scripts/social-login-smoke.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "smoke": "node scripts/route-smoke.mjs",

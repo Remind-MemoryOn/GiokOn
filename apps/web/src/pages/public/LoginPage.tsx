@@ -74,6 +74,16 @@ export function LoginPage() {
   const [callback] = useState(readNaverCallback);
   const [naverReturning, setNaverReturning] = useState(Boolean(callback));
 
+  // 간편 로그인 화면(네이버·카카오·구글)에서 뒤로 돌아오면 브라우저가 이 화면을 그대로 되살린다(bfcache) —
+  // '이동 중...'·버튼 잠금이 남아 다시 누를 수 없었다(2026-11-05 사용자 보고). 되살아난 화면이면 풀어 준다.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setPending(null);
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+
   // 네이버는 Supabase 네이티브 provider 가 아니라 detectSessionInUrl 이 잡지 못한다 —
   // naver-auth 가 프래그먼트로 넘긴 토큰을 여기서 직접 세션으로 세운다.
   useEffect(() => {
@@ -279,20 +289,29 @@ export function LoginPage() {
             onClick={() => social(s.key)}
             disabled={pending !== null || !isSupabaseConfigured}
             style={{ left: s.left }}
-            className="absolute top-[636px] flex h-[68px] w-[180px] items-center rounded-[10px] border border-line bg-white disabled:opacity-50"
+            aria-busy={pending === s.key}
+            className={cn(
+              'absolute top-[636px] flex h-[68px] w-[180px] items-center rounded-[10px] border border-line bg-white disabled:opacity-50',
+              pending === s.key && 'justify-center',
+            )}
           >
-            <span
-              data-fx={s.fxChip}
-              className={cn(
-                'ml-[39px] flex h-[34px] w-[36px] items-center justify-center rounded-[5px]',
-                s.chip,
-              )}
-            >
-              <img src={s.mark} alt="" className="block max-h-[22px] max-w-[24px]" />
-            </span>
-            <span className="ml-[18px] text-w-body font-semibold text-ink-500">
-              {pending === s.key ? '이동 중...' : s.label}
-            </span>
+            {pending === s.key ? (
+              // 이동 중에는 글자만 버튼 가운데에(2026-11-05 사용자 결정) — 평소의 '아이콘 + 이름' 자리에 긴 글자를 넣으면 오른쪽으로 밀린다.
+              <span className="text-w-body font-semibold text-ink-500">이동 중...</span>
+            ) : (
+              <>
+                <span
+                  data-fx={s.fxChip}
+                  className={cn(
+                    'ml-[39px] flex h-[34px] w-[36px] items-center justify-center rounded-[5px]',
+                    s.chip,
+                  )}
+                >
+                  <img src={s.mark} alt="" className="block max-h-[22px] max-w-[24px]" />
+                </span>
+                <span className="ml-[18px] text-w-body font-semibold text-ink-500">{s.label}</span>
+              </>
+            )}
           </button>
         ))}
 
