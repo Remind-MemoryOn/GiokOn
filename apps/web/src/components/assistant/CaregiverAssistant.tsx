@@ -763,15 +763,25 @@ export function CaregiverAssistant() {
       open={open}
       onOpen={() => setOpen(true)}
       onMinimize={() => setOpen(false)}
+      // 닫기 = 한 단계 위로: 보호자 대화 → 메시지 목록(채팅방 선택) → AI 대화 ·
+      // AI 대화에서는 창을 닫고 처음으로 되돌린다(진행 중이던 업무·확인 카드도 비운다 — 2026-11-06 사용자 결정).
       onClose={() => {
-        setOpen(false);
-        setView('ai');
-        setFlow({ kind: 'idle' });
         setText('');
+        if (view === 'thread') {
+          setView('inbox');
+          return;
+        }
+        if (view === 'inbox') {
+          setView('ai');
+          return;
+        }
+        setOpen(false);
+        setFlow({ kind: 'idle' });
         setStartedAt(now());
         setItems([greeting()]);
         setDoneCards(new Set());
       }}
+      closeLabel={view === 'thread' ? '닫고 메시지 목록으로 돌아가기' : view === 'inbox' ? '닫고 AI 대화로 돌아가기' : '대화창 닫기'}
       label={view === 'thread' && thread ? `${threadTitle(thread)} 메시지 대화창` : 'GIEOK-ON AI 대화창'}
       header={
         view === 'thread' && thread
