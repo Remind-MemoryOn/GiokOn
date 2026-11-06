@@ -211,14 +211,20 @@ export function GuardianAssistant() {
       open={open}
       onOpen={() => setOpen(true)}
       onMinimize={() => setOpen(false)}
+      // 닫기 = 한 단계 위로: 요양보호사 메시지 → AI 대화(주고받던 AI 대화는 그대로) ·
+      // AI 대화에서는 창을 닫고 처음으로 되돌린다(최소화는 그대로 둔다 — 2026-11-06 사용자 결정).
       onClose={() => {
-        setOpen(false);
-        setMode('ai');
-        setMenu('start');
         setText('');
+        if (inThread) {
+          setMode('ai');
+          return;
+        }
+        setOpen(false);
+        setMenu('start');
         setStartedAt(now());
         setItems([{ id: nextId(), kind: 'text', from: 'bot', text: GUARDIAN_GREETING, at: now() }]);
       }}
+      closeLabel={inThread ? '닫고 AI 대화로 돌아가기' : '대화창 닫기'}
       label={inThread ? '담당 요양보호사 메시지 대화창' : 'GIEOK-ON AI 대화창'}
       header={
         inThread

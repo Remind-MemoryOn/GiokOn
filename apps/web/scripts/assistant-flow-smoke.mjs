@@ -1,7 +1,9 @@
 // 플로팅 대화창 회귀(2026-11-04) — UI 만 검사한다. API 응답은 합성이고 환경 파일을 읽지 않는다.
 //
 // 지키는 것:
-//   ① 요양보호사·보호자 화면 모두 오른쪽 아래 버튼으로 대화창이 열리고, 최소화하면 대화가 남고 닫으면 처음으로 돌아간다.
+//   ① 요양보호사·보호자 화면 모두 오른쪽 아래 버튼으로 대화창이 열린다. 최소화(—)는 지금 화면을 그대로 둔 채 숨기고
+//      다시 열면 그 화면이 열린다. 닫기(X)는 한 단계 위로(보호자 대화 → 메시지 목록 → AI 대화 · 보호자 창의 요양보호사 대화 → AI 대화),
+//      맨 위(AI 대화)에서는 창을 닫고 처음으로 되돌린다(2026-11-06 사용자 결정).
 //   ② 세션 설계: 대화로 모은 값은 **확인 카드에서 '설계 저장'을 누르기 전에는 저장 요청이 없다**.
 //      저장 값은 설계 모달과 같은 모양(status planned · 목표 시간 · 기록일 · 키워드)이다. '취소'는 아무것도 보내지 않는다.
 //   ③ 공개 관리: 미승인 일지는 공개 카드 없이 이유를 안내 · 승인 일지는 확인 뒤 요약 줄만 공개 ·
@@ -119,7 +121,7 @@ try {
   const win = page.getByRole('dialog', { name: 'GIEOK-ON AI 대화창' });
   const chip = (name) => win.getByRole('button', { name, exact: true });
   const type = async (text) => {
-    await win.getByLabel('메시지').fill(text);
+    await win.getByLabel('메시지', { exact: true }).fill(text);
     await win.getByRole('button', { name: '전송', exact: true }).click();
   };
 
@@ -236,7 +238,7 @@ try {
   await threadBtn.click();
   const thread = page.getByRole('dialog', { name: '김보호 보호자 · 김복순 어르신 메시지 대화창' });
   await thread.getByText('오늘 어머니 컨디션은 어떠셨나요?').waitFor();
-  await thread.getByLabel('메시지').fill('네, 식사도 잘 하시고 산책도 하셨어요.');
+  await thread.getByLabel('메시지', { exact: true }).fill('네, 식사도 잘 하시고 산책도 하셨어요.');
   await thread.getByRole('button', { name: '전송', exact: true }).click();
   await thread.getByText('네, 식사도 잘 하시고 산책도 하셨어요.').waitFor(SLOW);
   assert.deepEqual(posts.messages[0], {
@@ -244,14 +246,24 @@ try {
     body: '네, 식사도 잘 하시고 산책도 하셨어요.',
   });
 
-  // ① 최소화하면 남고, 닫으면 처음으로
+  // ① 최소화 → 다시 열면 같은 화면(보호자 대화) 그대로
   await thread.getByRole('button', { name: '대화창 최소화' }).click();
+  assert.equal(await page.getByRole('dialog').count(), 0, '최소화하면 창이 숨는다');
   await fab.click();
-  await page.getByRole('dialog').getByText('네, 식사도 잘 하시고 산책도 하셨어요.').waitFor();
-  await page.getByRole('dialog').getByRole('button', { name: '대화창 닫기' }).click();
+  await thread.getByText('네, 식사도 잘 하시고 산책도 하셨어요.').waitFor();
+  // ① 닫기 = 한 단계 위로: 보호자 대화 → 메시지 목록 → AI 대화(그동안의 AI 대화가 남아 있다) → 창 닫고 처음으로
+  await thread.getByRole('button', { name: '닫고 메시지 목록으로 돌아가기' }).click();
+  await win.getByRole('button', { name: /김보호 보호자 · 김복순 어르신/ }).waitFor();
+  await win.getByRole('button', { name: '닫고 AI 대화로 돌아가기' }).click();
+  await win.getByText('보호자에게 공개했어요.', { exact: false }).first().waitFor();
+  await win.getByRole('button', { name: '대화창 최소화' }).click();
+  await fab.click();
+  await win.getByText('보호자에게 공개했어요.', { exact: false }).first().waitFor(); // 최소화는 AI 대화도 그대로 둔다
+  await win.getByRole('button', { name: '대화창 닫기' }).click();
+  assert.equal(await page.getByRole('dialog').count(), 0, '맨 위에서 닫으면 창이 닫힌다');
   await fab.click();
   await win.getByText('대화로 업무를 도와드릴게요.', { exact: false }).waitFor();
-  assert.equal(await win.getByText('세션을 설계했어요.', { exact: false }).count(), 0, '닫으면 대화를 비운다');
+  assert.equal(await win.getByText('보호자에게 공개했어요.', { exact: false }).count(), 0, '맨 위에서 닫으면 처음으로 되돌린다');
   // ⑦ 자유 입력 — 보호자 이름 + 따옴표 본문 → 답장 확인 카드(본문 속 '설계' 는 업무로 읽지 않는다)
   await type("김보호 보호자님께 '다음 세션 설계는 내일 알려 드릴게요'라고 답장해 줘");
   await win.getByRole('button', { name: '답장 보내기' }).waitFor(SLOW);
@@ -298,13 +310,24 @@ try {
   const gThread = page.getByRole('dialog', { name: '담당 요양보호사 메시지 대화창' });
   await gThread.getByText('네, 즐겁게 다녀오셨어요.').waitFor(SLOW);
   await gThread.getByText('주고받은 내용과 전송 시간은 자동으로 기록돼요.', { exact: false }).waitFor();
-  await gThread.getByLabel('메시지').fill('감사합니다. 다음 주도 부탁드려요.');
+  await gThread.getByLabel('메시지', { exact: true }).fill('감사합니다. 다음 주도 부탁드려요.');
   await gThread.getByRole('button', { name: '전송', exact: true }).click();
   await gThread.getByText('감사합니다. 다음 주도 부탁드려요.').waitFor(SLOW);
   assert.deepEqual(posts.messages[0], { profile_id: 'e1', sender_user_id: 'guardian-1', body: '감사합니다. 다음 주도 부탁드려요.' },
     '보호자 메시지는 받는 사람·요양보호사 표시 없이 간다');
+  // ① 보호자 창: 최소화 → 다시 열면 요양보호사 대화 그대로 · 닫기 → AI 대화(질문하던 내용 그대로) → 닫기 → 처음으로
+  await gThread.getByRole('button', { name: '대화창 최소화' }).click();
+  await fab.click();
+  await gThread.getByText('감사합니다. 다음 주도 부탁드려요.').waitFor();
+  await gThread.getByRole('button', { name: '닫고 AI 대화로 돌아가기' }).click();
+  await win.getByText('제가 답하기 어려운 질문이에요.', { exact: false }).waitFor();
+  await win.getByRole('button', { name: '대화창 닫기' }).click();
+  assert.equal(await page.getByRole('dialog').count(), 0, '보호자 창도 맨 위에서 닫으면 창이 닫힌다');
+  await fab.click();
+  await win.getByText('물어보세요.', { exact: false }).first().waitFor();
+  assert.equal(await win.getByText('제가 답하기 어려운 질문이에요.', { exact: false }).count(), 0, '보호자 창도 처음으로 되돌린다');
 
-  console.log('PASS: 대화창 열기·최소화·닫기 · 세션 설계는 확인 뒤 저장(모달과 같은 값)·취소는 무전송 · 공개는 승인 일지만·확인 뒤 요약 공개·비공개는 항목 공개 전부 철회 · 확인할 일 안내 · 보호자 메시지 답장(받는 사람 지정) · 보호자 FAQ·모르는 질문 안내·요양보호사 문의(답장 표시) · 자유 입력 설계(주제·제목 제안·기본값·고치기)·공개·답장(확인 전 무전송). 합성 API 만 사용.');
+  console.log('PASS: 대화창 열기 · 최소화(그 화면 그대로) · 닫기(한 단계 위로 · 맨 위에서 처음으로 — 요양보호사·보호자) · 세션 설계는 확인 뒤 저장(모달과 같은 값)·취소는 무전송 · 공개는 승인 일지만·확인 뒤 요약 공개·비공개는 항목 공개 전부 철회 · 확인할 일 안내 · 보호자 메시지 답장(받는 사람 지정) · 보호자 FAQ·모르는 질문 안내·요양보호사 문의(답장 표시) · 자유 입력 설계(주제·제목 제안·기본값·고치기)·공개·답장(확인 전 무전송). 합성 API 만 사용.');
 } finally {
   await browser.close();
   await new Promise((resolve) => server.httpServer.close(resolve));

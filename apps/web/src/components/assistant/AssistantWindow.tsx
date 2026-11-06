@@ -90,6 +90,7 @@ export function AssistantWindow({
   onOpen,
   onMinimize,
   onClose,
+  closeLabel = '대화창 닫기',
   label,
   header,
   startedAt,
@@ -101,7 +102,13 @@ export function AssistantWindow({
   open: boolean;
   onOpen: () => void;
   onMinimize: () => void;
+  /**
+   * 닫기(X) — 한 단계 위 화면으로 돌아간다(2026-11-06 사용자 결정). 맨 위 화면(AI 대화)에서는 창을 닫고 대화를 처음으로 되돌린다.
+   * 최소화(—)는 화면을 그대로 둔 채 숨기고, 플로팅 버튼으로 다시 열면 그 화면이 그대로 열린다.
+   */
   onClose: () => void;
+  /** 닫기 버튼의 접근성 이름 — 이전 화면으로 돌아가는 화면에서는 그 사실을 말한다. */
+  closeLabel?: string;
   /** 창의 접근성 이름(예: 'GIEOK-ON AI 대화창'). */
   label: string;
   header: { avatar: string; title: ReactNode; subtitle: ReactNode };
@@ -185,7 +192,7 @@ export function AssistantWindow({
         <button
           type="button"
           onClick={onClose}
-          aria-label="대화창 닫기"
+          aria-label={closeLabel}
           className="absolute right-[44px] top-[44px] flex h-[40px] w-[40px] items-center justify-center rounded-[8px] hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <img src={asset.iconCloseSm} alt="" aria-hidden className="h-[18.5px] w-[18.5px]" />
