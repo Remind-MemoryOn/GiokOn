@@ -57,6 +57,11 @@
 - **운영 DB 쓰기·배포는 사용자 승인 후**(읽기 조회는 가능). 기관 AI 초안 스위치(`org_settings.ai_drafts_enabled`)는 **사용자 지시 없이 켜지 않는다**.
 - **커밋**: 원격 세션이 지정한 작업 브랜치를 따른다(없으면 `main` 직접 — 사용자 승인). **테스크별 커밋**(개발·검증·기록 뒤 커밋하고 다음으로).
   기능·디자인 수정과 리팩토링은 같은 PR 에 섞지 않는다. PR 을 올린 뒤 **CI 확인은 최대 3회**, 통과를 확인하면 더 확인하지 않는다(2026-09-27).
+  **커밋 작성자 = 사용자 GitHub 계정(2026-11-07 사용자 지시)**: 봇 계정(`Claude <noreply@anthropic.com>`)으로 커밋하지 않는다.
+  세션을 시작하면 첫 커밋 전에 GitHub 사용자 정보(`get_me`)를 읽어 저장소 로컬 설정으로 지정한다 —
+  `git config user.name "<name>"` · `git config user.email "<id>+<login>@users.noreply.github.com"`(공개 이메일이 없으므로 noreply) ·
+  `git config commit.gpgsign false`(세션 서명 키는 사용자 계정 키가 아니라 Unverified 로 보이므로 서명하지 않는다).
+  현재 값: `Seonghun` · `184589650+SH-L1@users.noreply.github.com`. 커밋 메시지 끝의 `Co-Authored-By`·`Claude-Session` 줄은 유지한다.
 - **완료 표시 필수(2026-09-24)**: 테스크를 끝내면 커밋 전에 팀원이 보는 계획 문서에 ✅(날짜)·⏳(선행 조건)을 표시한다 —
   `docs/tasks.md` · `docs/plans/pilot-development-plan.md`(상태 열) · 해당되면 `launch-checklist.md` · 앱 `README.md` · `docs/new-hire/02·03` · `docs/requirements.md` · `PLAN.md`.
   계획과 다르게 구현했으면 그 차이도 같은 자리에 적는다. 이 파일에는 **현재 위치**만 갱신한다.
