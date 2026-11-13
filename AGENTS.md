@@ -171,6 +171,8 @@
 
 ## 현재 위치 (2026-10-15)
 
+**위험 감지·음성 감정 기획(2026-11-13)**: 파일럿 이후 기획 `docs/plans/2026-11-13-risk-emotion-detection.md`(파일럿은 결정론 감지·즉시 종료 유지). 확정: 일시정지 중 듣지 않음(연결 종료 → 새 연결 + 복구 맥락) · 시스템 원인 일시정지는 중계 전용 서버 자격 · 감정 모델은 재생을 막지 않는 비동기 검사. 응급 사전 보강(SAFE-BREATH-20261113)은 중계 배포·앱 빌드 대기.
+
 **일지 생성 장애 조사**: 진단 워커 배포·재실행 성공과 남은 출력 품질/작성 부담 과제는 `docs/testing/2026-10-26-journal-generation-investigation.md`·`docs/testing/2026-10-26-journal-output-review.md`와 `docs/tasks.md`를 따른다. 워커 HTTP 202/자동 테스트 통과를 실제 Gemini 초안 생성 성공으로 해석하지 않는다.
 
 **태블릿·키보드 현재 위치(2026-10-26)**: 기기별 방향과 입력/모달의 키보드 회피·짧은 가로 화면 처리를 수정했다. 상태·검증·새 빌드/실기기 선행 조건은 `docs/plans/2026-10-26-tablet-keyboard-implementation.md`·`docs/tasks.md`를 따른다. API37 상향 시 Android 방향 제한 정책을 재검토한다.
