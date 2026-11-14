@@ -29,25 +29,21 @@
 | `tools/rule_baseline.ts` | 현재 규칙(`assessUtterance`) 기준선 — 범주별 재현율·정밀도·미탐·오탐(표면 기준·대응 대상 기준 나란히) |
 | `tools/rule_baseline.test.ts` | 기준선 도구 회귀 |
 
-## 검사
+## 검사 (Windows cmd · 저장소 루트)
 
-```bash
-python3 ml/context-safety/tools/validate.py
-```
-
-```bash
-python3 -m unittest discover -s ml/context-safety/tools -p "test_*.py"
+```bat
+python ml\context-safety\tools\validate.py
+python -m unittest discover -s ml\context-safety\tools -p "test_*.py"
 ```
 
 규칙 기준선(평가 자료·검수 합의 라벨만 기준선으로 인정 — 그 밖의 조합은 '도구 점검용'으로 표시된다):
 
-```bash
-apps/voice-relay/node_modules/.bin/tsx ml/context-safety/tools/rule_baseline.ts --split eval --out ml/context-safety/reports/rule-baseline.md
+```bat
+apps\voice-relay\node_modules\.bin\tsx ml\context-safety\tools\rule_baseline.ts --split eval --out ml\context-safety\reports\rule-baseline.md
+apps\voice-relay\node_modules\.bin\tsx --test ml\context-safety\tools\rule_baseline.test.ts
 ```
 
-```bash
-apps/voice-relay/node_modules/.bin/tsx --test ml/context-safety/tools/rule_baseline.test.ts
-```
+(`tsx` 가 없으면 먼저 `pnpm install --filter @giokon/voice-relay`.)
 
 ## 권리 확인 메모
 
