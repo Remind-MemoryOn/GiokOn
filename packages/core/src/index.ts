@@ -36,3 +36,4 @@ export * from './assistant'
 export * from './assistant-command'
 
 export * from './voice-failure'
+export * from './context-safety'
