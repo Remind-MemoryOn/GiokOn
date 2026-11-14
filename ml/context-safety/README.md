@@ -26,6 +26,8 @@
 | `data/eval/` | 최종 평가 자료(사람 작성 — 아직 없음) |
 | `tools/validate.py` | 형식·라벨 일관성·분할 누수·작성 주체 규칙 검사(표준 라이브러리만) |
 | `tools/test_validate.py` | 검사기 회귀(규칙을 어긴 예시가 실제로 거절되는지) |
+| `tools/rule_baseline.ts` | 현재 규칙(`assessUtterance`) 기준선 — 범주별 재현율·정밀도·미탐·오탐(표면 기준·대응 대상 기준 나란히) |
+| `tools/rule_baseline.test.ts` | 기준선 도구 회귀 |
 
 ## 검사
 
@@ -35,6 +37,16 @@ python3 ml/context-safety/tools/validate.py
 
 ```bash
 python3 -m unittest discover -s ml/context-safety/tools -p "test_*.py"
+```
+
+규칙 기준선(평가 자료·검수 합의 라벨만 기준선으로 인정 — 그 밖의 조합은 '도구 점검용'으로 표시된다):
+
+```bash
+apps/voice-relay/node_modules/.bin/tsx ml/context-safety/tools/rule_baseline.ts --split eval --out ml/context-safety/reports/rule-baseline.md
+```
+
+```bash
+apps/voice-relay/node_modules/.bin/tsx --test ml/context-safety/tools/rule_baseline.test.ts
 ```
 
 ## 권리 확인 메모
