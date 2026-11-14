@@ -15,6 +15,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { assessUtterance, type UtteranceAssessment } from '../../../packages/core/src/safety.ts'
 
 export type Labels = {
@@ -134,4 +135,5 @@ function main(argv: string[]) {
   else process.stdout.write(report + '\n')
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main(process.argv.slice(2))
+// Windows 경로(C:\…)에서도 맞게 URL 로 바꿔 비교한다.
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main(process.argv.slice(2))
