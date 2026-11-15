@@ -229,6 +229,8 @@ export type Database = {
           pause_reason: string | null
           control_request: 'pause' | 'resume' | 'end' | null
           prompt_version: string | null
+          // CTX-CLS-S6(20261115000000) — 일시정지 출처. 'system' 은 분류기 직원 확인 일시정지(paused_by 없음).
+          pause_origin: 'staff' | 'system' | null
         }
         Insert: {
           id?: string
@@ -411,6 +413,12 @@ export type Database = {
           acknowledged_by: string | null
           created_at: string
           updated_at: string
+          // CTX-CLS-S6(20261115000000) — 감지 경로. 'classifier' 사건은 중계 전용 자격(service_role RPC)으로만 생긴다.
+          // 사용자 INSERT 는 'rule' 만(정책) — Insert 타입에 넣지 않는다(기본값 'rule').
+          detected_by: 'rule' | 'classifier'
+          detection_reason: string | null
+          classifier_model_version: string | null
+          policy_version: string | null
         }
         Insert: {
           id?: string
@@ -941,8 +949,19 @@ export type Database = {
         Relationships: []
       }
       // 파일럿 D6 — 감독 개입 기록(읽기: 같은 기관 돌봄팀, 쓰기: RPC 전용)
+      // CTX-CLS-S6(20261115000000) — 분류기 "계속 + 기록"(원문 없음). 쓰기는 service_role RPC 전용 · 같은 기관 돌봄팀 읽기.
+      classifier_observations: {
+        Row: {
+          id: string; org_id: string; profile_id: string; session_id: string; turn_id: string; input_revision: number
+          reason: 'classifier_context_logged' | 'classifier_closing'; action: 'continue' | 'elder_closing'
+          categories: string[]; model_version: string; policy_version: string; created_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       session_interventions: {
-        Row: { id: string; session_id: string; profile_id: string; org_id: string; actor_id: string | null; action: 'pause' | 'resume' | 'end' | 'phase_advance' | 'elder_closing'; detail: Json | null; created_at: string }
+        Row: { id: string; session_id: string; profile_id: string; org_id: string; actor_id: string | null; action: 'pause' | 'resume' | 'end' | 'phase_advance' | 'elder_closing' | 'system_review_pause'; detail: Json | null; created_at: string }
         Insert: never
         Update: never
         Relationships: []
