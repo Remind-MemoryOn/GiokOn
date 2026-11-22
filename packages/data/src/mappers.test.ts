@@ -194,7 +194,7 @@ describe('toConversationLog', () => {
     duration_minutes: null,
     planned_date: null,
     planned_by: null,
-    phase: null, phase_started_at: null, paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: null,
+    phase: null, phase_started_at: null, paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: null, pause_origin: null,
     ended_at: '2026-01-04T00:10:00Z',
     updated_at: '2026-01-04T00:10:00Z',
   }
@@ -301,7 +301,7 @@ describe('toSession', () => {
     duration_minutes: null,
     planned_date: null,
     planned_by: null,
-    phase: null, phase_started_at: null, paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: null,
+    phase: null, phase_started_at: null, paused_at: null, paused_by: null, pause_reason: null, control_request: null, prompt_version: null, pause_origin: null,
     ended_at: '2026-01-04T00:10:00Z',
     updated_at: '2026-01-04T00:10:00Z',
   }

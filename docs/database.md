@@ -28,7 +28,7 @@
 ## Files
 
 - `supabase/migrations/`: v1 스키마, 인덱스, 트리거, RLS 정책. (RLS는 `auth.uid()` 기준으로 작성한다.)
-- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `session-report`(현재 UI 호출 없음) · `naver-auth` · `program-journal-draft` · `push-dispatch`. (`stt-transcribe`(CLOVA STT)는 2026-10-04 삭제.) 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
+- `supabase/functions/`: Edge Functions — `live-token`(음성 세션 토큰·모델 ID) · `relay-review-pause`(분류기 시스템 원인 일시정지·관찰 기록 — 중계 전용 · ⏳ 미배포) · `session-report`(현재 UI 호출 없음) · `naver-auth` · `program-journal-draft` · `push-dispatch`. (`stt-transcribe`(CLOVA STT)는 2026-10-04 삭제.) 장시간 음성 중계는 Edge Function 이 아니라 `apps/voice-relay` 가 맡는다.
 - `docs/database.md`: Supabase 적용 절차와 접근 모델.
 
 ## Tables
@@ -118,6 +118,12 @@
 - ✅(로컬 2026-09-24) `push_tokens`(본인 행 조회만 · 쓰기는 `register_push_token`·`revoke_push_token` RPC — 기기 인계 시 주인 이동) · `notifications.pushed_at`(D7, 사용자 변경 불가) · `product_events` + definer 삽입 함수(D8 — 시간 절감·열람 이력의 유일한 증거 · ✅ 2026-10-06 코드 `20261006010000`: 최소 범위로 일지 확인 대기 중 사람이 고친 칸 이름만 서버 트리거가 기록 · 클라이언트 읽기·쓰기 불가 · 열람 이력은 후속).
 - realtime publication 에 `program_journals`·`session_interventions` 추가(D9, `if exists (pg_publication)` 가드) ·
   동의 버전 단일화 `public.current_consent_version()`(D10 · ✅ 2026-10-06 코드 — 동의 트리거가 invoker 라 `app` 이 아닌 `public`).
+- **분류기 직원 확인 일시정지(CTX-CLS-S6 · `20261115000000`·`20261115010000` · ⏳ 운영 미적용 — main 병합 시 자동 적용)**:
+  `sessions.pause_origin`('staff'|'system' — 시스템 정지는 `paused_by` 없음, 짝 제약) · 개입 `system_review_pause`(actor 없음) ·
+  `safety_events.detected_by`('rule'|'classifier')·`detection_reason`·`classifier_model_version`·`policy_version`(사용자 직접 INSERT 는 'rule' 만 · 판정 불변) ·
+  `classifier_observations`(원문 없는 "계속 + 기록" · 돌봄팀 읽기 · RPC 전용 쓰기) · **service_role 전용** RPC `system_pause_for_review`·`record_classifier_observation`
+  (호출자는 Edge `relay-review-pause` 하나 — `x-relay-secret` + 직원 JWT, DB 가 살아 있는 점유 holder 로 연결 증명) · `session_tick` 에 `pause_origin`.
+  설계 `docs/plans/2026-11-15-ctx-cls-s6-db-design.md`.
 - ⚠️ **출석 테이블은 만들지 않는다**(ERP 영역). 주간보호 제공 여부는 `program_journals` 행 유무 + `delivered`/`non_delivery_reason` 로만 표현한다.
 
 ## 기관 만들기 · 합류 (2026-09-25 A안)
