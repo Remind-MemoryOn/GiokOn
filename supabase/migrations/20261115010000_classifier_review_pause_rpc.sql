@@ -9,9 +9,10 @@
 -- ③ request_session_control — 직원 정지 = 출처 'staff'(시스템 정지 위에 눌러도 출처 유지), 재개 = 출처 비움.
 -- ④ session_tick — pause_origin 을 함께 돌려준다(기존 칸 불변 — 구버전 중계는 무시).
 --
--- 알림 문구(사용자 확정 2026-11-15 ③): caregiver_alert = "[범주] 공통 문구". 전화번호 등 대응 자원은 넣지 않는다.
--- 멈춘 지점의 발화는 excerpt 한 곳에만 둔다(알림 행에 복사하지 않는다 — 앱·웹 화면이 범주 → 발화 → 문구로 합쳐 보인다).
--- 공통 문구는 초안이다(사용자 확정 전 — docs/tasks.md CTX-CLS-S6). 규칙 사건 문구(core buildCaregiverAlert)는 바꾸지 않는다.
+-- 알림 문구(사용자 확정 2026-11-15 ③ · 문구 2026-11-22 R7): caregiver_alert = 공통 문구 + 줄바꿈 + "멈춘 이유: <범주·이유>".
+-- 공통 문구 = "대화 중 확인이 필요한 말씀이 있어 대화를 잠시 멈췄어요. 확인해주세요." — 전화번호 등 대응 자원·'진단 아님' 문구는 넣지 않는다.
+-- 멈춘 지점의 발화는 excerpt 한 곳에만 둔다(알림 행에 복사하지 않는다 — 앱·웹 화면이 그 아래에 붙여 보인다).
+-- 규칙 사건 문구(core buildCaregiverAlert)는 바꾸지 않는다.
 
 begin;
 
@@ -21,7 +22,7 @@ returns text
 language sql immutable
 set search_path = public
 as $$
-  select '[' || coalesce(
+  select '대화 중 확인이 필요한 말씀이 있어 대화를 잠시 멈췄어요. 확인해주세요.' || E'\n' || '멈춘 이유: ' || coalesce(
            nullif(array_to_string(array(
              select case c when 'self_harm' then '자해 관련' when 'medical_emergency' then '신체 응급 관련'
                            when 'abuse' then '학대 관련' end
@@ -32,8 +33,7 @@ as $$
              when 'classifier_ambiguous' then '해석이 어려운 말씀'
              when 'classifier_out_of_scope' then '어르신 목소리가 아닐 수 있는 소리'
              when 'classifier_unavailable' then '자동 확인을 마치지 못함'
-             else '확인 필요' end)
-         || '] AI 대화 중 확인이 필요한 말씀이 있어 대화를 잠시 멈췄어요. 어르신 곁에서 상태를 확인해 주세요. (진단이 아닙니다)';
+             else '확인 필요' end);
 $$;
 revoke all on function app.classifier_caregiver_alert(text, text[]) from public, anon, authenticated;
 

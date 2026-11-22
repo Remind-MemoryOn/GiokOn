@@ -5,7 +5,7 @@
 -- 지키는 것(설계안 §7):
 --   ① service_role 만 실행 — authenticated·anon 불가
 --   ② 연결 증명 — 점유 없음·만료·holder 다름·직원 다름이면 SYSTEM_PAUSE_FORBIDDEN, 아무것도 남지 않음
---   ③ 정상 → 사건 1건(detected_by=classifier · user_id=진행자 · 범주 → crisis · 문구 "[범주] …" · 전화번호 없음)
+--   ③ 정상 → 사건 1건(detected_by=classifier · user_id=진행자 · 범주 → crisis · 문구 = 공통 문구 + 멈춘 이유 · 전화번호·진단 문구 없음)
 --          + 정지(pause_origin=system · paused_by 없음) + 개입 1건(actor 없음) + 진행자에게 알림 행(다른 기관 0건)
 --   ④ 같은 사건 id 재호출 → 늘지 않음 · 직원 재개 뒤 늦은 재시도가 다시 멈추지 않음 · 다른 세션의 사건 id 를 쓰면 충돌
 --   ⑤ 이미 직원이 멈춘 세션 → 사건은 남고 출처는 staff 유지
@@ -133,7 +133,9 @@ begin
      and ev.policy_version = 'p-test' and ev.classifier_model_version = 'm-test', '분류기 사건 · 판정 묶음 버전';
   assert ev.user_id = 'a0000000-0000-0000-0000-000000000002', '사건의 user_id 는 세션 진행자';
   assert ev.level = 'crisis' and ev.categories = '{medical_emergency}', '위기 범주가 있으면 crisis(규칙과 같은 대응)';
-  assert ev.caregiver_alert like '[신체 응급 관련] %', '문구는 [범주] 로 시작';
+  assert ev.caregiver_alert = '대화 중 확인이 필요한 말씀이 있어 대화를 잠시 멈췄어요. 확인해주세요.' || E'\n' || '멈춘 이유: 신체 응급 관련',
+    '문구 = 공통 문구 + 멈춘 이유(사용자 확정 R7)';
+  assert position('진단' in ev.caregiver_alert) = 0, '진단 아님 문구 없음(사용자 확정 R7)';
   assert ev.caregiver_alert !~ '[0-9]{3}', '전화번호 등 대응 자원 없음(사용자 확정)';
   assert position('숨이' in ev.caregiver_alert) = 0, '발화는 문구에 넣지 않는다(발췌 칸 한 곳에만)';
   assert ev.excerpt = '숨이 턱턱 막혀서 말을 못 하겠어', '발화는 발췌 칸에';
@@ -194,7 +196,7 @@ select pg_temp.expect_err('', pg_temp.pause_sql((select sid2 from rp), (select h
 do $$
 begin
   assert (select pause_origin = 'staff' and paused_by = 'a0000000-0000-0000-0000-000000000001' from public.sessions where id = (select sid2 from rp)), '출처 staff 유지';
-  assert (select level = 'watch' and caregiver_alert like '[해석이 어려운 말씀] %' from public.safety_events where id = (select e2 from rp)), '범주 없으면 watch · 이유 이름';
+  assert (select level = 'watch' and caregiver_alert like '%' || E'\n' || '멈춘 이유: 해석이 어려운 말씀' from public.safety_events where id = (select e2 from rp)), '범주 없으면 watch · 이유 이름';
   assert not exists (select 1 from public.session_interventions where session_id = (select sid2 from rp) and action = 'system_review_pause'), '실제 정지가 아니면 개입 없음';
 end $$;
 
@@ -275,7 +277,7 @@ select pg_temp.expect_err('', pg_temp.pause_sql((select sid from rp), (select h1
 do $$
 begin
   assert exists (select 1 from public.safety_events where id = (select e3 from rp) and detection_reason = 'classifier_unavailable'
-                  and classifier_model_version = 'm-test' and caregiver_alert like '[자동 확인을 마치지 못함] %'), '끝난 세션 — 사건은 남는다';
+                  and classifier_model_version = 'm-test' and caregiver_alert like '%' || E'\n' || '멈춘 이유: 자동 확인을 마치지 못함'), '끝난 세션 — 사건은 남는다';
   assert (select paused_at is null from public.sessions where id = (select sid from rp)), '끝난 세션 — 정지 없음';
 end $$;
 
