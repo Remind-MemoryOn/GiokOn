@@ -209,6 +209,8 @@
 
 ## 현재 위치 (2026-10-15)
 
+**저장소 정리(2026-11-23 · REPO-CLEAN-20261123)**: 서비스·빌드·CI·게이트·런북 어디서도 쓰지 않는 파일만 **파일 단위로** 지웠다 — 루트 `app.json`·`eas.json`(폐기된 EAS ID) · 웹 `lib/ai.ts`(importer 0 shim)·`clsx`(웹 import 0)·Vite 템플릿 svg 2·미사용 랜딩 crop 2·`scripts/shot.mjs` · 앱 `적응형 아이콘.png`(`adaptive-icon.png` 중복) · Pretendard 중 안 쓰는 굵기·형식(웹 woff2 1개·앱 ttf 4개 + LICENSE 만 남김, 약 121MB) · `apps/web/supabase/` · `docs/testing/evidence/`·`review-coverage.csv`(원본은 `git show fcd711c:<경로>`) · 지원서·발표 대본 txt 2. `INSTRUCTIONS.md` 는 이 문서 "코딩 원칙" 절로 옮긴 뒤 `skills/` 와 함께 삭제. 모바일 의존성·`metro.config.js` 등 도구가 미사용으로 본 것은 실제 사용처가 있어 유지. 폴더 구조는 바꾸지 않았다(경로가 package.json·CI·게이트에 고정). 특허 문서(`docs/patents/`)는 유지.
+
 **위험 감지·음성 감정 기획(2026-11-13)**: 기획 `docs/plans/2026-11-13-risk-emotion-detection.md`. **전사 문맥 분류기만 파일럿 안으로 당김(사용자 확정 — 투입 게이트 통과·완성 시에만 운영 투입)**: 규칙은 그대로 두고 분류기를 더한다(OR · 분류기가 규칙 적중을 무효로 못 함) · 규칙 적중 = 즉시 종료 유지 · 분류기 단독 위기·고통 = 직원 확인 일시정지. 음성 감정·Qwen 은 파일럿 이후. 개발 상태는 `docs/tasks.md` CTX-CLS-20261113(중계 연결은 게이트 뒤 별도). 투입까지 남은 결정은 기획 §25.2(R1~R13). S6 DB·Edge 코드(시스템 원인 일시정지 `system_pause_for_review` · `relay-review-pause`)는 PR #77 — ⚠️ main 병합 = 마이그레이션 `20261115000000`·`20261115010000` 운영 자동 적용(기존 중계·앱과 호환), Edge 는 따로 배포. 확정: 일시정지 중 듣지 않음(연결 종료 → 새 연결 + 복구 맥락) · 시스템 원인 일시정지는 중계 전용 서버 자격 · 감정 모델은 재생을 막지 않는 비동기 검사. 응급 사전 보강(SAFE-BREATH-20261113)은 중계 배포·앱 빌드 대기.
 
 **일지 생성 장애 조사**: 진단 워커 배포·재실행 성공과 남은 출력 품질/작성 부담 과제는 `docs/testing/2026-10-26-journal-generation-investigation.md`·`docs/testing/2026-10-26-journal-output-review.md`와 `docs/tasks.md`를 따른다. 워커 HTTP 202/자동 테스트 통과를 실제 Gemini 초안 생성 성공으로 해석하지 않는다.
@@ -254,7 +256,7 @@ PR #55로 main 병합됐고 확정 기록 보호 마이그레이션·트리거·
 - 검증: T25.16 안전 체인 실기기 종단(중계 배포·EAS 재빌드 뒤 — 파일럿 개시 조건).
 
 **사용자 작업 대기**: 중계 배포(T21.4 포함 · 준비 항목 T26.2) · EAS 재빌드(푸시 토큰·알림 수신) ·
-~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — ✅ 2026-10-15 03:07 KST 운영 `live-token` v21 배포 확인(중계 공유 시크릿 검사·새 토큰 본문 포함 · verify_jwt=true). ⏳ 배포 뒤 호출 기록 없음 — 실기기 세션 연결·중계 헤더 없는 요청 403 확인은 APK 검증 때) · `naver-auth` 재배포(도메인 구매 후) · `apps/web/supabase/config.toml` 삭제 여부.
+~~유출 비밀번호 보호 켜기(T25.13)~~(⏸ 보류 2026-10-11 — Pro 플랜 기능이라 Free 에서는 불가 · 최소 길이 8 만 맞춤 · Pro 전환 시 재개) · ~~`GEMINI_LIVE_MODEL` 운영 시크릿 확인~~(✅ 2026-10-07 — 값 `gemini-3.8-live`(`models/` 없이) · 새 유료 Gemini 키로 교체 · 모델 2종·v1beta 단기 토큰 실 API 확인 · 토큰 본문을 REST 필드 `bidiGenerateContentSetup`+`fieldMask` 로 수정 후 TTS·토큰·Live 1턴 실호출 전부 통과 — ✅ 2026-10-15 03:07 KST 운영 `live-token` v21 배포 확인(중계 공유 시크릿 검사·새 토큰 본문 포함 · verify_jwt=true). ⏳ 배포 뒤 호출 기록 없음 — 실기기 세션 연결·중계 헤더 없는 요청 403 확인은 APK 검증 때) · `naver-auth` 재배포(도메인 구매 후) · ~~`apps/web/supabase/config.toml` 삭제 여부~~(✅ 2026-11-23 삭제).
 
 **파일럿 결정(2026-10-14)**: Android 직원 사전 검증부터. 기관 AI 초안 활성화 완료. 주황 대비는 이번 파일럿 현행 유지(미달 해결 아님, 정식 출시 전 재검토). 실행 상태는 `docs/plans/2026-10-14-pilot-readiness.md` 참조.
 

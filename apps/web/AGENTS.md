@@ -188,4 +188,4 @@ pnpm check:web           # typecheck → lint → copy → design → build → 
 - 잉크 대조(`figma-ink.py`)는 `pip install numpy Pillow` 가 필요하다.
 - 브라우저는 `/opt/pw-browsers/chromium`(`playwright install` 금지). ⚠️ `test:auth` 는 `executablePath` 를 주지 않아 원격 컨테이너에서는 실패한다(코드 결함 아님 — CI 에서는 돈다).
 - `smoke` 는 `dist` 가 있어야 한다 — 새 컨테이너에선 `pnpm web:smoke`(빌드 포함).
-- ⚠️ `apps/web/supabase/config.toml`(`project_id="web"`)은 빈 흔적이다. Supabase CLI 는 **루트에서** 쓴다. 삭제 여부는 사용자 결정 대기.
+- `apps/web/supabase/`(`project_id="web"` 빈 `supabase init` 흔적)는 2026-11-23 삭제했다(사용자 결정). Supabase CLI 는 **루트에서** 쓴다.
