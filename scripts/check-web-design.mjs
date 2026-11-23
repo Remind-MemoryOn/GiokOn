@@ -917,7 +917,8 @@ const SCREENS = [
   [`${WEB}/src/pages/caregiver/OrgPage.tsx`, '기관 관리: 이름 수정은 기관 관리자만 · 값이 없으면 만들지 않는다', [
     /const isAdmin = me\.data\?\.role === 'org_admin'/,
     /disabled=\{!isAdmin\}/, /기관 이름은 기관 관리자만 바꿀 수 있어요/,
-    /org\.data\?\.id \?\? '—'/,
+    // 기관 ID(내부 키)는 화면에 그리지 않는다 — 2026-11-05 사용자 요청(합류·접근에 쓰이지 않는 값).
+    { absent: /기관 ID:/ }, { absent: /data-fx="131:1095"/ },
   ]],
 
   // ── 설정 121:598 ─────────────────────────────────────────────────────
@@ -1107,6 +1108,15 @@ const SCREENS = [
     /Permissions-Policy/, /camera=\(\), microphone=\(\), geolocation=\(\)/,
     { absent: /unsafe-inline/ },   // React 는 CSSOM 으로 스타일을 쓴다 — 열어 둘 이유가 없다
     { absent: /unsafe-eval/ },
+  ]],
+  // 공식 주소 = www.memoryon.life(2026-11-05 사용자 확정 — 하루 쓴 memoryon.vercel.app 은 운영 배포에서 빠졌다). 가입·비밀번호 메일 링크는 가입한 주소(origin)로 돌아오고
+  // 로그인은 PKCE(코드 검증값이 그 주소의 브라우저 저장소에 있다)라, 다른 운영 별칭에서 가입하면 링크가 그 별칭으로 간다 —
+  // 팀 별칭은 Vercel 배포 보호로 'Vercel 로그인' 화면이 뜬다. 운영 별칭은 공식 주소로 보낸다(경로·쿼리 유지).
+  [`${WEB}/vercel.json`, '운영 별칭 → 공식 주소 www.memoryon.life 리다이렉트(메일 링크가 Vercel 로그인으로 가지 않게)', [
+    /"value": "memory-on-psi\.vercel\.app"/,
+    /"value": "memory-on-paulodybi001-7834s-projects\.vercel\.app"/,
+    /"destination": "https:\/\/www\.memoryon\.life\/:path\*"/,
+    { absent: /memoryon\.vercel\.app/ },   // 운영 배포에 붙어 있지 않은 주소로 보내면 404 다
   ]],
   [`${WEB}/scripts/route-smoke.mjs`, '스모크: 배포 헤더를 씌워 CSP 를 실제로 시험한다', [
     /vercel\.json/, /page\.route\('\*\*\/\*'/, /deployHeaders/,

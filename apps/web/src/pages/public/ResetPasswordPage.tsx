@@ -1,5 +1,6 @@
 // 비밀번호 재설정 (Figma 114:247) — 재설정 메일 링크로 들어온 복구 세션에서 변경.
 import { useState } from 'react';
+import { errorText } from '../../lib/errorText';
 import { useNavigate } from 'react-router-dom';
 import { updatePassword } from '@giokon/data';
 import { AuthFormScreen } from '../../components/shell/AuthFormScreen';
@@ -32,12 +33,7 @@ export function ResetPasswordPage() {
       toast('success', '비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요.');
       navigate('/login', { replace: true });
     } catch (err) {
-      toast(
-        'error',
-        err instanceof Error
-          ? err.message
-          : '변경에 실패했어요. 재설정 링크를 다시 요청해 주세요.',
-      );
+      toast('error', errorText(err, '변경에 실패했어요. 재설정 링크를 다시 요청해 주세요.'));
     } finally {
       setSubmitting(false);
     }

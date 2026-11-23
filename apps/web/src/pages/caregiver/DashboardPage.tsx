@@ -3,6 +3,7 @@
 //   안전 알림 배너 r10 border #ff0004 bg 3% (미확인 이벤트가 있을 때만)
 //   통계 4카드 243×107 r10 shadow-card @657 (x 323/593/863/1134)
 //   담당 어르신 카드 1054×701.6 @ 815.7 · 최근 대화 카드 1054×564.5 @ 1568.4
+import { errorText } from '../../lib/errorText';
 import { Link } from 'react-router-dom';
 import {
   toElderProfile,
@@ -125,7 +126,7 @@ export function DashboardPage() {
                       {
                         onSuccess: () => toast('success', '안전 알림을 확인 처리했어요.'),
                         onError: (err) =>
-                          toast('error', err instanceof Error ? err.message : '확인 처리 실패'),
+                          toast('error', errorText(err, '확인 처리에 실패했어요.')),
                       },
                     );
                   }}

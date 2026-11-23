@@ -44,6 +44,7 @@
 
 ## 작업 방침
 
+- **프로젝트 질문은 문서 확인 후(2026-11-19 사용자 지시)**: 프로젝트 상황을 묻기 전에 프로젝트 Markdown 문서 전체와 기존 사용자 답변을 먼저 확인한다. 문서 간 차이는 단일 소스·최신 결정·구현 상태를 대조해 정리하고, 그 뒤에도 남는 필수 항목만 질문한다. 사업자등록 서류는 사용자가 직접 작성하므로 복사해 쓸 본문을 대화에 제공하고 개인정보는 직접 입력할 칸으로 둔다.
 - **⚠️ 디자인의 임시값을 코드에 넣지 않는다(2026-08-12)**: Figma·스크린샷의 수치·예시 분석문·키워드·이름·날짜는 **자리표시자**다.
   실데이터에 바인딩하고, 근거가 없으면 값을 만들지 말고 `null`/빈 배열 → 빈 상태(`—`, "아직 관찰된 기록이 없어요")로 둔다.
   `0`(관찰 0회)과 `null`(측정 불가)을 구분한다. 레이아웃·치수·색·타이포·에셋은 Figma 그대로, 값은 데이터.
@@ -57,6 +58,11 @@
 - **운영 DB 쓰기·배포는 사용자 승인 후**(읽기 조회는 가능). 기관 AI 초안 스위치(`org_settings.ai_drafts_enabled`)는 **사용자 지시 없이 켜지 않는다**.
 - **커밋**: 원격 세션이 지정한 작업 브랜치를 따른다(없으면 `main` 직접 — 사용자 승인). **테스크별 커밋**(개발·검증·기록 뒤 커밋하고 다음으로).
   기능·디자인 수정과 리팩토링은 같은 PR 에 섞지 않는다. PR 을 올린 뒤 **CI 확인은 최대 3회**, 통과를 확인하면 더 확인하지 않는다(2026-09-27).
+  **커밋 작성자 = 사용자 GitHub 계정(2026-11-07 사용자 지시)**: 봇 계정(`Claude <noreply@anthropic.com>`)으로 커밋하지 않는다.
+  세션을 시작하면 첫 커밋 전에 GitHub 사용자 정보(`get_me`)를 읽어 저장소 로컬 설정으로 지정한다 —
+  `git config user.name "<name>"` · `git config user.email "<id>+<login>@users.noreply.github.com"`(공개 이메일이 없으므로 noreply) ·
+  `git config commit.gpgsign false`(세션 서명 키는 사용자 계정 키가 아니라 Unverified 로 보이므로 서명하지 않는다).
+  현재 값: `Seonghun` · `184589650+SH-L1@users.noreply.github.com`. 커밋 메시지 끝의 `Co-Authored-By`·`Claude-Session` 줄은 유지한다.
 - **완료 표시 필수(2026-09-24)**: 테스크를 끝내면 커밋 전에 팀원이 보는 계획 문서에 ✅(날짜)·⏳(선행 조건)을 표시한다 —
   `docs/tasks.md` · `docs/plans/pilot-development-plan.md`(상태 열) · 해당되면 `launch-checklist.md` · 앱 `README.md` · `docs/new-hire/02·03` · `docs/requirements.md` · `PLAN.md`.
   계획과 다르게 구현했으면 그 차이도 같은 자리에 적는다. 이 파일에는 **현재 위치**만 갱신한다.
@@ -100,7 +106,7 @@
   (**잠금화면 고정 문구 + 알림 id 만** — 성함·발화·위기 종류 금지).
 - **파일럿 운영 규칙(2026-09-24·28 사용자 확정)**: 세션 1회 최대 **10분**(일시정지 포함) · 요양보호사 1명당 동시 **4대** ·
   어르신 1명당 실행 중 세션 **1개**(T25.19) · 휴식 요청·거부는 마무리 전환, 위기·급성 고통은 즉시 종료 · 태블릿 지원(`supportsTablet: true`). **태블릿 가로·휴대폰 세로**(2026-10-26 사용자 요청, Android sw600dp 기준·iPad 전용 방향; 새 네이티브 빌드 필요).
-- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 `memory-on-psi.vercel.app`(공개 — 시크릿 창 확인) · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
+- 배포: 웹 = Vercel(프로젝트 `memory-on`, Root `apps/web` · GitHub 연결 — **main 머지 = production 자동 배포** · 운영 주소 **`www.memoryon.life`**(2026-11-05 사용자 확정 · 사용자 연결 커스텀 도메인 — `memoryon.life` 은 Vercel 이 www 로 308. 이전 `memory-on-psi.vercel.app`·`memoryon.vercel.app` 은 운영 배포에서 빠졌다 · 팀 별칭은 `vercel.json` 이 공식 주소로 리다이렉트. 팀 별칭 `memory-on-paulodybi001-7834s-projects.vercel.app` 은 Vercel 배포 보호로 비로그인 사용자에게 'Vercel 로그인' 화면이 뜬다 — 사용자 안내·링크에 쓰지 말 것) · 2026-10-14 첫 정상 배포. ⚠️ 로컬 `vercel --prod` 는 그때 체크아웃된 브랜치를 운영에 올린다 — 쓰지 말 것) · 앱 = EAS(번들 ID `kr.giokon.app` — 출시 후 변경 불가) · 중계 = Docker → **Google Cloud Run 서울**(2026-10-01 확정 · 사용자 배포 · 설정은 `docs/runbooks/voice-relay-operations.md` "호스팅").
 - **Gemini 키는 하나를 두 곳에 같은 값으로(2026-10-04 사용자 결정 — 10-01 의 키 분리를 바꿈)**: Supabase Edge 시크릿(`live-token`·`session-report`·`program-journal-draft` — **지우지 않는다**) + Cloud Run Secret Manager(중계 TTS). 교체는 두 곳 동시 — 절차는 `docs/runbooks/voice-relay-operations.md` "Gemini 키 교체". TTS 는 중계가 부른다(Edge 로 옮기지 않음).
 
 ## Supabase 운영
@@ -166,9 +172,17 @@
 
 ## 현재 위치 (2026-10-15)
 
+**위험 감지·음성 감정 기획(2026-11-13)**: 기획 `docs/plans/2026-11-13-risk-emotion-detection.md`. **전사 문맥 분류기만 파일럿 안으로 당김(사용자 확정 — 투입 게이트 통과·완성 시에만 운영 투입)**: 규칙은 그대로 두고 분류기를 더한다(OR · 분류기가 규칙 적중을 무효로 못 함) · 규칙 적중 = 즉시 종료 유지 · 분류기 단독 위기·고통 = 직원 확인 일시정지. 음성 감정·Qwen 은 파일럿 이후. 개발 상태는 `docs/tasks.md` CTX-CLS-20261113(중계 연결은 게이트 뒤 별도). 투입까지 남은 결정은 기획 §25.2(R1~R13). S6 DB·Edge 코드(시스템 원인 일시정지 `system_pause_for_review` · `relay-review-pause`)는 PR #77 — ⚠️ main 병합 = 마이그레이션 `20261115000000`·`20261115010000` 운영 자동 적용(기존 중계·앱과 호환), Edge 는 따로 배포. 확정: 일시정지 중 듣지 않음(연결 종료 → 새 연결 + 복구 맥락) · 시스템 원인 일시정지는 중계 전용 서버 자격 · 감정 모델은 재생을 막지 않는 비동기 검사. 응급 사전 보강(SAFE-BREATH-20261113)은 중계 배포·앱 빌드 대기.
+
 **일지 생성 장애 조사**: 진단 워커 배포·재실행 성공과 남은 출력 품질/작성 부담 과제는 `docs/testing/2026-10-26-journal-generation-investigation.md`·`docs/testing/2026-10-26-journal-output-review.md`와 `docs/tasks.md`를 따른다. 워커 HTTP 202/자동 테스트 통과를 실제 Gemini 초안 생성 성공으로 해석하지 않는다.
 
 **태블릿·키보드 현재 위치(2026-10-26)**: 기기별 방향과 입력/모달의 키보드 회피·짧은 가로 화면 처리를 수정했다. 상태·검증·새 빌드/실기기 선행 조건은 `docs/plans/2026-10-26-tablet-keyboard-implementation.md`·`docs/tasks.md`를 따른다. API37 상향 시 Android 방향 제한 정책을 재검토한다.
+
+**퇴사·이직 — 구성원 내보내기(2026-11-05)**: 기관에서 나가는 경로가 없어 퇴사자가 그 기관 기록을 계속 볼 수 있었다 → 관리자·센터장이 기관 관리에서 '내보내기'(`remove_org_member`, 마이그레이션 `20261105000000`): 소속 비움 · 그 기관 담당 배정·알림 정리 · 감사 기록. 내보내진 사람은 합류 대기 화면에서 새 기관 초대 코드로 합류한다. 본인 나가기·이직 요청은 없다(사용자 결정). 상태는 `docs/tasks.md` ORG-LEAVE-20261105.
+
+**인증 메일 링크·오류 문구(2026-11-04)**: 가입·비밀번호 메일 링크가 'Vercel 로그인' 화면으로 가던 원인 = 사용자가 팀 별칭(배포 보호)에서 가입 → 링크가 가입한 주소(origin)로 돌아온다(PKCE 라 다른 주소로 돌리면 코드 교환이 깨진다). 운영 별칭을 공식 주소 `www.memoryon.life` 로 리다이렉트한다. ✅ 2026-11-05 사용자: Supabase Auth Site URL·Redirect URLs = `www.memoryon.life` · Resend(커스텀 SMTP) 연동(운영 Auth 설정 재적재 로그 확인). ⏳ 네이버 함수 비밀값 `WEB_ORIGINS` 에 `https://www.memoryon.life` · 새 가입 메일 실수신 확인. 영문 오류 원문은 `errorText` 로 한국어 안내만 보인다(웹 전체). 상태는 `docs/tasks.md` AUTH-LINK-20261104·ERR-KO-20261104.
+
+**웹 플로팅 대화창·메시지 양방향(2026-11-04)**: 보호자·요양보호사 웹 셸에 규칙 기반 대화창(모델 호출 없음)을 붙였다. 요양보호사 업무(세션 설계·공개)는 **확인 카드에서 사람이 확인할 때만** 기존 서버 경로로 실행한다. 메시지는 단방향·동결에서 **양방향**(담당 요양보호사 → 승인 연결 보호자 답장)으로 바뀌었다(마이그레이션 `20261104000000`). 요양보호사 창은 한 문장 자유 입력("OOO 어르신 세션 설계하는데, 주제는 가족으로")도 규칙으로 이해한다(core `assistant-command.ts`, LLM 보조는 나중 — 같은 결과 모양으로). 상태는 `docs/plans/2026-11-04-floating-assistant.md`.
 
 **시간 기준 대화·감독 화면 종료(2026-10-28)**: 턴 수 종료(앱 10회·중계 60턴)를 없애고 서버 시간으로만 마친다. 앱이 꺼진 세션은 감독 화면 ‘지금 종료 처리’(`finish_supervised_session`)로 끝낸다. ⚠️ 첫 마이그레이션 `20261028125824` 의 트리거가 운영의 **세션 UPDATE 를 전부 막아 대화 시작이 실패**했다 → `20261028150000` 이 고친다. 교훈: **DB 회귀(`run-rls-regression.sh`)가 실패한 상태로 main 에 올리지 말 것** — main 병합 = 운영 자동 적용이다. PL/pgSQL 트리거에서 테이블마다 다른 칸은 `and` 로 묶지 말고 분기 안에서만 읽는다. 상태는 `docs/plans/2026-10-28-session-time-supervised-finish.md`.
 

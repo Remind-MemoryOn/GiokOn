@@ -7,6 +7,7 @@
 // (계획 Phase 2: "스토어의 세션 슬라이스를 제거한다")
 import { create } from 'zustand';
 import { uid } from '../lib/utils';
+import { errorText, isUntranslated } from '../lib/errorText';
 
 interface ToastItem {
   id: string;
@@ -28,6 +29,8 @@ export const useStore = create<State>()((set, get) => {
     const captured = generation;
     return (kind, message) => {
       if (captured !== generation) return;
+      // 안전망 — 화면이 서버의 영문 원문을 그대로 넘겨도 사용자에게는 한국어 안내만 보인다.
+      if (kind === 'error' && isUntranslated(message)) message = errorText(message);
       const id = uid('t_');
       set((s) => ({ toasts: [...s.toasts, { id, kind, message }] }));
       setTimeout(() => get().dismissToast(id), 3200);

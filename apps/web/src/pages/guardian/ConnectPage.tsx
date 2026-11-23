@@ -10,6 +10,7 @@
 // ⚠️ 화살표는 좌우 반전 노드라 metadata(698.22,1037.81)가 렌더 위치가 아니다 — 잉크 실측(684,1016).
 // ⚠️ 연결은 **어르신 코드**로 요청하고 요양보호사가 승인한다(`link_guardian_by_elder_code`).
 //    승인 전에는 아무 기록도 보이지 않는다 — RLS 가 최종 방어선이다.
+import { errorText } from '../../lib/errorText';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -87,7 +88,7 @@ function ConnectForm() {
           setCode('');
           toast('success', '연결을 요청했어요. 요양보호사가 승인하면 소식이 보여요.');
         },
-        onError: (e) => toast('error', e.message),
+        onError: (e) => toast('error', errorText(e)),
       },
     );
   }
@@ -306,7 +307,7 @@ function ConnectedView({ link }: { link: ProfileGuardianRow }) {
       { id: link.id },
       {
         onSuccess: () => toast('success', '연결을 해제했어요.'),
-        onError: (e) => toast('error', e.message),
+        onError: (e) => toast('error', errorText(e)),
       },
     );
   }

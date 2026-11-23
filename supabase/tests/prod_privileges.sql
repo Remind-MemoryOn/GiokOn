@@ -9,6 +9,7 @@
 --   ② 일지: 요양보호사 저장(진행자 포함) · 관리자 확정 · 확정 후 사유와 함께 수정(이력) — 운영 권한에서 성공
 --   ③ 공개 철회·보호자 연결 승인(T25.4): 권한 표 밖 역할은 코드 오류로 거부 · 권한 표 안 역할은 성공 — 운영 권한에서
 --   ④ 동의 증거 저장(T24.4): 현행 버전은 성공 · 옛 버전은 CURRENT_CONSENT_REQUIRED — 운영 권한에서
+--   ⑤ 시스템 원인 일시정지(CTX-CLS-S6): 기록 → tick 출처 → 직원 재개 — 운영 권한에서
 
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
@@ -124,6 +125,38 @@ begin
   exception when others then blocked := sqlerrm;
   end;
   assert blocked = 'CURRENT_CONSENT_REQUIRED', '옛 버전 동의는 CURRENT_CONSENT_REQUIRED 로 거절돼야 함: ' || coalesce(blocked, '허용됨');
+  reset role;
+end $$;
+
+-- ⑤ 시스템 원인 일시정지(CTX-CLS-S6) — 시스템 기록(service_role) → 진행자 tick 에 출처 → 관리자 재개(출처 비움). 운영 권한에서.
+do $$
+declare sid uuid; holder uuid := '44444444-0000-4000-8000-000000000001';
+begin
+  set local role authenticated;
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000001', true);
+  insert into public.profiles (user_id, name, birth_year) values (auth.uid(), '운영권한분류기어르신', 1937);
+  insert into public.consents (profile_id, org_id, user_id, consent_type, granted, version, capacity)
+    select p.id, p.org_id, auth.uid(), t::public.consent_type, true, public.current_consent_version(), 'capable'
+      from public.profiles p
+      cross join unnest(array['elder_privacy_required','sensitive_health_voice','cross_border_transfer','ai_processing']) t
+     where p.name = '운영권한분류기어르신';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  insert into public.sessions (profile_id, user_id, status)
+    select id, auth.uid(), 'active' from public.profiles where name = '운영권한분류기어르신' returning id into sid;
+  assert public.acquire_voice_lease(sid, holder), '운영 권한에서 점유';
+  reset role;
+  set local role service_role;
+  perform set_config('test.uid', '', true);
+  perform public.system_pause_for_review(sid, holder, 'a0000000-0000-0000-0000-000000000002', gen_random_uuid(),
+    'classifier_ambiguous', '{}', null, null, 'p-prod');
+  reset role;
+  set local role authenticated;
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000002', true);
+  assert (public.session_tick(sid))->>'pause_origin' = 'system', '운영 권한에서 tick 이 시스템 출처를 본다';
+  perform set_config('test.uid', 'a0000000-0000-0000-0000-000000000001', true);
+  perform public.request_session_control(sid, 'resume', null);
+  assert (public.session_tick(sid))->>'pause_origin' is null and not ((public.session_tick(sid))->>'paused')::boolean,
+    '운영 권한에서 재개 — 출처 비움';
   reset role;
 end $$;
 

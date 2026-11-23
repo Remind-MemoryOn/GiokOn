@@ -1,5 +1,6 @@
 // 아이디(이메일) 찾기 (Figma 111:148)
 // 서버 RPC find_login_email 이 이름+전화 정확히 1건 일치일 때만 마스킹 이메일을 준다.
+import { errorText } from '../../lib/errorText';
 import { useState } from 'react';
 import { findLoginEmail } from '@giokon/data';
 import { AuthFormScreen } from '../../components/shell/AuthFormScreen';
@@ -28,7 +29,7 @@ export function FindIdPage() {
       const masked = await findLoginEmail(name, phone);
       setResult(masked ? { found: true, masked } : { found: false });
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '조회에 실패했어요.');
+      toast('error', errorText(err, '조회에 실패했어요.'));
     } finally {
       setSubmitting(false);
     }

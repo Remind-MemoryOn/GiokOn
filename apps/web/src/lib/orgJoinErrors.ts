@@ -24,6 +24,13 @@ const MESSAGES: Record<string, string> = {
   // 권한 위임 표(T25.4 — DB 가 강제)
   GUARDIAN_LINK_APPROVE_FORBIDDEN: '보호자 연결 승인 권한이 없어요. 기관 권한 위임 표에서 연결 승인 권한을 받은 분이 승인할 수 있어요.',
   MEMBER_ROLE_LAST_ADMIN: '기관 관리자가 한 명뿐이라 역할을 바꿀 수 없어요. 다른 관리자를 먼저 지정해 주세요.',
+  // 구성원 내보내기(remove_org_member · 2026-11-05)
+  MEMBER_REMOVE_FORBIDDEN: '같은 기관의 기관 관리자와 센터장만 구성원을 내보낼 수 있어요.',
+  MEMBER_REMOVE_INVALID: '내보낼 구성원을 다시 골라 주세요.',
+  MEMBER_REMOVE_SELF: '본인은 내보낼 수 없어요. 다른 관리자에게 요청해 주세요.',
+  MEMBER_REMOVE_GUARDIAN: '보호자는 여기서 내보낼 수 없어요. 보호자 연결은 어르신 화면에서 관리해 주세요.',
+  MEMBER_REMOVE_ADMIN: '기관 관리자는 다른 기관 관리자만 내보낼 수 있어요.',
+  MEMBER_REMOVE_LAST_ADMIN: '기관 관리자가 한 명뿐이라 내보낼 수 없어요. 다른 관리자를 먼저 지정해 주세요.',
 };
 
 /** 오류 → 화면 문구. 알려진 코드가 아니면 원래 문구를 그대로 둔다. */

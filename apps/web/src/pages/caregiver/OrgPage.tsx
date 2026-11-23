@@ -1,9 +1,11 @@
+import { errorText } from '../../lib/errorText';
 import { Select } from '../../components/ui/Select';
 // 기관 관리 (Figma 131:959 — 1440×1238)
 //   제목 @169 · 부제 w547 @236.19
 //   카드1 1054×360 @(322,315) — 기관 정보
 //     기관 정보 @(66,27) · 라벨 @(67,119.35) · 입력 576×57 @(66,154.38) ·
-//     저장 102×57 @(651,154.38) · 도움말 @(68,219.43) · 기관 ID @(66,281.48)
+//     저장 102×57 @(651,154.38) · 도움말 @(68,219.43)
+//     (시안의 '기관 ID' 줄 @(66,281.48)은 2026-11-05 사용자 요청으로 그리지 않는다 — 합류·접근에 쓰이지 않는 내부 키)
 //   카드2 1054×410 @(322,742) — 구성원
 //     구성원 @(66,27) · 설명 @(66,93.68) · 구분선 922 @(66,154) ·
 //     행: 아바타 79 @(217,+22) · 역할 배지 119×33 @(66,+48) ·
@@ -52,6 +54,7 @@ import {
   isOrgManagerRole,
   ORG_ROLE_LABEL,
   CARE_TEAM_ROLES,
+  useRemoveOrgMember,
   useSetMemberRole,
   type InvitableRole,
   type OrgInviteRow,
@@ -240,6 +243,9 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
   const setRole = useSetMemberRole();
   /** 역할 변경 확인 대상 — 관리 역할이 되면 초대·승인·권한표·설정을 다룬다. */
   const [roleChange, setRoleChange] = useState<{ member: UserRow; role: (typeof CARE_TEAM_ROLES)[number] } | null>(null);
+  const removeMember = useRemoveOrgMember();
+  /** 내보내기 확인 대상 — 퇴사·이직(2026-11-05). 서버가 소속을 비우고 담당 배정·알림을 정리한다. */
+  const [removing, setRemoving] = useState<UserRow | null>(null);
 
   const [name, setName] = useState(orgRow?.name ?? '');
   /** 거절 확인 대상 — 되돌리려면 상대가 다시 요청해야 한다. */
@@ -288,7 +294,7 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
       { id: org.data.id, name: name.trim() },
       {
         onSuccess: () => toast('success', '기관 이름을 저장했어요.'),
-        onError: (e) => toast('error', e.message),
+        onError: (e) => toast('error', errorText(e)),
       },
     );
   }
@@ -344,13 +350,6 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
             className="absolute left-[68px] top-[219.43px] whitespace-nowrap text-[16px] leading-[28px] text-ink-400"
           >
             {isAdmin ? '요양원·복지관 등 기관 이름' : '기관 이름은 기관 관리자만 바꿀 수 있어요.'}
-          </p>
-          <p
-            data-fx="131:1095"
-            className="absolute left-[66px] top-[281.48px] whitespace-nowrap text-[18px] leading-[28px] text-ink-400"
-          >
-            {/* 기관이 없으면 만들지 않는다 */}
-            기관 ID: {org.data?.id ?? '—'}
           </p>
         </div>
 
@@ -448,6 +447,20 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
                         ))}
                       </Select>
                     </div>
+                  ) : null}
+                  {/* 내보내기(퇴사·이직, 2026-11-05 — Figma 에 없다) — 역할 변경과 같은 조건 + 기관 관리자는 기관 관리자만 내보낸다.
+                      역할 변경 드롭다운(… top+83) 아래 · 구분선(top+124) 위에 오른쪽 끝을 맞춘 글자 버튼(행 높이·시안 좌표 그대로). */}
+                  {isManager && m.id !== me.data?.id && m.role !== 'guardian' && (m.role !== 'org_admin' || me.data?.role === 'org_admin') ? (
+                    <button
+                      type="button"
+                      aria-label={`${m.name ?? '구성원'} 기관에서 내보내기`}
+                      disabled={removeMember.isPending || !isConfigured}
+                      onClick={() => setRemoving(m)}
+                      className="absolute h-[26px] whitespace-nowrap text-right text-[16px] font-semibold leading-[26px] text-alert underline disabled:opacity-50"
+                      style={{ left: 988 - 170, width: 170, top: top + 90 }}
+                    >
+                      내보내기
+                    </button>
                   ) : null}
                   {i < rows.length - 1 ? (
                     <div
@@ -728,6 +741,27 @@ function OrgForm({ org: orgRow }: { org: OrganizationRow | null }) {
           );
         }}
         onClose={() => setRoleChange(null)}
+      />
+      <ConfirmDialog
+        open={Boolean(removing)}
+        title={`${removing?.name ?? '이 구성원'} 님을 기관에서 내보낼까요?`}
+        description={
+          '내보내면 바로 이 기관의 어르신 기록을 볼 수 없게 되고, 맡던 담당 어르신 배정과 이 기관에서 받은 알림이 정리돼요. ' +
+          '남긴 세션·일지 기록은 기관에 그대로 남아요. 다시 합류하거나 다른 기관으로 옮기려면 그 기관의 초대 코드로 합류를 요청해야 해요.'
+        }
+        confirmLabel="내보내기"
+        onConfirm={() => {
+          if (!removing) return;
+          const who = removing.name ?? '구성원';
+          removeMember.mutate(
+            { userId: removing.id },
+            {
+              onSuccess: () => toast('success', `${who} 님을 기관에서 내보냈어요.`),
+              onError: (e) => toast('error', orgJoinErrorMessage(e, '내보내지 못했어요.')),
+            },
+          );
+        }}
+        onClose={() => setRemoving(null)}
       />
       <ConfirmDialog
         open={Boolean(approvingStaff)}

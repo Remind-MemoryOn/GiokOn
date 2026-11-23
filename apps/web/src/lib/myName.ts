@@ -1,4 +1,5 @@
 // 설정 화면의 "내 이름" 칸 — 요양보호사·보호자 설정이 같은 규칙으로 저장한다.
+import { errorText } from './errorText';
 import { useState } from 'react';
 import { useUpdateMyName, type UserRow } from '@giokon/data';
 import { useStore } from '../store/store';
@@ -16,7 +17,7 @@ export function useMyNameForm(me: UserRow | null) {
       { id: me.id, name: name.trim() },
       {
         onSuccess: () => toast('success', '이름을 저장했어요.'),
-        onError: (e) => toast('error', e.message),
+        onError: (e) => toast('error', errorText(e)),
       },
     );
   }

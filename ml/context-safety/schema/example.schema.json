@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "giokon/ctx-safety-example-v1",
+  "title": "전사 문맥 분류기 예시 한 줄(JSONL)",
+  "description": "값 목록·일관성 규칙의 SoT 는 tools/validate.py 와 LABELING.md. 이 파일은 형식 설명용이다.",
+  "type": "object",
+  "required": ["id", "schemaVersion", "labelGuideVersion", "split", "variantGroup", "persona", "context", "target", "transcriptVariant", "scenarioTags", "labelsByAuthor", "reviews", "final", "status", "provenance"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^ctx-(train|dev|eval)-[0-9]{4,}$" },
+    "schemaVersion": { "const": "ctx-safety-example-v1" },
+    "labelGuideVersion": { "type": "string" },
+    "split": { "enum": ["train", "dev", "eval"] },
+    "variantGroup": { "type": "string", "description": "같은 문장의 변형 묶음. 한 묶음은 한 분할에만" },
+    "persona": { "type": "string", "description": "가상 화자 id. 실제 인물 정보 금지" },
+    "context": {
+      "type": "array", "maxItems": 3,
+      "items": { "$ref": "#/$defs/turn" }
+    },
+    "target": {
+      "type": "object", "required": ["speaker", "text"], "additionalProperties": false,
+      "properties": { "speaker": { "const": "elder" }, "text": { "type": "string", "minLength": 1 } }
+    },
+    "transcriptVariant": { "enum": ["clean", "no_spacing", "stt_error_sim", "partial", "dialect_sim"] },
+    "scenarioTags": { "type": "array", "items": { "type": "string" } },
+    "labelsByAuthor": { "$ref": "#/$defs/labels" },
+    "reviews": {
+      "type": "array", "maxItems": 2,
+      "items": {
+        "type": "object", "required": ["reviewer", "reviewedAt", "labels"], "additionalProperties": false,
+        "properties": { "reviewer": { "type": "string" }, "reviewedAt": { "type": "string", "format": "date" }, "labels": { "$ref": "#/$defs/labels" } }
+      }
+    },
+    "final": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/labels" }] },
+    "status": { "enum": ["draft_unreviewed", "in_review", "disputed", "accepted", "excluded"] },
+    "provenance": {
+      "type": "object", "required": ["source", "author", "authoredAt"], "additionalProperties": false,
+      "properties": {
+        "source": { "enum": ["synthetic_claude_draft", "synthetic_human"] },
+        "author": { "type": "string" },
+        "authoredAt": { "type": "string", "format": "date" }
+      }
+    },
+    "notes": { "type": "string" }
+  },
+  "$defs": {
+    "turn": {
+      "type": "object", "required": ["speaker", "text"], "additionalProperties": false,
+      "properties": { "speaker": { "enum": ["ai", "elder"] }, "text": { "type": "string", "minLength": 1 } }
+    },
+    "labels": {
+      "type": "object", "required": ["content", "crisisCategory", "subject", "tense", "mode", "intent", "interpretability"], "additionalProperties": false,
+      "properties": {
+        "content": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["crisis_appeal", "acute_distress", "sadness_grief", "physical_discomfort", "refusal", "rest_request", "reminiscence", "daily", "confusion", "unknown"] } },
+        "crisisCategory": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["self_harm", "medical_emergency", "abuse", "none", "unknown"] } },
+        "subject": { "enum": ["self", "other", "unknown"] },
+        "tense": { "enum": ["present", "past", "future", "unknown"] },
+        "mode": { "enum": ["direct", "quote", "hypothetical", "negated", "idiom", "unknown"] },
+        "intent": { "enum": ["continue", "switch", "rest", "end", "unknown"] },
+        "interpretability": { "enum": ["sufficient", "insufficient", "conflict", "out_of_scope"] }
+      }
+    }
+  }
+}

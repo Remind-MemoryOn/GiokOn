@@ -114,6 +114,26 @@ export function useSetMemberRole(): UseMutationResult<void, Error, { userId: str
 }
 
 /**
+ * 구성원 내보내기(퇴사·이직, 2026-11-05) — 서버가 소속을 비우고 그 기관 담당 배정·알림을 정리한다.
+ * 내보내진 사람은 '합류 대기' 화면에서 새 기관 초대 코드로 다시 합류를 요청한다.
+ */
+export function useRemoveOrgMember(): UseMutationResult<void, Error, { userId: string }> {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId }) => {
+      const { error } = await getGiokonClient().rpc('remove_org_member', { p_target: userId })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      // 바뀌는 것: 구성원 목록 · 담당 배정(어르신별·기관 대기) · 어르신 목록의 담당 표시.
+      void qc.invalidateQueries({ queryKey: queryKeys.orgMembers })
+      void qc.invalidateQueries({ queryKey: ['profile_caregivers'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.profiles })
+    },
+  })
+}
+
+/**
  * 기본 피할 주제 입력(쉼표·줄바꿈 구분) → 배열. 공백 제거 · 빈 값 제외 · 중복 제거 · 최대 30개(DB 제약).
  */
 export function parseTopicList(text: string, max = 30): string[] {

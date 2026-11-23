@@ -17,6 +17,7 @@
 //    직원의 개입이 아니므로 기록에는 '어르신'으로 적는다. 중계는 인사 뒤 연결을 끊고 앱이 저장을 기다리므로 카드는
 //    저장 전까지 남는다 → 카드 상태를 '어르신 요청으로 마무리'로 바꾸고, 끊긴 연결에 대한 제어 버튼은 숨긴다.
 //    위기가 아니다 — 위험 색·토스트를 쓰지 않는다(위기 카드와 구분, 2026-10-06 사용자 확정).
+import { errorText } from '../../lib/errorText';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -387,7 +388,7 @@ export function SupervisionPage() {
     if (!me.data?.id) return;
     ack.mutate(
       { id: alertId, userId: me.data.id },
-      { onError: (e) => toast('error', e.message || '확인 처리하지 못했어요.') },
+      { onError: (e) => toast('error', errorText(e, '확인 처리하지 못했어요.')) },
     );
   }
 

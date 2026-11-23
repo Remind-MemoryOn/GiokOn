@@ -1,3 +1,4 @@
+import { errorText } from '../../lib/errorText';
 import { Select } from '../../components/ui/Select';
 // 연대기 추가 (Figma 196:271) · 연대기 상세 정보 (Figma 198:991) — 같은 다이얼로그의 두 상태
 //   카드 1054 @0 r10 shadow-card · 제목 Bold 25/70 @(87,26)
@@ -122,7 +123,7 @@ export function ChronicleDialog({ mode }: { mode: 'add' | 'edit' }) {
             toast('success', editing ? '연대기를 저장했어요.' : '연대기를 추가했어요.');
             navigate(`/caregiver/elders/${elderId}/chronicles`);
           },
-          onError: (err: Error) => toast('error', err.message),
+          onError: (err: Error) => toast('error', errorText(err)),
         };
         if (editing && row) return update.mutate({ id: row.id, patch }, done);
         const userId = currentUser.data?.id;

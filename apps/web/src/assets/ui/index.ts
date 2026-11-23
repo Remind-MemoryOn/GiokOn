@@ -101,6 +101,8 @@ import landingFeatAnalysis from './landing-feat-analysis-accent.png';
 import landingFeatShare from './landing-feat-share.png';
 import landingNotch from './landing-notch.png';
 import landingBars from './landing-bars.png';
+// 플로팅 대화창 버튼·AI 아바타(사용자 제공 'Group 561.png' 77×77 — 2026-11-04, Figma 크롭 표 밖).
+import chatbotFab from './chatbot-fab.png';
 
 export const asset = {
   wordmark,
@@ -183,6 +185,7 @@ export const asset = {
   landingFeatShare,
   landingNotch,
   landingBars,
+  chatbotFab,
 } as const;
 
 /** 사이드바 아이콘 — [비활성, 활성] 쌍. */

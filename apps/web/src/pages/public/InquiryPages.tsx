@@ -6,6 +6,7 @@
 //
 // 이 화면은 새 Figma 파일에 없다(2026-09-02 사용자 승인 신규 기능) — 공개 화면 셸(헤더·푸터)과
 // 기존 프리미티브(Button·Field·Input·Textarea·Dialog·toast)만 쓰고 임의 스타일을 만들지 않는다.
+import { errorText } from '../../lib/errorText';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -92,7 +93,7 @@ export function InquiryListPage() {
           <div className="px-8 py-16 text-center" role="alert">
             <p className="text-ink-700">문의사항을 불러오지 못했어요.</p>
             <p className="mt-2 text-w-label text-ink-500">
-              {list.error instanceof Error ? list.error.message : '잠시 후 다시 시도해 주세요.'}
+              {errorText(list.error, '잠시 후 다시 시도해 주세요.')}
             </p>
             <Button variant="outline" size="sm" className="mt-5" onClick={() => void list.refetch()}>
               다시 시도
@@ -265,7 +266,7 @@ export function InquiryDetailPage() {
                               setEditing(null);
                               toast('success', '답변을 수정했어요.');
                             },
-                            onError: (err) => toast('error', err.message),
+                            onError: (err) => toast('error', errorText(err)),
                           },
                         );
                       }}
@@ -327,7 +328,7 @@ export function InquiryDetailPage() {
                         setReply('');
                         toast('success', '답변을 등록했어요.');
                       },
-                      onError: (err) => toast('error', err.message),
+                      onError: (err) => toast('error', errorText(err)),
                     },
                   );
                 }}
@@ -362,7 +363,7 @@ export function InquiryDetailPage() {
               toast('success', '문의사항을 삭제했어요.');
               navigate('/inquiries');
             },
-            onError: (err) => toast('error', err.message),
+            onError: (err) => toast('error', errorText(err)),
           })
         }
       />
@@ -378,7 +379,7 @@ export function InquiryDetailPage() {
             { id: confirming.id, inquiryId: row.data.id },
             {
               onSuccess: () => toast('success', '답변을 삭제했어요.'),
-              onError: (err) => toast('error', err.message),
+              onError: (err) => toast('error', errorText(err)),
             },
           );
         }}
@@ -421,12 +422,12 @@ function InquiryForm({ edit }: { edit: boolean }) {
     if (edit && inquiryId) {
       update.mutate(
         { id: inquiryId, patch: { title: title.trim(), content: content.trim(), visibility } },
-        { onSuccess: (row) => done(row.id), onError: (err) => toast('error', err.message) },
+        { onSuccess: (row) => done(row.id), onError: (err) => toast('error', errorText(err)) },
       );
     } else {
       create.mutate(
         { author_id: userRow.id, title: title.trim(), content: content.trim(), visibility },
-        { onSuccess: (row) => done(row.id), onError: (err) => toast('error', err.message) },
+        { onSuccess: (row) => done(row.id), onError: (err) => toast('error', errorText(err)) },
       );
     }
   };

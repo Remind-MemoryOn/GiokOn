@@ -5,6 +5,7 @@
 //   카드 글줄 라인박스 30 · 라인 top 425.4/455.4/481.5(3번째만 4px 당겨져 있다)
 //   합류 승인 대기 배너 1054×56 r10 accent 10% — Figma 는 화면 하단(881)에 붙여 놨다
 //   (카드 끝 541 과 340px 떨어져 있다) → 본문 세로 flex 의 mt-auto 로 하단 고정
+import { errorText } from '../../lib/errorText';
 import { useMemo, useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import {
@@ -69,7 +70,7 @@ export function EldersPage() {
           setClaimOpen(false);
           toast('success', '담당 어르신으로 추가했어요. 기존 기록을 그대로 이어받아요.');
         },
-        onError: (err) => toast('error', err.message),
+        onError: (err) => toast('error', errorText(err)),
       },
     );
   }

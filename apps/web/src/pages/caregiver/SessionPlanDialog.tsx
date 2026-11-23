@@ -1,3 +1,4 @@
+import { errorText } from '../../lib/errorText';
 import { Select } from '../../components/ui/Select';
 // 회상 세션 설계 (Figma 196:272 — 카드 1054×919, 세션 목록 위에 뜨는 모달)
 //   제목 Bold 25/70 @(87,27) · 세션 제목* 879×57 @(87,139.15) + 0/50
@@ -163,7 +164,7 @@ export function SessionPlanDialog() {
             toast('success', row ? '세션 설계를 저장했어요.' : '세션을 설계했어요. 앱에서 진행할 수 있어요.');
             close();
           },
-          onError: (err: Error) => toast('error', err.message),
+          onError: (err: Error) => toast('error', errorText(err)),
         };
         if (row) return update.mutate({ id: row.id, patch }, done);
         const userId = currentUser.data?.id;

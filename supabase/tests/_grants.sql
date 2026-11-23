@@ -90,6 +90,13 @@ begin
     '구 요양일지 테이블은 삭제돼야 함(D5)';
   assert not (select prosecdef from pg_proc where oid = 'app.protect_session_supervision()'::regprocedure),
     '감독 컬럼 보호 트리거는 SECURITY INVOKER 여야 함(current_user 판별)';
+  -- CTX-CLS-S6: 분류기 관찰 기록은 service_role RPC 전용 · anon 불가 · 시스템 일시정지 RPC 는 service_role 만
+  assert not has_table_privilege('authenticated', 'public.classifier_observations', 'INSERT,UPDATE,DELETE')
+     and not has_table_privilege('anon', 'public.classifier_observations', 'SELECT'),
+    'classifier_observations 쓰기는 RPC 전용, anon 은 읽을 수 없어야 함';
+  assert not has_function_privilege('authenticated', 'public.system_pause_for_review(uuid,uuid,uuid,uuid,text,text[],text,text,text)', 'EXECUTE')
+     and not has_function_privilege('authenticated', 'public.record_classifier_observation(uuid,uuid,uuid,text,integer,text,text,text[],text,text)', 'EXECUTE'),
+    '시스템 일시정지·관찰 기록 RPC 는 authenticated 가 부를 수 없어야 함';
 end $$;
 
 grant usage on schema public, app to authenticated;

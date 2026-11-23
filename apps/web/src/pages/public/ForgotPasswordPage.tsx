@@ -1,4 +1,5 @@
 // 비밀번호 찾기 (Figma 111:170) — 가입 이메일로 재설정 링크 발송(Supabase Auth).
+import { errorText } from '../../lib/errorText';
 import { useState } from 'react';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { AuthFormScreen } from '../../components/shell/AuthFormScreen';
@@ -27,7 +28,7 @@ export function ForgotPasswordPage() {
       setSent(true);
       toast('success', '재설정 메일을 보냈어요. 메일의 링크로 새 비밀번호를 설정해 주세요.');
     } catch (err) {
-      toast('error', err instanceof Error ? err.message : '메일 발송에 실패했어요.');
+      toast('error', errorText(err, '메일 발송에 실패했어요.'));
     } finally {
       setSubmitting(false);
     }

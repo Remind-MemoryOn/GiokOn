@@ -1,3 +1,4 @@
+import { errorText } from '../../lib/errorText';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -153,7 +154,7 @@ export function ElderConsentsPage() {
           if (!target) return;
           revoke.mutate({ id: target.id }, {
             onSuccess: () => toast('success', '동의를 철회했어요.'),
-            onError: (error) => toast('error', error.message),
+            onError: (error) => toast('error', errorText(error)),
           });
         }}
       />
