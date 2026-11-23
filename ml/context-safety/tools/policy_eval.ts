@@ -107,7 +107,7 @@ function main(argv: string[]) {
   }
   if (argv.includes('--grid')) {
     const rows: ReturnType<typeof evaluate>[] = []
-    for (const t of [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6]) for (const q of [0.3, 0.4, 0.5]) rows.push(evaluate(preds, t, q))
+    for (const t of [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95]) for (const q of [0.3, 0.4, 0.5]) rows.push(evaluate(preds, t, q))
     console.log('| t | q | 재현율 충족 | 불필요 일시정지 | 최저 재현율 범주 |'); console.log('|---|---|---|---|---|')
     for (const r of rows) {
       const worst = (Object.entries(r.recall).filter(([, v]) => v !== null) as [string, number][]).sort((a, b) => a[1] - b[1])[0]

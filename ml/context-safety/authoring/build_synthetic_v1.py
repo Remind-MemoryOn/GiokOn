@@ -262,6 +262,41 @@ BLOCKS: list[tuple[str, dict, list[str], list]] = [
         ("죽 먹고 싶어요", D(c=["daily"], m="direct", x="sufficient", v="stt_error_sim", ctx="점심에 뭐 드시고 싶으세요?", one=True)),
         ("딸이 나를 때려 줬어", D(c=["crisis_appeal"], k=["abuse"], m="direct", x="conflict", t="recent", v="stt_error_sim", ctx="어제 병원에는 누가 데려다 줬어요?", one=True)),
     ]),
+
+    # ── 2026-11-23 보강: 위기 어휘가 다른 뜻으로 쓰인 비대상(1차 학습에서 '맞다·칼·굶다·외롭다'에 과하게 반응) ──
+    ("lexical_negative", L(["daily"]), ["hard_negative_lexical"], [
+        "네 말이 맞아", ("주사 한 대 맞고 왔어", D(t="recent")), ("비를 쫄딱 맞고 들어왔지", D(c=["reminiscence"], t="past")),
+        ("퀴즈에서 정답을 맞혔어", D(t="recent")), "옷이 몸에 딱 맞네", ("그 사람이랑 손발이 잘 맞았지", D(c=["reminiscence"], t="past")),
+        ("눈 맞으면서 걸었던 게 생각나", D(c=["reminiscence"], t="past")), "시간 맞춰서 약 먹어야지", ("약속했는데 바람을 맞았어", D(t="recent")),
+        ("어릴 때 북을 치면서 놀았지", D(c=["reminiscence"], t="past")), "손뼉 치면서 노래하자", "화투 한 판 칠래?",
+        ("야구할 때 공을 세게 때렸지", D(c=["reminiscence"], t="past")), ("어제 밤에 벼락이 쳤어", D(t="recent")),
+        ("못을 망치로 때려 박았지", D(c=["reminiscence"], t="past")), "칼국수 먹고 싶다", ("칼로 수박을 잘랐어", D(t="recent")),
+        ("머리를 짧게 잘랐어", D(t="recent")), ("우리 영감은 칼같이 시간을 지켰지", D(c=["reminiscence"], t="past")),
+        "밥은 잘 먹고 있어", ("입맛이 없어서 아침은 걸렀어", D(c=["daily", "physical_discomfort"], t="recent")),
+        ("점심을 굶었더니 배가 고프네", D(t="recent")), "밥 더 안 줘도 돼, 배불러", ("호박죽 쑤어 먹었어", D(t="recent")),
+        ("화분이 다 말라 죽었어", D(t="recent")), "휴대폰 배터리가 죽었네", ("아궁이 불이 금방 죽었지", D(c=["reminiscence"], t="past")),
+        ("숨은그림찾기 했어", D(t="recent")), ("고양이가 장롱 뒤에 숨어 있었어", D(t="recent")),
+        ("산에 오르니 숨이 조금 차네", D(c=["physical_discomfort"])), ("태풍에 나무가 넘어졌대", D(s="other", t="recent")),
+        ("바람에 화분이 쓰러졌어", D(t="recent")), "자기 전에 문 잠가야지", ("옛날엔 닭을 우리에 가둬 키웠지", D(c=["reminiscence"], t="past")),
+        "손주가 리모컨을 뺏어 갔어, 장난으로", ("바둑에서 집을 다 뺏겼어", D(t="recent")), "약국 좀 다녀와야겠네",
+        ("밭에 벌레 약 쳤어", D(t="recent")), ("손주들이 장난감 갖고 싸워", D(s="other")),
+        ("옛날엔 형제끼리 많이 싸웠지", D(c=["reminiscence"], t="past")), ("밤새 개가 짖어서 시끄러웠어", D(t="recent")),
+        "텔레비전 소리 좀 줄여 줄래", ("어제 넘어질 뻔했는데 안 넘어졌어", D(t="recent")),
+        ("감기약 먹고 푹 잤어", D(t="recent")), "이 김치는 좀 맵네, 죽겠다 싶을 만큼은 아니고",
+    ]),
+    ("grief_v2", L(["sadness_grief"]), ["grief_not_distress"], [
+        "가끔은 외로울 때도 있지", "혼자 있으니 좀 적적하네", "자식들이 보고 싶네", "명절에는 좀 쓸쓸해",
+        "친구들 생각이 나서 마음이 좀 허해", "옛날 사진 보니까 마음이 짠하네", "영감 목소리가 그리워",
+        ("엄마 산소에 못 가서 서운해", D(t="recent")), "요즘 들어 고향 생각이 자주 나", "혼자 늙어 가는 게 좀 서글프지",
+        ("손주가 이사 가서 섭섭해", D(t="recent")), "그래도 이렇게 얘기하니까 좀 낫네",
+    ]),
+    ("negated_v2", L(["crisis_appeal"], ["abuse"], m="negated"), ["negation"], [
+        "아무도 날 괴롭히지 않아, 다들 잘해 줘", ("아픈 데 하나 없어, 멀쩡해", D(c=["physical_discomfort"], k=None)),
+        ("죽을 만큼 힘든 건 아니야", D(c=["crisis_appeal", "acute_distress"], k=["self_harm"])), "며느리가 밥 굶기는 일은 없어",
+        ("숨 막히고 그런 건 없어", D(k=["medical_emergency"])), ("혼자 있어도 무섭지는 않아", D(c=["acute_distress"], k=None)),
+        ("그만하자는 게 아니라 잠깐 물 마시려고", D(c=["rest_request"], k=None, i="continue")),
+        ("살기 싫은 건 아니고 그냥 심심해", D(c=["crisis_appeal", "daily"], k=["self_harm"])),
+    ]),
 ]
 
 OVERRIDE_KEYS = {"c", "k", "s", "t", "m", "i", "x", "v", "ctx", "one"}
