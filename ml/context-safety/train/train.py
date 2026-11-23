@@ -99,7 +99,7 @@ def logits_for(model, tok, rows, max_len, batch=64) -> dict[str, np.ndarray]:
 def fit_temperature(logits: np.ndarray, y: np.ndarray, multi: bool) -> float:
     """검증 자료 음의 로그우도를 최소화하는 온도(격자 탐색 — 단조, 의존성 없음)."""
     best_t, best = 1.0, math.inf
-    for t in np.exp(np.linspace(math.log(0.25), math.log(8.0), 121)):
+    for t in np.exp(np.linspace(math.log(0.05), math.log(8.0), 161)):
         z = logits / t
         if multi:
             p = 1 / (1 + np.exp(-z))
@@ -126,8 +126,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--epochs", type=int, default=8)
-    ap.add_argument("--lr", type=float, default=5e-5)
+    ap.add_argument("--epochs", type=int, default=20)
+    ap.add_argument("--lr", type=float, default=2e-4)
+    ap.add_argument("--head-lr", type=float, default=1e-3)
+    ap.add_argument("--max-pos-weight", type=float, default=10.0)
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--max-len", type=int, default=128)
     ap.add_argument("--seed", type=int, default=20261123)
@@ -141,10 +143,17 @@ def main() -> None:
     tok = AutoTokenizer.from_pretrained(a.model)
     model = Classifier(a.model)
     ytr = targets(train)
-    opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=0.01)
+    # 인코더와 출력층 학습률을 나눈다 — 첫 시도(5e-5 · 8에폭)는 다중 라벨 출력이 거의 학습되지 않았다(F1≈0).
+    opt = torch.optim.AdamW([{"params": model.encoder.parameters(), "lr": a.lr},
+                             {"params": model.heads.parameters(), "lr": a.head_lr}], weight_decay=0.01)
     steps = a.epochs * math.ceil(len(train) / a.batch)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / (0.1 * steps)) * max(0.0, (steps - s) / steps))
-    bce, ce = nn.BCEWithLogitsLoss(), nn.CrossEntropyLoss()
+    # 다중 라벨은 양성이 드물다 → 라벨별 양성 가중치(음성/양성, 상한) — 출력이 '늘 아님'으로 몰리지 않게.
+    bces = {}
+    for k in MULTI:
+        pos = ytr[k].sum(0); neg = len(train) - pos
+        bces[k] = nn.BCEWithLogitsLoss(pos_weight=torch.clamp(neg / pos.clamp(min=1.0), max=a.max_pos_weight))
+    ce = nn.CrossEntropyLoss()
     t0 = time.time()
     log = []
     for ep in range(a.epochs):
@@ -155,7 +164,7 @@ def main() -> None:
             idx = order[i:i + a.batch]
             enc = encode(tok, [train[j] for j in idx], a.max_len)
             o = model(**enc)
-            loss = sum(bce(o[k], ytr[k][idx]) for k in MULTI) + sum(ce(o[k], ytr[k][idx]) for k in SINGLE)
+            loss = sum(bces[k](o[k], ytr[k][idx]) for k in MULTI) + sum(ce(o[k], ytr[k][idx]) for k in SINGLE)
             opt.zero_grad(); loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step(); sched.step()
@@ -170,7 +179,7 @@ def main() -> None:
     dp = {k: probs(dl[k], temps[k], k in MULTI) for k in HEADS}
 
     # 축별 지표(검증 자료) — 단일 축 정확도 · 다중 축 라벨별 F1(0.5)
-    metrics: dict = {"model": a.model, "train_n": len(train), "dev_n": len(dev), "epochs": log, "temperatures": temps, "heads": {}}
+    metrics: dict = {"model": a.model, "train_n": len(train), "dev_n": len(dev), "args": vars(a), "epochs": log, "temperatures": temps, "heads": {}}
     for k, names in SINGLE.items():
         pred = dp[k].argmax(1); y = ydev[k].numpy()
         metrics["heads"][k] = {"accuracy": round(float((pred == y).mean()), 4)}
