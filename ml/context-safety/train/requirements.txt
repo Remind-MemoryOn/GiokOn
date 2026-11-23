@@ -1,0 +1,8 @@
+# 전사 문맥 분류기 학습 환경(CTX-CLS-S3) — 2026-11-23 원격 세션 컨테이너(Python 3.13 · CPU)에서 확인한 버전.
+# torch 는 CPU 휠: pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1
+transformers==4.46.3
+tokenizers==0.20.3
+onnx==1.19.1
+onnxruntime==1.23.2
+scikit-learn==1.7.2
