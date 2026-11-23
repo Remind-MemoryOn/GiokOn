@@ -82,6 +82,16 @@ describe('decideContextSafety — 진리표(사용자 확정 2026-11-13·14)', (
     expect(decide(RULE_NONE, cls({ content: ['acute_distress'] }))).toMatchObject({ action: 'staff_review_pause', reason: 'classifier_distress_direct' })
   })
 
+  it('규약 v1.1 — 최근(어제 맞았어·아까 넘어졌어)은 현재처럼 직원 확인 일시정지', () => {
+    expect(decide(RULE_NONE, cls({ content: ['crisis_appeal'], crisis: ['abuse'], tense: 'recent' }))).toMatchObject({
+      action: 'staff_review_pause', reason: 'classifier_crisis_direct', classifierCrisisCategories: ['abuse'],
+    })
+    expect(decide(RULE_NONE, cls({ content: ['acute_distress'], tense: 'recent' }))).toMatchObject({ action: 'staff_review_pause', reason: 'classifier_distress_direct' })
+    // 오래전 일은 그대로 Q4(자해 외 계속 + 기록)
+    expect(decide(RULE_NONE, cls({ content: ['crisis_appeal'], crisis: ['abuse'], tense: 'past' }))).toMatchObject({ action: 'continue', record: true })
+    expect(decide(RULE_NONE, cls({ content: ['refusal'], tense: 'recent' }))).toMatchObject({ action: 'elder_closing', reason: 'classifier_closing' })
+  })
+
   it('규칙 휴식·거부 + 분류기 위기·고통(본인·현재) → 일시정지 우선', () => {
     expect(decide(RULE_REST, cls(CRISIS_NOW))).toMatchObject({ action: 'staff_review_pause', reason: 'classifier_crisis_direct' })
   })
