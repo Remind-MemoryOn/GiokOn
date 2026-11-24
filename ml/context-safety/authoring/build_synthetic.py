@@ -1,14 +1,16 @@
-"""학습·검증 자료 v1 작성 스크립트 (CTX-CLS-S3 · 2026-11-23).
+"""학습·검증 자료 작성 스크립트 (CTX-CLS-S3 · v1 2026-11-23 · v2 2026-11-24).
 
 Claude 가 직접 쓴 기본 문장(가상 화자, 실제 어르신 발화 아님)에 전사 변형을 붙여 JSONL 로 쓴다.
 - 사용자 확정(2026-11-22 R2): 검수 없이 작성자 라벨로 학습 · 범주별 100 + 비대상 600.
 - 라벨 규약: ml/context-safety/LABELING.md v1.1(시점 현재·최근·과거).
 - 변형: ① 원문 ② 띄어쓰기 없는 전사 ③ 추임새. 직전 AI 질문은 변형마다 다르다.
   라벨이 달라질 수 있는 부분 전사·범위 밖·전사 오류 문장은 원문 하나만.
-- 분할: 같은 문장의 변형 = 같은 variantGroup. 묶음마다 7번째(블록 안 순서)를 검증(dev)으로.
+- 분할: 같은 문장의 변형 = 같은 variantGroup. 블록 안 4번째마다 검증(dev) — 약 25%(v2 사용자 확정 2026-11-24,
+  v1 은 7번째마다 약 14%라 범주별 검증 대응 대상이 12개뿐이었다).
+- v2: 기본 문장을 seeds_v2_*.py 로 나눠 더했다(사용자 확정 2026-11-24 — 자료 대폭 확충).
 같은 입력이면 같은 파일이 나온다(난수 없음).
 
-실행(저장소 루트): python ml/context-safety/authoring/build_synthetic_v1.py
+실행(저장소 루트): python ml/context-safety/authoring/build_synthetic.py
 """
 from __future__ import annotations
 
@@ -299,6 +301,22 @@ BLOCKS: list[tuple[str, dict, list[str], list]] = [
     ]),
 ]
 
+# v2 추가 문장(같은 형식) — 같은 폴더의 seeds_v2_*.py 의 BLOCKS 를 이름순으로 덧붙인다.
+# -I(격리) 실행에서도 읽히도록 경로로 불러온다.
+def _extra_blocks() -> list:
+    import importlib.util
+    out = []
+    for f in sorted(Path(__file__).resolve().parent.glob("seeds_v2_*.py")):
+        spec = importlib.util.spec_from_file_location(f.stem, f)
+        mod = importlib.util.module_from_spec(spec)
+        mod.__dict__.update({"L": L, "D": D})
+        spec.loader.exec_module(mod)
+        out.extend((n, b, t, items, "2026-11-24") for n, b, t, items in mod.BLOCKS)
+    return out
+
+
+ALL_BLOCKS = [(*b, DATE) for b in BLOCKS] + _extra_blocks()
+
 OVERRIDE_KEYS = {"c", "k", "s", "t", "m", "i", "x", "v", "ctx", "one"}
 
 
@@ -314,12 +332,18 @@ def build() -> dict[str, list[dict]]:
     out: dict[str, list[dict]] = {"train": [], "dev": []}
     counters = {"train": 28, "dev": 0}  # train 0001~0028 = 시범 예시(pilot-2026-11-14.jsonl)
     seed_no = 0
-    for name, base, tags, items in BLOCKS:
+    names = [b[0] for b in ALL_BLOCKS]
+    assert len(names) == len(set(names)), "블록 이름 중복 — variantGroup 이 겹친다"
+    seen: dict[str, str] = {}
+    for name, base, tags, items, authored in ALL_BLOCKS:
         for pos, item in enumerate(items):
             text, o = (item, {}) if isinstance(item, str) else item
             assert set(o) <= OVERRIDE_KEYS, o
-            split = "dev" if pos % 7 == 6 else "train"
-            group = f"v1-{name}-{pos:02d}"
+            key = "".join(text.split()).rstrip("?.!,…")
+            assert key not in seen, f"같은 문장이 두 번 — {text} ({seen.get(key)} · {name})"  # 분할 간 누수 방지
+            seen[key] = name
+            split = "dev" if pos % 4 == 3 else "train"
+            group = f"syn-{name}-{pos:02d}"
             lab = labels_of(base, o)
             variant = o.get("v", "clean")
             forms = [(text, variant, 0)]
@@ -336,7 +360,7 @@ def build() -> dict[str, list[dict]]:
                     "context": [{"speaker": "ai", "text": ctx}], "target": {"speaker": "elder", "text": f_text},
                     "transcriptVariant": f_var, "scenarioTags": list(tags), "labelsByAuthor": lab,
                     "reviews": [], "final": None, "status": "draft_unreviewed",
-                    "provenance": {"source": "synthetic_claude_draft", "author": "claude", "authoredAt": DATE},
+                    "provenance": {"source": "synthetic_claude_draft", "author": "claude", "authoredAt": authored},
                 })
             seed_no += 1
     return out
@@ -345,7 +369,7 @@ def build() -> dict[str, list[dict]]:
 def main() -> None:
     data = build()
     for split, rows in data.items():
-        p = ROOT / "data" / split / "synthetic-v1.jsonl"
+        p = ROOT / "data" / split / "synthetic-v2.jsonl"
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open("w", encoding="utf-8", newline="\n") as f:
             for r in rows:

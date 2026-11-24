@@ -24,8 +24,8 @@
 |---|---|
 | `LABELING.md` | 라벨 규약 — 7축 정의·경계 사례·반례·'불명' 규칙·검수 불일치 처리·라벨 출처 |
 | `schema/example.schema.json` | 예시 한 줄(JSONL)의 형식 |
-| `data/train/*.jsonl` · `data/dev/*.jsonl` | 학습·검증 자료(Claude 작성 · 검수 없이 작성자 라벨로 학습 — R2). `synthetic-v1` = 기본 문장 405개 × 전사 변형 → 학습 1,053 + 검증 142(+ 시범 28) |
-| `authoring/build_synthetic_v1.py` | `synthetic-v1` 을 다시 만드는 스크립트(난수 없음 — 같은 파일이 나온다) |
+| `data/train/*.jsonl` · `data/dev/*.jsonl` | 학습·검증 자료(Claude 작성 · 검수 없이 작성자 라벨로 학습 — R2). `synthetic-v2` = 기본 문장 약 1,470개(범주별 100 + 비대상 약 870) × 전사 변형 → 학습 3,297 + 검증 1,034(+ 시범 28). 검증 = 블록 안 4번째마다(약 25%) |
+| `authoring/build_synthetic.py` · `authoring/seeds_v2_*.py` | `synthetic-v2` 를 다시 만드는 스크립트와 v2 추가 문장(난수 없음 — 같은 파일이 나온다 · 같은 문장 두 번·블록 이름 중복은 실행 중 거절) |
 | `data/eval/` | 최종 평가 자료(사람 작성 — 아직 없음) |
 | `tools/validate.py` | 형식·라벨 일관성·분할 누수·작성 주체 규칙 검사(표준 라이브러리만) |
 | `tools/test_validate.py` | 검사기 회귀(규칙을 어긴 예시가 실제로 거절되는지) |

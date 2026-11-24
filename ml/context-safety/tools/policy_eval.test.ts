@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { test } from 'node:test'
 import { evaluate, GATE, oneHot, type GateCategory, type Prediction } from './policy_eval.ts'
 
-const DEV = resolve(import.meta.dirname, '../data/dev/synthetic-v1.jsonl')
+const DEV = resolve(import.meta.dirname, '../data/dev/synthetic-v2.jsonl')
 const rows = readFileSync(DEV, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l))
 const asPred = (scoresOf: (labels: Prediction['labels']) => Prediction['scores']): Prediction[] =>
   rows.map(r => ({ id: r.id, text: r.target.text, labels: r.labelsByAuthor, scores: scoresOf(r.labelsByAuthor) }))
