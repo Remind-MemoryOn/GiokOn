@@ -138,13 +138,24 @@ describe('decideContextSafety — 진리표(사용자 확정 2026-11-13·14)', (
     expect(decide(RULE_NONE, cls({ ...CRISIS_NOW, interp: 'out_of_scope' }))).toMatchObject({ action: 'staff_review_pause', reason: 'classifier_out_of_scope' })
   })
 
-  it('Q4·가정/미래: 자해 관련은 과거·인용·부정·관용·가정·미래·타인이어도 일시정지', () => {
-    for (const s of [{ tense: 'past' }, { mode: 'quote', subject: 'other' }, { mode: 'negated' }, { mode: 'idiom' },
+  it('Q4·가정/미래: 자해 관련은 과거·인용·부정·가정·미래·타인이어도 일시정지', () => {
+    for (const s of [{ tense: 'past' }, { mode: 'quote', subject: 'other' }, { mode: 'negated' },
       { mode: 'hypothetical', tense: 'future' }, { subject: 'other' }] as Spec[]) {
       expect(decide(RULE_NONE, cls({ content: ['crisis_appeal'], crisis: ['self_harm'], ...s }))).toMatchObject({
         action: 'staff_review_pause', reason: 'classifier_self_harm_context', classifierCrisisCategories: ['self_harm'],
       })
     }
+  })
+
+  it('자해 관련 관용(배고파 죽겠다)은 계속 + 기록 — 2026-11-24 사용자 확정', () => {
+    for (const s of [{ mode: 'idiom' }, { mode: 'idiom', tense: 'past' }, { mode: 'idiom', subject: 'other' }] as Spec[]) {
+      expect(decide(RULE_NONE, cls({ content: ['crisis_appeal', 'daily'], crisis: ['self_harm'], ...s }))).toMatchObject({
+        action: 'continue', reason: 'classifier_context_logged', record: true, classifierCrisisCategories: ['self_harm'],
+      })
+    }
+    // 규칙 휴식 적중이면 기존 마무리 + 기록. 규칙 위기 적중은 여전히 즉시 종료(규칙을 약하게 하지 않는다).
+    expect(decide(RULE_REST, cls({ content: ['crisis_appeal', 'daily'], crisis: ['self_harm'], mode: 'idiom' }))).toMatchObject({ action: 'elder_closing', record: true })
+    expect(decide(RULE_CRISIS, cls({ content: ['crisis_appeal', 'daily'], crisis: ['self_harm'], mode: 'idiom' }))).toMatchObject({ action: 'stop_immediately' })
   })
 
   it('Q4·가정/미래: 자해 외 위기·급성 고통의 과거·인용·부정·관용·가정·미래·타인 → 계속 + 기록', () => {

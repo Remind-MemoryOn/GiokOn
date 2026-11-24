@@ -95,8 +95,8 @@ export type ContextSafetyReason =
   | 'classifier_distress_direct'   // 본인·현재·직접 급성 고통 → 일시정지(D3)
   | 'classifier_ambiguous'         // 후보 있음 + 해석 부족·충돌·불명 → 일시정지(Q3)
   | 'classifier_out_of_scope'      // 후보 있음 + 어르신 발화 아님으로 보임 → 일시정지
-  | 'classifier_self_harm_context' // 자해 관련의 과거·인용·부정·관용·가정·미래 → 일시정지(Q4)
-  | 'classifier_context_logged'    // 그 밖의 과거·인용·부정·관용·가정·미래 → 계속(또는 규칙 마무리) + 기록(Q4)
+  | 'classifier_self_harm_context' // 자해 관련의 과거·인용·부정·가정·미래 → 일시정지(Q4 · 관용은 제외 — 2026-11-24)
+  | 'classifier_context_logged'    // 그 밖의 과거·인용·부정·관용·가정·미래(자해 관용 포함) → 계속(또는 규칙 마무리) + 기록(Q4)
   | 'rule_closing'                 // 규칙 휴식·거부 → 마무리(기존)
   | 'classifier_closing'           // 분류기 단독 본인 거부·휴식 → 마무리 + 기록
   | 'no_signal'                    // 대응할 신호 없음 → 계속
@@ -204,7 +204,8 @@ export function decideContextSafety(input: ContextSafetyInput): ContextSafetyDec
     if (subject === 'self' && nowish && mode === 'direct') {
       return decision('staff_review_pause', crisis ? 'classifier_crisis_direct' : 'classifier_distress_direct', withCats)
     }
-    if (categories.includes('self_harm')) return decision('staff_review_pause', 'classifier_self_harm_context', withCats)
+    // 관용('배고파 죽겠다'·'보고 싶어 죽겠어')은 자해 관련이어도 계속 + 기록(사용자 확정 2026-11-24 — 흔한 표현이라 매번 멈추면 직원 부담).
+    if (categories.includes('self_harm') && mode !== 'idiom') return decision('staff_review_pause', 'classifier_self_harm_context', withCats)
     // 과거·인용·부정·관용·가정·미래 또는 타인 — 계속(규칙 휴식·거부면 기존 마무리) + 기록.
     return ruleClosing
       ? decision('elder_closing', 'classifier_context_logged', { ...withCats, record: true, closingSituation: ruleClosing })
