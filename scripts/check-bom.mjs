@@ -35,7 +35,6 @@ const ROOT_TEXT_FILES = new Set([
   'CLAUDE.md',
   'PLAN.md',
   'README.md',
-  'INSTRUCTIONS.md',
   'package.json',
   'pnpm-workspace.yaml',
   'tsconfig.base.json',

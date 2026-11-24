@@ -320,7 +320,7 @@ W1·D4 와 함께 고친다(요양일지 → 프로그램 일지, 기관 전체 
 ## 8. 웹·앱 연동 파트
 
 **C1. `packages/core` 정리** — ✅ **2026-09-24 완료**(단 `buildJournalDraft` 는 웹 `JournalWritePage` 가 아직 써서 W1 때 삭제 ·
-웹 `lib/ai.ts` 는 `export *` shim 이라 영향 없어 그대로). 세션은 빈 기록으로 시작하고 중계 첫 인사가 출력 가드를 통과해야 첫 AI 턴이 된다(`acceptOpener`).
+웹 `lib/ai.ts` 는 `export *` shim 이라 영향 없어 그대로 — ✅ 2026-11-23 저장소 정리에서 삭제). 세션은 빈 기록으로 시작하고 중계 첫 인사가 출력 가드를 통과해야 첫 AI 턴이 된다(`acceptOpener`).
 원래 내용: `ai.ts` + `ai.test.ts` **파일 삭제**, `voice-flow.ts`(호출처 0) 삭제,
 `journal.ts` 의 `buildJournalDraft`(명시적 mock) 삭제, 웹의 `apps/web/src/lib/ai.ts`(`@giokon/core` 재수출 shim, importer 0) 삭제. `conversation.ts` 의 `respondToUserTurn` →
 **`evaluateUserTurn()` 으로 축소**(안전 계산만, `generateReply` 호출 제거).

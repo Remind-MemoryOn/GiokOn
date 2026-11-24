@@ -1,3 +1,0 @@
-
-> @giokon/mobile@1.0.0 lint C:\Users\user\Documents\GitHub\MemoryOn\apps\mobile
-> eslint .
