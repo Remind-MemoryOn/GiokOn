@@ -33,6 +33,8 @@
 | `tools/rule_baseline.test.ts` | 기준선 도구 회귀 |
 | `tools/policy_eval.ts` · `.test.ts` | 정책 단위 평가(규칙 OR 분류기 → 행동 · 게이트 기준 R1) |
 | `train/train.py` · `requirements.txt` | 학습·온도 보정(가중치는 저장소 밖) |
+| `train/export_onnx.py` · `train/dump_parity_fixture.py` | ONNX(fp32·int8) 변환·일치 검사 · Node 일치 검사용 기준 파일(출력은 저장소 밖 모델 폴더) |
+| `packages/context-classifier` | Node 추론 패키지(WordPiece 토크나이저 · ONNX Runtime · worker_threads · 시간 초과/오류 = 실패) — 중계 연결 전 |
 
 ## 검사 (Windows cmd · 저장소 루트)
 
@@ -64,6 +66,20 @@ apps\voice-relay\node_modules\.bin\tsx ml\context-safety\tools\policy_eval.ts %T
 
 - `train.py`: 학습 = train 분할(작성자 라벨) · 축별 온도 보정 = dev 분할 · eval 은 쓰지 않는다.
 - `policy_eval.ts`: dev 예측을 core 의 실제 결합 정책(`decideContextSafety`)·규칙(`assessUtterance`)에 넣어 게이트 기준(R1)으로 잰다. dev 결과는 **임계값 선택용**이고 게이트 판정이 아니다.
+
+## 변환·추론 패키지 (S5 · Windows cmd · 저장소 루트)
+
+```bat
+%TEMP%\ctx-venv\Scripts\python ml\context-safety\train\export_onnx.py --run %TEMP%\ctx-runs\kcelectra
+%TEMP%\ctx-venv\Scripts\python ml\context-safety\train\dump_parity_fixture.py --run %TEMP%\ctx-runs\kcelectra
+set CTX_CLS_MODEL_DIR=%TEMP%\ctx-runs\kcelectra\onnx
+pnpm --filter @giokon/context-classifier test
+apps\voice-relay\node_modules\.bin\tsx ml\context-safety\tools\policy_eval.ts %TEMP%\ctx-runs\kcelectra\dev_predictions.int8.json --grid
+```
+
+- `export_onnx.py`: `<run>\onnx\` 에 `model.fp32.onnx`·`model.int8.onnx`·`heads.json`(축·온도·max_len)·`vocab.txt`·`parity.json` 을 쓰고, int8 점수(`dev_predictions.int8.json`)를 만든다.
+- 패키지 테스트는 `CTX_CLS_MODEL_DIR` 이 있을 때만 Python 과의 토큰·점수 일치와 워커 동작(시간 초과·오류·해시)을 잰다. 없으면 건너뛴다.
+- 지연·메모리 실측: `packages/context-classifier/scripts/bench.ts`(Linux 1코어 고정은 `taskset -c 0`).
 
 ## 권리 확인 메모
 
