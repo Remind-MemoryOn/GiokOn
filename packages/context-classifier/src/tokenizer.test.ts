@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calibrate, contextText, validateHeads } from './classifier.ts'
+import { InputInvalidError, calibrate, contextText, encodeInput, validateHeads } from './classifier.ts'
 import { encodePair, parseVocab, preTokenize, tokenize } from './tokenizer.ts'
 
 const VOCAB = parseVocab(['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]', '죽', '##고', '싶', '##어', ',', '그', '##만', '!', '漢', '어', '##르', '##신', ':'].join('\n'))
@@ -55,5 +55,18 @@ describe('보정·문맥·heads.json 검사', () => {
     expect(() => validateHeads({ heads, temperatures, max_len: 128 })).not.toThrow()
     expect(() => validateHeads({ heads: { ...heads, tense: ['present', 'past', 'future', 'unknown'] }, temperatures, max_len: 128 })).toThrow()
     expect(() => validateHeads({ heads, temperatures: { ...temperatures, mode: 0 }, max_len: 128 })).toThrow()
+  })
+})
+
+describe('모델 입력(encodeInput) — 불완전한 입력은 분류하지 않는다', () => {
+  const turn = (text: string) => ({ sessionId: 's', turnId: 't', inputRevision: 0, context: [{ speaker: 'ai' as const, text: '그만 그만 그만' }], text })
+  it('대상 턴이 최대 길이를 넘으면 input_invalid(잘린 뒤쪽을 보지 않은 결과를 내지 않는다)', () => {
+    expect(() => encodeInput(turn('죽고 죽고 죽고'), VOCAB, 6)).toThrow(InputInvalidError)
+  })
+  it('빈 턴도 input_invalid', () => {
+    expect(() => encodeInput(turn('  '), VOCAB, 16)).toThrow(InputInvalidError)
+  })
+  it('문맥만 넘치면 문맥 뒤를 자르고 분류한다(학습과 같음)', () => {
+    expect(encodeInput(turn('죽고'), VOCAB, 7).inputIds.length).toBe(7)
   })
 })

@@ -13,7 +13,7 @@ import {
   CONTEXT_CONTENT_LABELS, CONTEXT_CRISIS_LABELS, CONTEXT_INTENTS, CONTEXT_INTERPRETABILITY, CONTEXT_MODES,
   CONTEXT_SUBJECTS, CONTEXT_TENSES, type ContextClassification,
 } from '@giokon/core'
-import { encodePair, parseVocab, type Vocab } from './tokenizer.ts'
+import { encodePair, parseVocab, type EncodedPair, type Vocab } from './tokenizer.ts'
 
 export type Speaker = 'ai' | 'elder'
 export interface ClassifierInput {
@@ -102,9 +102,8 @@ export class ContextClassifier {
 
   /** 한 턴 분류. 입력 불량이면 던진다(호출 쪽이 input_invalid 로 바꾼다). */
   async classify(input: ClassifierInput): Promise<ContextClassification> {
-    if (typeof input.text !== 'string' || input.text.trim() === '') throw new InputInvalidError('대상 턴이 비었다')
     const t0 = performance.now()
-    const enc = encodePair(contextText(input.context), input.text, this.vocab, this.heads.max_len)
+    const enc = encodeInput(input, this.vocab, this.heads.max_len)
     const n = enc.inputIds.length
     const tensor = (v: number[]) => new this.ort.Tensor('int64', BigInt64Array.from(v, BigInt), [1, n])
     const out = await this.session.run({
@@ -130,3 +129,15 @@ export class ContextClassifier {
 }
 
 export class InputInvalidError extends Error {}
+
+/**
+ * 입력 → 모델 토큰. 대상 턴이 비었거나 **대상 턴만으로 최대 길이를 넘으면 던진다**(→ input_invalid → 직원 확인 일시정지, Q5).
+ * 대상 턴 끝을 잘라 분류하면 잘린 뒤쪽의 위기 표현을 보지 않은 채 '완전한 결과'로 넘기게 된다(PR #80 리뷰 지적).
+ * 문맥은 학습과 같이 뒤에서 잘라도 된다(대상 턴은 그대로 다 본다).
+ */
+export function encodeInput(input: ClassifierInput, vocab: Vocab, maxLen: number): EncodedPair {
+  if (typeof input.text !== 'string' || input.text.trim() === '') throw new InputInvalidError('대상 턴이 비었다')
+  const enc = encodePair(contextText(input.context), input.text, vocab, maxLen)
+  if (enc.targetTruncated) throw new InputInvalidError(`대상 턴이 최대 길이(${maxLen} 토큰)를 넘는다`)
+  return enc
+}
