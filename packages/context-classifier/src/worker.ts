@@ -1,6 +1,6 @@
 // 분류기를 별도 스레드(worker_threads)에서 돌리는 래퍼 — CTX-CLS-S5.
 // 중계는 이 클래스만 쓴다. 결과는 core 의 ClassifierOutcome 그대로이고, 실패를 '안전 통과'로 바꾸지 않는다(Q5):
-//  - 시간 초과(timeoutMs — 값은 R5 결정 대기라 호출 쪽이 반드시 준다) → { ok:false, reason:'timeout' }
+//  - 시간 초과(timeoutMs — 기본 200ms, R5 사용자 확정 2026-11-25) → { ok:false, reason:'timeout' }
 //  - 모델 불러오기 실패·스레드 오류·종료 → { ok:false, reason:'error' }
 //  - 대상 턴이 빔 → { ok:false, reason:'input_invalid' }
 // 시간 초과가 나면 스레드를 끝내고 다음 호출 때 새로 띄운다(멈춘 추론이 뒤 턴을 막지 않게). 늦게 온 결과는 버린다.
@@ -10,9 +10,12 @@ import { Worker } from 'node:worker_threads'
 import type { ClassifierOutcome } from '@giokon/core'
 import type { ClassifierInput, LoadOptions } from './classifier.ts'
 
+/** 호출부터 결과까지 허용 시간(ms) — R5 사용자 확정(2026-11-25). 1코어 실측 최대 48ms(동시 4건)의 약 4배. */
+export const CLASSIFIER_TIMEOUT_MS = 200
+
 export interface WorkerOptions extends LoadOptions {
-  /** 호출부터 결과까지 허용 시간(ms). 기본값 없음 — R5(사용자 결정). */
-  timeoutMs: number
+  /** 호출부터 결과까지 허용 시간(ms). 기본 CLASSIFIER_TIMEOUT_MS. */
+  timeoutMs?: number
   /** 스레드 실행 인자. 기본 = 이 프로세스의 execArgv(중계는 `node --import tsx` 라 .ts 워커가 그대로 뜬다). */
   execArgv?: string[]
 }
@@ -29,8 +32,11 @@ export class ClassifierWorker {
   /** 마지막 스레드 오류(진단용 — 사용자 화면에 보이지 않는다). */
   lastError: string | null = null
 
+  private readonly timeoutMs: number
+
   constructor(private readonly o: WorkerOptions) {
-    if (!(Number.isFinite(o.timeoutMs) && o.timeoutMs > 0)) throw new Error('timeoutMs 가 필요하다(R5)')
+    this.timeoutMs = o.timeoutMs ?? CLASSIFIER_TIMEOUT_MS
+    if (!(Number.isFinite(this.timeoutMs) && this.timeoutMs > 0)) throw new Error('timeoutMs 가 비정상')
   }
 
   /** 모델을 미리 불러온다(중계 시작 때). 실패하면 던진다 — 그 뒤 호출은 'error' 로 끝난다. */
@@ -48,7 +54,7 @@ export class ClassifierWorker {
         if (!this.pending.delete(id)) return
         resolve({ ok: false, reason: 'timeout' })
         this.reset('timeout')
-      }, this.o.timeoutMs)
+      }, this.timeoutMs)
       this.pending.set(id, { resolve, timer, started })
       this.spawn().then(
         () => this.worker?.postMessage({ id, input }),

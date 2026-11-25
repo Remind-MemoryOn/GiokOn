@@ -17,7 +17,7 @@ const mb = () => Math.round(process.memoryUsage().rss / 1048576)
 const pct = (a: number[], p: number) => [...a].sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(a.length * p))].toFixed(1)
 
 const rss0 = mb()
-const w = new ClassifierWorker({ modelDir: dir, modelVersion: 'bench', modelFile, timeoutMs: 60_000 })
+const w = new ClassifierWorker({ modelDir: dir, modelVersion: 'bench', modelFile, timeoutMs: 60_000 }) // 실측은 시간 초과 없이
 const t0 = performance.now(); await w.warmup(); const load = performance.now() - t0
 for (const x of inputs.slice(0, 20)) await w.classify(x)
 const seq: number[] = []
