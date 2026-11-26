@@ -12,6 +12,12 @@ import {
 } from './safety'
 
 describe('normalizeUtterance — STT 변이 흡수', () => {
+  it.each(['숨을 쉴 수가 없어요', '숨을 쉴 수 없어요', '호흡이 안 돼요', '호흡을 못 하겠어요'])( '%s → 응급 확인', text => {
+    expect(assessUtterance(text).crisisCategories).toContain('medical_emergency')
+  })
+  it.each(['숨을 고르고 이야기를 했어요', '그때는 친구와 호흡이 잘 맞았어요', '노래를 부르니 숨이 조금 찼어요'])( '%s → 새 응급 규칙에 해당하지 않음', text => {
+    expect(assessUtterance(text).crisisCategories).not.toContain('medical_emergency')
+  })
   it('공백·문장부호를 제거한다', () => {
     expect(normalizeUtterance('죽고  싶다...')).toBe('죽고싶다')
     expect(normalizeUtterance('숨이 안 쉬어져요!')).toBe('숨이안쉬어져요')

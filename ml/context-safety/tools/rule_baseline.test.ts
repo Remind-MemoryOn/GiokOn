@@ -21,6 +21,8 @@ test('표면 기준은 과거·인용·부정도 양성, 대응 대상 기준은
   assert.equal(goldActionable(negated, 'self_harm'), false)
   assert.equal(goldActionable(now, 'medical_emergency'), true)
   assert.equal(goldActionable(now, 'stop'), true)
+  // 규약 v1.1 — 최근은 현재처럼("어제 아들이 때렸어")
+  assert.equal(goldActionable(L({ content: ['crisis_appeal'], crisisCategory: ['abuse'], tense: 'recent' }), 'abuse'), true)
   assert.equal(goldSurface(L({ content: ['sadness_grief'] }), 'stop'), false)  // 애도는 종료 대상 아님
 })
 

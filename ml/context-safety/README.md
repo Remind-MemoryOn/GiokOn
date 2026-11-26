@@ -24,12 +24,15 @@
 |---|---|
 | `LABELING.md` | 라벨 규약 — 7축 정의·경계 사례·반례·'불명' 규칙·검수 불일치 처리·라벨 출처 |
 | `schema/example.schema.json` | 예시 한 줄(JSONL)의 형식 |
-| `data/train/*.jsonl` | 학습 자료(Claude 초안 → 2명 검수) |
+| `data/train/*.jsonl` · `data/dev/*.jsonl` | 학습·검증 자료(Claude 작성 · 검수 없이 작성자 라벨로 학습 — R2). `synthetic-v2` = 기본 문장 약 1,660개(범주별 100~161 + 비대상 약 900 · 완곡 표현 보강 포함) × 전사 변형 → 학습 3,717 + 검증 1,172(+ 시범 28). 검증 = 블록 안 4번째마다(약 25%) |
+| `authoring/build_synthetic.py` · `authoring/seeds_v2_*.py` | `synthetic-v2` 를 다시 만드는 스크립트와 v2 추가 문장(난수 없음 — 같은 파일이 나온다 · 같은 문장 두 번·블록 이름 중복은 실행 중 거절) |
 | `data/eval/` | 최종 평가 자료(사람 작성 — 아직 없음) |
 | `tools/validate.py` | 형식·라벨 일관성·분할 누수·작성 주체 규칙 검사(표준 라이브러리만) |
 | `tools/test_validate.py` | 검사기 회귀(규칙을 어긴 예시가 실제로 거절되는지) |
 | `tools/rule_baseline.ts` | 현재 규칙(`assessUtterance`) 기준선 — 범주별 재현율·정밀도·미탐·오탐(표면 기준·대응 대상 기준 나란히) |
 | `tools/rule_baseline.test.ts` | 기준선 도구 회귀 |
+| `tools/policy_eval.ts` · `.test.ts` | 정책 단위 평가(규칙 OR 분류기 → 행동 · 게이트 기준 R1) |
+| `train/train.py` · `requirements.txt` | 학습·온도 보정(가중치는 저장소 밖) |
 
 ## 검사 (Windows cmd · 저장소 루트)
 
@@ -46,6 +49,21 @@ apps\voice-relay\node_modules\.bin\tsx --test ml\context-safety\tools\rule_basel
 ```
 
 (`tsx` 가 없으면 먼저 `pnpm install --filter @giokon/voice-relay`.)
+
+## 학습 (S3 · Windows cmd · 저장소 루트)
+
+가중치·예측 파일은 저장소에 넣지 않는다(학습 결과 폴더는 저장소 밖에 둔다).
+
+```bat
+python -m venv %TEMP%\ctx-venv
+%TEMP%\ctx-venv\Scripts\pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+%TEMP%\ctx-venv\Scripts\pip install -r ml\context-safety\train\requirements.txt
+%TEMP%\ctx-venv\Scripts\python ml\context-safety\train\train.py --model beomi/KcELECTRA-small-v2022 --out %TEMP%\ctx-runs\kcelectra
+apps\voice-relay\node_modules\.bin\tsx ml\context-safety\tools\policy_eval.ts %TEMP%\ctx-runs\kcelectra\dev_predictions.json --grid
+```
+
+- `train.py`: 학습 = train 분할(작성자 라벨) · 축별 온도 보정 = dev 분할 · eval 은 쓰지 않는다.
+- `policy_eval.ts`: dev 예측을 core 의 실제 결합 정책(`decideContextSafety`)·규칙(`assessUtterance`)에 넣어 게이트 기준(R1)으로 잰다. dev 결과는 **임계값 선택용**이고 게이트 판정이 아니다.
 
 ## 권리 확인 메모
 

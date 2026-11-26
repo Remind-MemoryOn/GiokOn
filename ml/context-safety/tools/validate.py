@@ -22,7 +22,7 @@ CONTENT = {"crisis_appeal", "acute_distress", "sadness_grief", "physical_discomf
 CRISIS = {"self_harm", "medical_emergency", "abuse", "none", "unknown"}
 SINGLE = {
     "subject": {"self", "other", "unknown"},
-    "tense": {"present", "past", "future", "unknown"},
+    "tense": {"present", "recent", "past", "future", "unknown"},
     "mode": {"direct", "quote", "hypothetical", "negated", "idiom", "unknown"},
     "intent": {"continue", "switch", "rest", "end", "unknown"},
     "interpretability": {"sufficient", "insufficient", "conflict", "out_of_scope"},

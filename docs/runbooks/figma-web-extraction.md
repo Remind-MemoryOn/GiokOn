@@ -21,7 +21,7 @@
 - 캔버스 페이지: `0:1`
 - 렌더 에셋(사용자 export): `apps/web/assets/figma/*.png` (화면 48종) ·
   `apps/web/assets/figma/components/*.png` (모달·부분 컴포넌트 29종)
-- 폰트 실물: `apps/web/assets/fonts/Pretendard-1.3.9/` → **자체 호스팅**(CDN 차단 환경 대응)
+- 폰트 실물: `apps/web/assets/fonts/Pretendard-1.3.9/` → **자체 호스팅**(CDN 차단 환경 대응). 저장소에는 쓰는 `web/variable/woff2/PretendardVariable.woff2` 와 `LICENSE.txt` 만 둔다(2026-11-23 정리) — 다른 굵기·형식이 필요하면 Pretendard 1.3.9 배포본에서 같은 경로로 넣는다.
 
 ## 좌표·치수 규약
 

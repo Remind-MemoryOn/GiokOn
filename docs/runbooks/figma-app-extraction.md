@@ -156,7 +156,7 @@ URL: `https://www.figma.com/design/nLfWkg2H7dFfDH1pehcH5I/기억온?node-id=0-1`
 - `svg.d.ts`: `*.svg`(컴포넌트)·`*.png`/`*.jpg`(number) 모듈 선언 → 에셋은 **ES import** 사용
   (`require()` 는 eslint 금지 — `src/lib/fonts.ts` 만 예외 주석).
 - 폰트: `assets/fonts/Pretendard-1.3.9/public/static/alternative/*.ttf`(Regular/Medium/
-  SemiBold/Bold) → `src/lib/fonts.ts` FONT_MAP, `_layout.tsx` useFonts(로드 전 흰 화면),
+  SemiBold/Bold — 저장소에는 이 4개와 `LICENSE.txt` 만 둔다, 2026-11-23 정리) → `src/lib/fonts.ts` FONT_MAP, `_layout.tsx` useFonts(로드 전 흰 화면),
   `tailwind.config.js` 플러그인이 `font-normal/medium/semibold/bold` → 굵기별 패밀리 매핑.
 
 ## 에셋 확보 방법 (개별 export 없이)

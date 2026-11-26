@@ -54,7 +54,7 @@
         "content": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["crisis_appeal", "acute_distress", "sadness_grief", "physical_discomfort", "refusal", "rest_request", "reminiscence", "daily", "confusion", "unknown"] } },
         "crisisCategory": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["self_harm", "medical_emergency", "abuse", "none", "unknown"] } },
         "subject": { "enum": ["self", "other", "unknown"] },
-        "tense": { "enum": ["present", "past", "future", "unknown"] },
+        "tense": { "enum": ["present", "recent", "past", "future", "unknown"] },
         "mode": { "enum": ["direct", "quote", "hypothetical", "negated", "idiom", "unknown"] },
         "intent": { "enum": ["continue", "switch", "rest", "end", "unknown"] },
         "interpretability": { "enum": ["sufficient", "insufficient", "conflict", "out_of_scope"] }
