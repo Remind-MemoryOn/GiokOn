@@ -45,3 +45,6 @@ overrides:
   "svgo@>=3.0.0 <3.3.5": 3.3.5
   "tar@>=7.0.0 <7.5.21": 7.5.21
   "undici@>=6.0.0 <6.28.1": 6.28.1
+  # 앱 번들에 실리는 유일한 취약 의존성(2026-11-27 Play 출시 준비): expo-router → query-string@7 → decode-uri-component.
+  # 수정판 0.5.1 은 ESM 전용이라 query-string@7 의 require() 와 맞지 않는다 → 같은 로직의 CommonJS 이식본(vendor/)을 쓴다.
+  "decode-uri-component@<0.5.1": "file:vendor/decode-uri-component"
