@@ -16,6 +16,7 @@
 //
 // ⚠️ 세션 음성 녹음·저장은 아직 구현 범위가 아니다(동의·보관정책 필요). Figma 의
 //    "00:00 / 12:31" 은 자리표시자이므로 값을 만들지 않고 **녹음 없음 상태**로 표시한다.
+import { useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +28,7 @@ import { clockLabel, longKoreanDate } from '../../src/lib/format';
 import avatarAi from '../../assets/brand/avatar-ai.png';
 import btnPlay from '../../assets/brand/btn-play.png';
 import { useContentWidth } from '../../src/lib/layout';
+import { AiReportLink, AiReportSheet, type AiReportTarget } from '../../src/features/report/AiReportSheet';
 
 const CONTENT_LEFT = 29;
 const CONTENT_RIGHT = 28;
@@ -45,7 +47,7 @@ function TimeLabel({ text, side }: { text: string; side: 'left' | 'right' }) {
   );
 }
 
-function AiBubble({ turn }: { turn: ConversationTurn }) {
+function AiBubble({ turn, onReport }: { turn: ConversationTurn; onReport: () => void }) {
   const { extra } = useContentWidth();
   return (
     <View className="flex-row items-end" style={{ marginBottom: 30 }}>
@@ -72,7 +74,13 @@ function AiBubble({ turn }: { turn: ConversationTurn }) {
           {turn.text}
         </Text>
       </View>
-      <TimeLabel text={clockLabel(turn.timestamp)} side="right" />
+      {/* AI 응답 신고(Play AI 생성 콘텐츠 정책) — 시간 위 작은 링크. Figma 에 없는 요소라 말풍선 배치는 그대로 둔다. */}
+      <View>
+        <View style={{ marginLeft: 9 }}>
+          <AiReportLink label="신고" onPress={onReport} />
+        </View>
+        <TimeLabel text={clockLabel(turn.timestamp)} side="right" />
+      </View>
     </View>
   );
 }
@@ -136,6 +144,7 @@ export default function LogTranscript() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const log = useLog(id);
   const analysis = useAnalysis(id);
+  const [reportTarget, setReportTarget] = useState<AiReportTarget | null>(null);
   const elder = useElder(log?.elderId);
   const photoUrl = useElderPhotoUrl(elder?.photoPath);
 
@@ -153,6 +162,7 @@ export default function LogTranscript() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title="대화 기록" />
+      <AiReportSheet target={reportTarget} onClose={() => setReportTarget(null)} />
 
       <ScrollView
         className="flex-1"
@@ -164,7 +174,7 @@ export default function LogTranscript() {
         <View style={{ marginTop: 15 }}>
           {log.turns.map((t) =>
             t.speaker === 'AI' ? (
-              <AiBubble key={t.id} turn={t} />
+              <AiBubble key={t.id} turn={t} onReport={() => setReportTarget({ aiText: t.text, sessionId: id ?? null, turnId: t.id, spokenAt: t.timestamp })} />
             ) : (
               <ElderBubble
                 key={t.id}

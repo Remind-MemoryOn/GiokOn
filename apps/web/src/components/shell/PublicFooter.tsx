@@ -12,6 +12,7 @@ export function PublicFooter() {
         <nav aria-label="법적 고지" className="flex gap-8 text-w-label font-semibold text-ink-500">
           <Link to="/privacy" className="hover:text-accent">개인정보 처리방침</Link>
           <Link to="/terms" className="hover:text-accent">이용약관</Link>
+          <Link to="/account-deletion" className="hover:text-accent">계정 삭제 요청</Link>
         </nav>
       </div>
     </footer>

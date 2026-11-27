@@ -1,0 +1,8 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.5.1",
+  "description": "CommonJS port of decode-uri-component@0.5.1 for query-string@7 (expo-router). Logic unchanged.",
+  "license": "MIT",
+  "main": "index.js",
+  "files": ["index.js", "license"]
+}

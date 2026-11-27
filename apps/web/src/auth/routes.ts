@@ -31,7 +31,15 @@ export function loginPath(returnTo: unknown): string {
   return path ? `/login?returnTo=${encodeURIComponent(path)}` : '/login';
 }
 
+/**
+ * 계정 삭제 요청 안내·접수(Play 계정 삭제 정책). 가입을 끝내지 못한 계정·합류 대기 계정도 요청할 수 있어야 하므로
+ * 온보딩·합류 승인보다 먼저 복귀를 허용한다 — 이 화면은 본인 명의 비공개 문의를 넣는 일만 한다.
+ */
+export const ACCOUNT_DELETION_PATH = '/account-deletion';
+
 export function routeAfterLogin(row: UserRow | null, returnTo: unknown): string {
+  const requested = returnPath(returnTo);
+  if (requested && requested.split(/[?#]/, 1)[0] === ACCOUNT_DELETION_PATH) return requested;
   const home = routeForUser(row);
   // 온보딩·합류 승인을 복귀 주소로 건너뛸 수 없다.
   if (home !== '/caregiver' && home !== '/guardian') return home;

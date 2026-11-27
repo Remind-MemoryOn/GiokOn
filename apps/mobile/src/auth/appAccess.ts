@@ -8,6 +8,8 @@
 //
 // 판정은 순수 함수로 두어 테스트한다. 화면은 결과에 따라 보내기만 한다.
 
+import { WEB_ROUTES } from '../lib/webUrl';
+
 /** public.users 중 판정에 필요한 부분만. */
 export interface AccessUserRow {
   role: 'org_admin' | 'caregiver' | 'guardian' | 'social_worker' | 'center_director';
@@ -21,7 +23,13 @@ export type AppAccess =
   /** 로그인 필요. */
   | { status: 'unauthenticated' }
   /** 자격 미달 — 사유를 보여 주고 로그아웃시킨다. */
-  | { status: 'blocked'; title: string; message: string }
+  | {
+      status: 'blocked';
+      title: string;
+      message: string;
+      /** 웹에서 이어 갈 일이 있으면 그 경로(src/lib/webUrl WEB_ROUTES 값) — 알림에 '웹에서 열기' 버튼을 단다. */
+      webPath?: string;
+    }
   | { status: 'ok' };
 
 export function evaluateAppAccess(input: {
@@ -49,6 +57,7 @@ export function evaluateAppAccess(input: {
       message:
         '이 앱은 요양보호사가 어르신과의 회상 대화를 진행하는 도구예요.\n' +
         '보호자님은 웹에서 공유된 기록을 확인하실 수 있어요.',
+      webPath: WEB_ROUTES.login,
     };
   }
 
@@ -57,6 +66,7 @@ export function evaluateAppAccess(input: {
       status: 'blocked',
       title: '가입이 아직 끝나지 않았어요',
       message: '웹에서 기본 정보와 기관 설정을 먼저 완료해 주세요.\n완료 후 다시 로그인하시면 됩니다.',
+      webPath: WEB_ROUTES.login,
     };
   }
 

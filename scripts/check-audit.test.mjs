@@ -44,12 +44,31 @@ test('blocks a web high advisory even when audit exits nonzero', () => {
   assert.match(result.stderr, /fixture/);
 });
 
-test('reports development advisories without weakening the web gate', () => {
+test('reports build-only and dev-dependency app advisories without blocking', () => {
+  for (const path of ['apps__mobile>expo>@expo/cli>node-forge', 'apps__mobile>expo>@expo/metro>metro>image-size', 'apps__mobile>vitest>tinypool']) {
+    const result = runAudit(JSON.stringify({ advisories: {
+      example: { severity: 'critical', module_name: 'fixture', findings: [{ paths: [path] }] },
+    } }), 1);
+    assert.equal(result.status, 0, `${path}: ${result.stderr}`);
+    assert.match(result.stdout, /fixture/);
+  }
+});
+
+test('blocks an app advisory that reaches the app bundle (store submission, 2026-11-27)', () => {
+  for (const path of ['apps__mobile>expo-router>query-string>fixture', 'apps__mobile>fixture', 'apps__mobile>expo>fixture']) {
+    const result = runAudit(JSON.stringify({ advisories: {
+      example: { severity: 'high', module_name: 'fixture', findings: [{ paths: ['apps__mobile>expo>@expo/cli>fixture', path] }] },
+    } }), 1);
+    assert.equal(result.status, 1, `${path}: ${result.stdout}`);
+    assert.match(result.stderr, new RegExp(path.replaceAll('>', '\\>')));
+  }
+});
+
+test('does not treat a lookalike dev-dependency name as build-only', () => {
   const result = runAudit(JSON.stringify({ advisories: {
-    example: { severity: 'critical', module_name: 'fixture', findings: [{ paths: ['apps__mobile>fixture'] }] },
+    example: { severity: 'high', module_name: 'fixture', findings: [{ paths: ['apps__mobile>vitest-runtime-lookalike>fixture'] }] },
   } }), 1);
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /fixture/);
+  assert.equal(result.status, 1, result.stdout);
 });
 
 test('fails closed on an empty or invalid audit response', () => {

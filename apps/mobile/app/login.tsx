@@ -12,16 +12,17 @@
 // 세로 위치는 프레임 비율로 환산해 기기 높이에 맞춘다(고정 프레임 디자인 충실 재현).
 // 상태바는 실기기 상태바 사용(Figma 상태바 목업 미구현 — 사용자 확정).
 //
-// 기능: signIn(이메일+비밀번호) · 비밀번호 찾기(재설정 메일) · 소셜 3종 실연동
+// 기능: signIn(이메일+비밀번호) · 비밀번호 찾기(재설정 메일) · 아이디 찾기·회원가입은 웹 화면을 연다 · 소셜 3종 실연동
 // (구글·카카오=Supabase PKCE OAuth, 네이버=naver-auth 함수 — src/auth/social.ts).
 import { useState } from 'react';
-import { View, Text, Pressable, TextInput, Image, Alert, Keyboard, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, TextInput, Image, Alert, Keyboard, Linking, useWindowDimensions } from 'react-native';
 import { Redirect } from 'expo-router';
 import { sendPasswordResetEmail } from '@giokon/data';
 import { useAuth } from '../src/auth/AuthProvider';
 import { webUrl, WEB_ROUTES } from '../src/lib/webUrl';
 import { useEnforceAppAccess } from '../src/auth/useEnforceAppAccess';
 import { signInWithSupabaseProvider, signInWithNaver } from '../src/auth/social';
+import { authErrorText } from '../src/auth/authErrorText';
 import { C } from '../src/theme';
 import { KeyboardScrollView } from '../src/components/KeyboardForm';
 import { loginCanvasHeight } from '../src/lib/keyboard-layout';
@@ -55,13 +56,19 @@ export default function Login() {
     try {
       await signIn(id, pw);
     } catch (e) {
-      Alert.alert('로그인 실패', e instanceof Error ? e.message : '다시 시도해 주세요.');
+      Alert.alert('로그인 실패', authErrorText(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const notOnApp = (what: string) => Alert.alert(what, `${what}은(는) 웹에서 진행해 주세요.`);
+  // 가입·아이디 찾기는 웹이 담당한다(앱에는 화면이 없다). 막다른 안내로 끝내지 않고 웹 화면을 연다
+  // (2026-11-27 Play 출시 준비). 웹 주소가 없는 빌드에서만 안내 문구로 대신한다.
+  const openWebFlow = (what: string, path: string) => {
+    const href = webUrl(path);
+    if (!href) return Alert.alert(what, `${what}은(는) 웹에서 진행해 주세요.`);
+    void Linking.openURL(href);
+  };
 
   const onFindPassword = async () => {
     if (!id.trim()) return Alert.alert('비밀번호 찾기', '가입한 이메일(아이디)을 입력해 주세요.');
@@ -77,7 +84,7 @@ export default function Login() {
       await sendPasswordResetEmail(id.trim(), redirect);
       Alert.alert('비밀번호 찾기', '재설정 메일을 보냈어요. 메일함을 확인해 주세요.');
     } catch (e) {
-      Alert.alert('비밀번호 찾기', e instanceof Error ? e.message : '다시 시도해 주세요.');
+      Alert.alert('비밀번호 찾기', authErrorText(e, '재설정 메일을 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.'));
     }
   };
 
@@ -95,7 +102,7 @@ export default function Login() {
       // 미온보딩·보호자 계정은 앱에 들어올 수 없다(온보딩은 웹 담당 — 설계 확정).
       await refreshUserRow();
     } catch (e) {
-      Alert.alert('소셜 로그인', e instanceof Error ? e.message : '다시 시도해 주세요.');
+      Alert.alert('소셜 로그인', authErrorText(e));
     } finally {
       setSocialBusy(null);
     }
@@ -176,7 +183,7 @@ export default function Login() {
 
       {/* 아이디 찾기 | 비밀번호 찾기 | 회원가입 — 가로 가운데, 잉크 top 519 */}
       <View className="absolute left-0 right-0 flex-row items-center justify-center" style={{ top: top(515, height) }}>
-        <Pressable onPress={() => notOnApp('아이디 찾기')} hitSlop={8}>
+        <Pressable onPress={() => openWebFlow('아이디 찾기', WEB_ROUTES.findId)} accessibilityRole="link" hitSlop={8}>
           <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
             아이디 찾기
           </Text>
@@ -184,7 +191,7 @@ export default function Login() {
         <Text className="text-[12px] text-line mx-3 font-normal" style={{ lineHeight: 20 }}>
           |
         </Text>
-        <Pressable onPress={onFindPassword} hitSlop={8}>
+        <Pressable onPress={onFindPassword} accessibilityRole="button" hitSlop={8}>
           <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
             비밀번호 찾기
           </Text>
@@ -192,7 +199,7 @@ export default function Login() {
         <Text className="text-[12px] text-line mx-3 font-normal" style={{ lineHeight: 20 }}>
           |
         </Text>
-        <Pressable onPress={() => notOnApp('회원가입')} hitSlop={8}>
+        <Pressable onPress={() => openWebFlow('회원가입', WEB_ROUTES.signup)} accessibilityRole="link" hitSlop={8}>
           <Text className="text-[12px] text-muted font-normal" style={{ lineHeight: 20 }}>
             회원가입
           </Text>
