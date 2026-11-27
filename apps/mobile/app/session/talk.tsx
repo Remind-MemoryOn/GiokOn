@@ -25,6 +25,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, BackHandler, View, Text, Pressable, Image, TextInput, useWindowDimensions } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { ConversationTurn } from '@giokon/core';
 import { Waveform } from '../../src/components/brand';
 import { AiDisclosureBanner, CrisisBanner } from '../../src/components/banners';
 import { closeLiveEngine } from '../../src/lib/live/engine';
@@ -41,6 +42,7 @@ import { hasCaregiverPin } from '../../src/features/session/caregiverPin';
 import { CaregiverPinModal } from '../../src/features/session/CaregiverPinModal';
 import { ElderView } from '../../src/features/session/ElderView';
 import { QuestionCard } from '../../src/features/session/QuestionCard';
+import { AiReportLink, AiReportSheet, type AiReportTarget } from '../../src/features/report/AiReportSheet';
 import { CAREGIVER_STATUS, isInConversation, pauseButtonState } from '../../src/features/session/caregiverStatus';
 import iconClose from '../../assets/brand/icon-close.png';
 import { useContentWidth } from '../../src/lib/layout';
@@ -144,6 +146,7 @@ export default function Talk() {
   const { user } = useAuth();
   const [mode, setMode] = useState<'caregiver' | 'elder'>('caregiver');
   const [pinModal, setPinModal] = useState<'setup' | 'verify' | null>(null);
+  const [reportTarget, setReportTarget] = useState<AiReportTarget | null>(null);
   const checkingPin = useRef(false);
 
   useBlockBackInElderMode(mode);
@@ -274,6 +277,12 @@ export default function Talk() {
       {/* AI 질문 카드 — Figma 336×min258 (src/features/session/QuestionCard) */}
       <View className="absolute left-0 right-0 items-center" style={{ top: (121 / FRAME_H) * height }}>
         <QuestionCard question={question ?? ''} placeholder="대화를 시작하면 첫 질문이 여기에 나와요." />
+        {/* AI 응답 신고 — Play AI 생성 콘텐츠 정책(앱 안에서 신고). 화면에 보이는 AI 발화가 있을 때만. */}
+        {question ? (
+          <View style={{ width: contentW, alignItems: 'flex-end', marginTop: 6 }}>
+            <AiReportLink onPress={() => setReportTarget(currentAiReportTarget(active))} />
+          </View>
+        ) : null}
       </View>
 
       {/* 파형 — 청취·재생 중에만 움직인다 */}
@@ -321,6 +330,7 @@ export default function Talk() {
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <Stack.Screen options={{ gestureEnabled: true }} />
       {pinGate}
+      <AiReportSheet target={reportTarget} onClose={() => setReportTarget(null)} />
       {landscape ? (
         <KeyboardScrollView contentContainerStyle={{ flexGrow: 1 }}>
           <View style={{ height }}>{controls}</View>
@@ -430,4 +440,10 @@ function RecoveredInputPanel({
       </KeyboardScrollView>
     </View>
   );
+}
+
+/** 화면에 보이는 AI 발화(마지막 AI 턴)를 신고 대상으로 묶는다. 저장 전이라 세션 id 가 없을 수 있다. */
+function currentAiReportTarget(active: { currentQuestion: string; remoteId: string | null; turns: ConversationTurn[] }): AiReportTarget {
+  const last = [...active.turns].reverse().find((t) => t.speaker === 'AI' && t.text === active.currentQuestion);
+  return { aiText: active.currentQuestion, sessionId: active.remoteId, spokenAt: last?.timestamp ?? null };
 }
