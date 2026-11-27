@@ -6,6 +6,7 @@ import { CONSENT_VERSION } from '@giokon/core';
 import { safetyEvidenceText, EVIDENCE_PENDING_TEXT, EVIDENCE_MISSING_TEXT } from '../src/lib/safetyEvidence.ts';
 import { journalSummary, journalTitle, hhmm } from '../src/lib/programJournal.ts';
 import { serverErrorMessage } from '../src/lib/serverErrors.ts';
+import { DEFAULT_ERROR_TEXT } from '../src/lib/errorText.ts';
 import { journalErrorMessage } from '../src/lib/journalErrors.ts';
 import { orgJoinErrorMessage } from '../src/lib/orgJoinErrors.ts';
 import { durationLabel } from '../src/lib/session-row.ts';
@@ -76,9 +77,12 @@ describe('consent filtering loop and evidence boundary', () => {
     expect(value.guardian_relation).toBe(subject === 'self' ? null : '자녀');
   });
   test('migration message requires both enum and consent-kind markers', () => {
-    expect(consentSaveError('consent_type elder_privacy_required')).not.toBe('consent_type elder_privacy_required');
-    expect(consentSaveError('consent_type only')).toBe('consent_type only');
-    expect(consentSaveError('elder_privacy_required only')).toBe('elder_privacy_required only');
+    const migration = '서비스의 어르신 개인정보 동의 설정이 아직 서버에 반영되지 않았어요.';
+    expect(consentSaveError('consent_type elder_privacy_required')).toBe(migration);
+    // One marker alone is not the migration case. Since ERR-KO-20261104 the untranslated raw text is never shown → Korean default.
+    expect(consentSaveError('consent_type only')).toBe(DEFAULT_ERROR_TEXT);
+    expect(consentSaveError('elder_privacy_required only')).toBe(DEFAULT_ERROR_TEXT);
+    expect(consentSaveError('합성 서버 안내')).toBe('합성 서버 안내');
   });
   test('present/pending/missing exactly at two-minute threshold', () => {
     const ev = { excerpt: null, created_at: '2026-10-25T00:00:00Z' };
@@ -116,7 +120,9 @@ describe('journal display decisions never manufacture observed content', () => {
   test('error dispatch respects known code/raw/fallback branches', () => {
     const table = { EXACT_CODE: '안내' };
     expect(serverErrorMessage(table, new Error('prefix EXACT_CODE suffix'), 'fallback')).toBe('안내');
-    expect(serverErrorMessage(table, 'raw', 'fallback')).toBe('raw');
+    // Raw text passes through only when it is already Korean; untranslated English raw falls to the screen fallback (ERR-KO-20261104).
+    expect(serverErrorMessage(table, '합성 서버 안내', 'fallback')).toBe('합성 서버 안내');
+    expect(serverErrorMessage(table, 'raw', 'fallback')).toBe('fallback');
     expect(serverErrorMessage(table, {}, 'fallback')).toBe('fallback');
     expect(serverErrorMessage(table, '', 'fallback')).toBe('fallback');
     expect(journalErrorMessage('JOURNAL_FINALIZE_HUMAN_ONLY')).toBe('일지 확정은 담당자가 직접 해야 해요.');
