@@ -17,6 +17,24 @@ describe('bounded safety evidence', () => {
     expect(draft?.excerpt).toContain('숨을 못 쉬')
     expect(draft!.excerpt.length).toBeLessThanOrEqual(120)
   })
+
+  it('휴식 요청 뒤 멀리 떨어진 급성 고통 — 발췌는 멈춘 이유(고통)를 담는다', () => {
+    const text = '쉬고 싶어요. ' + '옛날에 시장에서 장사를 했어요. '.repeat(10) + '지금 너무 괴로워요.'
+    const a = assessUtterance(text)
+    expect(a).toMatchObject({ situation: 'rest_request', hasDistressSignal: true })
+    const draft = safetyEventDraftFor(a, text)
+    expect(draft?.level).toBe('watch')
+    expect(draft!.excerpt).toContain('너무 괴로')
+    expect(draft!.excerpt.length).toBeLessThanOrEqual(120)
+    expect(draft!.matchedTerms).toEqual(expect.arrayContaining(['너무괴로', '쉬고싶']))
+  })
+
+  it('고통 없는 휴식 요청은 기록하지 않고, 위기는 위기 구에 맞춘다(바뀌지 않음)', () => {
+    expect(safetyEventDraftFor(assessUtterance('쉬고 싶어요'), '쉬고 싶어요')).toBeNull()
+    const text = '너무 괴로워요. ' + '옛날 이야기를 했어요. '.repeat(10) + '죽고 싶어요.'
+    const draft = safetyEventDraftFor(assessUtterance(text), text)
+    expect(draft!.excerpt).toContain('죽고 싶')
+  })
 })
 const aiTurn = (topic: string): ConversationTurn => ({
   id: 't' + ++seq, speaker: 'AI', text: '...', timestamp: '', topic,
