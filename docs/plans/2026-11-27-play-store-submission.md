@@ -42,16 +42,22 @@ Test account (email + password, no 2FA):
 1. Open the app and sign in with the email and password above (ignore the social login buttons).
 2. The home screen lists a sample (fictional) senior profile. Tap it, then "대화 시작하기" (Start conversation)
    at the bottom, then "시작하기" (Start).
-3. Tap "자동 대화 시작" (Start automatic conversation). Allow microphone access. The AI speaks Korean.
-4. The screen switches to the senior view. To return to the caregiver view, tap "선생님" and enter PIN 0000
-   (set in Settings > 요양보호사 PIN; the test account already has PIN 0000).
+3. Tap "자동 대화 시작" (Start automatic conversation). Allow microphone access.
+   The first time, the app asks you to set a 4-digit caregiver PIN (any digits, e.g. 1234) — this PIN is
+   stored only on the device. The AI then speaks Korean.
+4. The screen switches to the senior view. To return to the caregiver view, tap "선생님" (Teacher)
+   in the corner and enter the PIN you set in step 3.
 5. Report an AI response: caregiver view, "AI 응답 신고" under the question card, or in a saved
    conversation log tap "신고" next to an AI message.
 6. Account deletion: Settings (gear icon, top right) > 계정 > 계정 삭제 요청.
    Web: https://www.memoryon.life/account-deletion
 ```
 
-> PIN 0000 은 예시다 — 실제 계정에 정한 값을 적는다. 심사 계정의 대화는 운영 비용·사용량 한도(`live_token_limits`)에 포함된다.
+> PIN 은 기기 보안 저장소(SecureStore)에만 있어 미리 정해 둘 수 없다 — 처음 어르신 화면으로 넘길 때 앱이 정하게 한다(`talk.tsx`).
+> 심사 계정의 대화는 운영 비용·사용량 한도(`live_token_limits`)에 포함된다.
+> **계정 생성 방식(2026-11-27 사용자 승인 — 운영 DB 쓰기)**: 사용자가 받은 메일을 확인할 수 있는 이메일을 정하면, 무작위(아무도 모르는)
+> 비밀번호로 계정·기관·가상 어르신·필수 동의를 만들고, 사용자가 웹 '비밀번호 찾기'로 비밀번호를 정한다 — 비밀번호가 대화·저장소에 남지 않는다.
+> ⏳ 이메일 주소 대기.
 
 ### 2.2 데이터 보안(Data safety) — 초안, 법무 확인 대기
 
@@ -85,8 +91,10 @@ Test account (email + password, no 2FA):
    앱이 설정 오류 화면에서 멈춘다(심사 거절 사유).
 3. **AAB 빌드**: `eas build --platform android --profile production` → 첫 업로드는 Play Console 에서 직접(앱 서명은 Play App Signing).
    업로드 키·EAS 자격 증명 백업.
-4. **개인 개발자 계정이면 비공개 테스트 요건**: 2023-11-13 이후 만든 개인 계정은 프로덕션 신청 전에
-   **테스터 12명 이상 · 14일 연속 비공개 테스트**가 필요하다. 조직 계정이면 해당 없음 — 계정 종류를 먼저 확인.
+4. **비공개 테스트(개인 개발자 계정 — 2026-11-27 사용자 확인)**: 프로덕션 신청 전에 **테스터 12명 이상이
+   14일 연속 참여한 비공개 테스트**가 필요하다. 순서: 내부 테스트 트랙에 AAB 업로드(동작 확인) → 비공개 테스트 트랙에
+   테스터 12명 이상(Google 계정 목록·그룹) 초대·설치 → 14일 유지 → Play Console 에서 프로덕션 액세스 신청(테스트 내용 설문) → 프로덕션 출시.
+   비공개 테스트 출시도 심사를 받으므로 아래 6번(앱 콘텐츠 입력)을 비공개 테스트 전에 끝낸다. 파일럿 기관 직원을 테스터로 쓰면 실기기 검증(T25.16)과 겹쳐 진행할 수 있다.
 5. **심사 계정 만들기**(2.1) — 운영 DB 쓰기 승인.
 6. **Play Console 입력**: 앱 액세스 · 데이터 보안 · 건강 앱 · 대상 연령 · 콘텐츠 등급 · 스토어 등록정보(스크린샷·아이콘 512·그래픽 1024×500).
 7. **법무 확인**: 삭제 처리 기한·본인 확인·데이터 보안 '건강 정보' 여부.
