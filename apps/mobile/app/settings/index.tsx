@@ -28,6 +28,7 @@ import {
   Divider,
   LogoutGlyph,
   ManagedElderCard,
+  ROLE_LABEL,
   ROW_END_INSET,
   RowChevron,
   SectionLabel,
@@ -52,13 +53,6 @@ const PREVIEW_ELDERS = 2;
 
 // 법적 문서는 웹이 담당한다 — 앱에는 화면이 없다. 주소·경로는 src/lib/webUrl 이 SoT.
 
-const ROLE_LABEL: Record<string, string> = {
-  caregiver: '요양보호사',
-  org_admin: '관리자',
-  guardian: '보호자',
-  social_worker: '사회복지사',
-  center_director: '센터장',
-};
 
 /** Figma 소셜 아이콘 — 네이버·카카오는 41.4 정사각, 구글은 41×42. */
 const SOCIALS = [
@@ -118,6 +112,8 @@ export default function Settings() {
         <InfoSection version={version} />
 
         <ElderScreenSection onEditPin={() => { if (user?.id) setPinEditing(true); }} />
+
+        <AccountSection />
       </ScrollView>
       {user?.id ? (
         <CaregiverPinModal
@@ -442,7 +438,6 @@ function ElderScreenSection({ onEditPin }: { onEditPin: () => void }) {
         style={{
           height: 64,
           marginTop: 13,
-          marginBottom: 40,
           borderRadius: SETTINGS.cardR,
           backgroundColor: '#ffffff',
           borderWidth: 1,
@@ -461,6 +456,47 @@ function ElderScreenSection({ onEditPin }: { onEditPin: () => void }) {
             style={{ left: 26, top: 11, lineHeight: 30 }}
           >
             요양보호사 PIN
+          </Text>
+          <View style={{ position: 'absolute', right: ROW_END_INSET, top: 19 }}>
+            <RowChevron />
+          </View>
+        </Pressable>
+      </View>
+    </>
+  );
+}
+
+/**
+ * 계정 — 계정 삭제 요청(Google Play 계정 삭제 정책: 앱 설정에서 바로 찾을 수 있어야 한다, 2026-11-27).
+ * 시안에 없는 섹션 — 어르신 화면 카드와 같은 카드·행 스타일로 최소 구현.
+ */
+function AccountSection() {
+  return (
+    <>
+      <SectionLabel label="계정" left={29} style={{ marginTop: 33 }} />
+      <View
+        style={{
+          height: 64,
+          marginTop: 13,
+          marginBottom: 40,
+          borderRadius: SETTINGS.cardR,
+          backgroundColor: '#ffffff',
+          borderWidth: 1,
+          borderColor: SETTINGS.cardBorder,
+        }}
+      >
+        <Pressable
+          onPress={() => router.push('/settings/account-deletion')}
+          accessibilityRole="button"
+          accessibilityLabel="계정 삭제 요청"
+          className="absolute active:opacity-60"
+          style={{ left: 0, top: 6, right: 0, height: 52, justifyContent: 'center' }}
+        >
+          <Text
+            className="absolute text-[14px] font-semibold text-black"
+            style={{ left: 26, top: 11, lineHeight: 30 }}
+          >
+            계정 삭제 요청
           </Text>
           <View style={{ position: 'absolute', right: ROW_END_INSET, top: 19 }}>
             <RowChevron />

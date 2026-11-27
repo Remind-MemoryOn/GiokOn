@@ -15,8 +15,12 @@ export const WEB_ROUTES = {
   elderSensitiveConsent: '/consents/elder-sensitive',
   elderCrossBorderConsent: '/consents/elder-cross-border',
   elderAiConsent: '/consents/elder-ai',
+  login: '/login',
   resetPassword: '/reset-password',
   signup: '/signup',
+  findId: '/find-id',
+  /** 계정 삭제 요청 안내·접수(Play 계정 삭제 정책 — 앱 없이도 요청할 수 있는 웹 경로). */
+  accountDeletion: '/account-deletion',
   /** 감독 화면(W2) — 안전 알림을 탭하면 연다(T21.10 후속). 휴대폰 브라우저용 반응형 화면이다. */
   supervision: '/caregiver/supervision',
 } as const;

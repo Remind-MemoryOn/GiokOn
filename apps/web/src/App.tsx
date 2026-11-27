@@ -10,6 +10,7 @@ import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/public/ResetPasswordPage';
 import { GuidePage } from './pages/public/GuidePage';
 import { ConsentDocumentPage, PrivacyPolicyPage, TermsPage } from './pages/public/LegalPages';
+import { AccountDeletionPage } from './pages/public/AccountDeletionPage';
 import {
   InquiryDetailPage,
   InquiryFormPage,
@@ -102,6 +103,8 @@ function App() {
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/consents/:documentId" element={<ConsentDocumentPage />} />
+        {/* 계정 삭제 요청 — Play 계정 삭제 정책의 웹 경로(비로그인 열람 · 로그인 후 접수, 2026-11-27) */}
+        <Route path="/account-deletion" element={<AccountDeletionPage />} />
         <Route path="/inquiries" element={<InquiryListPage />} />
         <Route path="/inquiries/new" element={<InquiryFormPage />} />
         <Route path="/inquiries/:inquiryId" element={<InquiryDetailPage />} />

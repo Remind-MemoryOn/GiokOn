@@ -43,6 +43,15 @@ export const SETTINGS = {
   strong: '#404040',
 } as const;
 
+/** 역할 표시 이름 — 설정 프로필·계정 삭제 요청이 같이 쓴다. */
+export const ROLE_LABEL: Record<string, string> = {
+  caregiver: '요양보호사',
+  org_admin: '관리자',
+  guardian: '보호자',
+  social_worker: '사회복지사',
+  center_director: '센터장',
+};
+
 /** 섹션 라벨 — SemiBold 14 검정. */
 export function SectionLabel({
   label,

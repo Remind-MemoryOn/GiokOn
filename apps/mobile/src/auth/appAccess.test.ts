@@ -59,4 +59,22 @@ describe('evaluateAppAccess — 앱 진입 자격', () => {
   it('로그인됐는데 계정 행을 못 읽으면 통과시키지 않는다(빈 화면 오해 방지)', () => {
     expect(evaluateAppAccess({ authed: true, loading: false, userRow: null }).status).toBe('blocked');
   });
+
+  // Play 출시 준비(2026-11-27): 막힌 계정 안내가 막다른 길이 되지 않게 웹으로 이어 갈 경로를 준다.
+  it('보호자·가입 미완료는 웹에서 이어 갈 경로를 함께 준다', () => {
+    for (const userRow of [
+      { ...caregiver, role: 'guardian' as const },
+      { ...caregiver, onboarded_at: null },
+      { ...caregiver, org_id: null },
+    ]) {
+      const r = evaluateAppAccess({ authed: true, loading: false, userRow });
+      expect(r.status).toBe('blocked');
+      expect(r.status === 'blocked' && r.webPath).toBe('/login');
+    }
+  });
+
+  it('계정 행을 못 읽은 경우(네트워크)는 웹으로 보내지 않는다', () => {
+    const r = evaluateAppAccess({ authed: true, loading: false, userRow: null });
+    expect(r.status === 'blocked' && r.webPath).toBeUndefined();
+  });
 });

@@ -1,6 +1,8 @@
 // Structural tests: branches, boundary loops and auth-generation data flow.
 // Run with the external-tool white-box runner; no production HTTP or dotenv.
 import { routeAfterLogin, routeForUser, loginPath } from '../src/auth/routes.ts';
+import { PRIVACY_CONTACT_EMAIL } from '../src/content/supportContact.ts';
+import { LEGAL_DOCUMENTS } from '../src/content/legalDocuments.ts';
 import { currentConsentOf, elderConsentGrant, consentSaveError } from '../src/lib/consents.ts';
 import { CONSENT_VERSION } from '@giokon/core';
 import { safetyEvidenceText, EVIDENCE_PENDING_TEXT, EVIDENCE_MISSING_TEXT } from '../src/lib/safetyEvidence.ts';
@@ -51,6 +53,17 @@ describe('auth control-flow and normalized return allowlist', () => {
     expect(routeAfterLogin(guardian, '/guardian/feed')).toBe('/guardian/feed');
     expect(routeAfterLogin(guardian, '/caregiver')).toBe('/guardian');
     expect(loginPath('/caregiver?q=a#b')).toBe('/login?returnTo=%2Fcaregiver%3Fq%3Da%23b');
+  });
+  test('account deletion contact matches the privacy policy officer email (legal text is not edited)', () => {
+    const officer = LEGAL_DOCUMENTS.privacy.body.split('개인정보 보호책임자').at(-1).split('개인정보 보호담당자')[0];
+    expect(officer).toContain(PRIVACY_CONTACT_EMAIL);
+  });
+  test('account deletion is reachable before onboarding or org approval (Play deletion policy)', () => {
+    expect(routeAfterLogin(null, '/account-deletion')).toBe('/account-deletion');
+    expect(routeAfterLogin({ ...staff, org_id: null }, '/account-deletion')).toBe('/account-deletion');
+    expect(routeAfterLogin(guardian, '/account-deletion')).toBe('/account-deletion');
+    expect(routeAfterLogin(staff, '/account-deletion/../caregiver')).toBe('/caregiver');
+    expect(routeAfterLogin(null, '/account-deletionevil')).toBe('/onboarding');
   });
 });
 
