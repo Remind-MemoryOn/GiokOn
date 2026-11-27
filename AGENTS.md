@@ -209,6 +209,14 @@
 
 ## 현재 위치 (2026-10-15)
 
+**Google Play 제출 준비(2026-11-27 · PLAY-20261127)**: 계정 삭제 요청(앱 설정 → 계정 · 웹 공개 `/account-deletion` · 막힌 계정 알림) ·
+AI 응답 앱 내 신고(대화 화면·대화 기록) — 둘 다 **본인 명의 비공개 문의(`inquiries`)로 접수**한다(새 테이블·마이그레이션 없음 · core `support-requests.ts` ·
+data `supportRequests.ts` · 처리 절차 `docs/runbooks/account-deletion-and-ai-reports.md`). 웹 로그인 복귀는 `/account-deletion` 만 온보딩·합류 승인보다 먼저 허용.
+앱 번들 취약 의존성은 `decode-uri-component` 하나였다 → ESM 전용 수정판 대신 **CommonJS 이식본 `vendor/decode-uri-component`** 오버라이드
+(query-string@7 이 ESM 으로 올라가면 지운다) · `check:audit` 이 **앱 번들 경로도 막는다**(빌드 전용 하위 트리·devDependencies 는 보고만 — `APP_BUILD_ONLY`).
+릴리스 권한 = 마이크 하나(`blockedPermissions` 로 카메라·저장소·미디어·오버레이 제거 — **Android 사진 선택은 권한 요청 없이 시스템 사진 선택기**) · `allowBackup: false`(AsyncStorage 로그인 세션).
+로그인 화면 아이디 찾기·회원가입 → 웹 화면 · 로그인 오류 한국어(`authErrorText`). 사용자 작업·Play Console 초안은 `docs/plans/2026-11-27-play-store-submission.md`.
+
 **저장소 정리(2026-11-23 · REPO-CLEAN-20261123)**: 서비스·빌드·CI·게이트·런북 어디서도 쓰지 않는 파일만 **파일 단위로** 지웠다 — 루트 `app.json`·`eas.json`(폐기된 EAS ID) · 웹 `lib/ai.ts`(importer 0 shim)·`clsx`(웹 import 0)·Vite 템플릿 svg 2·미사용 랜딩 crop 2·`scripts/shot.mjs` · 앱 `적응형 아이콘.png`(`adaptive-icon.png` 중복) · Pretendard 중 안 쓰는 굵기·형식(웹 woff2 1개·앱 ttf 4개 + LICENSE 만 남김, 약 121MB) · `apps/web/supabase/` · `docs/testing/evidence/`·`review-coverage.csv`(원본은 `git show fcd711c:<경로>`) · 지원서·발표 대본 txt 2. `INSTRUCTIONS.md` 는 이 문서 "코딩 원칙" 절로 옮긴 뒤 `skills/` 와 함께 삭제. 모바일 의존성·`metro.config.js` 등 도구가 미사용으로 본 것은 실제 사용처가 있어 유지. 폴더 구조는 바꾸지 않았다(경로가 package.json·CI·게이트에 고정). 특허 문서(`docs/patents/`)는 유지.
 
 **위험 감지·음성 감정 기획(2026-11-13)**: 기획 `docs/plans/2026-11-13-risk-emotion-detection.md`. **전사 문맥 분류기만 파일럿 안으로 당김(사용자 확정 — 투입 게이트 통과·완성 시에만 운영 투입)**: 규칙은 그대로 두고 분류기를 더한다(OR · 분류기가 규칙 적중을 무효로 못 함) · 규칙 적중 = 즉시 종료 유지 · 분류기 단독 위기·고통 = 직원 확인 일시정지. 음성 감정·Qwen 은 파일럿 이후. 개발 상태는 `docs/tasks.md` CTX-CLS-20261113(중계 연결은 게이트 뒤 별도). 투입까지 남은 결정은 기획 §25.2(R1~R13 — R5 시간 초과 200ms · R6 모델 = 중계 이미지에 fp32 포함 확정 2026-11-25). 2026-11-25 현재: 학습 5차 KcELECTRA-small 임시 후보(검증 자료 게이트 미달 — 판정은 사람이 쓴 평가 자료로) · 추론 패키지 `packages/context-classifier`(중계 미연결) · 자해 관련 관용('배고파 죽겠다')은 계속 + 기록(2026-11-24 확정). S6 DB·Edge 코드(시스템 원인 일시정지 `system_pause_for_review` · `relay-review-pause`)는 PR #77 — ⚠️ main 병합 = 마이그레이션 `20261115000000`·`20261115010000` 운영 자동 적용(기존 중계·앱과 호환), Edge 는 따로 배포. 확정: 일시정지 중 듣지 않음(연결 종료 → 새 연결 + 복구 맥락) · 시스템 원인 일시정지는 중계 전용 서버 자격 · 감정 모델은 재생을 막지 않는 비동기 검사. 응급 사전 보강(SAFE-BREATH-20261113)은 중계 배포·앱 빌드 대기.

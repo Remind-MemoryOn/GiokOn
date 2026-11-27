@@ -155,7 +155,7 @@
 | T28.5 | 전체 파일 검토·검증·계획 문서 현행화·남은 작업 재분류 | ✅ 2026-10-14 저장소 980개 분류·본문/변경/구조/에셋 검토 방법과 제약 기록, 전용 게이트·브라우저·로컬 DB 검증·문서·푸시. [검토 PR #55·CI](https://github.com/Remind-MemoryOn/GiokOn/pull/55). ⏳ 승인 병합·운영 적용 |
 | T28.6 | 잘못된 분석 JSON 방어·응답률 100% 상한·근거 없는 장기 변화 문장 제거 | ✅ 2026-10-14 코드·core 254/data 227개 테스트 통과. 유효한 과거 분석 형식은 유지, 측정값을 만들어 채우지 않음 |
 
-**기존 스토어 출시 조건 재분류(2026-10-14)**: 앱 내 계정 삭제 요청 진입과 웹 접수 경로는 미구현이다.
+**기존 스토어 출시 조건 재분류(2026-10-14)**: 앱 내 계정 삭제 요청 진입과 웹 접수 경로는 미구현이다(→ ✅ 2026-11-27 PLAY.1 코드).
 외부 콘솔 설정만 남은 것으로 보지 않는다. 자동 삭제가 아닌 운영 접수 방식도 가능하며, 연락처·본인 확인·보존 예외를
 확정한 뒤 앱/웹 경로와 처리 절차를 구현·시험한다. [출시 점검표](plans/launch-checklist.md) §5.
 
@@ -169,6 +169,7 @@
 | PLAY.3 | 앱 번들에 실리는 취약 의존성 갱신 + 앱 감사 게이트 승격 | ✅ 2026-11-27 Android 번들 소스맵(패키지 134개) × `pnpm audit` 대조 → 번들 포함 취약 패키지는 `decode-uri-component`(expo-router→query-string@7, high·DoS) 하나. 수정판 0.5.1 은 ESM 전용이라 같은 로직의 CommonJS 이식본 `vendor/decode-uri-component` 로 교체(오버라이드) — 번들 반영·딥링크 파싱 확인, 옛 판은 12KB 입력에 2분 이상 멈춤 재현. `check:audit` 이 앱 번들 경로도 막도록 승격(빌드 전용 하위 트리·devDependencies 만 보고), 이식본 제거 시 게이트 실패 확인. 남은 high 는 전부 빌드·개발 도구(node-forge·undici·image-size·tinypool·vite·zod·adm-zip) |
 | PLAY.4 | 릴리스 권한·백업 정리 | ✅ 2026-11-27 prebuild 매니페스트·라이브러리 매니페스트 대조. 요청 권한 = 마이크 하나. 라이브러리가 끌어오던 CAMERA·READ/WRITE_EXTERNAL_STORAGE·READ_MEDIA_*·SYSTEM_ALERT_WINDOW 를 `blockedPermissions` 로 제거(사진은 Android 시스템 사진 선택기 — 권한 불필요, Android 에서 권한 요청 제거). 로그인 세션(AsyncStorage)이 Google 자동 백업에 실리던 문제 → `allowBackup: false`. 남는 권한: INTERNET·RECORD_AUDIO·MODIFY_AUDIO_SETTINGS·VIBRATE + 알림 라이브러리(POST_NOTIFICATIONS·RECEIVE_BOOT_COMPLETED 등). ⏳ 빌드된 AAB 의 최종 병합 권한을 Play Console '앱 번들 탐색기'에서 확인 · Android 12 이하 기기 사진 선택 1회 |
 | PLAY.5 | 가입·로그인 흐름 정리 | ✅ 2026-11-27 로그인 화면 '아이디 찾기'·'회원가입'이 "웹에서 진행해 주세요" 알림만 띄우던 막다른 길 → 웹 `/find-id`·`/signup` 을 연다 · 로그인·소셜·비밀번호 찾기 오류의 영문 원문(`Invalid login credentials` 등) → 한국어 안내(`authErrorText`, 웹 `errorText` 문구와 동일) · 막힌 계정(보호자·가입 미완료) 알림에 '웹에서 계속하기'·'계정 삭제 안내'(PLAY.1) · 가입 미완료 계정도 웹 로그인 후 계정 삭제 화면으로 복귀(PLAY.1). 심사용 계정·안내는 PLAY.6 |
+| PLAY.6 | 심사 추가 점검·제출 점검표 | ✅ 2026-11-27 [`plans/2026-11-27-play-store-submission.md`](plans/2026-11-27-play-store-submission.md) — 대상 API 36·16KB(미리 빌드된 .so 없음)·OAuth 시스템 브라우저·AI/비의료 고지 확인, 앱 액세스(영문)·데이터 보안·건강 앱 선언 초안. ⏳ 사용자: 웹 배포 · EAS `production` 환경 변수 · AAB · (개인 계정이면) 비공개 테스트 12명·14일 · 심사 계정(운영 DB 쓰기 승인) · Play Console 입력 · 법무. 결정 필요: 분석 화면 카피 '인지 효과 분석'·'향상률' |
 
 > 📌 2026-09-24 정리: 지금 할 일(파일럿 트랙)을 맨 앞에 두고, 2026-04~08 의 작업 분해표(M0~M15)·우선순위·담당·발표 체크리스트는
 > 걷어 냈다(원문은 git 이력). 코드 주석이 `T16.x`·`T17.x`·`T19.x`·`T-E3` 를 인용하므로 그 부분만 §3 에 남겼다.
