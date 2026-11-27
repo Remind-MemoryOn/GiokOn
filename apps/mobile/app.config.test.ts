@@ -67,7 +67,8 @@ describe('릴리스 권한·백업', () => {
   });
   it('Android 에서는 사진 권한을 요청하지 않는다(사진 선택기 사용 — 막은 권한을 요청하면 거부로 끝난다)', async () => {
     const { readFileSync } = await import('node:fs');
-    const form = readFileSync(new URL('./src/components/ProfileForm.tsx', import.meta.url), 'utf8');
+    const { URL: NodeURL } = await import('node:url');
+    const form = readFileSync(new NodeURL('./src/components/ProfileForm.tsx', import.meta.url), 'utf8');
     expect(form).toMatch(/if \(Platform\.OS !== 'android'\) \{\s*const perm = await ImagePicker\.requestMediaLibraryPermissionsAsync\(\);/);
   });
 });
