@@ -13,7 +13,7 @@
 | 정책 | 무엇을 했나 | 남은 것 |
 |---|---|---|
 | 계정 삭제(앱 경로) | 설정 → 계정 → **계정 삭제 요청**(앱 안에서 바로 접수) · 막힌 계정 알림의 '계정 삭제 안내' | 새 빌드 |
-| 계정 삭제(웹 경로) | 공개 `https://www.memoryon.life/account-deletion` — 앱·웹·이메일 3가지 방법, 삭제/보존 기준, 10일 이내 처리 | **main 병합 = 웹 배포** 후 비로그인으로 열리는지 확인 |
+| 계정 삭제(웹 경로) | 공개 `https://www.memoryon.life/account-deletion` — 앱·웹·이메일 3가지 방법, 삭제/보존 기준, 10일 이내 처리 | ✅ 2026-11-27 PR #83 병합·운영 배포 — 비로그인 렌더링·하단 링크 확인 |
 | 삭제 처리 절차 | `docs/runbooks/account-deletion-and-ai-reports.md` | 실제 요청→삭제 1회 시험 · 법무(기한·본인 확인) |
 | AI 생성 콘텐츠 신고 | 대화 화면(질문 카드 아래)·대화 기록(AI 말풍선) → 사유 + 메모 → 운영자 비공개 문의 | 신고 확인 주기 운영 |
 | 앱 번들 취약 의존성 | 번들 소스맵 × audit 대조 → `decode-uri-component` 교체 · `check:audit` 앱 경로 승격 | — |
@@ -57,7 +57,8 @@ Test account (email + password, no 2FA):
 > 심사 계정의 대화는 운영 비용·사용량 한도(`live_token_limits`)에 포함된다.
 > **계정 생성 방식(2026-11-27 사용자 승인 — 운영 DB 쓰기)**: 사용자가 받은 메일을 확인할 수 있는 이메일을 정하면, 무작위(아무도 모르는)
 > 비밀번호로 계정·기관·가상 어르신·필수 동의를 만들고, 사용자가 웹 '비밀번호 찾기'로 비밀번호를 정한다 — 비밀번호가 대화·저장소에 남지 않는다.
-> ⏳ 이메일 주소 대기.
+> 준비된 SQL: [`runbooks/play-review-account.sql`](../runbooks/play-review-account.sql) — 로컬 PG16(전체 마이그레이션)에서 검증(2026-11-27: 기관 관리자·온보딩·가상 어르신 생성, `has_processing_consent` = true, 재실행은 거절, AI 초안 스위치 꺼짐 유지).
+> 순서: ① 사용자가 대시보드 Authentication → Add user(Auto Confirm, 비밀번호 직접) ② 이메일을 바꿔 SQL 실행 ③ 확인 쿼리. ⏳ 이메일 주소 대기.
 
 ### 2.2 데이터 보안(Data safety) — 초안, 법무 확인 대기
 
@@ -85,7 +86,7 @@ Test account (email + password, no 2FA):
 
 ## 3. 사용자만 할 수 있는 것 (순서대로)
 
-1. **PR 병합 → 웹 배포** — `/account-deletion` 이 비로그인으로 열리는지 확인(Play 가 URL 을 확인한다).
+1. ~~PR 병합 → 웹 배포~~ — ✅ 2026-11-27 운영 `/account-deletion` 비로그인 렌더링 확인.
 2. **EAS `production` 환경 변수** — preview 와 별개다. `GOOGLE_SERVICES_JSON`·`EXPO_PUBLIC_SUPABASE_URL`·
    `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`·`EXPO_PUBLIC_VOICE_RELAY_URL`·`EXPO_PUBLIC_WEB_URL` 가 없으면 빌드가 실패하거나
    앱이 설정 오류 화면에서 멈춘다(심사 거절 사유).
