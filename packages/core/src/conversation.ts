@@ -136,11 +136,14 @@ function buildSafetyEventDraft(
 ): SafetyEventDraft | null {
   if (!alert) return null
   if (assessment.risk !== 'crisis' && assessment.risk !== 'watch') return null
+  // 휴식 요청에 고통이 섞여 즉시 멈춘 경우, 멈춘 이유는 고통이다 — 발췌는 고통 구에 맞추고 근거 단어에도 넣는다.
+  // (휴식 구에 맞추면 고통이 120자 밖일 때 직원은 평범한 휴식 요청만 본다 — PR #81 리뷰 지적.)
+  const distress = assessment.situation === 'rest_request' && assessment.hasDistressSignal ? assessment.distressTerms ?? [] : []
   return {
     level: assessment.risk,
     categories: assessment.crisisCategories,
-    matchedTerms: assessment.matchedTerms,
-    excerpt: safetyExcerpt(utterance, assessment.matchedTerms),
+    matchedTerms: distress.length ? [...new Set([...distress, ...assessment.matchedTerms])] : assessment.matchedTerms,
+    excerpt: safetyExcerpt(utterance, distress.length ? distress : assessment.matchedTerms),
     caregiverAlert: alert,
   }
 }

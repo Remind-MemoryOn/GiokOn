@@ -67,6 +67,11 @@ export interface UtteranceAssessment {
    * 고통 신호는 보호자 알림으로 따로 전달한다 — 존중과 관찰을 둘 다 지킨다.
    */
   hasDistressSignal: boolean
+  /**
+   * 고통 신호로 걸린 구. 상황이 휴식 요청이어도 채운다 — 안전 사건 근거(발췌)가 실제로 멈춘 이유(고통)를
+   * 담도록 하기 위해서다(PR #81 리뷰 지적 2026-11-25). 고통 신호가 없으면 비거나 없다.
+   */
+  distressTerms?: string[]
 }
 
 // ── 사전(lexicon) — 전부 정규화(공백 제거) 기준의 구 단위. 단일 글자 금지. ──
@@ -209,6 +214,7 @@ export function assessUtterance(text: string): UtteranceAssessment {
       matchedTerms: crisisCategories.flatMap((c) => crisisHits[c]),
       escalate: true,
       hasDistressSignal,
+      distressTerms: distress,
     }
   }
 
@@ -216,14 +222,14 @@ export function assessUtterance(text: string): UtteranceAssessment {
   if (rest.length > 0) {
     return {
       situation: 'rest_request', risk: hasDistressSignal ? 'watch' : 'none',
-      crisisCategories: [], matchedTerms: rest, escalate: false, hasDistressSignal,
+      crisisCategories: [], matchedTerms: rest, escalate: false, hasDistressSignal, distressTerms: distress,
     }
   }
 
   if (hasDistressSignal) {
     return {
       situation: 'distress', risk: 'watch', crisisCategories: [],
-      matchedTerms: distress, escalate: false, hasDistressSignal,
+      matchedTerms: distress, escalate: false, hasDistressSignal, distressTerms: distress,
     }
   }
 
