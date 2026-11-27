@@ -11,7 +11,7 @@
 // ⚠️ 값은 전부 실데이터 바인딩이다. 디자인의 "이순자 / 1945 / 전라북도 전주시" 등은
 // 자리표시자이므로 코드에 넣지 않는다(실서비스 원칙).
 import { useState } from 'react';
-import { Alert, Keyboard, View } from 'react-native';
+import { Alert, Keyboard, Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { isBirthDate, type ElderGender } from '@giokon/core';
@@ -114,10 +114,15 @@ export function ProfileForm({
   const minYear = nowYear - 110;
 
   const pickPhoto = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('사진 접근 권한이 필요해요', '설정에서 사진 접근을 허용해 주세요.');
-      return;
+    // Android 는 시스템 사진 선택기(Photo Picker)라 권한이 필요 없다 — 저장소·미디어 권한은 릴리스에서 막았다
+    // (app.json blockedPermissions, Play 사진·동영상 권한 정책). 권한을 요청하면 Android 12 이하에서
+    // 막힌 권한이라 거부로 끝나 사진을 고를 수 없게 된다. iOS 는 기존대로 사진 보관함 권한을 묻는다.
+    if (Platform.OS !== 'android') {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('사진 접근 권한이 필요해요', '설정에서 사진 접근을 허용해 주세요.');
+        return;
+      }
     }
     // base64 를 함께 받아 업로드에 쓴다 — RN 에서 file:// 을 fetch 하면 폴리필이
     // status 0 으로 Response 를 만들다 터진다(elder-photo.ts 주석 참조).
